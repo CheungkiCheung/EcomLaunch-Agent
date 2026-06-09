@@ -2,12 +2,13 @@
 
 This folder contains the manual MVP materials for EcomLaunch Agent.
 
-The goal is to prove the core DeerFlow-based workflow before building a dedicated frontend form:
+The goal is to prove the core DeerFlow-based workflow before building a dedicated conversational EcomLaunch entry:
 
 ```text
 existing DeerFlow chat
 -> Ultra mode
 -> ecom-launch skill
+-> ask_clarification when the launch brief is too incomplete
 -> ecommerce custom subagents
 -> public web search/fetch
 -> files under /mnt/user-data/outputs

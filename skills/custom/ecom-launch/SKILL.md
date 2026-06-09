@@ -11,6 +11,7 @@ allowed-tools:
   - glob
   - present_files
   - task
+  - ask_clarification
 ---
 
 # EcomLaunch
@@ -107,7 +108,9 @@ Do not invent report dates, publish dates, review dates, or retrieval dates. If 
 
 ### 1. Clarify Launch Brief
 
-Extract or ask for:
+Keep the launch brief conversational. Do not force the user through a long form.
+
+Extract what the user already provided:
 
 - product idea or product URL
 - target platform
@@ -118,7 +121,22 @@ Extract or ask for:
 - uploaded files
 - desired outputs
 
-If enough information is present, proceed. Do not over-ask.
+Minimum required information before market work:
+
+- product idea, product category, product URL, or uploaded product description
+
+If this is missing, call `ask_clarification` with one concise question before doing research.
+
+Helpful but not always required:
+
+- target platform
+- target customer
+- target price range
+- constraints
+- competitor links
+- desired outputs
+
+If these are missing but the product/category is clear, proceed with reasonable default assumptions and label them. Do not over-ask. If multiple choices would materially change the work, ask one clarification question at a time.
 
 ### 2. Decompose With Subagents When Available
 

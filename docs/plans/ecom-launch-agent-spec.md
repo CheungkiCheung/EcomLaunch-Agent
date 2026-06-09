@@ -44,7 +44,7 @@ Secondary user:
    - skills-based workflow specialization
 
 2. Build a vertical ecommerce product layer:
-   - product launch form
+   - conversational EcomLaunch agent entry
    - ecommerce-specific prompt protocol
    - custom ecommerce subagents
    - structured outputs
@@ -120,7 +120,7 @@ Relevant behavior:
 - sets `subagent_enabled` when mode is Ultra
 - passes `thread_id`
 
-EcomLaunch should reuse this submission path. The frontend should build a structured ecommerce launch prompt from form fields, then submit it through the existing thread mechanism. It should not create a separate research endpoint for MVP.
+EcomLaunch should reuse this submission path. The first product UI should remain conversational: a dedicated EcomLaunch chat entry should pass an `agent_name` / runtime context and let the agent complete missing launch brief details with DeerFlow's existing clarification mechanism. It should not create a separate research endpoint for MVP.
 
 ### 5.2 Existing Backend Run Layer
 
@@ -281,7 +281,7 @@ Implementation priority:
 1. Product protocol in `ecom-launch` skill
 2. Custom subagents in `config.yaml`
 3. Manual prompt flow to verify artifact-first behavior
-4. Dedicated frontend form that submits through existing `thread.submit`
+4. Dedicated conversational frontend entry that submits through existing `thread.submit`
 5. Native dashboard reading generated artifacts
 6. Optional backend validation/rendering tools
 
@@ -298,7 +298,9 @@ Avoid:
 
 ### 6.1 New Launch Task
 
-User opens the EcomLaunch workspace and enters:
+User opens the EcomLaunch conversation and describes the launch task in natural language.
+
+The user may provide any subset of:
 
 - product idea or product link
 - target platform
@@ -308,6 +310,8 @@ User opens the EcomLaunch workspace and enters:
 - optional competitor links
 - optional uploaded review/product CSV
 - desired outputs
+
+The agent should extract a launch brief from the conversation. If the product/category itself is missing, the agent must ask a concise clarification question before researching. If target platform, target customer, price range, constraints, competitor links, or desired outputs are missing, the agent may either infer reasonable defaults with labels or ask one high-impact question when the answer would materially change the work.
 
 Example input:
 
@@ -820,40 +824,49 @@ Schema:
 
 ### 11.1 MVP UI
 
-Add an EcomLaunch entry page or mode.
+Add an EcomLaunch conversational entry page or mode. Do not make the primary experience a long structured form.
 
-Required fields:
+Recommended implementation path:
 
-- product idea or URL
-- target platform
-- target customer
-- price range
-- constraints
-- competitor links
-- desired outputs
-- upload files
+- reuse the existing chat UI and input box
+- route users through the existing custom-agent chat path, such as `/workspace/agents/ecom-launch/chats/[thread_id]`
+- pass `agent_name: "ecom-launch"` in runtime context
+- default this entry to Ultra mode when possible so `subagent_enabled=true`
+- keep file uploads available through the existing upload flow
+- show EcomLaunch-specific welcome copy and examples, not a field-by-field wizard
 
-Primary button:
+Primary interaction:
 
 ```text
-Generate Launch War Room
+User: 我想做一个通勤咖啡杯新品，目标淘宝和小红书，价格 99-199，帮我做上市方案
+EcomLaunch: 开始补齐 launch brief / 搜索 / 调用 subagents / 生成 artifacts
 ```
 
-On submit:
+If the user's first message is incomplete:
 
-- build a structured prompt
-- set mode to Ultra
-- pass context so `subagent_enabled=true`
-- send through existing `thread.submit(...)`
+```text
+User: 帮我做一个新品上市方案
+EcomLaunch: 你想上市的产品或类目是什么？给我一个产品 idea、类目、链接，或上传产品说明即可。
+```
+
+This uses DeerFlow's existing `ask_clarification` path rather than a frontend form:
+
+```text
+lead agent decides required info is missing
+-> calls ask_clarification
+-> ClarificationMiddleware converts it to a tool message and ends the run
+-> frontend renders assistant:clarification
+-> user replies in the same thread
+-> next run continues with the accumulated conversation
+```
 
 ### 11.2 Prompt Template
 
-The generated prompt should include:
+The EcomLaunch agent should not rely on a generated form prompt. It should use the `ecom-launch` skill and custom-agent SOUL/config to extract a launch brief from normal conversation.
+
+The internal brief schema should still be explicit:
 
 ```text
-You are EcomLaunch, an ecommerce new-product launch copilot.
-
-User launch brief:
 - Product/category:
 - Product URL:
 - Target platform:
@@ -863,7 +876,21 @@ User launch brief:
 - Competitor links:
 - Uploaded files:
 - Desired outputs:
+```
 
+For an incomplete brief, ask at most one clarification question at a time. Minimum required information before research:
+
+- product idea, product category, product URL, or uploaded product description
+
+All other fields can be inferred as assumptions when the task can still proceed.
+
+The persistent agent instruction should include:
+
+```text
+You are EcomLaunch, a conversational ecommerce new-product launch copilot.
+Do not force users through a long form.
+Extract the launch brief from the conversation.
+If the product/category is missing, ask one clarification question with ask_clarification.
 Use public data and uploaded files only.
 Do not invent private merchant metrics.
 Create the required artifacts under /mnt/user-data/outputs and call present_files.
@@ -1051,18 +1078,20 @@ Acceptance:
 - evidence ledger exists and uses required schema
 - no forbidden private metric claim appears without uploaded evidence
 
-### Milestone 3: Frontend Entry
+### Milestone 3: Conversational Frontend Entry
 
 Deliverables:
 
-- EcomLaunch entry page or mode
-- structured form
-- prompt builder
+- EcomLaunch entry page or mode using the existing chat UI
+- custom agent route/context, for example `agent_name: "ecom-launch"`
+- EcomLaunch welcome examples and empty-state copy
+- `ask_clarification`-based brief completion
 - submit through existing thread mechanism
 
 Acceptance:
 
 - user can start a launch task without writing a manual prompt
+- user can give an incomplete request and receive a targeted clarification question
 - task defaults to Ultra/subagent-enabled mode
 - uploaded files are included in the task
 
