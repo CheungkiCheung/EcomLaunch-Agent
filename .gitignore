@@ -38,6 +38,8 @@ coverage/
 .deer-flow/
 .claude/
 skills/custom/*
+!skills/custom/ecom-launch/
+!skills/custom/ecom-launch/**
 logs/
 log/
 debug.log
