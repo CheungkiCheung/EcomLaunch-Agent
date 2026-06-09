@@ -17,6 +17,7 @@ existing DeerFlow chat
 ## Files
 
 - `demo-brief.portable-coffee-tumbler.json`: recommended demo input.
+- `demo-run-2026-06-09.md`: first local smoke-run record and validation notes.
 - `manual-run-prompt.md`: prompt to paste into an Ultra-mode DeerFlow chat.
 - `subagents.ecom-launch.yaml`: copyable `subagents:` config block for local `config.yaml`.
 

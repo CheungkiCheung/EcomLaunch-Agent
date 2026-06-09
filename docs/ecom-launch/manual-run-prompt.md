@@ -66,6 +66,8 @@ Use public web search/fetch and any available public pages only.
 
 Do not bypass login walls, CAPTCHA, anti-bot systems, or private ecommerce dashboards.
 
+Use the current runtime date for report timestamps. Do not invent source dates or report dates.
+
 Do not invent:
 
 - GMV

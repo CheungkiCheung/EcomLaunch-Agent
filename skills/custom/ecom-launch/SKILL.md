@@ -97,6 +97,12 @@ low
 unknown
 ```
 
+## Date Handling
+
+Use the current runtime date or an explicit date supplied by the user for all report timestamps.
+
+Do not invent report dates, publish dates, review dates, or retrieval dates. If a source date cannot be verified, write `unknown` or omit the date and explain the limitation.
+
 ## Workflow
 
 ### 1. Clarify Launch Brief
