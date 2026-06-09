@@ -16,12 +16,14 @@ import yaml
 from pydantic import BaseModel
 
 from deerflow.config.paths import get_paths
+from deerflow.config.runtime_paths import project_root
 from deerflow.runtime.user_context import get_effective_user_id
 
 logger = logging.getLogger(__name__)
 
 SOUL_FILENAME = "SOUL.md"
 AGENT_NAME_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
+BUILTIN_AGENTS_DIRNAME = "agents"
 
 
 def validate_agent_name(name: str | None) -> str | None:
@@ -33,6 +35,24 @@ def validate_agent_name(name: str | None) -> str | None:
     if not AGENT_NAME_PATTERN.fullmatch(name):
         raise ValueError(f"Invalid agent name '{name}'. Must match pattern: {AGENT_NAME_PATTERN.pattern}")
     return name
+
+
+def builtin_agents_dir() -> Path:
+    """Return the read-only repository directory for built-in agent definitions."""
+    return project_root() / BUILTIN_AGENTS_DIRNAME
+
+
+def builtin_agent_dir(name: str) -> Path:
+    """Return the read-only built-in definition directory for an agent name."""
+    return builtin_agents_dir() / name.lower()
+
+
+def is_builtin_agent(name: str, *, user_id: str | None = None) -> bool:
+    """Return True when agent resolution lands on the repository built-in copy."""
+    name = validate_agent_name(name)
+    if name is None:
+        return False
+    return resolve_agent_dir(name, user_id=user_id).resolve() == builtin_agent_dir(name).resolve()
 
 
 class AgentConfig(BaseModel):
@@ -55,6 +75,7 @@ def resolve_agent_dir(name: str, *, user_id: str | None = None) -> Path:
     Resolution order:
     1. ``{base_dir}/users/{user_id}/agents/{name}/`` (per-user, current layout).
     2. ``{base_dir}/agents/{name}/`` (legacy shared layout — read-only fallback).
+    3. ``{project_root}/agents/{name}/`` (repository-shipped built-in fallback).
 
     If neither exists, the per-user path is returned so callers that intend to
     create the agent write into the new layout.
@@ -73,6 +94,10 @@ def resolve_agent_dir(name: str, *, user_id: str | None = None) -> Path:
     legacy_path = paths.agent_dir(name)
     if legacy_path.exists():
         return legacy_path
+
+    builtin_path = builtin_agent_dir(name)
+    if builtin_path.exists():
+        return builtin_path
 
     return user_path
 
@@ -173,8 +198,9 @@ def list_custom_agents(*, user_id: str | None = None) -> list[AgentConfig]:
 
     user_root = paths.user_agents_dir(effective_user)
     legacy_root = paths.agents_dir
+    builtin_root = builtin_agents_dir()
 
-    for root in (user_root, legacy_root):
+    for root in (user_root, legacy_root, builtin_root):
         if not root.exists():
             continue
         for entry in sorted(root.iterdir()):

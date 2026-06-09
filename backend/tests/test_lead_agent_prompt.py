@@ -33,6 +33,23 @@ def test_build_self_update_section_present_for_custom_agent():
     assert '"null"' in section
 
 
+def test_apply_prompt_template_can_omit_self_update_for_read_only_agent(monkeypatch):
+    monkeypatch.setattr(prompt_module, "get_agent_soul", lambda agent_name: "")
+    monkeypatch.setattr(prompt_module, "get_skills_prompt_section", lambda *args, **kwargs: "")
+    monkeypatch.setattr(prompt_module, "get_deferred_tools_prompt_section", lambda *args, **kwargs: "")
+    monkeypatch.setattr(prompt_module, "_build_acp_section", lambda *args, **kwargs: "")
+    monkeypatch.setattr(prompt_module, "_build_custom_mounts_section", lambda *args, **kwargs: "")
+
+    prompt = prompt_module.apply_prompt_template(
+        agent_name="ecom-launch",
+        self_update_enabled=False,
+    )
+
+    assert "ecom-launch" in prompt
+    assert "<self_update>" not in prompt
+    assert "update_agent" not in prompt
+
+
 def test_build_custom_mounts_section_returns_empty_when_no_mounts(monkeypatch):
     config = SimpleNamespace(sandbox=SimpleNamespace(mounts=[]))
     monkeypatch.setattr("deerflow.config.get_app_config", lambda: config)

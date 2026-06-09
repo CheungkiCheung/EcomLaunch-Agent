@@ -40,7 +40,7 @@ from deerflow.agents.middlewares.token_usage_middleware import TokenUsageMiddlew
 from deerflow.agents.middlewares.tool_error_handling_middleware import build_lead_runtime_middlewares
 from deerflow.agents.middlewares.view_image_middleware import ViewImageMiddleware
 from deerflow.agents.thread_state import ThreadState
-from deerflow.config.agents_config import load_agent_config, validate_agent_name
+from deerflow.config.agents_config import is_builtin_agent, load_agent_config, validate_agent_name
 from deerflow.config.app_config import AppConfig, get_app_config
 from deerflow.models import create_chat_model
 from deerflow.skills.tool_policy import filter_tools_by_skill_allowed_tools
@@ -413,8 +413,17 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
     max_concurrent_subagents = cfg.get("max_concurrent_subagents", 3)
     is_bootstrap = cfg.get("is_bootstrap", False)
     agent_name = validate_agent_name(cfg.get("agent_name"))
+    user_id = cfg.get("user_id")
 
-    agent_config = load_agent_config(agent_name) if not is_bootstrap else None
+    if is_bootstrap:
+        agent_config = None
+        agent_is_builtin = False
+    elif user_id is not None:
+        agent_config = load_agent_config(agent_name, user_id=user_id)
+        agent_is_builtin = bool(agent_name and is_builtin_agent(agent_name, user_id=user_id))
+    else:
+        agent_config = load_agent_config(agent_name)
+        agent_is_builtin = bool(agent_name and is_builtin_agent(agent_name))
     available_skills = _available_skill_names(agent_config, is_bootstrap)
     # Custom agent model from agent config (if any), or None to let _resolve_model_name pick the default
     agent_model_name = agent_config.model if agent_config and agent_config.model else None
@@ -494,7 +503,7 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
 
     # Custom agents can update their own SOUL.md / config via update_agent.
     # The default agent (no agent_name) does not see this tool.
-    extra_tools = [update_agent] if agent_name else []
+    extra_tools = [update_agent] if agent_name and not agent_is_builtin else []
     # Default lead agent (unchanged behavior)
     raw_tools = get_available_tools(model_name=model_name, groups=agent_config.tool_groups if agent_config else None, subagent_enabled=subagent_enabled, app_config=resolved_app_config)
     filtered = filter_tools_by_skill_allowed_tools(raw_tools + extra_tools, skills_for_tool_policy)
@@ -510,6 +519,7 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
             available_skills=set(agent_config.skills) if agent_config and agent_config.skills is not None else None,
             app_config=resolved_app_config,
             deferred_names=setup.deferred_names,
+            self_update_enabled=bool(agent_name and not agent_is_builtin),
         ),
         state_schema=ThreadState,
     )

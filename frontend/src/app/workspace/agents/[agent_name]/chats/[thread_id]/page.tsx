@@ -1,8 +1,8 @@
 "use client";
 
-import { BotIcon, PlusSquare } from "lucide-react";
+import { BotIcon, PlusSquare, ShoppingBagIcon } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,10 @@ import { AgentWelcome } from "@/components/workspace/agent-welcome";
 import { ArtifactTrigger } from "@/components/workspace/artifacts";
 import { ChatBox, useThreadChat } from "@/components/workspace/chats";
 import { ExportTrigger } from "@/components/workspace/export-trigger";
-import { InputBox } from "@/components/workspace/input-box";
+import {
+  InputBox,
+  type InputBoxContext,
+} from "@/components/workspace/input-box";
 import {
   MessageList,
   MESSAGE_LIST_DEFAULT_PADDING_BOTTOM,
@@ -38,8 +41,9 @@ export default function AgentChatPage() {
   const { agent_name } = useParams<{
     agent_name: string;
   }>();
+  const isEcomLaunch = agent_name === "ecom-launch";
 
-  const { agent } = useAgent(agent_name);
+  const { agent } = useAgent(isEcomLaunch ? null : agent_name);
 
   const { threadId, setThreadId, isNewThread, setIsNewThread, isMock } =
     useThreadChat();
@@ -47,6 +51,8 @@ export default function AgentChatPage() {
   // the thread. `isWelcomeMode` controls only the centered welcome layout, so
   // it can flip immediately on submit without triggering eager history loads.
   const [isWelcomeMode, setIsWelcomeMode] = useState(isNewThread);
+  const [ecomLaunchContextEdited, setEcomLaunchContextEdited] =
+    useState(false);
   const [settings, setSettings] = useThreadSettings(threadId);
   const [localSettings, setLocalSettings] = useLocalSettings();
   const { tokenUsageEnabled } = useModels();
@@ -62,6 +68,48 @@ export default function AgentChatPage() {
     setIsWelcomeMode(isNewThread);
   }, [isNewThread]);
 
+  useEffect(() => {
+    if (isNewThread) {
+      setEcomLaunchContextEdited(false);
+    }
+  }, [agent_name, isNewThread, threadId]);
+
+  const effectiveContext = useMemo(() => {
+    if (!isEcomLaunch || ecomLaunchContextEdited) {
+      return settings.context;
+    }
+    return {
+      ...settings.context,
+      mode: "ultra" as const,
+      reasoning_effort: "high" as const,
+    };
+  }, [ecomLaunchContextEdited, isEcomLaunch, settings.context]);
+
+  const handleContextChange = useCallback(
+    (context: InputBoxContext) => {
+      if (!isEcomLaunch) {
+        setSettings("context", context);
+        return;
+      }
+
+      const changedAwayFromDefault =
+        context.mode !== "ultra" ||
+        (context.reasoning_effort !== undefined &&
+          context.reasoning_effort !== "high");
+      if (changedAwayFromDefault) {
+        setEcomLaunchContextEdited(true);
+        setSettings("context", context);
+        return;
+      }
+
+      // The input box auto-selects the model on mount. Keep that model
+      // preference, while keeping the EcomLaunch Ultra default scoped to this
+      // page until the user explicitly changes mode/effort.
+      setSettings("context", { model_name: context.model_name });
+    },
+    [isEcomLaunch, setSettings],
+  );
+
   const {
     thread,
     pendingUsageMessages,
@@ -72,7 +120,7 @@ export default function AgentChatPage() {
     loadMoreHistory,
   } = useThreadStream({
     threadId: isNewThread ? undefined : threadId,
-    context: { ...settings.context, agent_name: agent_name },
+    context: { ...effectiveContext, agent_name: agent_name },
     isMock,
     onSend: () => {
       setIsWelcomeMode(false);
@@ -124,6 +172,7 @@ export default function AgentChatPage() {
     ? localSettings.tokenUsage.inlineMode
     : "off";
   const hasTodos = (thread.values.todos?.length ?? 0) > 0;
+  const AgentBadgeIcon = isEcomLaunch ? ShoppingBagIcon : BotIcon;
 
   return (
     <ThreadContext.Provider value={{ thread }}>
@@ -139,9 +188,11 @@ export default function AgentChatPage() {
           >
             {/* Agent badge */}
             <div className="flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1">
-              <BotIcon className="text-primary h-3.5 w-3.5" />
+              <AgentBadgeIcon className="text-primary h-3.5 w-3.5" />
               <span className="text-xs font-medium">
-                {agent?.name ?? agent_name}
+                {isEcomLaunch
+                  ? t.agents.ecomLaunchName
+                  : (agent?.name ?? agent_name)}
               </span>
             </div>
 
@@ -242,17 +293,20 @@ export default function AgentChatPage() {
                         ? "streaming"
                         : "ready"
                   }
-                  context={settings.context}
+                  context={effectiveContext}
                   extraHeader={
                     isWelcomeMode && (
                       <AgentWelcome agent={agent} agentName={agent_name} />
                     )
                   }
+                  welcomeSuggestions={
+                    isEcomLaunch ? t.agents.ecomLaunchSuggestions : undefined
+                  }
                   disabled={
                     env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ||
                     isUploading
                   }
-                  onContextChange={(context) => setSettings("context", context)}
+                  onContextChange={handleContextChange}
                   onSubmit={handleSubmit}
                   onStop={handleStop}
                 />

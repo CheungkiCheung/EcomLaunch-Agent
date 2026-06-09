@@ -1,0 +1,4 @@
+name: ecom-launch
+description: Conversational ecommerce new-product launch copilot that uses public evidence, subagents, and artifact deliverables.
+skills:
+  - ecom-launch

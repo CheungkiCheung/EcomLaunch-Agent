@@ -11,6 +11,7 @@ import {
   RocketIcon,
   XIcon,
   ZapIcon,
+  type LucideIcon,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -59,7 +60,7 @@ import { fetch } from "@/core/api/fetcher";
 import { getBackendBaseURL } from "@/core/config";
 import { useI18n } from "@/core/i18n/hooks";
 import { useModels } from "@/core/models/hooks";
-import type { AgentThreadContext } from "@/core/threads";
+import type { LocalSettings } from "@/core/settings";
 import { textOfMessage } from "@/core/threads/utils";
 import { cn } from "@/lib/utils";
 
@@ -85,6 +86,15 @@ import { ModeHoverGuide } from "./mode-hover-guide";
 import { Tooltip } from "./tooltip";
 
 type InputMode = "flash" | "thinking" | "pro" | "ultra";
+type WelcomeSuggestion = {
+  suggestion: string;
+  prompt: string;
+  icon?: LucideIcon;
+};
+export type InputBoxContext = LocalSettings["context"] & {
+  mode: InputMode | undefined;
+  reasoning_effort?: "minimal" | "low" | "medium" | "high";
+};
 
 function getResolvedMode(
   mode: InputMode | undefined,
@@ -109,6 +119,7 @@ export function InputBox({
   isWelcomeMode,
   threadId,
   initialValue,
+  welcomeSuggestions,
   onContextChange,
   onFollowupsVisibilityChange,
   onSubmit,
@@ -118,13 +129,7 @@ export function InputBox({
   assistantId?: string | null;
   status?: ChatStatus;
   disabled?: boolean;
-  context: Omit<
-    AgentThreadContext,
-    "thread_id" | "is_plan_mode" | "thinking_enabled" | "subagent_enabled"
-  > & {
-    mode: "flash" | "thinking" | "pro" | "ultra" | undefined;
-    reasoning_effort?: "minimal" | "low" | "medium" | "high";
-  };
+  context: InputBoxContext;
   extraHeader?: React.ReactNode;
   /**
    * Whether to render the input in welcome layout (vertically centered,
@@ -134,15 +139,8 @@ export function InputBox({
   isWelcomeMode?: boolean;
   threadId: string;
   initialValue?: string;
-  onContextChange?: (
-    context: Omit<
-      AgentThreadContext,
-      "thread_id" | "is_plan_mode" | "thinking_enabled" | "subagent_enabled"
-    > & {
-      mode: "flash" | "thinking" | "pro" | "ultra" | undefined;
-      reasoning_effort?: "minimal" | "low" | "medium" | "high";
-    },
-  ) => void;
+  welcomeSuggestions?: WelcomeSuggestion[];
+  onContextChange?: (context: InputBoxContext) => void;
   onFollowupsVisibilityChange?: (visible: boolean) => void;
   onSubmit?: (message: PromptInputMessage) => void | Promise<void>;
   onStop?: () => void;
@@ -862,7 +860,7 @@ export function InputBox({
 
       {isWelcomeMode && searchParams.get("mode") !== "skill" && (
         <div className="flex items-center justify-center pt-2">
-          <SuggestionList />
+          <SuggestionList suggestions={welcomeSuggestions} />
         </div>
       )}
 
@@ -891,7 +889,7 @@ export function InputBox({
   );
 }
 
-function SuggestionList() {
+function SuggestionList({ suggestions }: { suggestions?: WelcomeSuggestion[] }) {
   const { t } = useI18n();
   const { textInput } = usePromptInputController();
   const handleSuggestionClick = useCallback(
@@ -914,6 +912,21 @@ function SuggestionList() {
     },
     [textInput],
   );
+  const quickSuggestions = suggestions ?? t.inputBox.suggestions;
+  if (suggestions) {
+    return (
+      <Suggestions className="min-h-16 w-fit items-start justify-center">
+        {quickSuggestions.map((suggestion) => (
+          <Suggestion
+            key={suggestion.suggestion}
+            icon={suggestion.icon}
+            suggestion={suggestion.suggestion}
+            onClick={() => handleSuggestionClick(suggestion.prompt)}
+          />
+        ))}
+      </Suggestions>
+    );
+  }
   return (
     <Suggestions className="min-h-16 w-fit items-start">
       <ConfettiButton
@@ -924,7 +937,7 @@ function SuggestionList() {
       >
         <SparklesIcon className="size-4" /> {t.inputBox.surpriseMe}
       </ConfettiButton>
-      {t.inputBox.suggestions.map((suggestion) => (
+      {quickSuggestions.map((suggestion) => (
         <Suggestion
           key={suggestion.suggestion}
           icon={suggestion.icon}

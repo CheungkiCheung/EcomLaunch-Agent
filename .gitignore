@@ -27,6 +27,8 @@ venv/
 config.yaml
 mcp_config.json
 extensions_config.json
+!/agents/
+!/agents/**
 
 # IDE
 .idea/

@@ -121,6 +121,22 @@ def test_update_agent_rejects_unknown_agent(tmp_path, patched_paths):
     assert not _user_agent_dir(tmp_path, "ghost").exists()
 
 
+def test_update_agent_rejects_builtin_agent(tmp_path, patched_paths, monkeypatch):
+    project_root = tmp_path / "project"
+    builtin_dir = project_root / "agents" / "ecom-launch"
+    builtin_dir.mkdir(parents=True)
+    (builtin_dir / "config.yaml").write_text("name: ecom-launch\n", encoding="utf-8")
+    (builtin_dir / "SOUL.md").write_text("Built-in SOUL", encoding="utf-8")
+    monkeypatch.setenv("DEER_FLOW_PROJECT_ROOT", str(project_root))
+
+    result = update_agent.func(runtime=_runtime(agent_name="ecom-launch"), soul="new soul")
+
+    msg = result.update["messages"][0]
+    assert msg.status == "error"
+    assert "read-only built-in agent" in msg.content
+    assert not _user_agent_dir(tmp_path, "ecom-launch").exists()
+
+
 def test_update_agent_requires_at_least_one_field(tmp_path, patched_paths):
     _seed_agent(tmp_path)
 

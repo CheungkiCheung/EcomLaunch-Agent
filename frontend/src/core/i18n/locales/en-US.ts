@@ -173,6 +173,7 @@ export const enUS: Translations = {
     recentChats: "Recent chats",
     demoChats: "Demo chats",
     agents: "Agents",
+    ecomLaunch: "EcomLaunch",
   },
 
   // Agents
@@ -223,6 +224,34 @@ export const enUS: Translations = {
     agentCreated: "Agent created!",
     startChatting: "Start chatting",
     backToGallery: "Back to Gallery",
+    ecomLaunchName: "EcomLaunch",
+    ecomLaunchWelcomeDescription:
+      "Turn a product idea, category signal, or public competitor link into an ecommerce launch operating package.",
+    ecomLaunchSuggestions: [
+      {
+        suggestion: "Coffee tumbler",
+        prompt:
+          "I want to launch a $15-$30 commuter coffee tumbler. Build me a TikTok Shop/Amazon launch plan.",
+        icon: CompassIcon,
+      },
+      {
+        suggestion: "Pet category",
+        prompt:
+          "Explore the pet supplies category and find new-product opportunities I could launch.",
+        icon: MicroscopeIcon,
+      },
+      {
+        suggestion: "Competitor link",
+        prompt:
+          "Here is a public competitor link. Judge whether it is worth launching and generate a launch war room:",
+        icon: ShapesIcon,
+      },
+      {
+        suggestion: "Clarify brief",
+        prompt: "Help me build a new-product launch plan.",
+        icon: SparklesIcon,
+      },
+    ],
   },
 
   // Breadcrumb

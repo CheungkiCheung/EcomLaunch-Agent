@@ -38,6 +38,29 @@ def _write_agent(base_dir: Path, name: str, config: dict, soul: str = "You are h
     (agent_dir / "SOUL.md").write_text(soul, encoding="utf-8")
 
 
+def _write_user_agent(base_dir: Path, user_id: str, name: str, config: dict, soul: str = "You are helpful.") -> None:
+    """Write a per-user agent directory with config.yaml and SOUL.md."""
+    agent_dir = base_dir / "users" / user_id / "agents" / name
+    agent_dir.mkdir(parents=True, exist_ok=True)
+
+    config_copy = dict(config)
+    if "name" not in config_copy:
+        config_copy["name"] = name
+
+    with open(agent_dir / "config.yaml", "w") as f:
+        yaml.dump(config_copy, f)
+
+    (agent_dir / "SOUL.md").write_text(soul, encoding="utf-8")
+
+
+@pytest.fixture(autouse=True)
+def _isolate_project_root(tmp_path, monkeypatch):
+    """Keep repository-shipped built-ins explicit in tests that need them."""
+    project_root = tmp_path / "project-root"
+    project_root.mkdir()
+    monkeypatch.setenv("DEER_FLOW_PROJECT_ROOT", str(project_root))
+
+
 # ===========================================================================
 # 1. Paths class – agent path methods
 # ===========================================================================
@@ -202,6 +225,45 @@ class TestLoadAgentConfig:
 
         assert cfg.name == "legacy-agent"
 
+    def test_loads_repository_builtin_agent(self, tmp_path, monkeypatch):
+        project_root = tmp_path / "project"
+        _write_agent(
+            project_root,
+            "ecom-launch",
+            {"name": "ecom-launch", "description": "Built-in ecommerce launch agent", "skills": ["ecom-launch"]},
+            soul="Built-in EcomLaunch SOUL",
+        )
+
+        monkeypatch.setenv("DEER_FLOW_PROJECT_ROOT", str(project_root))
+        with patch("deerflow.config.agents_config.get_paths", return_value=_make_paths(tmp_path / "home")):
+            from deerflow.config.agents_config import is_builtin_agent, load_agent_config
+
+            cfg = load_agent_config("ecom-launch")
+            built_in = is_builtin_agent("ecom-launch")
+
+        assert cfg.name == "ecom-launch"
+        assert cfg.skills == ["ecom-launch"]
+        assert built_in
+
+    def test_user_agent_shadows_repository_builtin_agent(self, tmp_path, monkeypatch):
+        user_id = "alice"
+        project_root = tmp_path / "project"
+        home = tmp_path / "home"
+        _write_agent(project_root, "ecom-launch", {"name": "ecom-launch", "description": "Built-in"}, soul="Built-in SOUL")
+        _write_user_agent(home, user_id, "ecom-launch", {"name": "ecom-launch", "description": "User copy"}, soul="User SOUL")
+
+        monkeypatch.setenv("DEER_FLOW_PROJECT_ROOT", str(project_root))
+        with patch("deerflow.config.agents_config.get_paths", return_value=_make_paths(home)):
+            from deerflow.config.agents_config import is_builtin_agent, load_agent_config, load_agent_soul
+
+            cfg = load_agent_config("ecom-launch", user_id=user_id)
+            soul = load_agent_soul("ecom-launch", user_id=user_id)
+            built_in = is_builtin_agent("ecom-launch", user_id=user_id)
+
+        assert cfg.description == "User copy"
+        assert soul == "User SOUL"
+        assert not built_in
+
 
 # ===========================================================================
 # 4. load_agent_soul
@@ -248,6 +310,18 @@ class TestLoadAgentSoul:
             soul = load_agent_soul(cfg.name)
 
         assert soul is None
+
+    def test_reads_repository_builtin_soul(self, tmp_path, monkeypatch):
+        project_root = tmp_path / "project"
+        _write_agent(project_root, "ecom-launch", {"name": "ecom-launch"}, soul="Built-in launch guidance")
+
+        monkeypatch.setenv("DEER_FLOW_PROJECT_ROOT", str(project_root))
+        with patch("deerflow.config.agents_config.get_paths", return_value=_make_paths(tmp_path / "home")):
+            from deerflow.config.agents_config import load_agent_soul
+
+            soul = load_agent_soul("ecom-launch")
+
+        assert soul == "Built-in launch guidance"
 
 
 # ===========================================================================
@@ -318,6 +392,36 @@ class TestListCustomAgents:
 
         names = [a.name for a in agents]
         assert names == sorted(names)
+
+    def test_includes_repository_builtin_agents(self, tmp_path, monkeypatch):
+        project_root = tmp_path / "project"
+        _write_agent(project_root, "ecom-launch", {"name": "ecom-launch", "description": "Built-in"})
+
+        monkeypatch.setenv("DEER_FLOW_PROJECT_ROOT", str(project_root))
+        with patch("deerflow.config.agents_config.get_paths", return_value=_make_paths(tmp_path / "home")):
+            from deerflow.config.agents_config import list_custom_agents
+
+            agents = list_custom_agents()
+
+        assert [a.name for a in agents] == ["ecom-launch"]
+
+    def test_list_user_and_legacy_agents_shadow_repository_builtin(self, tmp_path, monkeypatch):
+        user_id = "alice"
+        project_root = tmp_path / "project"
+        home = tmp_path / "home"
+        _write_agent(project_root, "shared-agent", {"name": "shared-agent", "description": "Built-in"})
+        _write_agent(home, "shared-agent", {"name": "shared-agent", "description": "Legacy"})
+        _write_user_agent(home, user_id, "shared-agent", {"name": "shared-agent", "description": "User"})
+
+        monkeypatch.setenv("DEER_FLOW_PROJECT_ROOT", str(project_root))
+        with patch("deerflow.config.agents_config.get_paths", return_value=_make_paths(home)):
+            from deerflow.config.agents_config import list_custom_agents
+
+            agents = list_custom_agents(user_id=user_id)
+
+        assert len(agents) == 1
+        assert agents[0].name == "shared-agent"
+        assert agents[0].description == "User"
 
 
 # ===========================================================================
@@ -564,6 +668,50 @@ class TestAgentsAPI:
 
         response = agent_client.post("/api/agents", json={"name": "legacy-agent", "soul": "x"})
         assert response.status_code == 409
+
+    def test_list_marks_repository_builtin_agent_read_only(self, agent_client, tmp_path, monkeypatch):
+        project_root = tmp_path / "project"
+        _write_agent(project_root, "ecom-launch", {"name": "ecom-launch", "description": "Built-in"}, soul="Built-in SOUL")
+        monkeypatch.setenv("DEER_FLOW_PROJECT_ROOT", str(project_root))
+
+        response = agent_client.get("/api/agents")
+
+        assert response.status_code == 200
+        ecom_agent = next(a for a in response.json()["agents"] if a["name"] == "ecom-launch")
+        assert ecom_agent["built_in"] is True
+        assert ecom_agent["soul"] == "Built-in SOUL"
+
+    def test_create_rejects_repository_builtin_name_collision(self, agent_client, tmp_path, monkeypatch):
+        project_root = tmp_path / "project"
+        _write_agent(project_root, "ecom-launch", {"name": "ecom-launch"})
+        monkeypatch.setenv("DEER_FLOW_PROJECT_ROOT", str(project_root))
+
+        check_response = agent_client.get("/api/agents/check", params={"name": "Ecom-Launch"})
+        create_response = agent_client.post("/api/agents", json={"name": "ecom-launch", "soul": "x"})
+
+        assert check_response.status_code == 200
+        assert check_response.json() == {"available": False, "name": "ecom-launch"}
+        assert create_response.status_code == 409
+
+    def test_update_repository_builtin_agent_returns_409(self, agent_client, tmp_path, monkeypatch):
+        project_root = tmp_path / "project"
+        _write_agent(project_root, "ecom-launch", {"name": "ecom-launch"}, soul="Built-in SOUL")
+        monkeypatch.setenv("DEER_FLOW_PROJECT_ROOT", str(project_root))
+
+        response = agent_client.put("/api/agents/ecom-launch", json={"soul": "changed"})
+
+        assert response.status_code == 409
+        assert "read-only built-in agent" in response.json()["detail"]
+
+    def test_delete_repository_builtin_agent_returns_409(self, agent_client, tmp_path, monkeypatch):
+        project_root = tmp_path / "project"
+        _write_agent(project_root, "ecom-launch", {"name": "ecom-launch"})
+        monkeypatch.setenv("DEER_FLOW_PROJECT_ROOT", str(project_root))
+
+        response = agent_client.delete("/api/agents/ecom-launch")
+
+        assert response.status_code == 409
+        assert "read-only built-in agent" in response.json()["detail"]
 
 
 # ===========================================================================

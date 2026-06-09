@@ -5,6 +5,7 @@ export interface Agent {
   tool_groups: string[] | null;
   skills: string[] | null;
   soul?: string | null;
+  built_in?: boolean;
 }
 
 export interface CreateAgentRequest {

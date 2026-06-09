@@ -167,6 +167,7 @@ export const zhCN: Translations = {
     recentChats: "最近的对话",
     demoChats: "演示对话",
     agents: "智能体",
+    ecomLaunch: "EcomLaunch",
   },
 
   // Agents
@@ -211,6 +212,33 @@ export const zhCN: Translations = {
     agentCreated: "智能体已创建！",
     startChatting: "开始对话",
     backToGallery: "返回 Gallery",
+    ecomLaunchName: "EcomLaunch",
+    ecomLaunchWelcomeDescription:
+      "把产品想法、类目线索或公开竞品链接变成电商新品上市作战包。",
+    ecomLaunchSuggestions: [
+      {
+        suggestion: "通勤咖啡杯",
+        prompt:
+          "我想做一个 99-199 元的通勤咖啡杯，帮我做淘宝/小红书上市方案",
+        icon: CompassIcon,
+      },
+      {
+        suggestion: "宠物用品机会",
+        prompt: "我想看看宠物用品类目里有什么适合做新品的机会",
+        icon: MicroscopeIcon,
+      },
+      {
+        suggestion: "竞品链接",
+        prompt:
+          "这是一个公开竞品链接，帮我判断能不能做国内电商并生成上市作战包：",
+        icon: ShapesIcon,
+      },
+      {
+        suggestion: "信息不完整",
+        prompt: "帮我做一个新品上市方案",
+        icon: SparklesIcon,
+      },
+    ],
   },
 
   // Breadcrumb

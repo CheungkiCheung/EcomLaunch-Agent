@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from deerflow.config.agents_api_config import get_agents_api_config
-from deerflow.config.agents_config import AgentConfig, list_custom_agents, load_agent_config, load_agent_soul
+from deerflow.config.agents_config import AgentConfig, builtin_agent_dir, is_builtin_agent, list_custom_agents, load_agent_config, load_agent_soul
 from deerflow.config.paths import get_paths
 from deerflow.runtime.user_context import get_effective_user_id
 
@@ -28,6 +28,7 @@ class AgentResponse(BaseModel):
     tool_groups: list[str] | None = Field(default=None, description="Optional tool group whitelist")
     skills: list[str] | None = Field(default=None, description="Optional skill whitelist (None=all, []=none)")
     soul: str | None = Field(default=None, description="SOUL.md content")
+    built_in: bool = Field(default=False, description="True when this is a read-only repository-shipped agent")
 
 
 class AgentsListResponse(BaseModel):
@@ -100,6 +101,7 @@ def _agent_config_to_response(agent_cfg: AgentConfig, include_soul: bool = False
         tool_groups=agent_cfg.tool_groups,
         skills=agent_cfg.skills,
         soul=soul,
+        built_in=is_builtin_agent(agent_cfg.name, user_id=user_id),
     )
 
 
@@ -151,7 +153,7 @@ async def check_agent_name(name: str) -> dict:
     # Treat the name as taken if either the per-user path or the legacy shared
     # path holds an agent — picking a name that collides with an unmigrated
     # legacy agent would shadow the legacy entry once migration runs.
-    available = not paths.user_agent_dir(user_id, normalized).exists() and not paths.agent_dir(normalized).exists()
+    available = not paths.user_agent_dir(user_id, normalized).exists() and not paths.agent_dir(normalized).exists() and not builtin_agent_dir(normalized).exists()
     return {"available": available, "name": normalized}
 
 
@@ -216,7 +218,7 @@ async def create_agent_endpoint(request: AgentCreateRequest) -> AgentResponse:
     agent_dir = paths.user_agent_dir(user_id, normalized_name)
     legacy_dir = paths.agent_dir(normalized_name)
 
-    if agent_dir.exists() or legacy_dir.exists():
+    if agent_dir.exists() or legacy_dir.exists() or builtin_agent_dir(normalized_name).exists():
         raise HTTPException(status_code=409, detail=f"Agent '{normalized_name}' already exists")
 
     try:
@@ -291,6 +293,11 @@ async def update_agent(name: str, request: AgentUpdateRequest) -> AgentResponse:
         raise HTTPException(
             status_code=409,
             detail=(f"Agent '{name}' only exists in the legacy shared layout and is not scoped to a user. Run scripts/migrate_user_isolation.py to move legacy agents into the per-user layout before updating."),
+        )
+    if not agent_dir.exists() and builtin_agent_dir(name).exists():
+        raise HTTPException(
+            status_code=409,
+            detail=(f"Agent '{name}' is a read-only built-in agent. Create a user-scoped agent with a different name or copy its definition before editing."),
         )
 
     try:
@@ -436,6 +443,8 @@ async def delete_agent(name: str) -> None:
                 status_code=409,
                 detail=(f"Agent '{name}' only exists in the legacy shared layout and is not scoped to a user. Run scripts/migrate_user_isolation.py to move legacy agents into the per-user layout before deleting."),
             )
+        if builtin_agent_dir(name).exists():
+            raise HTTPException(status_code=409, detail=f"Agent '{name}' is a read-only built-in agent and cannot be deleted")
         raise HTTPException(status_code=404, detail=f"Agent '{name}' not found")
 
     try:

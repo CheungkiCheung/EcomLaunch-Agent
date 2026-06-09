@@ -1,6 +1,6 @@
 "use client";
 
-import { BotIcon, MessagesSquare } from "lucide-react";
+import { BotIcon, MessagesSquare, ShoppingBagIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -15,6 +15,9 @@ import { useI18n } from "@/core/i18n/hooks";
 export function WorkspaceNavChatList() {
   const { t } = useI18n();
   const pathname = usePathname();
+  const ecomLaunchActive = pathname.startsWith(
+    "/workspace/agents/ecom-launch",
+  );
   return (
     <SidebarGroup className="pt-1">
       <SidebarMenu>
@@ -28,7 +31,23 @@ export function WorkspaceNavChatList() {
         </SidebarMenuItem>
         <SidebarMenuItem>
           <SidebarMenuButton
-            isActive={pathname.startsWith("/workspace/agents")}
+            isActive={ecomLaunchActive}
+            asChild
+          >
+            <Link
+              className="text-muted-foreground"
+              href="/workspace/agents/ecom-launch/chats/new"
+            >
+              <ShoppingBagIcon />
+              <span>{t.sidebar.ecomLaunch}</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            isActive={
+              pathname.startsWith("/workspace/agents") && !ecomLaunchActive
+            }
             asChild
           >
             <Link className="text-muted-foreground" href="/workspace/agents">

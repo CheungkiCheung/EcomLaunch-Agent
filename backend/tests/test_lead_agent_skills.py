@@ -219,6 +219,30 @@ def test_make_lead_agent_all_legacy_skills_preserve_all_tools(monkeypatch):
     assert [tool.name for tool in agent_kwargs["tools"]] == ["bash", "read_file", "update_agent"]
 
 
+def test_make_lead_agent_omits_update_agent_for_builtin_agent(monkeypatch):
+    from unittest.mock import MagicMock
+
+    from deerflow.agents.lead_agent import agent as lead_agent_module
+
+    monkeypatch.setattr(lead_agent_module, "_resolve_model_name", lambda x=None, **kwargs: "default-model")
+    monkeypatch.setattr(lead_agent_module, "create_chat_model", lambda **kwargs: "model")
+    monkeypatch.setattr(lead_agent_module, "build_middlewares", lambda *args, **kwargs: [])
+    monkeypatch.setattr(lead_agent_module, "apply_prompt_template", lambda **kwargs: "mock_prompt")
+    monkeypatch.setattr(lead_agent_module, "create_agent", lambda **kwargs: kwargs)
+    monkeypatch.setattr(lead_agent_module, "load_agent_config", lambda x: AgentConfig(name="ecom-launch", skills=None))
+    monkeypatch.setattr(lead_agent_module, "is_builtin_agent", lambda x: True)
+    monkeypatch.setattr(lead_agent_module, "_load_enabled_skills_for_tool_policy", lambda available_skills, *, app_config: [_make_skill("legacy", None)])
+    monkeypatch.setattr("deerflow.tools.get_available_tools", lambda **kwargs: [NamedTool("bash"), NamedTool("read_file")])
+
+    mock_app_config = MagicMock()
+    mock_app_config.get_model_config.return_value = SimpleNamespace(supports_thinking=False, supports_vision=False)
+    monkeypatch.setattr(lead_agent_module, "get_app_config", lambda: mock_app_config)
+
+    agent_kwargs = lead_agent_module.make_lead_agent({"configurable": {"agent_name": "ecom-launch"}})
+
+    assert [tool.name for tool in agent_kwargs["tools"]] == ["bash", "read_file"]
+
+
 def test_make_lead_agent_enforces_allowed_tools_when_skill_cache_is_cold(monkeypatch):
     from unittest.mock import MagicMock
 

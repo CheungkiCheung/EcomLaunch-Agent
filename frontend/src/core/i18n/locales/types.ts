@@ -117,6 +117,7 @@ export interface Translations {
     chats: string;
     demoChats: string;
     agents: string;
+    ecomLaunch: string;
   };
 
   // Agents
@@ -154,6 +155,13 @@ export interface Translations {
     agentCreated: string;
     startChatting: string;
     backToGallery: string;
+    ecomLaunchName: string;
+    ecomLaunchWelcomeDescription: string;
+    ecomLaunchSuggestions: {
+      suggestion: string;
+      prompt: string;
+      icon: LucideIcon;
+    }[];
   };
 
   // Breadcrumb

@@ -753,6 +753,7 @@ def apply_prompt_template(
     available_skills: set[str] | None = None,
     app_config: AppConfig | None = None,
     deferred_names: frozenset[str] = frozenset(),
+    self_update_enabled: bool = True,
 ) -> str:
     # Include subagent section only if enabled (from runtime parameter)
     n = max_concurrent_subagents
@@ -794,7 +795,7 @@ def apply_prompt_template(
     return SYSTEM_PROMPT_TEMPLATE.format(
         agent_name=agent_name or "DeerFlow 2.0",
         soul=get_agent_soul(agent_name),
-        self_update_section=_build_self_update_section(agent_name),
+        self_update_section=_build_self_update_section(agent_name if self_update_enabled else None),
         skills_section=skills_section,
         deferred_tools_section=deferred_tools_section,
         subagent_section=subagent_section,

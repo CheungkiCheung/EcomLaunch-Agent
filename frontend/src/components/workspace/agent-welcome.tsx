@@ -1,8 +1,9 @@
 "use client";
 
-import { BotIcon } from "lucide-react";
+import { BotIcon, ShoppingBagIcon } from "lucide-react";
 
 import { type Agent } from "@/core/agents";
+import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
 
 export function AgentWelcome({
@@ -14,8 +15,15 @@ export function AgentWelcome({
   agent: Agent | null | undefined;
   agentName: string;
 }) {
-  const displayName = agent?.name ?? agentName;
-  const description = agent?.description;
+  const { t } = useI18n();
+  const isEcomLaunch = agentName === "ecom-launch";
+  const displayName = isEcomLaunch
+    ? t.agents.ecomLaunchName
+    : (agent?.name ?? agentName);
+  const description = isEcomLaunch
+    ? t.agents.ecomLaunchWelcomeDescription
+    : agent?.description;
+  const Icon = isEcomLaunch ? ShoppingBagIcon : BotIcon;
 
   return (
     <div
@@ -25,7 +33,7 @@ export function AgentWelcome({
       )}
     >
       <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-full">
-        <BotIcon className="text-primary h-6 w-6" />
+        <Icon className="text-primary h-6 w-6" />
       </div>
       <div className="text-2xl font-bold">{displayName}</div>
       {description && (
