@@ -1038,6 +1038,11 @@ Deliverables:
 - sample product launch run
 - required output files generated under `/mnt/user-data/outputs`
 - `present_files` called successfully
+- manual run materials under `docs/ecom-launch/`:
+  - `README.md`
+  - `manual-run-prompt.md`
+  - `demo-brief.portable-coffee-tumbler.json`
+  - `subagents.ecom-launch.yaml`
 
 Acceptance:
 

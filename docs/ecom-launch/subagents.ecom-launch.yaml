@@ -1,0 +1,132 @@
+# Copy this block into config.yaml to enable EcomLaunch custom subagents.
+# Keep the ecom-launch skill available at skills/custom/ecom-launch/SKILL.md.
+
+subagents:
+  timeout_seconds: 900
+  max_turns: 120
+
+  agents:
+    general-purpose:
+      timeout_seconds: 1800
+      max_turns: 160
+    bash:
+      timeout_seconds: 300
+      max_turns: 80
+
+  custom_agents:
+    market-scout:
+      description: "Search public ecommerce market signals, competitors, pricing, product pages, and trend content"
+      system_prompt: |
+        You are an ecommerce market scout. Use public web information only.
+        Find competitors, price bands, product claims, category trends, and visible market patterns.
+        Never invent private merchant metrics such as GMV, CTR, CVR, ROI, or ad spend.
+        Every finding must include evidence_type and source.
+      tools:
+        - web_search
+        - web_fetch
+        - image_search
+        - read_file
+        - write_file
+      skills:
+        - ecom-launch
+      model: inherit
+      max_turns: 80
+      timeout_seconds: 600
+
+    review-miner:
+      description: "Extract customer pain points, objections, positive triggers, and unmet needs from public reviews and Q&A"
+      system_prompt: |
+        You are a review and VOC analyst for ecommerce.
+        Analyze public reviews, Q&A, forum discussions, and uploaded review files.
+        Cluster complaints, praise, usage scenarios, and purchase objections.
+        Mark whether each insight is public evidence, uploaded evidence, or estimated.
+      tools:
+        - web_search
+        - web_fetch
+        - read_file
+        - write_file
+      skills:
+        - ecom-launch
+      model: inherit
+      max_turns: 80
+      timeout_seconds: 600
+
+    positioning-strategist:
+      description: "Create ecommerce product positioning, opportunity score, target segment, and validation hypotheses"
+      system_prompt: |
+        You are an ecommerce positioning strategist.
+        Convert evidence into a focused product position, target segment, core promise,
+        differentiators, risks, and validation hypotheses.
+      tools:
+        - read_file
+        - write_file
+        - web_search
+        - web_fetch
+      skills:
+        - ecom-launch
+      model: inherit
+      max_turns: 70
+      timeout_seconds: 600
+
+    listing-copywriter:
+      description: "Generate ecommerce listing titles, product selling points, detail page copy, FAQ, and objection handling"
+      system_prompt: |
+        You are an ecommerce listing and conversion copywriter.
+        Generate platform-aware titles, bullets, selling points, FAQ, objection handling,
+        short video hooks, and livestream talk tracks based on verified insights.
+      tools:
+        - read_file
+        - write_file
+        - web_search
+        - web_fetch
+      skills:
+        - ecom-launch
+      model: inherit
+      max_turns: 70
+      timeout_seconds: 600
+
+    content-planner:
+      description: "Create short-video scripts, livestream talk tracks, social posts, and creator briefs"
+      system_prompt: |
+        You are an ecommerce content planner.
+        Produce conversion-oriented content assets using customer language and verified market insights.
+      tools:
+        - read_file
+        - write_file
+        - web_search
+        - web_fetch
+      skills:
+        - ecom-launch
+      model: inherit
+      max_turns: 70
+      timeout_seconds: 600
+
+    launch-planner:
+      description: "Create a 7-day ecommerce launch test plan with hypotheses, metrics, and decision rules"
+      system_prompt: |
+        You are an ecommerce launch planner.
+        Create practical launch experiments when private performance data is unavailable.
+        Use testable hypotheses, required data to collect, success metrics, and decision rules.
+      tools:
+        - read_file
+        - write_file
+      skills:
+        - ecom-launch
+      model: inherit
+      max_turns: 60
+      timeout_seconds: 420
+
+    evidence-checker:
+      description: "Audit ecommerce recommendations for evidence quality and unsupported private metric claims"
+      system_prompt: |
+        You are an evidence checker.
+        Check whether final claims are supported by observed public data, uploaded data, datasets, or estimates.
+        Flag unsupported claims and remove invented private ecommerce metrics.
+      tools:
+        - read_file
+        - write_file
+      skills:
+        - ecom-launch
+      model: inherit
+      max_turns: 60
+      timeout_seconds: 420
