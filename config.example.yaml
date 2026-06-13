@@ -550,23 +550,39 @@ tools:
   #   max_results: 5
   #   # api_key: $FIRECRAWL_API_KEY
 
-  # Web fetch tool (uses Exa)
+  # Web fetch tool (local, free, no crawler API key)
   # NOTE: Only one web_fetch provider can be active at a time.
-  # Comment out the Jina AI web_fetch entry below before enabling this one.
+  # This provider first uses fast static fetching, then falls back to local
+  # Playwright/Chromium rendering when the public page looks JavaScript-rendered.
+  - name: web_fetch
+    group: web
+    use: deerflow.community.local_fetch.tools:web_fetch_tool
+    timeout: 15
+    render_timeout: 25
+    render_mode: auto  # auto | always | never
+    wait_until: domcontentloaded
+    render_wait_ms: 1200
+    block_resources: true
+    min_content_chars: 600
+    max_chars: 8000
+
+  # Web fetch tool (uses Exa)
+  # Comment out the local web_fetch entry above before enabling this one.
   # - name: web_fetch
   #   group: web
   #   use: deerflow.community.exa.tools:web_fetch_tool
   #   # api_key: $EXA_API_KEY
 
   # Web fetch tool (uses Jina AI reader)
-  - name: web_fetch
-    group: web
-    use: deerflow.community.jina_ai.tools:web_fetch_tool
-    timeout: 10
-    # Optional proxy for restricted networks / Docker / WSL.
-    # Use host.docker.internal instead of 127.0.0.1 when the proxy runs on the host.
-    # proxy: $HTTPS_PROXY
-    # trust_env: true
+  # Comment out the local web_fetch entry above before enabling this one.
+  # - name: web_fetch
+  #   group: web
+  #   use: deerflow.community.jina_ai.tools:web_fetch_tool
+  #   timeout: 10
+  #   # Optional proxy for restricted networks / Docker / WSL.
+  #   # Use host.docker.internal instead of 127.0.0.1 when the proxy runs on the host.
+  #   # proxy: $HTTPS_PROXY
+  #   # trust_env: true
 
   # Web fetch tool (uses InfoQuest)
   # - name: web_fetch
@@ -885,100 +901,98 @@ sandbox:
 #
 #   # EcomLaunch example: public-data-driven ecommerce launch subagents.
 #   # Uncomment this block after creating/enabling skills/custom/ecom-launch/SKILL.md.
+#   # Based on Anthropic's context-centric decomposition principle, market research
+#   # and customer voice analysis are tightly coupled and merged into one agent.
 #   # custom_agents:
-#   #   market-scout:
-#   #     description: "Search public ecommerce market signals, competitors, pricing, product pages, and trend content"
+#   #   market-voc-researcher:
+#   #     description: "Research public market signals, competitors, pricing, and mine customer voice, reviews, pain points"
 #   #     system_prompt: |
-#   #       You are an ecommerce market scout. Use public web information only.
-#   #       Find competitors, price bands, product claims, category trends, and visible market patterns.
+#   #       You are `market-voc-researcher`, an ecommerce market and customer-voice researcher for EcomLaunch.
+#   #       You combine two roles in one context to avoid information loss between handoffs:
+#   #       1. MARKET RESEARCH: Find competitors, substitutes, price bands, product claims,
+#   #          category trends, and visible platform/content patterns.
+#   #       2. CUSTOMER VOICE: Analyze public reviews, Q&A, social posts, forum discussions,
+#   #          and uploaded review files. Cluster complaints, praise, usage scenarios, objections,
+#   #          and exact customer wording.
+#   #       Use public web information and uploaded files only.
+#   #       Run budget: use at most 8 web_search calls and 8 web_fetch calls combined.
+#   #       Do not write final deliverable files. Return concise structured findings
+#   #       to the launch-director.
 #   #       Never invent private merchant metrics such as GMV, CTR, CVR, ROI, or ad spend.
-#   #       Every finding must include evidence_type and source.
+#   #       Return structured findings with MARKET FINDINGS, VOC FINDINGS, and EVIDENCE sections.
 #   #     tools:
 #   #       - web_search
 #   #       - web_fetch
 #   #       - image_search
 #   #       - read_file
-#   #       - write_file
 #   #     skills:
 #   #       - ecom-launch
 #   #
-#   #   review-miner:
-#   #     description: "Extract customer pain points, objections, positive triggers, and unmet needs from public reviews and Q&A"
+#   #   offer-architect:
+#   #     description: "Turn evidence into positioning, offer structure, validation hypotheses, and launch experiment plan"
 #   #     system_prompt: |
-#   #       You are a review and VOC analyst for ecommerce.
-#   #       Analyze public reviews, Q&A, forum discussions, and uploaded review files.
-#   #       Cluster complaints, praise, usage scenarios, and purchase objections.
-#   #       Mark whether each insight is public evidence, uploaded evidence, or estimated.
-#   #     tools:
-#   #       - web_search
-#   #       - web_fetch
-#   #       - read_file
-#   #       - write_file
-#   #     skills:
-#   #       - ecom-launch
-#   #
-#   #   positioning-strategist:
-#   #     description: "Create ecommerce product positioning, opportunity score, target segment, and validation hypotheses"
-#   #     system_prompt: |
-#   #       You are an ecommerce positioning strategist.
-#   #       Convert evidence into a focused product position, target segment, core promise,
-#   #       differentiators, risks, and validation hypotheses.
+#   #       You are `offer-architect`, an ecommerce positioning and launch-test strategist for EcomLaunch.
+#   #       Convert evidence into target segment, job-to-be-done, core promise, differentiators,
+#   #       risks, opportunity score, validation hypotheses, and a practical launch test plan.
+#   #       Run budget: use at most 2 web_search calls and 3 web_fetch calls only for
+#   #       critical evidence gaps. Prefer synthesis from market-voc-researcher.
+#   #       Do not write final deliverable files. Return concise structured findings
+#   #       to the launch-director.
+#   #       Do not claim private performance metrics unless the user uploaded real data.
+#   #       For no-backend users, prefer lightweight validation signals such as sample feedback,
+#   #       share/save/comment intent, inquiry count, preorder interest, creator response quality,
+#   #       and repeated objections. Do not make CTR, CVR, ROI, repeat purchase rate, or refund
+#   #       rate the default KPI.
+#   #       Return structured findings with audience wedge, JTBD, core promise, differentiators,
+#   #       reasons to believe, risk assumptions, launch readiness verdict, opportunity score,
+#   #       and 7-day validation hypotheses.
 #   #     tools:
 #   #       - read_file
-#   #       - write_file
 #   #       - web_search
 #   #       - web_fetch
 #   #     skills:
 #   #       - ecom-launch
 #   #
-#   #   listing-copywriter:
-#   #     description: "Generate ecommerce listing titles, product selling points, detail page copy, FAQ, and objection handling"
+#   #   asset-studio:
+#   #     description: "Create ecommerce listing copy, content hooks, short-video scripts, live-commerce talk tracks, and creator briefs"
 #   #     system_prompt: |
-#   #       You are an ecommerce listing and conversion copywriter.
-#   #       Generate platform-aware titles, bullets, selling points, FAQ, objection handling,
-#   #       short video hooks, and livestream talk tracks based on verified insights.
+#   #       You are `asset-studio`, an ecommerce listing and content asset specialist for EcomLaunch.
+#   #       Generate platform-aware titles, listing bullets, detail-page copy, FAQ, objection handling,
+#   #       short-video hooks, livestream talk tracks, social posts, and creator briefs.
+#   #       Run budget: do not search by default. Use synthesized evidence unless a
+#   #       critical gap remains, then use at most 1 web_search and 1 web_fetch call.
+#   #       Do not write final deliverable files. Return concise structured assets
+#   #       to the launch-director.
+#   #       Use customer language and verified insights; label assumptions clearly.
+#   #       Return structured assets for the launch-director, not final user-facing prose.
+#   #       Include title options, selling bullets, detail page modules, FAQ, objection handling,
+#   #       hooks, scripts, livestream talk track, Xiaohongshu/Douyin-style notes when relevant,
+#   #       creator brief, and comment reply bank. Trace strong claims to evidence or assumptions.
 #   #     tools:
 #   #       - read_file
-#   #       - write_file
 #   #       - web_search
 #   #       - web_fetch
-#   #     skills:
-#   #       - ecom-launch
-#   #
-#   #   content-planner:
-#   #     description: "Create short-video scripts, livestream talk tracks, social posts, and creator briefs"
-#   #     system_prompt: |
-#   #       You are an ecommerce content planner.
-#   #       Produce conversion-oriented content assets using customer language and verified market insights.
-#   #     tools:
-#   #       - read_file
-#   #       - write_file
-#   #       - web_search
-#   #       - web_fetch
-#   #     skills:
-#   #       - ecom-launch
-#   #
-#   #   launch-planner:
-#   #     description: "Create a 7-day ecommerce launch test plan with hypotheses, metrics, and decision rules"
-#   #     system_prompt: |
-#   #       You are an ecommerce launch planner.
-#   #       Create practical launch experiments when private performance data is unavailable.
-#   #       Use testable hypotheses, required data to collect, success metrics, and decision rules.
-#   #     tools:
-#   #       - read_file
-#   #       - write_file
 #   #     skills:
 #   #       - ecom-launch
 #   #
 #   #   evidence-checker:
 #   #     description: "Audit ecommerce recommendations for evidence quality and unsupported private metric claims"
 #   #     system_prompt: |
-#   #       You are an evidence checker.
+#   #       You are `evidence-checker`, the evidence and claim-quality auditor for EcomLaunch.
 #   #       Check whether final claims are supported by observed public data, uploaded data, datasets, or estimates.
+#   #       Run budget: do not run broad search. Inspect the draft and evidence ledger;
+#   #       fetch only missing source URLs if needed.
+#   #       Do not write final deliverable files. Return concise structured audit findings.
 #   #       Flag unsupported claims and remove invented private ecommerce metrics.
+#   #       Build or validate the evidence ledger before final delivery.
+#   #       The ledger must be parseable JSON; flag or rewrite entries with raw multiline strings
+#   #       before delivery.
+#   #       Return structured audit notes for the launch-director. Include unsupported or risky
+#   #       claims, private metrics to remove or mark unavailable, evidence-ledger entries,
+#   #       confidence summary, missing-data list, and validation data to collect after launch.
 #   #     tools:
 #   #       - read_file
-#   #       - write_file
+#   #       - web_fetch
 #   #     skills:
 #   #       - ecom-launch
 
