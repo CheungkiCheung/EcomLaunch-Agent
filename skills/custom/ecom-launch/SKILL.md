@@ -490,7 +490,7 @@ must remove, relabel, or move them into a missing-data / do-not-use section.
 
 ### 5. Gather Public Evidence
 
-Use `web_search` and `web_fetch` for public sources. Prefer:
+Use `last30days`, `web_search`, and `web_fetch` for public sources. Prefer:
 
 - official product pages
 - ecommerce product pages that are publicly accessible
@@ -500,15 +500,48 @@ Use `web_search` and `web_fetch` for public sources. Prefer:
 - creator/article/review content
 - public datasets when relevant
 
+**PARALLEL SEARCH STRATEGY (IMPORTANT):**
+
+Launch multiple searches in parallel for maximum efficiency:
+
+**Turn 1 (parallel batch):**
+```python
+# Launch all these in parallel - do NOT run sequentially
+last30days(topic, sources="reddit")           # Real user discussions
+last30days(topic, sources="youtube")          # Video reviews and transcripts
+last30days(topic, sources="hackernews")       # Technical discussions
+web_search("{product} review")               # Public reviews
+web_search("{product} complaints")           # Customer pain points
+```
+
+**Turn 2 (parallel batch, if needed):**
+```python
+# Wait for Turn 1 results, then launch next batch
+web_fetch(url1)                              # Fetch specific pages
+web_fetch(url2)
+last30days(topic, sources="polymarket")      # Market predictions
+```
+
+**DATA SOURCES:**
+
+| Source | What it provides | Use case |
+|--------|------------------|----------|
+| `last30days` | Reddit discussions, YouTube transcripts, HN threads, Polymarket odds | Real user voice, deep reviews |
+| `web_search` | General web results, articles, product pages | Official info, news |
+| `web_fetch` | Full page content | Detailed analysis |
+
 `web_fetch` may use local Playwright rendering for public JavaScript pages. This is for reading public pages more reliably; do not bypass login, CAPTCHA, anti-bot systems, or private platform pages.
 
 Search query templates:
 
 ```text
+# For last30days (English sources)
 {product/category} review
 {product/category} complaints
-{product/category} best seller
-{product/category} price
+{product/category} best
+{product/category} recommendation
+
+# For web_search (Chinese sources)
 {product/category} Taobao
 {product/category} JD
 {product/category} Xiaohongshu

@@ -193,6 +193,42 @@ def test_apply_prompt_template_threads_explicit_app_config_to_subagents_without_
     assert "**bash**" not in prompt
 
 
+def test_subagent_section_prefers_exact_custom_specialist_types(monkeypatch):
+    explicit_config = SimpleNamespace(
+        sandbox=SimpleNamespace(
+            use="deerflow.sandbox.local:LocalSandboxProvider",
+            allow_host_bash=False,
+            mounts=[],
+        ),
+        subagents=SubagentsAppConfig(
+            custom_agents={
+                "market-scout": CustomSubagentConfig(
+                    description="Search public ecommerce market signals",
+                    system_prompt="You scout markets.",
+                ),
+                "voc-miner": CustomSubagentConfig(
+                    description="Mine public customer voice",
+                    system_prompt="You mine VOC.",
+                ),
+                "offer-architect": CustomSubagentConfig(
+                    description="Turn evidence into launch offers",
+                    system_prompt="You design offers.",
+                ),
+            }
+        ),
+    )
+
+    prompt = prompt_module._build_subagent_section(3, app_config=explicit_config)
+
+    assert "**market-scout**: Search public ecommerce market signals" in prompt
+    assert "use that exact role name as `subagent_type`" in prompt
+    assert "Do NOT use `general-purpose` for work covered by a specialized subagent" in prompt
+    assert 'subagent_type="market-scout"' in prompt
+    assert 'subagent_type="voc-miner"' in prompt
+    assert 'subagent_type="offer-architect"' in prompt
+    assert "**general-purpose**: Fallback for non-trivial tasks" in prompt
+
+
 def test_build_acp_section_uses_explicit_app_config_without_global_config(monkeypatch):
     explicit_config = SimpleNamespace(acp_agents={"codex": object()})
 

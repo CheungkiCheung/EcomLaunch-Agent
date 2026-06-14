@@ -514,9 +514,27 @@ SEARCH_PROVIDERS: list[SearchProvider] = [
 
 WEB_FETCH_PROVIDERS: list[WebProvider] = [
     WebProvider(
+        name="local_fetch",
+        display_name="Local Browser Fetch (free)",
+        description="Local httpx fetch with Playwright rendering fallback, no crawler API key required",
+        use="deerflow.community.local_fetch.tools:web_fetch_tool",
+        env_var=None,
+        tool_name="web_fetch",
+        extra_config={
+            "timeout": 15,
+            "render_timeout": 25,
+            "render_mode": "auto",
+            "wait_until": "domcontentloaded",
+            "render_wait_ms": 1200,
+            "block_resources": True,
+            "min_content_chars": 600,
+            "max_chars": 8000,
+        },
+    ),
+    WebProvider(
         name="jina_ai",
         display_name="Jina AI Reader",
-        description="Good default reader, no API key required",
+        description="Hosted reader, no API key required for limited use",
         use="deerflow.community.jina_ai.tools:web_fetch_tool",
         env_var=None,
         tool_name="web_fetch",

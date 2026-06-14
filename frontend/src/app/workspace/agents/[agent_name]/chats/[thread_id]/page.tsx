@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { AgentWelcome } from "@/components/workspace/agent-welcome";
 import { ArtifactTrigger } from "@/components/workspace/artifacts";
 import { ChatBox, useThreadChat } from "@/components/workspace/chats";
+import { LaunchCrewPanel } from "@/components/workspace/ecom-launch";
 import { ExportTrigger } from "@/components/workspace/export-trigger";
 import {
   InputBox,
@@ -318,6 +319,13 @@ export default function AgentChatPage() {
               </div>
             </div>
           </main>
+          {isEcomLaunch && (
+            <LaunchCrewPanel
+              threadValues={thread.values}
+              messages={thread.messages}
+              isStreaming={thread.isLoading}
+            />
+          )}
         </div>
       </ChatBox>
     </ThreadContext.Provider>

@@ -1,391 +1,80 @@
 # EcomLaunch Agent Spec
 
-## 1. Project Positioning
+## 1. Product Thesis
 
-EcomLaunch Agent is a DeerFlow-based multi-agent product for ecommerce new-product launch research and execution planning.
+EcomLaunch Agent is a vertical ecommerce new-product launch validation product built on DeerFlow's mature agent runtime.
 
-The system helps a user move from a product idea or public product link to a launch-ready ecommerce package:
-
-- public market scan
-- competitor and price-band table
-- review and VOC insight mining
-- product positioning brief
-- ecommerce listing copy
-- short-video / livestream / social content pack
-- 7-day launch testing plan
-- evidence ledger that separates observed facts from estimates
-
-The project is intentionally designed around public data because the builder does not have access to real merchant backend metrics such as GMV, CTR, CVR, ROI, ad spend, refund rate, or user cohort data.
-
-This is not a generic competitive-analysis wrapper. The output is a launch operating package for ecommerce merchants and platform operators.
-
-## 2. Target Users
-
-Primary user:
-
-- ecommerce seller, student founder, or operator preparing to launch a product
-- has a product idea, category, or product link
-- does not yet have real store performance data
-- needs a structured launch plan based on public market signals
-
-Secondary user:
-
-- internet/ecommerce company interviewer evaluating a candidate project
-- wants to see agent orchestration, public-data reasoning, and business product thinking
-
-## 3. Goals
-
-1. Reuse DeerFlow's strengths:
-   - real web search
-   - web fetch
-   - file upload
-   - artifact delivery
-   - Ultra-mode `task` subagents
-   - skills-based workflow specialization
-
-2. Build a vertical ecommerce product layer:
-   - conversational EcomLaunch agent entry
-   - ecommerce-specific prompt protocol
-   - custom ecommerce subagents
-   - structured outputs
-   - launch dashboard artifact
-
-3. Avoid fake private business metrics:
-   - no invented GMV
-   - no invented CTR/CVR/ROI
-   - no fake ad spend
-   - no pretend merchant backend access
-
-4. Make every major recommendation evidence-aware:
-   - public observed data
-   - public dataset
-   - user-uploaded data
-   - model estimate
-   - synthetic demo placeholder
-
-5. Deliver a credible MVP that can be explained as:
-   - "A public-data-driven ecommerce new-product launch copilot built on DeerFlow's multi-agent runtime."
-
-## 4. Non-Goals
-
-The MVP will not:
-
-- connect to Taobao, Tmall, JD, Douyin, Pinduoduo, Amazon Seller Central, or Shopify private merchant backends
-- claim verified GMV uplift
-- optimize real ad delivery or bidding
-- place orders, edit listings, or execute platform actions
-- scrape pages that require login, CAPTCHA bypass, or anti-bot evasion
-- guarantee complete market coverage
-- replace professional legal, advertising compliance, or platform policy review
-
-## 5. DeerFlow Foundation And Modification Map
-
-This project must be implemented as a product layer on top of DeerFlow, not as a rewrite.
-
-The important architectural interpretation is:
+It is not a generic competitor-analysis wrapper and it is not a full-platform crawler. Its core job is:
 
 ```text
-DeerFlow is not a hardcoded competitive-analysis workflow.
-It is a configurable agent runtime:
-
-frontend thread.submit
--> LangGraph-compatible run API
--> runtime worker
--> dynamically created lead agent
--> config-loaded tools
--> skills prompt / skill loading
--> optional task-tool subagents
--> files written to /mnt/user-data/outputs
--> present_files updates artifacts
--> frontend artifact viewer
+Turn a rough ecommerce product idea, category, product link, or uploaded material
+into a 7-day Launch Validation Pack using public signals, user-provided context,
+clearly labeled assumptions, and evidence-aware outputs.
 ```
 
-EcomLaunch should preserve this chain and replace the generic research behavior with ecommerce launch behavior through skills, custom subagents, prompt builders, and artifact schemas.
-
-### 5.1 Existing DeerFlow Entry Points
-
-The frontend already submits messages through the LangGraph SDK:
+The product should be explainable as:
 
 ```text
-frontend/src/core/threads/hooks.ts
+Public-signal ecommerce launch validation agent.
+Built on DeerFlow's Lead Agent, skills, tools, Ultra-mode subagents, streaming events, and artifact system.
 ```
 
-Relevant behavior:
+## 2. Positioning
 
-- uploads files first
-- calls `thread.submit(...)`
-- passes runtime context
-- sets `thinking_enabled`
-- sets `is_plan_mode`
-- sets `subagent_enabled` when mode is Ultra
-- passes `thread_id`
+### 2.1 One-Line Positioning
 
-EcomLaunch should reuse this submission path. The first product UI should remain conversational: a dedicated EcomLaunch chat entry should pass an `agent_name` / runtime context and let the agent complete missing launch brief details with DeerFlow's existing clarification mechanism. It should not create a separate research endpoint for MVP.
+EcomLaunch-Agent helps ecommerce launch operators validate a new product idea before committing inventory, creative production, or ad budget.
 
-### 5.2 Existing Backend Run Layer
+### 2.2 What It Produces
 
-The backend exposes LangGraph-compatible thread run endpoints:
+The primary deliverable is a **Launch Validation Pack**, not a generic research report.
+
+Required output modules:
+
+- Launch context
+- Public market signal brief
+- Market pattern map
+- Customer voice and scenario map
+- Audience wedge
+- Offer hypotheses
+- Listing and content assets
+- 7-day validation plan
+- Evidence ledger
+- Missing-data and limitations summary
+
+Required artifact files:
 
 ```text
-backend/app/gateway/routers/thread_runs.py
-backend/packages/harness/deerflow/runtime/runs/worker.py
+launch-war-room.html
+evidence-ledger.json
+competitor-table.csv
+positioning-brief.md
+listing-pack.md
+content-pack.md
+launch-calendar.csv
 ```
 
-The run worker:
-
-- builds runtime context with `thread_id`, `run_id`, and `app_config`
-- creates the effective agent via the lead-agent factory
-- streams `values`, `messages`, and `custom` events
-- maps results back to the existing SSE protocol
-
-EcomLaunch should not rewrite this run layer. Product specialization belongs above it.
-
-### 5.3 Existing Lead Agent Layer
-
-The lead agent is created here:
+Optional artifact files:
 
 ```text
-backend/packages/harness/deerflow/agents/lead_agent/agent.py
-backend/packages/harness/deerflow/agents/lead_agent/prompt.py
+review-insights.json
+risk-notes.md
+source-list.md
+launch-crew-events.json
 ```
 
-The factory resolves:
+### 2.3 What It Is Not
 
-- model
-- thinking mode
-- plan mode
-- subagent mode
-- tool groups
-- available skills
-- middleware stack
-- prompt sections
+EcomLaunch must not position itself as:
 
-EcomLaunch should treat the lead agent as `launch-director` through:
+- a Taobao/Xiaohongshu/Douyin full crawler
+- a merchant backend BI system
+- an ad attribution or bidding optimizer
+- a platform private-metric analyst
+- a generic DeerFlow research clone
+- a pure competitor-analysis report generator
 
-- custom agent SOUL/config if using DeerFlow custom-agent support
-- EcomLaunch prompt template if using a dedicated frontend entry
-- `ecom-launch` skill
-- Ultra mode subagent orchestration
-
-Do not fork the lead-agent factory unless a later requirement cannot be expressed through config, skill, or prompt builder.
-
-### 5.4 Existing Tools Layer
-
-Tools are loaded from config:
-
-```text
-backend/packages/harness/deerflow/tools/tools.py
-config.yaml
-config.example.yaml
-```
-
-Current useful tools:
-
-- `web_search`
-- `web_fetch`
-- `image_search`
-- `read_file`
-- `write_file`
-- `grep`
-- `glob`
-- `present_files`
-- `task` when `subagent_enabled=true`
-
-EcomLaunch should reuse these first. New backend tools should be added only after the artifact-first MVP proves that a repeated operation is too brittle as prompt/tool composition.
-
-Possible post-MVP tools:
-
-- `parse_review_csv`
-- `normalize_competitor_table`
-- `validate_evidence_ledger`
-- `render_launch_dashboard`
-
-### 5.5 Existing Skills Layer
-
-Skills are discovered from:
-
-```text
-skills/public/*/SKILL.md
-skills/custom/*/SKILL.md
-backend/packages/harness/deerflow/skills/*
-```
-
-DeerFlow does not blindly inject every full skill into the prompt. It lists available skill metadata and paths, then instructs the model to read relevant `SKILL.md` files progressively.
-
-EcomLaunch should add:
-
-```text
-skills/custom/ecom-launch/SKILL.md
-```
-
-The skill is the main business-protocol layer:
-
-- ecommerce launch workflow
-- evidence labeling rules
-- private-metric prohibitions
-- output artifact contract
-- subagent coordination expectations
-
-### 5.6 Existing Subagent Layer
-
-Subagents are not fixed LangGraph nodes. They are launched dynamically through the `task` tool:
-
-```text
-backend/packages/harness/deerflow/tools/builtins/task_tool.py
-backend/packages/harness/deerflow/subagents/registry.py
-backend/packages/harness/deerflow/subagents/config.py
-backend/packages/harness/deerflow/subagents/executor.py
-```
-
-Existing mechanism:
-
-- lead agent calls `task(description, prompt, subagent_type)`
-- `task_tool` resolves `SubagentConfig`
-- subagent tools are loaded with `subagent_enabled=false` to prevent recursive nesting
-- `SubagentExecutor` creates another agent with its own prompt/tools/skills
-- backend polls subagent execution
-- custom stream events report task status
-- result returns to the lead agent for synthesis
-
-EcomLaunch should use `config.yaml` `subagents.custom_agents` for ecommerce roles instead of implementing new graph nodes.
-
-### 5.7 Existing Artifact Layer
-
-Final user-visible files must be saved under:
-
-```text
-/mnt/user-data/outputs
-```
-
-Then the agent calls:
-
-```text
-present_files
-```
-
-Relevant files:
-
-```text
-backend/packages/harness/deerflow/tools/builtins/present_file_tool.py
-backend/packages/harness/deerflow/agents/thread_state.py
-backend/app/gateway/routers/artifacts.py
-frontend/src/components/workspace/artifacts/*
-```
-
-EcomLaunch MVP should generate artifact files compatible with this existing layer. A native React dashboard can be added later, but the first working product should rely on `launch-war-room.html` plus structured JSON/CSV/Markdown artifacts.
-
-### 5.8 Modification Strategy
-
-Implementation priority:
-
-1. Product protocol in `ecom-launch` skill
-2. Custom subagents in `config.yaml`
-3. Manual prompt flow to verify artifact-first behavior
-4. Dedicated conversational frontend entry that submits through existing `thread.submit`
-5. Native dashboard reading generated artifacts
-6. Optional backend validation/rendering tools
-
-Avoid:
-
-- rewriting `RunManager`
-- rewriting `StreamBridge`
-- rewriting `SubagentExecutor`
-- replacing `present_files`
-- creating a parallel non-LangGraph run API
-- hardcoding ecommerce behavior into generic DeerFlow runtime files
-
-## 6. Core User Flow
-
-### 6.1 New Launch Task
-
-User opens the EcomLaunch conversation and describes the launch task in natural language.
-
-The user may provide any subset of:
-
-- product idea or product link
-- target platform
-- target customer group
-- target price range
-- supply constraints
-- optional competitor links
-- optional uploaded review/product CSV
-- desired outputs
-
-The agent should extract a launch brief from the conversation. If the product/category itself is missing, the agent must ask a concise clarification question before researching. If target platform, target customer, price range, constraints, competitor links, or desired outputs are missing, the agent may either infer reasonable defaults with labels or ask one high-impact question when the answer would materially change the work.
-
-Example input:
-
-```text
-Product: portable leak-proof coffee tumbler
-Platform: Taobao + Xiaohongshu
-Target users: office workers and light outdoor users
-Price range: RMB 99-199
-Constraints: stainless steel, must be easy to clean, no app or electronics
-Desired outputs: competitor table, listing pack, short video scripts, 7-day launch plan
-```
-
-### 6.2 Agent Orchestration
-
-The lead agent acts as a launch director.
-
-In Ultra mode it delegates parallel work:
-
-- market scouting
-- review/VOC mining
-- positioning strategy
-- copy and content generation
-- launch planning
-- evidence checking
-
-### 6.3 Artifact Delivery
-
-The final response must create files under `/mnt/user-data/outputs` and call `present_files`.
-
-Required MVP artifacts:
-
-- `launch-war-room.html`
-- `evidence-ledger.json`
-- `competitor-table.csv`
-- `positioning-brief.md`
-- `listing-pack.md`
-- `content-pack.md`
-- `launch-calendar.csv`
-
-Optional artifacts:
-
-- `review-insights.json`
-- `risk-notes.md`
-- `source-list.md`
-
-## 7. Evidence Model
-
-The project must explicitly label the source quality of claims.
-
-### 7.1 Evidence Types
-
-```text
-observed_public
-Real public webpages, product pages, public reviews, official pages, public articles, platform-visible listings.
-
-public_dataset
-Open datasets such as public review datasets, ecommerce datasets, or uploaded benchmark examples.
-
-uploaded_real
-User-uploaded real data, such as reviews, product exports, survey notes, or early order records.
-
-estimated
-Reasoned estimate derived from public evidence. Must be clearly marked and cannot be presented as fact.
-
-synthetic_demo
-Mock or synthetic data used only for UI demos or examples. Must never drive final business claims.
-
-unavailable
-Metric cannot be known from available data.
-```
-
-### 7.2 Forbidden Claims
-
-Unless uploaded real data provides the metric, the agent must not claim:
+It must not claim access to:
 
 - GMV
 - CTR
@@ -396,41 +85,472 @@ Unless uploaded real data provides the metric, the agent must not claim:
 - refund rate
 - repeat purchase rate
 - exact market share
+- platform backend audience data
 
-Allowed phrasing:
+Unless the user uploads real data containing those metrics, these fields must be marked as unavailable.
 
-```text
-Public data suggests...
-Visible reviews indicate...
-This is an estimate based on observed price bands...
-Private merchant metrics are unavailable, so this should be validated after launch.
-```
+## 3. Target Users
 
-Forbidden phrasing:
+### 3.1 Primary Persona
+
+Primary user:
 
 ```text
-This product will increase GMV by 30%.
-The current CVR is 5.2%.
-Competitor A sells 20,000 units per month.
-ROI will reach 3.5.
+Ecommerce new-product launch owner
 ```
 
-### 7.3 Evidence Ledger Schema
+Typical roles:
 
-`evidence-ledger.json` must be an array of objects:
+- category operator
+- merchant growth PM
+- content-commerce operator
+- MCN selection / creator-commerce operator
+- new consumer brand ecommerce operator
+- early ecommerce founder or student founder
+
+They often start with incomplete inputs:
+
+- "I want to make a ceramic cup"
+- a Taobao/JD/Amazon product link
+- a Douyin/Xiaohongshu content idea
+- a few competitor links
+- supplier notes
+- screenshots
+- CSV exports
+- a vague request from a manager
+
+Their job is not to read a report. Their job is to decide:
+
+- Is this product worth a small test?
+- Which audience wedge should we start with?
+- What should the first offer promise be?
+- What content angles should we test first?
+- What data is missing?
+- What should we do in the next 7 days?
+
+### 3.2 Secondary Users
+
+Secondary users:
+
+- small ecommerce brand founders who need low-cost validation
+- MCN / creator commerce teams evaluating product fit
+- interviewers or reviewers evaluating the project as an agent-system portfolio piece
+
+### 3.3 Non-Target Users
+
+Not target users:
+
+- analysts who require verified full-platform market data
+- ad-ops users who require attribution and ROI dashboards
+- backend data engineers building ecommerce data pipelines
+- users expecting login-wall scraping, CAPTCHA bypass, or private dashboard access
+
+## 4. User Journey
+
+The core journey is:
+
+```text
+Rough product idea
+-> conversational clarification
+-> public signal collection
+-> source quality and evidence classification
+-> market pattern synthesis
+-> customer voice and scenario extraction
+-> audience wedge and offer hypotheses
+-> listing/content assets
+-> 7-day validation plan
+-> evidence ledger
+-> user feedback/uploaded test results
+-> revised launch recommendation
+```
+
+### 4.1 Journey Map
+
+| Stage | User State | Product Behavior | Output |
+| --- | --- | --- | --- |
+| Opportunity trigger | "This product might be worth doing" | Accept natural-language idea, link, or upload | Draft launch context |
+| Clarification | "I do not have complete info" | Ask at most one high-impact question, or proceed with labeled assumptions | Assumption brief |
+| Public signal scan | "What is visible in the market?" | Use `web_search`, `web_fetch`, uploaded files | Market signal brief |
+| Source quality check | "Can I trust this?" | Label source type, blocked/thin pages, login walls, search snippets | Evidence quality notes |
+| Market pattern synthesis | "How are products sold today?" | Summarize price bands, claims, content patterns, differentiation gaps | Market pattern map |
+| VOC extraction | "Why would customers buy?" | Extract pain points, triggers, objections, scenarios, customer wording | VOC insight map |
+| Strategy | "How should we enter?" | Generate audience wedge, offer hypotheses, risk notes | Offer strategy |
+| Assets | "What can I test tomorrow?" | Generate listing copy, content hooks, scripts, creator brief | Content and listing pack |
+| Validation | "How do I decide continue/stop?" | Build 7-day tests with validation signals and decision rules | Launch calendar |
+| Audit | "What is evidence vs assumption?" | Remove unsupported private metrics, create evidence ledger | Evidence ledger |
+
+## 5. DeerFlow Foundation
+
+EcomLaunch must remain a product layer on top of DeerFlow. It should not fork or replace the runtime.
+
+The foundation chain is:
+
+```text
+frontend chat input
+-> thread.submit
+-> runtime context: model, mode, agent_name, files, thread_id
+-> backend LangGraph-compatible run worker
+-> Lead Agent factory
+-> model + middleware + skills + tools
+-> optional task-tool subagents in Ultra mode
+-> tool calls and custom events stream to frontend
+-> files written under /mnt/user-data/outputs
+-> present_files updates ThreadState.artifacts
+-> frontend artifact viewer renders files
+```
+
+### 5.1 Frontend Submission
+
+Existing file:
+
+```text
+frontend/src/core/threads/hooks.ts
+```
+
+The existing thread submission path already:
+
+- uploads files
+- sends the user message
+- sends runtime context
+- maps `mode` into runtime flags
+- persists thread state
+- streams values, messages, and custom events
+
+For EcomLaunch, reuse this path. Do not build a separate launch API for MVP.
+
+### 5.2 Ultra Mode Semantics
+
+Ultra mode currently maps to:
+
+```ts
+thinking_enabled: true
+is_plan_mode: true
+subagent_enabled: true
+reasoning_effort: "high"
+```
+
+Product interpretation:
+
+```text
+Ultra = Launch Crew mode
+thinking + plan/todo + specialist subagents + highest reasoning depth
+```
+
+EcomLaunch should preserve this behavior and make it visible in the product through a right-side collaboration panel in a later milestone.
+
+### 5.3 Lead Agent
+
+Existing files:
+
+```text
+backend/packages/harness/deerflow/agents/lead_agent/agent.py
+backend/packages/harness/deerflow/agents/lead_agent/prompt.py
+```
+
+The Lead Agent remains the primary orchestrator.
+
+For EcomLaunch, the Lead Agent should act as:
+
+```text
+launch-director
+```
+
+Responsibilities:
+
+- understand the launch task
+- decide whether clarification is needed
+- load/follow the `ecom-launch` skill
+- call public-data tools
+- delegate to specialist subagents in Ultra mode
+- synthesize subagent results
+- enforce evidence rules
+- produce and present artifacts
+
+### 5.4 Tools
+
+Current core tools:
+
+- `web_search`
+- `web_fetch`
+- `image_search`
+- `read_file`
+- `write_file`
+- `grep`
+- `glob`
+- `present_files`
+- `ask_clarification`
+- `task` in Ultra mode
+
+Current `web_search`:
+
+```text
+DuckDuckGo / DDG search, no paid API key.
+```
+
+Current `web_fetch`:
+
+```text
+httpx static fetch
++ readability extraction
++ auto Playwright rendering when static content is too thin or looks like a JS shell
+```
+
+Supported by current data ability:
+
+- public search results
+- brand sites
+- review/articles
+- publicly accessible ecommerce SEO pages
+- some Taobao/JD SEO pages
+- some Douyin public video pages
+- uploaded user materials
+
+Not reliably supported:
+
+- Xiaohongshu full note/search/comment access
+- Taobao/Tmall/JD/PDD full product/search/review data
+- Douyin live/search/comment full access
+- private merchant metrics
+- login-wall content
+- CAPTCHA or anti-bot bypass
+
+Product consequence:
+
+```text
+Position the product around public-signal launch validation, not platform-deep scraping.
+```
+
+### 5.5 Skills
+
+Existing skill:
+
+```text
+skills/custom/ecom-launch/SKILL.md
+```
+
+The skill is the main product protocol. It must define:
+
+- when to use EcomLaunch
+- launch brief clarification behavior
+- evidence labels
+- forbidden private metrics
+- public-source strategy
+- subagent coordination
+- required artifacts
+- artifact schemas
+- final response rules
+
+### 5.6 Subagents
+
+Existing mechanism:
+
+```text
+Lead Agent calls task(description, prompt, subagent_type)
+-> task_tool resolves SubagentConfig
+-> SubagentExecutor creates a separate agent invocation
+-> subagent runs with its own system prompt, tools, skills, and isolated context
+-> task_tool polls until terminal status
+-> custom events stream task progress
+-> final result returns to Lead Agent
+```
+
+Existing files:
+
+```text
+backend/packages/harness/deerflow/tools/builtins/task_tool.py
+backend/packages/harness/deerflow/subagents/executor.py
+backend/packages/harness/deerflow/subagents/registry.py
+backend/packages/harness/deerflow/subagents/status_contract.py
+```
+
+Do not rewrite subagent execution. EcomLaunch should use `config.yaml` custom subagents.
+
+### 5.7 Plan Mode
+
+Plan mode uses DeerFlow's Todo middleware.
+
+Existing file:
+
+```text
+backend/packages/harness/deerflow/agents/middlewares/todo_middleware.py
+```
+
+In EcomLaunch, todos should represent launch workflow progress:
+
+- clarify launch context
+- gather public signals
+- extract VOC
+- design offer hypotheses
+- create content assets
+- audit evidence
+- present artifacts
+
+### 5.8 Artifacts
+
+Existing artifact system should remain the source of truth for deliverables.
+
+Existing files:
+
+```text
+backend/packages/harness/deerflow/tools/builtins/present_file_tool.py
+frontend/src/components/workspace/artifacts/*
+```
+
+All final files must be saved under:
+
+```text
+/mnt/user-data/outputs
+```
+
+Then exposed with `present_files`.
+
+## 6. pm-skills Design Lessons
+
+Reference:
+
+```text
+phuryn/pm-skills
+```
+
+Key lessons to apply:
+
+1. Do not sell a generic agent. Sell a workflow with a named deliverable.
+2. Separate reusable methods (`skills`) from end-to-end flows (`commands`).
+3. Each flow should have a stable output template.
+4. Each flow should ask only the context needed for the decision.
+5. Each flow should end with concrete next steps.
+6. Risk/assumption testing is as important as confident recommendations.
+
+Mapping to EcomLaunch:
+
+| pm-skills pattern | EcomLaunch equivalent |
+| --- | --- |
+| `/discover` | Launch opportunity clarification and assumptions |
+| `/plan-launch` | Launch Validation Pack |
+| `beachhead-segment` | Audience wedge |
+| `gtm-strategy` | 7-day launch validation strategy |
+| `prioritize-assumptions` | Offer hypothesis priority |
+| `strategy-red-team` | Evidence checker and kill-assumption audit |
+
+EcomLaunch should not become a marketplace of many ecommerce skills in MVP. It should first perfect one flagship workflow:
+
+```text
+validate-launch -> Launch Validation Pack
+```
+
+## 7. EcomLaunch Agent Architecture
+
+### 7.1 User-Visible Agent
+
+Only one agent should be user-visible:
+
+```text
+EcomLaunch Agent
+```
+
+The user should not have to manually operate individual subagents.
+
+### 7.2 Internal Roles
+
+Internal runtime roles:
+
+```text
+launch-director
+├── market-scout
+├── voc-miner
+├── offer-architect
+├── asset-studio
+└── evidence-checker
+```
+
+Strict role boundaries:
+
+| Role | Main Job | Must Not Do |
+| --- | --- | --- |
+| `launch-director` | clarify, dispatch, synthesize, present | pretend to have private data |
+| `market-scout` | public market signals, competitors, price bands, claims | write final positioning alone |
+| `voc-miner` | pain points, triggers, objections, scenarios, customer wording | invent reviews |
+| `offer-architect` | audience wedge, JTBD, promise, differentiators, hypotheses | write generic ad copy |
+| `asset-studio` | listing copy, hooks, scripts, creator brief, FAQ | invent unsupported claims |
+| `evidence-checker` | audit claims, evidence ledger, missing data | soften unsupported metric claims |
+
+### 7.3 Subagent Count
+
+Final target:
+
+```text
+1 user-visible agent
+5 configured subagents
+6 total roles including launch-director
+```
+
+MVP can run with fewer only if necessary:
+
+```text
+Minimum viable internal roles:
+market-scout + offer-architect + evidence-checker
+```
+
+But the spec target remains 5 subagents because each corresponds to a distinct Launch Validation Pack module.
+
+## 8. Evidence Model
+
+### 8.1 Evidence Types
+
+```text
+observed_public
+Real public webpages, product pages, public videos, public reviews, public articles, official pages, platform-visible listings.
+
+public_dataset
+Open datasets or public benchmark examples.
+
+uploaded_real
+User-uploaded real reviews, product exports, survey notes, sales notes, early order data, screenshots, or CSV files.
+
+estimated
+Reasoned estimate from public evidence. Must not be presented as fact.
+
+synthetic_demo
+Mock data for UI/demo only. Must not drive business claims.
+
+unavailable
+Metric cannot be known from available data.
+```
+
+### 8.2 Source Quality Labels
+
+Every source used in a recommendation should be classified where possible:
+
+```text
+search_snippet_only
+public_page
+public_video
+brand_site
+review_article
+ecommerce_seo_page
+uploaded_material
+thin_page
+blocked_or_login_wall
+unavailable_private_metric
+```
+
+### 8.3 Evidence Ledger Schema
+
+`evidence-ledger.json` must be a JSON array:
 
 ```json
 [
   {
     "id": "ev_001",
-    "claim": "Users frequently complain about leakage and difficult cleaning in portable coffee cups.",
+    "claim": "A concise claim supported by evidence or marked as an estimate.",
     "evidence_type": "observed_public",
-    "source_title": "Example product review page",
+    "source_type": "public_page",
+    "source_title": "Example product page",
     "source_url": "https://example.com/product",
-    "source_quote_or_summary": "Multiple reviews mention leakage during commute and hard-to-clean lid seams.",
+    "source_quote_or_summary": "Short summary of what was observed.",
     "confidence": "medium",
     "used_in": ["positioning-brief.md", "listing-pack.md"],
-    "limitations": "Public review sample may be biased toward dissatisfied buyers."
+    "limitations": "Public sample may be incomplete."
   }
 ]
 ```
@@ -444,8 +564,9 @@ Required fields:
 - `used_in`
 - `limitations`
 
-Optional fields:
+Recommended fields:
 
+- `source_type`
 - `source_title`
 - `source_url`
 - `source_quote_or_summary`
@@ -462,573 +583,429 @@ low
 unknown
 ```
 
-## 8. Agent Design
+### 8.4 Forbidden Claims
 
-### 8.1 Lead Agent
+Unless uploaded real data provides the metric, the agent must not claim:
 
-Name:
+- GMV
+- CTR
+- CVR
+- ROI
+- ad spend
+- actual sales volume
+- refund rate
+- repeat purchase rate
+- exact market share
+- verified uplift percentages
 
-```text
-launch-director
-```
-
-Role:
-
-- understand user launch goal
-- decide whether more clarification is needed
-- dispatch work to subagents
-- synthesize final strategy
-- enforce evidence rules
-- ensure artifacts are produced
-
-Behavior:
-
-- if the user asks for private metrics and no data is uploaded, mark them unavailable
-- use public search and fetch to gather market evidence
-- run subagents in parallel when Ultra mode is enabled
-- final output must include a concise answer and presented artifact files
-
-### 8.2 Custom Subagents
-
-#### market-scout
-
-Purpose:
-
-- search public market signals
-- find visible competitors
-- collect price bands
-- summarize product claims and platform content patterns
-
-Allowed tools:
-
-- `web_search`
-- `web_fetch`
-- `image_search`
-- `read_file`
-- `write_file`
-
-Outputs:
-
-- competitor candidates
-- price-band notes
-- visible market patterns
-- source list
-
-#### review-miner
-
-Purpose:
-
-- mine public reviews, Q&A, discussions, uploaded review files
-- cluster complaints, praise, purchase triggers, objections
-
-Allowed tools:
-
-- `web_search`
-- `web_fetch`
-- `read_file`
-- `write_file`
-
-Outputs:
-
-- pain-point clusters
-- positive triggers
-- objection list
-- customer wording bank
-
-#### positioning-strategist
-
-Purpose:
-
-- turn evidence into ecommerce positioning
-- identify target segment, core promise, differentiators, risk points
-
-Allowed tools:
-
-- `read_file`
-- `write_file`
-- `web_search`
-- `web_fetch`
-
-Outputs:
-
-- positioning brief
-- opportunity score
-- validation hypotheses
-
-#### listing-copywriter
-
-Purpose:
-
-- generate ecommerce title, bullets, product-page structure, FAQ, objection handling
-- generate platform-aware content copy
-
-Allowed tools:
-
-- `read_file`
-- `write_file`
-- `web_search`
-- `web_fetch`
-
-Outputs:
-
-- listing title options
-- selling-point bullets
-- product detail page outline
-- FAQ/customer-service scripts
-
-#### content-planner
-
-Purpose:
-
-- produce content launch assets
-- short-video scripts
-- livestream talk tracks
-- Xiaohongshu/Douyin-style posts
-- creator brief
-
-Allowed tools:
-
-- `read_file`
-- `write_file`
-- `web_search`
-- `web_fetch`
-
-Outputs:
-
-- content pack
-- hooks
-- script variants
-- creator brief
-
-#### launch-planner
-
-Purpose:
-
-- create a 7-day launch testing plan
-- define hypotheses, metrics to collect, decision rules
-
-Allowed tools:
-
-- `read_file`
-- `write_file`
-
-Outputs:
-
-- launch calendar
-- test matrix
-- data collection checklist
-- decision rules
-
-#### evidence-checker
-
-Purpose:
-
-- audit final claims against evidence
-- flag unsupported claims
-- ensure forbidden private metrics are not invented
-
-Allowed tools:
-
-- `read_file`
-- `write_file`
-
-Outputs:
-
-- evidence ledger
-- unsupported-claims notes
-- final confidence summary
-
-## 9. Skill Design
-
-Create a custom skill:
+Allowed phrasing:
 
 ```text
-skills/custom/ecom-launch/SKILL.md
+Public data suggests...
+Visible public pages indicate...
+This is an estimate based on observed public evidence...
+Private merchant metrics are unavailable, so this should be validated after launch...
 ```
 
-Skill name:
+Forbidden phrasing:
 
 ```text
-ecom-launch
+This product will increase GMV by 30%.
+The current CVR is 5.2%.
+Competitor A sells 20,000 units per month.
+ROI will reach 3.5.
 ```
 
-Skill responsibilities:
+When the user has no merchant backend data, these private metrics must not become default final-artifact KPIs or decision rules. They may appear only as unavailable metrics, uploaded evidence, or future metrics to collect after platform access exists. Default validation plans should prefer sample feedback, share/save/comment intent, inquiry count, preorder interest, creator response quality, repeated objections, and manual price-acceptance checks.
 
-- define ecommerce new-product launch workflow
-- define evidence rules
-- define output artifact contracts
-- define opportunity scoring rubric
-- define platform-aware content constraints
+## 9. Data Collection Strategy
 
-### 9.1 Opportunity Score
+### 9.1 Current Crawling Capability
 
-The agent may compute an opportunity score from 0 to 100, but it must be marked as an estimate unless uploaded real data supports it.
+Current `web_search + web_fetch` can support:
 
-Suggested formula:
+- public search discovery
+- source snippets
+- public web pages
+- ecommerce SEO pages when indexed and accessible
+- brand websites
+- public review articles
+- Douyin public video detail pages when accessible
+- user-uploaded data
+
+It cannot reliably support:
+
+- Xiaohongshu full note/search/comment mining
+- Taobao/JD/PDD full product/review/search crawling
+- Douyin live/search/comment scraping
+- authenticated dashboards
+- platform private metrics
+
+### 9.2 Product Rule
+
+When a desired source is unavailable, the agent should:
+
+1. mark it unavailable or low-confidence,
+2. explain why,
+3. suggest user-uploaded screenshots/CSV/links as optional evidence,
+4. continue with available public signals,
+5. avoid pretending the source was successfully mined.
+
+### 9.3 Search Query Templates
+
+Use query patterns like:
 
 ```text
-Opportunity Score =
-  demand_signal
-+ pain_intensity
-+ differentiation_space
-+ price_room
-+ content_virality
-+ supply_feasibility
-- competition_intensity
-- compliance_risk
+{product/category} 淘宝
+{product/category} 京东
+{product/category} 抖音
+site:taobao.com {product/category}
+site:jd.com {product/category}
+site:douyin.com {product/category}
+{product/category} 测评
+{product/category} 痛点
+{product/category} 安全
+{product/category} 礼物
+{product/category} 评价
 ```
 
-Each dimension should be scored 0-10 with evidence labels.
-
-### 9.2 Launch Testing Protocol
-
-When private metrics are unavailable, the system should recommend tests rather than claim outcomes.
-
-Each test should include:
-
-- hypothesis
-- asset to test
-- target audience
-- metric to collect
-- minimum sample requirement
-- decision rule
-- next action
-
-Example:
+For international cases:
 
 ```text
-Hypothesis: "Leak-proof commute" is a stronger hook than "keeps coffee warm".
-Asset: two title/video-hook variants
-Metric: click-through rate and add-to-cart rate
-Decision rule: keep the variant with at least 20% higher CTR after sufficient impressions.
+{product/category} reviews
+{product/category} Amazon
+{product/category} Reddit
+{product/category} problems
+{product/category} gift
 ```
 
-## 10. Output Artifact Contracts
+## 10. Core Workflow: validate-launch
 
-### 10.1 launch-war-room.html
+### 10.1 Trigger
 
-Purpose:
+Use this workflow when the user asks to:
 
-- human-readable dashboard artifact
-- first artifact opened by the user
+- validate a product idea
+- analyze a product/category before launch
+- decide how to position a new product
+- turn a product link into a launch plan
+- generate listing/content assets for a first test
+- create a 7-day ecommerce launch plan
 
-Sections:
+### 10.2 Clarification Behavior
 
-- product brief
-- target platform and user segment
-- opportunity score
-- top 5 market findings
-- top 5 customer pain points
-- competitor price-band table
-- positioning recommendation
-- listing preview
-- content hooks
-- 7-day launch plan
-- evidence confidence summary
-- limitations
+The product must remain conversational, not form-driven.
 
-Rendering constraints:
+Minimum required input before market work:
 
-- self-contained HTML
-- no external JS dependency required
-- usable in DeerFlow artifact preview
-- link to source URLs when available
+- product idea, product category, product URL, or uploaded product material
 
-### 10.2 competitor-table.csv
+If missing, ask one concise clarification question.
 
-Columns:
+Helpful but optional:
 
-```csv
-competitor_name,platform,product_url,price_low,price_high,key_claims,visible_strengths,visible_weaknesses,evidence_type,confidence,notes
-```
+- target platform
+- target user
+- target price range
+- supply constraints
+- competitor links
+- desired outputs
 
-Rules:
+If optional fields are missing, proceed with labeled assumptions unless the answer would materially change the work.
 
-- if price is unavailable, leave price fields empty and note limitation
-- do not infer exact sales volume unless public source explicitly provides it
-
-### 10.3 positioning-brief.md
-
-Sections:
-
-- category framing
-- target segment
-- primary purchase job
-- core promise
-- differentiators
-- reasons to believe
-- objections and answers
-- risks
-- validation plan
-
-### 10.4 listing-pack.md
-
-Sections:
-
-- title options
-- short title options
-- selling-point bullets
-- product detail page structure
-- image/module copy suggestions
-- FAQ
-- customer-service objection handling
-
-### 10.5 content-pack.md
-
-Sections:
-
-- short-video hooks
-- 3 short-video scripts
-- livestream talk track
-- Xiaohongshu-style notes
-- creator brief
-- comment reply bank
-
-### 10.6 launch-calendar.csv
-
-Columns:
-
-```csv
-day,objective,experiment,asset,channel,metric_to_collect,decision_rule,owner,expected_output
-```
-
-Rules:
-
-- metrics should be "to collect", not invented existing metrics
-- plan should be realistic for a small seller or student prototype
-
-### 10.7 review-insights.json
-
-Optional but recommended.
-
-Schema:
-
-```json
-{
-  "pain_points": [
-    {
-      "theme": "Leakage during commute",
-      "customer_words": ["leaks in bag", "lid not tight"],
-      "evidence_type": "observed_public",
-      "confidence": "medium",
-      "source_ids": ["ev_001", "ev_002"]
-    }
-  ],
-  "positive_triggers": [],
-  "purchase_objections": [],
-  "copy_bank": []
-}
-```
-
-## 11. Frontend Spec
-
-### 11.1 MVP UI
-
-Add an EcomLaunch conversational entry page or mode. Do not make the primary experience a long structured form.
-
-Recommended implementation path:
-
-- reuse the existing chat UI and input box
-- route users through the existing custom-agent chat path, such as `/workspace/agents/ecom-launch/chats/[thread_id]`
-- pass `agent_name: "ecom-launch"` in runtime context
-- default this entry to Ultra mode when possible so `subagent_enabled=true`
-- keep file uploads available through the existing upload flow
-- show EcomLaunch-specific welcome copy and examples, not a field-by-field wizard
-
-Primary interaction:
+### 10.3 Workflow Steps
 
 ```text
-User: 我想做一个通勤咖啡杯新品，目标淘宝和小红书，价格 99-199，帮我做上市方案
-EcomLaunch: 开始补齐 launch brief / 搜索 / 调用 subagents / 生成 artifacts
+1. Extract launch context
+2. Ask one clarification if product/category is missing
+3. Create todo list in plan/Ultra mode
+4. In Ultra mode, dispatch specialist subagents
+5. Gather public signals and uploaded evidence
+6. Classify source quality and evidence type
+7. Synthesize market patterns and VOC
+8. Build audience wedge and offer hypotheses
+9. Generate listing/content assets
+10. Design 7-day validation plan
+11. Run evidence audit
+12. Write artifacts under /mnt/user-data/outputs
+13. Call present_files
+14. Give concise chat summary
 ```
 
-If the user's first message is incomplete:
+### 10.4 Output Template
+
+Final `launch-war-room.html` and summary Markdown should use stable sections:
 
 ```text
-User: 帮我做一个新品上市方案
-EcomLaunch: 你想上市的产品或类目是什么？给我一个产品 idea、类目、链接，或上传产品说明即可。
+Launch Context
+Launch Readiness Verdict
+Public Market Signals
+Market Pattern Map
+Customer Voice Map
+Audience Wedge
+Offer Hypotheses
+Listing and Content Assets
+7-Day Validation Plan
+Evidence Ledger Summary
+Missing Data and Limitations
+Next Actions
 ```
 
-This uses DeerFlow's existing `ask_clarification` path rather than a frontend form:
+## 11. Ultra Launch Crew Visualization
+
+This is a mid-stage or later frontend enhancement. It must not block the agent workflow MVP.
+
+### 11.1 UI Principle
+
+Do not replace the DeerFlow chat page with a game-like UI.
+
+Keep:
 
 ```text
-lead agent decides required info is missing
--> calls ask_clarification
--> ClarificationMiddleware converts it to a tool message and ends the run
--> frontend renders assistant:clarification
--> user replies in the same thread
--> next run continues with the accumulated conversation
+left / main area: DeerFlow-style conversation, thinking, plan, messages, artifacts
+right panel: EcomLaunch Launch Crew collaboration scene
 ```
 
-### 11.2 Prompt Template
+The right panel should make Ultra's real subagent workflow visible.
 
-The EcomLaunch agent should not rely on a generated form prompt. It should use the `ecom-launch` skill and custom-agent SOUL/config to extract a launch brief from normal conversation.
+### 11.2 Scene Concept
 
-The internal brief schema should still be explicit:
+Working title:
 
 ```text
-- Product/category:
-- Product URL:
-- Target platform:
-- Target customer:
-- Price range:
-- Constraints:
-- Competitor links:
-- Uploaded files:
-- Desired outputs:
+Launch Studio
 ```
 
-For an incomplete brief, ask at most one clarification question at a time. Minimum required information before research:
+Alternative names:
 
-- product idea, product category, product URL, or uploaded product description
+- Launch Crew
+- Launch War Room
+- EcomLaunch Studio
+- 上新小队
+- 新品启动作战室
 
-All other fields can be inferred as assumptions when the task can still proceed.
-
-The persistent agent instruction should include:
+The scene does not have to be a classic office. Preferred concept:
 
 ```text
-You are EcomLaunch, a conversational ecommerce new-product launch copilot.
-Do not force users through a long form.
-Extract the launch brief from the conversation.
-If the product/category is missing, ask one clarification question with ask_clarification.
-Use public data and uploaded files only.
-Do not invent private merchant metrics.
-Create the required artifacts under /mnt/user-data/outputs and call present_files.
+ecommerce launch studio with specialist workstations:
+market radar desk, customer voice wall, offer strategy board,
+content studio, evidence review desk, and central launch board.
 ```
 
-### 11.3 Artifact Experience
+### 11.3 Role Mapping
 
-MVP:
+| Runtime Role | User-Facing Label | Scene Area | Deliverable Icon |
+| --- | --- | --- | --- |
+| `launch-director` | 上新主理人 | central board | Launch Pack |
+| `market-scout` | 市场侦察员 | market radar desk | signal map |
+| `voc-miner` | 用户洞察员 | customer voice wall | sticky-note cluster |
+| `offer-architect` | 卖点策划师 | strategy board | blueprint |
+| `asset-studio` | 内容编导 | content studio | content pack / bread |
+| `evidence-checker` | 证据审核员 | evidence desk | stamp / evidence book |
 
-- rely on current artifact list/detail UI
-- generate `launch-war-room.html` as main dashboard
+### 11.4 State Model
 
-Post-MVP:
+Define a frontend state model before building the visual scene:
 
-- parse `evidence-ledger.json`, `competitor-table.csv`, `launch-calendar.csv`
-- render native React dashboard:
-  - opportunity score
-  - evidence confidence cards
-  - competitor table
-  - action plan
-  - content assets
+```ts
+type LaunchCrewStatus =
+  | "idle"
+  | "assigned"
+  | "thinking"
+  | "searching"
+  | "reading"
+  | "writing"
+  | "reviewing"
+  | "done"
+  | "blocked"
+  | "failed";
 
-## 12. Backend / Config Spec
+type LaunchCrewAgent = {
+  id:
+    | "launch-director"
+    | "market-scout"
+    | "voc-miner"
+    | "offer-architect"
+    | "asset-studio"
+    | "evidence-checker";
+  label: string;
+  status: LaunchCrewStatus;
+  bubble?: string;
+  latestMessageId?: string;
+  deliverables: LaunchDeliverable[];
+};
 
-### 12.1 Config Changes
-
-Add custom subagents under `config.yaml`:
-
-```yaml
-subagents:
-  custom_agents:
-    market-scout:
-      description: "Search public ecommerce market signals, competitors, pricing, product pages and trend content"
-      system_prompt: |
-        You are an ecommerce market scout. Use public web information only.
-        Find competitors, price bands, product claims, category trends, and visible market patterns.
-        Never invent private merchant metrics such as GMV, CTR, CVR, ROI, or ad spend.
-        Every finding must include evidence_type and source.
-      tools:
-        - web_search
-        - web_fetch
-        - image_search
-        - read_file
-        - write_file
-      skills:
-        - ecom-launch
-
-    review-miner:
-      description: "Extract customer pain points, objections, positive triggers and unmet needs from public reviews and Q&A"
-      system_prompt: |
-        You are a review and VOC analyst for ecommerce.
-        Analyze public reviews, Q&A, forum discussions, and uploaded review files.
-        Cluster complaints, praise, usage scenarios, and purchase objections.
-        Mark whether each insight is public evidence, uploaded evidence, or estimated.
-      tools:
-        - web_search
-        - web_fetch
-        - read_file
-        - write_file
-      skills:
-        - ecom-launch
-
-    positioning-strategist:
-      description: "Create ecommerce product positioning, opportunity score, target segment and validation hypotheses"
-      system_prompt: |
-        You are an ecommerce positioning strategist.
-        Convert evidence into a focused product position, target segment, core promise,
-        differentiators, risks, and validation hypotheses.
-      tools:
-        - read_file
-        - write_file
-        - web_search
-        - web_fetch
-      skills:
-        - ecom-launch
-
-    listing-copywriter:
-      description: "Generate ecommerce listing titles, product selling points, detail page copy, FAQ and objection handling"
-      system_prompt: |
-        You are an ecommerce listing and conversion copywriter.
-        Generate platform-aware titles, bullets, selling points, FAQ, objection handling,
-        short video hooks, and livestream talk tracks based on verified insights.
-      tools:
-        - read_file
-        - write_file
-        - web_search
-        - web_fetch
-      skills:
-        - ecom-launch
-
-    content-planner:
-      description: "Create short-video scripts, livestream talk tracks, social posts and creator briefs"
-      system_prompt: |
-        You are an ecommerce content planner.
-        Produce conversion-oriented content assets using customer language and verified market insights.
-      tools:
-        - read_file
-        - write_file
-        - web_search
-        - web_fetch
-      skills:
-        - ecom-launch
-
-    launch-planner:
-      description: "Create a 7-day ecommerce launch test plan with hypotheses, metrics and decision rules"
-      system_prompt: |
-        You are an ecommerce launch planner.
-        Create practical launch experiments when private performance data is unavailable.
-        Use testable hypotheses, required data to collect, success metrics, and decision rules.
-      tools:
-        - read_file
-        - write_file
-      skills:
-        - ecom-launch
-
-    evidence-checker:
-      description: "Audit ecommerce recommendations for evidence quality and unsupported private metric claims"
-      system_prompt: |
-        You are an evidence checker.
-        Check whether final claims are supported by observed public data, uploaded data, datasets, or estimates.
-        Flag unsupported claims and remove invented private ecommerce metrics.
-      tools:
-        - read_file
-        - write_file
-      skills:
-        - ecom-launch
+type LaunchDeliverable = {
+  id: string;
+  title: string;
+  filepath: string;
+  kind: "brief" | "table" | "content" | "calendar" | "evidence" | "dashboard";
+};
 ```
 
-### 12.2 Skill Enablement
+### 11.5 Event Mapping
 
-Ensure the `ecom-launch` skill is discoverable and enabled.
+The right panel must be driven by real DeerFlow events where possible.
 
-Depending on existing skill settings, this may require:
+Mapping:
 
-- creating `skills/custom/ecom-launch/SKILL.md`
-- enabling the skill in extensions config if skills are filtered by enabled state
+| DeerFlow Signal | Launch Crew Effect |
+| --- | --- |
+| `mode === "ultra"` | enable Launch Crew panel |
+| AI tool call `task(..., subagent_type)` | set corresponding agent to `assigned` |
+| custom event `task_running` | update agent `bubble` and `latestMessageId` |
+| latest message has `web_search` | `searching` |
+| latest message has `web_fetch` | `reading` |
+| latest message has `write_file` | `writing` |
+| `subagent_status=completed` | `done` |
+| `subagent_status=failed/timed_out` | `failed` or `blocked` |
+| new artifact path matches known file | add deliverable to role |
 
-### 12.3 No Runtime Rewrite
+Artifact-to-role mapping:
+
+| Artifact | Role |
+| --- | --- |
+| `competitor-table.csv` | `market-scout` |
+| `source-list.md` | `market-scout` |
+| `review-insights.json` | `voc-miner` |
+| `positioning-brief.md` | `offer-architect` |
+| `listing-pack.md` | `asset-studio` |
+| `content-pack.md` | `asset-studio` |
+| `launch-calendar.csv` | `offer-architect` |
+| `evidence-ledger.json` | `evidence-checker` |
+| `launch-war-room.html` | `launch-director` |
+
+### 11.6 Bubble Content Rules
+
+Speech bubbles should show concise work summaries, not full hidden reasoning.
+
+Allowed bubble content:
+
+- task assignment summary
+- current tool action summary
+- short finding summary
+- source limitation warning
+- deliverable completion message
+
+Do not place full long-form reasoning in the bubble. Full thinking remains in DeerFlow's existing collapsible reasoning UI.
+
+Example bubbles:
+
+```text
+正在搜索公开市场信号...
+这个小红书页面只有备案信息，标记为低可用。
+发现“送礼”和“办公桌美学”两个场景。
+内容资产已出炉。
+未发现真实销量来源，已降级为公开信号判断。
+```
+
+### 11.7 Deliverable Interaction
+
+Deliverable icons in the scene should reuse the existing artifact viewer:
+
+```text
+click scene deliverable
+-> selectArtifact(filepath)
+-> setArtifactsOpen(true)
+-> existing ArtifactFileDetail renders preview/download
+```
+
+Do not build a parallel file preview system.
+
+### 11.8 Visual Design Process
+
+When building the pixel/illustrated scene later:
+
+1. finalize state model and event mapping first
+2. create a simple non-pixel Launch Crew panel
+3. verify it is driven by real events
+4. generate 2-3 image concepts with image generation
+5. choose one visual direction
+6. implement scene as CSS/PNG/SVG/sprite assets
+7. add small animations only after data flow is correct
+
+Prompt direction for image generation:
+
+```text
+Pixel-art isometric ecommerce launch studio, professional but warm,
+five specialist workstations: market radar desk, customer voice wall,
+offer strategy whiteboard, content studio table, evidence review desk,
+central launch board, small agent characters with speech bubbles,
+artifact icons on desks, clean readable layout, not childish.
+```
+
+## 12. Frontend Product Surface
+
+### 12.1 Near-Term Principle
+
+Do not heavily redesign the whole DeerFlow page yet.
+
+Near-term changes should be additive:
+
+- EcomLaunch agent route/entry
+- EcomLaunch empty-state copy
+- EcomLaunch starter prompts
+- Ultra default or recommendation for complex launch tasks
+- optional right panel placeholder for Launch Crew
+
+### 12.2 Starter Prompts
+
+Examples:
+
+```text
+我想验证一个新品想法
+我有一个竞品链接，帮我找差异化切入
+帮我生成 7 天上新验证包
+帮我把这个产品做成抖音/小红书内容测试方案
+我有测试反馈，帮我复盘是否继续
+```
+
+### 12.3 Placeholder
+
+Input placeholder:
+
+```text
+告诉我你想验证的新品、类目、商品链接或测试反馈...
+```
+
+### 12.4 Mode Copy
+
+Keep existing modes technically, but EcomLaunch copy may interpret them as:
+
+| Mode | EcomLaunch Meaning |
+| --- | --- |
+| Flash | quick direction check |
+| Thinking | deeper single-agent reasoning |
+| Pro | plan-first launch work |
+| Ultra | Launch Crew multi-agent validation |
+
+## 13. Backend / Config Spec
+
+### 13.1 Existing Config Target
+
+Custom subagents should live under:
+
+```text
+config.yaml -> subagents.custom_agents
+```
+
+Target subagents:
+
+- `market-scout`
+- `voc-miner`
+- `offer-architect`
+- `asset-studio`
+- `evidence-checker`
+
+Each subagent should:
+
+- include the `ecom-launch` skill
+- have a narrow role prompt
+- use only required tools
+- avoid recursive subagent calls
+- return structured, evidence-labeled results
+
+### 13.2 No Runtime Rewrite
 
 The MVP should not rewrite:
 
@@ -1038,131 +1015,241 @@ The MVP should not rewrite:
 - `SubagentExecutor`
 - `present_files`
 - artifact router
+- generic DeerFlow tool loading
 
-The system should ride on the existing DeerFlow runtime.
+### 13.3 Possible Later Tools
 
-## 13. Development Plan
+Only add backend tools after prompt/tool composition proves brittle:
+
+- `classify_source_quality`
+- `validate_evidence_ledger`
+- `normalize_competitor_table`
+- `render_launch_dashboard`
+- `extract_launch_pack_sections`
+
+## 14. Implementation Roadmap
 
 ### Milestone 1: Product Protocol
 
-Deliverables:
+Goal:
 
-- `docs/plans/ecom-launch-agent-spec.md`
-- `skills/custom/ecom-launch/SKILL.md`
-- custom subagents in `config.yaml`
-
-Acceptance:
-
-- DeerFlow prompt lists `ecom-launch` as an available skill
-- Ultra mode exposes custom subagents in task tool descriptions
-- a manual chat prompt can invoke the launch workflow
-
-### Milestone 2: Artifact-First MVP
+```text
+EcomLaunch behavior is specified and available to the agent.
+```
 
 Deliverables:
 
-- lead prompt template for EcomLaunch tasks
-- sample product launch run
-- required output files generated under `/mnt/user-data/outputs`
-- `present_files` called successfully
-- manual run materials under `docs/ecom-launch/`:
-  - `README.md`
-  - `manual-run-prompt.md`
-  - `demo-brief.portable-coffee-tumbler.json`
-  - `subagents.ecom-launch.yaml`
+- this spec
+- strengthened `skills/custom/ecom-launch/SKILL.md`
+- strengthened `agents/ecom-launch/SOUL.md`
+- custom subagents configured
 
 Acceptance:
 
-- generated artifact list includes all required MVP files
-- `launch-war-room.html` opens in artifact preview
-- evidence ledger exists and uses required schema
+- EcomLaunch skill is discoverable
+- custom subagents are available in Ultra mode
+- no private metric claims are permitted by protocol
+
+### Milestone 2: Multi-Agent Workflow Smoke Test
+
+Goal:
+
+```text
+Ultra mode actually delegates work to EcomLaunch subagents.
+```
+
+Deliverables:
+
+- manual run prompt
+- sample demo input
+- run transcript or notes
+- generated artifact set
+
+Acceptance:
+
+- at least 3 EcomLaunch subagents are invoked in a serious run
+- subagent outputs are integrated rather than pasted raw
+- final response references presented files
+- evidence ledger exists and validates as JSON
+- JSON artifacts are arrays/objects with escaped string values, not Markdown code blocks or multiline raw strings
+- CSV artifacts parse with the declared column count
+
+### Milestone 3: Artifact-First MVP
+
+Goal:
+
+```text
+Launch Validation Pack can be generated reliably.
+```
+
+Deliverables:
+
+- required artifact files
+- self-contained `launch-war-room.html`
+- evidence ledger
+- competitor table
+- content pack
+- launch calendar
+
+Acceptance:
+
+- all required artifacts are presented through existing DeerFlow artifact viewer
+- `launch-war-room.html` previews correctly
 - no forbidden private metric claim appears without uploaded evidence
+- missing data is explicitly named
 
-### Milestone 3: Conversational Frontend Entry
+### Milestone 4: Conversational EcomLaunch Entry
 
-Deliverables:
+Goal:
 
-- EcomLaunch entry page or mode using the existing chat UI
-- custom agent route/context, for example `agent_name: "ecom-launch"`
-- EcomLaunch welcome examples and empty-state copy
-- `ask_clarification`-based brief completion
-- submit through existing thread mechanism
-
-Acceptance:
-
-- user can start a launch task without writing a manual prompt
-- user can give an incomplete request and receive a targeted clarification question
-- task defaults to Ultra/subagent-enabled mode
-- uploaded files are included in the task
-
-### Milestone 4: Native Dashboard
+```text
+User can start EcomLaunch without a manual prompt.
+```
 
 Deliverables:
 
-- parse key output files
-- render opportunity score, competitor table, evidence cards, and launch calendar
+- dedicated EcomLaunch route or agent entry
+- starter prompts
+- EcomLaunch empty state
+- default or suggested Ultra mode for full validation
 
 Acceptance:
 
-- dashboard renders without relying only on Markdown
-- unsupported/estimated claims are visually marked
-- user can download raw artifacts
+- user can start from a vague product idea
+- agent asks one targeted clarification when necessary
+- uploaded files are available to the task
+- output remains artifact-first
 
-## 14. Evaluation Criteria
+### Milestone 5: Launch Crew State Model
 
-### 14.1 Product Quality
+Goal:
+
+```text
+Frontend can derive per-agent status from existing DeerFlow events.
+```
+
+Deliverables:
+
+- `LaunchCrewState` model
+- mapper from messages/custom events/artifacts to crew state
+- simple right-side non-pixel panel
+
+Acceptance:
+
+- task dispatch changes role status
+- `task_running` updates bubbles
+- artifact completion creates clickable deliverables
+- panel works without fake scripted animation
+
+### Milestone 6: Launch Studio Visual Layer
+
+Goal:
+
+```text
+Ultra mode becomes visually differentiated without replacing the core chat.
+```
+
+Deliverables:
+
+- generated concept images
+- selected scene direction
+- implemented right-side visual scene
+- basic role animations
+- clickable deliverable icons
+
+Acceptance:
+
+- left DeerFlow chat remains usable
+- right panel clearly shows multi-agent collaboration
+- visual state follows real execution events
+- deliverables open in existing artifact viewer
+
+## 15. Evaluation Criteria
+
+### 15.1 Product Quality
 
 Good result:
 
-- looks like an ecommerce launch operating package
+- feels like an ecommerce launch validation product
+- produces a concrete Launch Validation Pack
 - recommendations are actionable
-- includes source-backed evidence
-- acknowledges private-data limitations
-- provides next-step experiments
+- private-data gaps are clearly named
+- evidence is labeled
+- content assets are usable for a first test
 
 Bad result:
 
 - generic market research essay
+- pure competitor table with no launch decision
 - fake GMV/ROI/CVR
-- unsupported sales claims
-- no concrete listing/content outputs
-- no launch plan
-
-### 14.2 Agent Quality
-
-Good result:
-
-- lead agent decomposes work across subagents
-- subagent outputs are integrated rather than pasted together
-- evidence checker catches unsupported claims
-- artifacts are complete and schema-valid
-
-Bad result:
-
-- only one long lead-agent answer
-- subagents duplicate each other
 - no evidence ledger
-- final files missing
+- no test plan
+- no concrete listing/content output
 
-### 14.3 Technical Quality
+### 15.2 Agent Quality
 
 Good result:
 
-- uses existing DeerFlow APIs
-- minimal runtime changes
-- custom behavior lives in skill, config, and frontend product layer
-- outputs remain compatible with existing artifact system
+- lead agent uses the EcomLaunch skill
+- Ultra mode delegates to specialist subagents
+- subagents do not duplicate each other
+- final answer synthesizes, not merely concatenates
+- evidence checker catches unsupported claims
 
 Bad result:
 
-- forks runtime unnecessarily
-- hardcodes one product category
-- relies on fake mock data for final claims
-- breaks generic DeerFlow workspace behavior
+- one long single-agent response in Ultra
+- only generic `general-purpose` subagents
+- subagent outputs pasted raw
+- unsupported metrics remain
+- artifacts missing
 
-## 15. Demo Scenario
+### 15.3 Technical Quality
 
-Recommended demo product:
+Good result:
+
+- uses existing DeerFlow runtime
+- additive product-layer changes
+- no unnecessary runtime forks
+- artifact system remains compatible
+- Launch Crew panel is event-driven
+
+Bad result:
+
+- custom parallel backend API
+- hardcoded demo-only data
+- fake right-side animation unrelated to events
+- broken generic DeerFlow functionality
+
+## 16. Demo Scenario
+
+Recommended Chinese demo:
+
+```text
+我想做一款送女生的高颜值陶瓷杯，主要想在小红书和抖音种草，
+但我没有真实后台数据。帮我判断怎么切入，并生成 7 天上新验证包。
+```
+
+Why it works:
+
+- product is easy to understand
+- public product/SEO/video signals exist
+- Xiaohongshu limitations can be honestly demonstrated
+- content assets are visually intuitive
+- evidence ledger matters because private metrics are unavailable
+
+Expected result:
+
+- cautious launch readiness verdict
+- audience wedge such as gift / desk aesthetic / emotional value
+- warning that "generic high appearance" is too broad
+- public signal summary
+- content hooks
+- listing copy
+- 7-day validation plan
+- evidence ledger and unavailable-metrics list
+
+Alternative demo:
 
 ```text
 Portable leak-proof coffee tumbler for office commute and light outdoor use.
@@ -1171,42 +1258,7 @@ Target price: RMB 99-199.
 Constraints: stainless steel, easy to clean, no electronics.
 ```
 
-Why this scenario works:
-
-- many public product pages and reviews exist
-- user pain points are easy to understand
-- content scripts are visually intuitive
-- no private merchant data is required
-- output can show ecommerce business thinking clearly
-
-Expected demo outputs:
-
-- visible competitor price band
-- pain points like leakage, heat retention, cleaning, smell, portability
-- product positioning around commute safety and easy-clean lid
-- title and short-video hooks
-- 7-day test plan for title, hook, price, and content angle
-
-## 16. Open Questions
-
-1. Should the first frontend version be a dedicated route or a mode inside the existing workspace?
-2. Should the MVP support Chinese platforms first, English/Amazon first, or both?
-3. Should public dataset support be included in MVP, or deferred until after search-based workflow works?
-4. Should `launch-war-room.html` be generated by the agent, or should the frontend render a native dashboard from JSON outputs?
-
-## 17. Recommended First Implementation Choice
-
-For the fastest credible MVP:
-
-1. support Chinese-language user input
-2. use public web search as the main data source
-3. generate self-contained HTML as the first dashboard
-4. keep React dashboard as post-MVP
-5. implement custom skill and subagents before touching frontend
-
-This proves the differentiated agent behavior first, then turns it into a polished product UI.
-
-## 18. Repository Strategy
+## 17. Repository Strategy
 
 Target repository:
 
@@ -1214,26 +1266,26 @@ Target repository:
 git@github.com:CheungkiCheung/EcomLaunch-Agent.git
 ```
 
-Current local starting point:
+Local source:
 
 ```text
 /Users/zhangqixiang/0_2实习/deepagents/deer-flow
 ```
 
-The local directory is a DeerFlow source tree extracted from an archive, not an existing Git checkout. It should become the EcomLaunch Agent repository while preserving DeerFlow's structure enough that future maintainers can see the project is built on a real agent runtime rather than a small demo scaffold.
+Do not rename every internal `deerflow` package in early MVP. Preserve runtime stability.
 
-### 18.1 Initial Repository Principles
+Brand first in:
 
-The first commit should include:
+- README
+- app title and navigation
+- EcomLaunch route/entry
+- custom skill
+- custom subagents
+- artifacts
+- demo scenario
+- right-side Ultra Launch Crew panel
 
-- DeerFlow base source
-- this EcomLaunch spec
-- original docs and examples that are still useful for understanding the runtime
-- no local secrets
-- no generated dependency directories
-- no local runtime state
-
-Ignored local files must stay ignored:
+Keep ignored:
 
 - `.env`
 - `config.yaml`
@@ -1242,31 +1294,33 @@ Ignored local files must stay ignored:
 - `frontend/.next`
 - `backend/.venv`
 - `backend/.deer-flow`
-- `logs`
+- logs
+- runtime outputs
 
-### 18.2 Branding Strategy
+## 18. Open Questions
 
-Do not rename every `deerflow` package immediately.
+1. Should the first EcomLaunch UI be a dedicated route or a specialized agent route inside the existing workspace?
+2. Should Ultra be the default for EcomLaunch full validation, or only recommended by the UI?
+3. Should the first Launch Crew panel be always visible on EcomLaunch threads, or only when Ultra is selected?
+4. Should `launch-war-room.html` remain the first dashboard, or should the native React dashboard read JSON artifacts sooner?
+5. Should source quality classification remain prompt-based in MVP, or become a backend tool earlier?
 
-Early MVP should preserve internal package names and runtime paths where they are part of the working system. Product branding should first happen in:
+## 19. Near-Term Decision
 
-- README
-- app title and navigation
-- EcomLaunch entry page
-- custom skill
-- custom subagents
-- artifact names
-- demo scenario
+The immediate focus is:
 
-Deep package renaming can be a later cleanup after the MVP works. Premature package renaming risks breaking imports, docs, scripts, Docker files, and LangGraph configuration.
+```text
+multi-agent workflow + skill protocol + tool usage + artifact reliability
+```
 
-### 18.3 Upstream-Aware Modification Rule
+The right-side visual Launch Studio is important but later.
 
-When implementing EcomLaunch:
+Near-term work order:
 
-- prefer additive changes over invasive runtime rewrites
-- keep generic DeerFlow mechanisms generic
-- put ecommerce behavior in `skills/custom/ecom-launch`, subagent config, prompt builder, and frontend product surfaces
-- document any necessary runtime change with a reason in this spec or a follow-up plan
-
-This keeps the project credible as a DeerFlow-based agent product and makes the diff easy to explain.
+1. strengthen `ecom-launch` skill and custom agent prompt
+2. verify Ultra dispatches specialist subagents
+3. verify `web_search` and `web_fetch` produce usable public signals
+4. generate complete artifact set
+5. validate evidence ledger
+6. only then build Launch Crew event state
+7. only then build visual scene

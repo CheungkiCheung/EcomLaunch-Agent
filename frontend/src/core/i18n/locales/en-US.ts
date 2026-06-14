@@ -173,7 +173,7 @@ export const enUS: Translations = {
     recentChats: "Recent chats",
     demoChats: "Demo chats",
     agents: "Agents",
-    ecomLaunch: "EcomLaunch",
+    ecomLaunch: "EcomLaunch Validation",
   },
 
   // Agents
@@ -224,31 +224,38 @@ export const enUS: Translations = {
     agentCreated: "Agent created!",
     startChatting: "Start chatting",
     backToGallery: "Back to Gallery",
-    ecomLaunchName: "EcomLaunch",
+    ecomLaunchName: "EcomLaunch Validation",
     ecomLaunchWelcomeDescription:
-      "Turn a product idea, category signal, or public competitor link into an ecommerce launch operating package.",
+      "Turn a rough product idea into a 7-day ecommerce launch validation pack using public signals, uploaded context, and labeled assumptions.",
+    ecomLaunchWelcomeBadges: [
+      "Public signals",
+      "No backend data needed",
+      "Launch Crew",
+      "7-day pack",
+    ],
     ecomLaunchSuggestions: [
       {
-        suggestion: "Coffee tumbler",
+        suggestion: "No-data validation",
         prompt:
-          "I want to launch a $15-$30 commuter coffee tumbler. Build me a TikTok Shop/Amazon launch plan.",
+          "I want to launch a $15-$30 commuter coffee tumbler, but I have no store backend data. Use public signals to judge whether it is worth a 7-day lightweight validation test and output a Launch Validation Pack.",
         icon: CompassIcon,
       },
       {
-        suggestion: "Pet category",
+        suggestion: "Category wedge",
         prompt:
-          "Explore the pet supplies category and find new-product opportunities I could launch.",
+          "Find a low-cost new-product opportunity in pet supplies. Start from public signals, then give me an audience wedge, offer hypotheses, and a 7-day validation plan.",
         icon: MicroscopeIcon,
       },
       {
-        suggestion: "Competitor link",
+        suggestion: "Public link",
         prompt:
-          "Here is a public competitor link. Judge whether it is worth launching and generate a launch war room:",
+          "Here is a public competitor/product link. Do not assume I have sales or conversion data; judge whether it is worth a small launch validation test only from visible public signals and page evidence:",
         icon: ShapesIcon,
       },
       {
-        suggestion: "Clarify brief",
-        prompt: "Help me build a new-product launch plan.",
+        suggestion: "Incomplete brief",
+        prompt:
+          "I only have a rough new-product idea. Ask me the single most important clarifying question first; if information is still missing, continue with clearly labeled assumptions and build a lightweight validation plan.",
         icon: SparklesIcon,
       },
     ],

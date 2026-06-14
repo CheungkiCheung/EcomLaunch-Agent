@@ -36,6 +36,8 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0,<3.0",
     "aiosqlite>=0.19",
     "alembic>=1.13",
+    "scrapling>=0.4.9",
+    "playwright>=1.60.0",
 ]
 
 [project.optional-dependencies]

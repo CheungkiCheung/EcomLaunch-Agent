@@ -554,7 +554,7 @@ class TestSearchStep:
         monkeypatch.setattr(search_step, "print_success", lambda *_args, **_kwargs: None)
         monkeypatch.setattr(search_step, "print_info", lambda *_args, **_kwargs: None)
 
-        choices = iter([3, 1])
+        choices = iter([3, 2])
         prompts: list[str] = []
 
         def fake_choice(_prompt, _options, default=0):

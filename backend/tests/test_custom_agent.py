@@ -245,6 +245,29 @@ class TestLoadAgentConfig:
         assert cfg.skills == ["ecom-launch"]
         assert built_in
 
+    def test_loads_repository_builtin_agent_when_started_from_backend_dir(self, tmp_path, monkeypatch):
+        project_root = tmp_path / "project"
+        backend_dir = project_root / "backend"
+        backend_dir.mkdir(parents=True)
+        _write_agent(
+            project_root,
+            "ecom-launch",
+            {"name": "ecom-launch", "description": "Built-in ecommerce launch agent", "skills": ["ecom-launch"]},
+            soul="Built-in EcomLaunch SOUL",
+        )
+
+        monkeypatch.delenv("DEER_FLOW_PROJECT_ROOT", raising=False)
+        monkeypatch.chdir(backend_dir)
+        with patch("deerflow.config.agents_config.get_paths", return_value=_make_paths(tmp_path / "home")):
+            from deerflow.config.agents_config import is_builtin_agent, load_agent_config
+
+            cfg = load_agent_config("ecom-launch", user_id="alice")
+            built_in = is_builtin_agent("ecom-launch", user_id="alice")
+
+        assert cfg.name == "ecom-launch"
+        assert cfg.skills == ["ecom-launch"]
+        assert built_in
+
     def test_user_agent_shadows_repository_builtin_agent(self, tmp_path, monkeypatch):
         user_id = "alice"
         project_root = tmp_path / "project"
@@ -263,6 +286,28 @@ class TestLoadAgentConfig:
         assert cfg.description == "User copy"
         assert soul == "User SOUL"
         assert not built_in
+
+    def test_user_memory_dir_does_not_shadow_repository_builtin_agent(self, tmp_path, monkeypatch):
+        user_id = "alice"
+        project_root = tmp_path / "project"
+        home = tmp_path / "home"
+        _write_agent(project_root, "ecom-launch", {"name": "ecom-launch", "description": "Built-in"}, soul="Built-in SOUL")
+
+        memory_only_dir = home / "users" / user_id / "agents" / "ecom-launch"
+        memory_only_dir.mkdir(parents=True)
+        (memory_only_dir / "memory.json").write_text("{}", encoding="utf-8")
+
+        monkeypatch.setenv("DEER_FLOW_PROJECT_ROOT", str(project_root))
+        with patch("deerflow.config.agents_config.get_paths", return_value=_make_paths(home)):
+            from deerflow.config.agents_config import is_builtin_agent, load_agent_config, load_agent_soul
+
+            cfg = load_agent_config("ecom-launch", user_id=user_id)
+            soul = load_agent_soul("ecom-launch", user_id=user_id)
+            built_in = is_builtin_agent("ecom-launch", user_id=user_id)
+
+        assert cfg.description == "Built-in"
+        assert soul == "Built-in SOUL"
+        assert built_in
 
 
 # ===========================================================================

@@ -8,6 +8,7 @@ per-user layout.
 """
 
 import logging
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,16 @@ AGENT_NAME_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
 BUILTIN_AGENTS_DIRNAME = "agents"
 
 
+def _is_agent_definition_dir(path: Path) -> bool:
+    """Return whether a directory contains an agent definition.
+
+    Runtime may create ``users/{id}/agents/{name}/memory.json`` for a built-in
+    agent. That memory-only directory must not shadow the repository-shipped
+    agent definition.
+    """
+    return path.is_dir() and (path / "config.yaml").is_file()
+
+
 def validate_agent_name(name: str | None) -> str | None:
     """Validate a custom agent name before using it in filesystem paths."""
     if name is None:
@@ -38,8 +49,29 @@ def validate_agent_name(name: str | None) -> str | None:
 
 
 def builtin_agents_dir() -> Path:
-    """Return the read-only repository directory for built-in agent definitions."""
-    return project_root() / BUILTIN_AGENTS_DIRNAME
+    """Return the read-only repository directory for built-in agent definitions.
+
+    ``project_root()`` is intentionally caller-relative for standalone harness
+    usage. In the monorepo, however, developers often start the Gateway from
+    ``backend/`` while repository-shipped agents live one level up at
+    ``../agents``. If ``DEER_FLOW_PROJECT_ROOT`` is explicitly set, respect it
+    as authoritative; otherwise fall back to the parent repository root for that
+    common local-dev startup path.
+    """
+    root = project_root()
+    project_default = root / BUILTIN_AGENTS_DIRNAME
+    if project_default.is_dir():
+        return project_default
+
+    if os.getenv("DEER_FLOW_PROJECT_ROOT"):
+        return project_default
+
+    if root.name == "backend":
+        repo_root_candidate = root.parent / BUILTIN_AGENTS_DIRNAME
+        if repo_root_candidate.is_dir():
+            return repo_root_candidate
+
+    return project_default
 
 
 def builtin_agent_dir(name: str) -> Path:
@@ -88,15 +120,15 @@ def resolve_agent_dir(name: str, *, user_id: str | None = None) -> Path:
     paths = get_paths()
     effective_user = user_id or get_effective_user_id()
     user_path = paths.user_agent_dir(effective_user, name)
-    if user_path.exists():
+    if _is_agent_definition_dir(user_path):
         return user_path
 
     legacy_path = paths.agent_dir(name)
-    if legacy_path.exists():
+    if _is_agent_definition_dir(legacy_path):
         return legacy_path
 
     builtin_path = builtin_agent_dir(name)
-    if builtin_path.exists():
+    if _is_agent_definition_dir(builtin_path):
         return builtin_path
 
     return user_path

@@ -167,7 +167,7 @@ export const zhCN: Translations = {
     recentChats: "最近的对话",
     demoChats: "演示对话",
     agents: "智能体",
-    ecomLaunch: "EcomLaunch",
+    ecomLaunch: "EcomLaunch 验证台",
   },
 
   // Agents
@@ -212,30 +212,38 @@ export const zhCN: Translations = {
     agentCreated: "智能体已创建！",
     startChatting: "开始对话",
     backToGallery: "返回 Gallery",
-    ecomLaunchName: "EcomLaunch",
+    ecomLaunchName: "EcomLaunch 验证台",
     ecomLaunchWelcomeDescription:
-      "把产品想法、类目线索或公开竞品链接变成电商新品上市作战包。",
+      "用公开信号、上传材料和明确假设，把模糊新品想法变成 7 天电商上新验证包。",
+    ecomLaunchWelcomeBadges: [
+      "公开信号",
+      "无后台数据可用",
+      "Launch Crew",
+      "7 天验证包",
+    ],
     ecomLaunchSuggestions: [
       {
-        suggestion: "通勤咖啡杯",
+        suggestion: "无数据验证",
         prompt:
-          "我想做一个 99-199 元的通勤咖啡杯，帮我做淘宝/小红书上市方案",
+          "我想做一个 99-199 元的通勤咖啡杯，但没有任何店铺后台数据。请用公开信号帮我判断是否值得做 7 天轻量验证，并输出 Launch Validation Pack。",
         icon: CompassIcon,
       },
       {
-        suggestion: "宠物用品机会",
-        prompt: "我想看看宠物用品类目里有什么适合做新品的机会",
+        suggestion: "类目机会",
+        prompt:
+          "我想在宠物用品类目找一个适合低成本测试的新品机会。请先用公开信号扫描，再给出受众楔子、卖点假设和 7 天验证计划。",
         icon: MicroscopeIcon,
       },
       {
-        suggestion: "竞品链接",
+        suggestion: "公开链接",
         prompt:
-          "这是一个公开竞品链接，帮我判断能不能做国内电商并生成上市作战包：",
+          "这是一个公开竞品/商品链接。请不要假设我有销量或转化数据，只基于可见公开信号和页面信息判断是否值得小规模上新验证：",
         icon: ShapesIcon,
       },
       {
         suggestion: "信息不完整",
-        prompt: "帮我做一个新品上市方案",
+        prompt:
+          "我只有一个很粗糙的新品想法。请先问我一个最关键的问题；如果信息仍然不足，就用明确标注的假设继续生成轻量验证方案。",
         icon: SparklesIcon,
       },
     ],

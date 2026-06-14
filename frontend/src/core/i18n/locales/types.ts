@@ -157,6 +157,7 @@ export interface Translations {
     backToGallery: string;
     ecomLaunchName: string;
     ecomLaunchWelcomeDescription: string;
+    ecomLaunchWelcomeBadges: string[];
     ecomLaunchSuggestions: {
       suggestion: string;
       prompt: string;

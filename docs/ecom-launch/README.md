@@ -27,9 +27,12 @@ existing DeerFlow chat
 1. Copy `config.example.yaml` to `config.yaml` if you have not already.
 2. Copy the contents of `subagents.ecom-launch.yaml` into `config.yaml`.
 3. Ensure `skills/custom/ecom-launch/SKILL.md` exists.
-4. Restart the backend if it is already running.
-5. Start a new chat in Ultra mode so `subagent_enabled=true`.
-6. Paste `manual-run-prompt.md`.
+4. Install the local browser runtime once if you use the default local `web_fetch`: `cd backend && uv run playwright install chromium`.
+5. Restart the backend if it is already running.
+6. Start a new chat in Ultra mode so `subagent_enabled=true`.
+7. Paste `manual-run-prompt.md`.
+
+The default `web_fetch` provider is local and free: it uses fast `httpx` fetching first, then falls back to local Playwright/Chromium rendering for public JavaScript pages. It does not use paid crawler APIs and must not be used to bypass login walls, CAPTCHA, anti-bot systems, or private ecommerce dashboards.
 
 ## Expected Artifacts
 
@@ -63,9 +66,12 @@ The artifact-first MVP is successful when:
 - `present_files` is called
 - `evidence-ledger.json` distinguishes observed public evidence from estimates
 - no private merchant metrics are invented
+- `evidence-ledger.json` is parseable JSON
+- CSV artifacts are parseable and every row has the declared column count
+- validation plans use lightweight no-backend signals by default, not private platform metrics
 
 ## Notes
 
 Use public data only. Do not bypass login walls, CAPTCHA, anti-bot systems, or private ecommerce dashboards.
 
-If a source cannot provide a private metric such as GMV, CTR, CVR, ROI, ad spend, refund rate, or repeat purchase rate, mark the metric as unavailable and propose a launch test to collect it.
+If a source cannot provide a private metric such as GMV, CTR, CVR, ROI, ad spend, refund rate, or repeat purchase rate, mark the metric as unavailable. For users without backend data, default to validation signals such as sample feedback, comment/save/share intent, inquiry count, preorder interest, creator response quality, repeated objections, and manual price-acceptance checks.

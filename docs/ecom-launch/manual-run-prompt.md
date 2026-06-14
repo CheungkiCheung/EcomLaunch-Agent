@@ -7,11 +7,9 @@ First, load and follow the `ecom-launch` skill from the available skills list. I
 Use Ultra-mode subagents if the `task` tool is available. Recommended delegation:
 
 - `market-scout`: public competitor, price-band, claim, and content-pattern scan
-- `review-miner`: public review/VOC pain points, praise, objections, and customer wording
-- `positioning-strategist`: target segment, core promise, differentiators, risks, and hypotheses
-- `listing-copywriter`: ecommerce title, listing bullets, detail page, FAQ, and objection handling
-- `content-planner`: short-video scripts, livestream talk tracks, social posts, and creator brief
-- `launch-planner`: 7-day launch testing calendar and metrics-to-collect
+- `voc-miner`: public review/VOC pain points, praise, objections, scenarios, and customer wording
+- `offer-architect`: target segment, core promise, differentiators, risks, hypotheses, and 7-day launch tests
+- `asset-studio`: ecommerce listing copy, short-video scripts, livestream talk tracks, social posts, and creator brief
 - `evidence-checker`: evidence ledger and unsupported-claim cleanup
 
 If custom ecommerce subagents are not available, complete the same workflow sequentially with your available tools.
@@ -83,6 +81,8 @@ Do not invent:
 
 If those metrics are unavailable, write `unavailable` and propose a launch test to collect them.
 
+When no merchant backend data is available, do not use private platform metrics as default final-artifact KPIs. Prefer lightweight validation signals such as target-user sample feedback, share/save/comment intent, inquiry count, preorder interest, creator response quality, and repeated objections. Mention CTR, CVR, ROI, refund rate, or repeat purchase rate only as unavailable metrics, uploaded evidence, or future metrics to collect after platform access exists.
+
 Every major recommendation must be tied to one of:
 
 - `observed_public`
@@ -149,16 +149,20 @@ Optional if useful:
 }
 ```
 
+Before presenting files, ensure `evidence-ledger.json` is a JSON array, not a Markdown code block, and contains no unescaped line breaks inside string values.
+
 `competitor-table.csv` columns:
 
 ```csv
-competitor_name,platform,product_url,price_low,price_high,key_claims,visible_strengths,visible_weaknesses,evidence_type,confidence,notes
+competitor_name,platform,product_url,price_low,price_high,key_claims,visible_strengths,visible_weaknesses,evidence_type,source_type,confidence,notes
 ```
+
+Before presenting files, ensure CSV files are parseable by a standard CSV reader and every row has the declared column count.
 
 `launch-calendar.csv` columns:
 
 ```csv
-day,objective,experiment,asset,channel,metric_to_collect,decision_rule,owner,expected_output
+day,objective,experiment,asset,channel,validation_signal_to_collect,decision_rule,owner,expected_output
 ```
 
 ## Language

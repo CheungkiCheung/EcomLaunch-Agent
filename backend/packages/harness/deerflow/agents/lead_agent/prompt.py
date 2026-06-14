@@ -189,7 +189,7 @@ def _build_available_subagents_description(available_names: list[str], bash_avai
     """
     # Built-in descriptions (kept for backward compatibility with existing prompt quality)
     builtin_descriptions = {
-        "general-purpose": "For ANY non-trivial task - web research, code exploration, file operations, analysis, etc.",
+        "general-purpose": "Fallback for non-trivial tasks that do not match a more specialized subagent.",
         "bash": (
             "For command execution (git, build, test, deploy operations)" if bash_available else "Not available in the current sandbox configuration. Use direct file/web tools or switch to AioSandboxProvider for isolated shell access."
         ),
@@ -211,6 +211,89 @@ def _build_available_subagents_description(available_names: list[str], bash_avai
     return "\n".join(lines)
 
 
+def _build_specialized_subagent_guidance(available_names: list[str]) -> str:
+    """Build role-selection guidance when custom subagents are configured."""
+    custom_names = [name for name in available_names if name not in {"general-purpose", "bash"}]
+    if not custom_names:
+        return ""
+
+    names = ", ".join(f"`{name}`" for name in custom_names)
+    return f"""
+**Specialized Subagent Selection:**
+- Specialized subagents are available: {names}.
+- When a sub-task matches one of these roles, use that exact role name as `subagent_type`.
+- Do NOT use `general-purpose` for work covered by a specialized subagent.
+- Reserve `general-purpose` only for meaningful sub-tasks with no matching specialist.
+- The `description` field is only the short UI label; the actual routing key is `subagent_type`.
+"""
+
+
+def _build_subagent_usage_examples(available_names: list[str], n: int) -> str:
+    """Build examples that reinforce exact custom subagent routing when available."""
+    custom_names = [name for name in available_names if name not in {"general-purpose", "bash"}]
+    if len(custom_names) >= 3:
+        a, b, c = custom_names[:3]
+        return f"""**Usage Example 1 - Specialized Single Batch (≤{n} sub-tasks):**
+
+```python
+# User asks for a domain-specific analysis with three independent workstreams
+# Thinking: 3 sub-tasks → fits in 1 batch and each has a matching specialist
+
+task(description="{a} workstream", prompt="...", subagent_type="{a}")
+task(description="{b} workstream", prompt="...", subagent_type="{b}")
+task(description="{c} workstream", prompt="...", subagent_type="{c}")
+# All 3 run in parallel → synthesize results
+```
+
+**Usage Example 2 - Multiple Batches (>{n} sub-tasks):**
+
+```python
+# Thinking: more than {n} sub-tasks → split into batches
+# Turn 1: Launch first batch using exact specialist names
+task(description="{a} workstream", prompt="...", subagent_type="{a}")
+task(description="{b} workstream", prompt="...", subagent_type="{b}")
+task(description="{c} workstream", prompt="...", subagent_type="{c}")
+
+# Turn 2: Launch remaining specialists or fallback only when no specialist matches
+task(description="unmatched workstream", prompt="...", subagent_type="general-purpose")
+
+# Final turn: Synthesize ALL results from all batches
+```
+"""
+
+    return f"""**Usage Example 1 - Single Batch (≤{n} sub-tasks):**
+
+```python
+# User asks: "Why is Tencent's stock price declining?"
+# Thinking: 3 sub-tasks → fits in 1 batch
+
+# Turn 1: Launch 3 subagents in parallel
+task(description="Tencent financial data", prompt="...", subagent_type="general-purpose")
+task(description="Tencent news & regulation", prompt="...", subagent_type="general-purpose")
+task(description="Industry & market trends", prompt="...", subagent_type="general-purpose")
+# All 3 run in parallel → synthesize results
+```
+
+**Usage Example 2 - Multiple Batches (>{n} sub-tasks):**
+
+```python
+# User asks: "Compare AWS, Azure, GCP, Alibaba Cloud, and Oracle Cloud"
+# Thinking: 5 sub-tasks → need multiple batches (max {n} per batch)
+
+# Turn 1: Launch first batch of {n}
+task(description="AWS analysis", prompt="...", subagent_type="general-purpose")
+task(description="Azure analysis", prompt="...", subagent_type="general-purpose")
+task(description="GCP analysis", prompt="...", subagent_type="general-purpose")
+
+# Turn 2: Launch remaining batch (after first batch completes)
+task(description="Alibaba Cloud analysis", prompt="...", subagent_type="general-purpose")
+task(description="Oracle Cloud analysis", prompt="...", subagent_type="general-purpose")
+
+# Turn 3: Synthesize ALL results from both batches
+```
+"""
+
+
 def _build_subagent_section(max_concurrent: int, *, app_config: AppConfig | None = None) -> str:
     """Build the subagent system prompt section with dynamic concurrency limit.
 
@@ -227,6 +310,8 @@ def _build_subagent_section(max_concurrent: int, *, app_config: AppConfig | None
     # Dynamically build subagent type descriptions from registry (aligned with Codex's
     # agent_type_description pattern where all registered roles are listed in the tool spec).
     available_subagents = _build_available_subagents_description(available_names, bash_available, app_config=app_config)
+    specialized_subagent_guidance = _build_specialized_subagent_guidance(available_names)
+    usage_examples = _build_subagent_usage_examples(available_names, n)
     direct_tool_examples = "bash, ls, read_file, web_search, etc." if bash_available else "ls, read_file, web_search, etc."
     direct_execution_example = (
         '# User asks: "Run the tests"\n# Thinking: Cannot decompose into parallel sub-tasks\n# → Execute directly\n\nbash("npm test")  # Direct execution, not task()'
@@ -257,6 +342,7 @@ You are running with subagent capabilities enabled. Your role is to be a **task 
 
 **Available Subagents:**
 {available_subagents}
+{specialized_subagent_guidance}
 
 **Your Orchestration Strategy:**
 
@@ -316,36 +402,7 @@ For complex queries, break them down into focused sub-tasks and execute in paral
 - The tool call will block until the subagent completes its work
 - Once complete, the result is returned to you directly
 
-**Usage Example 1 - Single Batch (≤{n} sub-tasks):**
-
-```python
-# User asks: "Why is Tencent's stock price declining?"
-# Thinking: 3 sub-tasks → fits in 1 batch
-
-# Turn 1: Launch 3 subagents in parallel
-task(description="Tencent financial data", prompt="...", subagent_type="general-purpose")
-task(description="Tencent news & regulation", prompt="...", subagent_type="general-purpose")
-task(description="Industry & market trends", prompt="...", subagent_type="general-purpose")
-# All 3 run in parallel → synthesize results
-```
-
-**Usage Example 2 - Multiple Batches (>{n} sub-tasks):**
-
-```python
-# User asks: "Compare AWS, Azure, GCP, Alibaba Cloud, and Oracle Cloud"
-# Thinking: 5 sub-tasks → need multiple batches (max {n} per batch)
-
-# Turn 1: Launch first batch of {n}
-task(description="AWS analysis", prompt="...", subagent_type="general-purpose")
-task(description="Azure analysis", prompt="...", subagent_type="general-purpose")
-task(description="GCP analysis", prompt="...", subagent_type="general-purpose")
-
-# Turn 2: Launch remaining batch (after first batch completes)
-task(description="Alibaba Cloud analysis", prompt="...", subagent_type="general-purpose")
-task(description="Oracle Cloud analysis", prompt="...", subagent_type="general-purpose")
-
-# Turn 3: Synthesize ALL results from both batches
-```
+{usage_examples}
 
 **Counter-Example - Direct Execution (NO subagents):**
 
