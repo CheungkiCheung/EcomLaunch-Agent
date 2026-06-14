@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { useArtifacts } from "@/components/workspace/artifacts";
+import { PixelOffice } from "./pixel-office";
 import { useI18n } from "@/core/i18n/hooks";
 import {
   extractPresentFilesFromMessage,
@@ -624,6 +625,74 @@ export function LaunchCrewPanel({
             </div>
           </div>
         </header>
+
+        <Separator />
+
+        {/* 像素艺术办公室 */}
+        <div className="shrink-0 px-4 py-3">
+          <PixelOffice
+            agentStatuses={{
+              "launch-director": isStreaming ? "working" : "idle",
+              "market-voc-researcher": visibleRoles.some(
+                (r) => r.id === "market-voc-researcher" && isWorkingStatus(r.status),
+              )
+                ? "working"
+                : visibleRoles.some(
+                      (r) =>
+                        r.id === "market-voc-researcher" &&
+                        (r.status === "done" || r.status === "delivered"),
+                    )
+                  ? "done"
+                  : "idle",
+              "offer-architect": visibleRoles.some(
+                (r) => r.id === "offer-architect" && isWorkingStatus(r.status),
+              )
+                ? "working"
+                : visibleRoles.some(
+                      (r) =>
+                        r.id === "offer-architect" &&
+                        (r.status === "done" || r.status === "delivered"),
+                    )
+                  ? "done"
+                  : "idle",
+              "growth-analyst": visibleRoles.some(
+                (r) => r.id === "growth-analyst" && isWorkingStatus(r.status),
+              )
+                ? "working"
+                : visibleRoles.some(
+                      (r) =>
+                        r.id === "growth-analyst" &&
+                        (r.status === "done" || r.status === "delivered"),
+                    )
+                  ? "done"
+                  : "idle",
+              "asset-studio": visibleRoles.some(
+                (r) => r.id === "asset-studio" && isWorkingStatus(r.status),
+              )
+                ? "working"
+                : visibleRoles.some(
+                      (r) =>
+                        r.id === "asset-studio" &&
+                        (r.status === "done" || r.status === "delivered"),
+                    )
+                  ? "done"
+                  : "idle",
+              "evidence-checker": visibleRoles.some(
+                (r) => r.id === "evidence-checker" && isWorkingStatus(r.status),
+              )
+                ? "working"
+                : visibleRoles.some(
+                      (r) =>
+                        r.id === "evidence-checker" &&
+                        (r.status === "done" || r.status === "delivered"),
+                    )
+                  ? "done"
+                  : "idle",
+            }}
+            progress={progress}
+            currentStage={currentStage?.label || "等待中"}
+          />
+        </div>
 
         <Separator />
 
