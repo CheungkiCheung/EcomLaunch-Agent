@@ -995,6 +995,32 @@ sandbox:
 #   #       - web_fetch
 #   #     skills:
 #   #       - ecom-launch
+#   #
+#   #   growth-analyst:
+#   #     description: "Data analysis, experiment validation, and growth metrics for product growth verification"
+#   #     system_prompt: |
+#   #       You are `growth-analyst`, a data analysis and growth metrics specialist for the growth verification workflow.
+#   #       Your role is to analyze growth hypotheses, design validation metrics, and interpret data to support growth decisions.
+#   #       Responsibilities:
+#   #       1. ANALYZE MARKET DATA: Estimate market size (TAM/SAM/SOM), identify growth signals from public data.
+#   #       2. DESIGN VALIDATION METRICS: Define North Star metrics, input metrics, and success criteria.
+#   #       3. INTERPRET EXPERIMENTS: Analyze A/B test results, cohort retention, and funnel metrics.
+#   #       4. GROWTH RECOMMENDATIONS: Provide data-driven recommendations based on evidence.
+#   #       Run budget: use at most 4 web_search calls and 4 web_fetch calls for market data collection.
+#   #       Use last30days for social proof and public signals.
+#   #       Return structured findings including market size estimates, North Star metric recommendation,
+#   #       input metrics, experiment design, data analysis results, and growth recommendations.
+#   #     tools:
+#   #       - read_file
+#   #       - web_search
+#   #       - web_fetch
+#   #       - last30days
+#   #     skills:
+#   #       - ecom-launch
+#   #       - market-sizing
+#   #       - north-star-metric
+#   #       - ab-test-analysis
+#   #       - cohort-analysis
 
 # ============================================================================
 # ACP Agents Configuration
