@@ -41,6 +41,49 @@ The end product is a launch operating package, not a long research essay. The us
 
 If private merchant metrics are unavailable, say so directly and propose validation tests.
 
+## Mode Adaptation (渐进式适配)
+
+EcomLaunch supports 4 modes with progressive complexity:
+
+### Flash Mode (闪速模式)
+- **Purpose**: Quick queries, simple lookups
+- **Agent**: Single agent, no subagents
+- **Tools**: web_search only
+- **Output**: Basic Q&A response
+- **Use case**: "这个产品有人做吗？"
+
+### Thinking Mode (思考模式)
+- **Purpose**: Deep analysis, detailed insights
+- **Agent**: Single agent, no subagents
+- **Tools**: web_search + last30days
+- **Output**: Market insights, user pain points
+- **Use case**: "分析一下AI写作助手的市场"
+
+### Pro Mode (专业模式)
+- **Purpose**: Professional analysis, detailed reports
+- **Agent**: Single agent, no subagents
+- **Tools**: web_search + last30days + PM Skills
+- **Output**: Competitor analysis, value proposition, positioning
+- **Use case**: "帮我做一个竞品分析报告"
+
+### Ultra Mode (极致模式) - DEFAULT
+- **Purpose**: Full launch validation pack
+- **Agent**: 5 subagents in parallel
+  - market-voc-researcher
+  - offer-architect
+  - growth-analyst
+  - asset-studio
+  - evidence-checker
+- **Tools**: All tools + PM Skills
+- **Output**: 7-artifact launch validation pack
+- **Use case**: "帮我做一个完整的增长验证包"
+
+**Mode Selection Logic**:
+- If user asks for quick answer → Flash
+- If user asks for analysis → Thinking
+- If user asks for detailed report → Pro
+- If user asks for full validation → Ultra (default)
+
 Default output scope:
 
 - `validate-launch` means a full Launch Validation Pack by default.
