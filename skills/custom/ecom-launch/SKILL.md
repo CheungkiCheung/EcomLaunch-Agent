@@ -104,6 +104,17 @@ Run the `validate-launch` workflow when the user asks to:
 
 If the user asks for a broad competitive analysis but the context is ecommerce/new-product launch, steer toward launch validation instead of a generic competitor report.
 
+Run the `calibrate-content` workflow when the user asks to:
+
+- score or grade ecommerce content before publishing
+- predict which title, script, or listing variant will perform better
+- review content performance data and extract learnings
+- improve or evolve a content scoring rubric
+- run a post-publish retrospective
+- decide which content variant to ship first
+
+For content calibration tasks, delegate to the `content-calibration` skill. The `asset-studio` subagent handles content scoring and prediction; `evidence-checker` handles retro analysis and rubric auditing.
+
 ## Forbidden Claims
 
 Do not invent or imply access to private ecommerce metrics unless the user uploaded real data containing them.
@@ -515,6 +526,11 @@ phrases as factual copy unless they are provided by the user or a cited public
 source. Put them in `Draft copy requiring product/spec/policy confirmation` or
 `Do-not-use-until-verified claims`.
 
+When the workflow is `calibrate-content` rather than `validate-launch`, asset-studio also returns:
+- content scorecard with dimension scores and weighted total
+- blind performance prediction with confidence level
+- key risk and upside factors for each content piece
+
 #### evidence-checker
 
 Return:
@@ -527,6 +543,12 @@ Return:
 - confidence summary
 - missing-data list
 - recommended validation data to collect after launch
+
+When the workflow is `calibrate-content`, evidence-checker also returns:
+- retro analysis comparing prediction vs actual performance
+- dimension-level calibration (overestimated / matches / underestimated)
+- rubric evolution suggestions with safety-brake validation
+- updated calibration-ledger.json entries
 
 The evidence checker must not soften unsupported metric or product claims; it
 must remove, relabel, or move them into a missing-data / do-not-use section.
