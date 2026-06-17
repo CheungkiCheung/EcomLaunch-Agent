@@ -1,6 +1,6 @@
 # openGrowth
 
-> AI多Agent增长引擎 - 从公开信号自动生成增长验证包
+> AI增长实验引擎 — 从公开信号到校准决策，建立你自己的判断公式
 
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](./backend/pyproject.toml)
 [![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white)](./Makefile)
@@ -8,15 +8,16 @@
 
 ## 简介
 
-openGrowth 是一个**开源的AI多Agent增长引擎**，采用 Orchestrator-Subagent 架构，5个专业Agent并行协作，从公开信号（Reddit、YouTube、Hacker News、Polymarket）自动生成产品增长验证包。
+openGrowth 是一个**开源的AI增长实验引擎**，采用 Orchestrator-Subagent 架构，5个专业Agent并行协作，覆盖从上线前验证到内容校准的完整增长实验链路。
 
 ### 核心特性
 
 - **多Agent协作** - 5个专业Agent并行工作
 - **证据驱动** - 基于公开信号，非主观判断
+- **实验校准** - Score → Predict → Retro → Evolve 闭环
 - **游戏化界面** - 像素艺术办公室
 - **渐进式模式** - Flash/Thinking/Pro/Ultra 4种模式
-- **7件套产出物** - 完整的增长验证包
+- **两大工作流** - validate-launch + calibrate-content
 
 ## 架构
 
@@ -101,7 +102,9 @@ open http://localhost:2026
 | **Pro** | 详细报告 | 单Agent | 竞品分析 |
 | **Ultra** | 完整验证 | 5个Agent | 7件套验证包 |
 
-## 7件套产出物
+## 产出物
+
+### validate-launch（上线前验证）
 
 1. **launch-war-room.html** - 增长决策仪表板
 2. **evidence-ledger.json** - 证据账本
@@ -110,6 +113,12 @@ open http://localhost:2026
 5. **listing-pack.md** - 产品文案
 6. **content-pack.md** - 增长内容
 7. **launch-calendar.csv** - 7天验证计划
+
+### calibrate-content（内容校准）
+
+1. **calibration-ledger.json** - 校准账本
+2. **rubric.md** - 评分公式
+3. **content-scorecard.md** - 内容评分卡
 
 ## 技术栈
 
@@ -146,6 +155,14 @@ open http://localhost:2026
 用户：我想上一款便携咖啡杯，帮我分析一下市场
 系统：搜索用户讨论、竞品分析
 输出：市场洞察 + 产品文案
+```
+
+### 场景4：卖家校准内容表现
+
+```
+用户：帮我回顾上周发的5条短视频脚本，哪些预测准、哪些翻车了
+系统：对比 blind prediction vs 实际数据，输出校准账本
+输出：calibration-ledger.json + 更新后的评分公式
 ```
 
 ## 项目结构

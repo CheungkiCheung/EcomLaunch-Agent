@@ -144,7 +144,7 @@ function WhiteBoard({
 
       {/* 任务进度 */}
       <div className="space-y-1">
-        {["需求澄清", "市场研究", "增长策略", "内容创作", "数据分析", "证据审计"].map(
+        {["需求澄清", "市场研究", "增长策略", "内容创作", "数据分析", "证据审计", "内容校准"].map(
           (task, index) => {
             const taskProgress = Math.min(100, Math.max(0, progress - index * 15));
             const status =

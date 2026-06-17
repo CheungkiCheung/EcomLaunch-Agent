@@ -2,7 +2,7 @@
 
 ## Project Identity
 
-DeerFlow 2.0 is a LangGraph-based AI super agent harness. This repo has been forked and extended with **EcomLaunch Agent** — a vertical ecommerce new-product launch validation product.
+DeerFlow 2.0 is a LangGraph-based AI super agent harness. This repo has been forked and extended with **EcomLaunch Agent** — a vertical ecommerce growth experiment engine covering pre-launch validation and post-launch content calibration.
 
 **Key custom addition**: `agents/ecom-launch/` + `skills/custom/ecom-launch/` + `frontend/src/components/workspace/ecom-launch/`
 
@@ -46,7 +46,9 @@ deer-flow/
 │   └── ecom-launch/            # EcomLaunch Agent (SOUL.md + config.yaml)
 ├── skills/                     # Agent skills
 │   ├── public/                 # Built-in skills (22 total)
-│   └── custom/ecom-launch/     # EcomLaunch skill (827 lines)
+│   └── custom/
+│       ├── ecom-launch/         # EcomLaunch skill (validate-launch workflow)
+│       └── content-calibration/ # Content calibration skill (calibrate-content workflow)
 ├── config.yaml                 # Main configuration (generate from config.example.yaml)
 └── extensions_config.json      # MCP servers + skills config
 ```

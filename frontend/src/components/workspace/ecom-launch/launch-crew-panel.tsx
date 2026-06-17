@@ -96,7 +96,7 @@ const ROLE_CONFIGS: LaunchCrewRoleConfig[] = [
   {
     id: "asset-studio",
     name: "Asset Studio",
-    desk: "内容资产工坊",
+    desk: "内容资产与校准",
     accent: "bg-fuchsia-500",
     icon: FileTextIcon,
   },
@@ -117,6 +117,9 @@ const ARTIFACT_TO_ROLE: Array<[string, LaunchCrewRole]> = [
   ["launch-calendar.csv", "offer-architect"],
   ["listing-pack.md", "asset-studio"],
   ["content-pack.md", "asset-studio"],
+  ["content-scorecard.md", "asset-studio"],
+  ["rubric.md", "evidence-checker"],
+  ["calibration-ledger.json", "evidence-checker"],
   ["evidence-ledger.json", "evidence-checker"],
   ["launch-war-room.html", "evidence-checker"],
 ];
@@ -129,6 +132,9 @@ const REQUIRED_DELIVERABLES: RequiredDeliverable[] = [
   { filepath: "content-pack.md", label: "内容包" },
   { filepath: "launch-calendar.csv", label: "7 天计划" },
   { filepath: "launch-war-room.html", label: "War room 页面" },
+  { filepath: "calibration-ledger.json", label: "校准账本" },
+  { filepath: "rubric.md", label: "评分公式" },
+  { filepath: "content-scorecard.md", label: "内容评分卡" },
 ];
 
 const WORKFLOW_STAGES: WorkflowStage[] = [
@@ -192,6 +198,22 @@ const WORKFLOW_STAGES: WorkflowStage[] = [
       "审计",
     ],
     artifactNames: ["evidence-ledger.json"],
+  },
+  {
+    id: "calibrate",
+    label: "校准",
+    matchers: [
+      "calibrate",
+      "score",
+      "predict",
+      "retro",
+      "rubric",
+      "校准",
+      "评分",
+      "回顾",
+      "预测",
+    ],
+    artifactNames: ["calibration-ledger.json", "rubric.md"],
   },
   {
     id: "pack",
