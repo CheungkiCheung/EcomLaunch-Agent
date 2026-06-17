@@ -19,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { useArtifacts } from "@/components/workspace/artifacts";
-import { PixelOffice } from "./pixel-office";
 import { useI18n } from "@/core/i18n/hooks";
 import {
   extractPresentFilesFromMessage,
@@ -35,11 +34,14 @@ import { explainLastToolCall } from "@/core/tools/utils";
 import { getFileName } from "@/core/utils/files";
 import { cn } from "@/lib/utils";
 
+import { PixelOffice } from "./pixel-office";
+
 type LaunchCrewRole =
   | "market-voc-researcher"
   | "offer-architect"
   | "asset-studio"
-  | "evidence-checker";
+  | "evidence-checker"
+  | "growth-analyst";
 
 type LaunchCrewStatus =
   | "idle"
@@ -712,7 +714,7 @@ export function LaunchCrewPanel({
                   : "idle",
             }}
             progress={progress}
-            currentStage={currentStage?.label || "等待中"}
+            currentStage={currentStage?.label ?? "等待中"}
           />
         </div>
 
