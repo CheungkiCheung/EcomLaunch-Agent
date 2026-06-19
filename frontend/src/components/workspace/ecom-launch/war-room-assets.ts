@@ -1,7 +1,13 @@
 import type { LaunchCrewAgent } from "./launch-crew-activity-model";
 import type { WarRoomMotionState, WarRoomWaypointId } from "./war-room-motion";
 
-export type WarRoomCharacterFrame = "idle" | "walk-left" | "walk-right";
+export type WarRoomCharacterFrame =
+  | "idle"
+  | "walk-left"
+  | "walk-right"
+  | "walk-up"
+  | "walk-down"
+  | "work";
 
 export type WarRoomPropAsset = {
   id: string;
@@ -121,9 +127,22 @@ export const WAR_ROOM_PROPS: WarRoomPropAsset[] = [
 function characterFrameForMotion(
   motionState: WarRoomMotionState,
   deltaX: number,
+  deltaY: number,
 ): WarRoomCharacterFrame {
+  if (motionState === "returning_home" || motionState === "working") {
+    return "work";
+  }
+  if (motionState === "blocked") {
+    return "idle";
+  }
   if (motionState !== "roaming" && motionState !== "reporting") {
     return "idle";
+  }
+  if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY < -1) {
+    return "walk-up";
+  }
+  if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 1) {
+    return "walk-down";
   }
   if (deltaX < -1) {
     return "walk-left";
@@ -138,8 +157,8 @@ export function warRoomCharacterSprite(
   agent: Pick<LaunchCrewAgent, "id">,
   motion: {
     state: WarRoomMotionState;
-    previousPosition: { x: number };
-    position: { x: number };
+    previousPosition: { x: number; y: number };
+    position: { x: number; y: number };
   },
 ) {
   if (agent.id === "launch-director") {
@@ -154,6 +173,7 @@ export function warRoomCharacterSprite(
   const frame = characterFrameForMotion(
     motion.state,
     motion.position.x - motion.previousPosition.x,
+    motion.position.y - motion.previousPosition.y,
   );
 
   return {

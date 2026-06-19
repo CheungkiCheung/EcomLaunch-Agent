@@ -43,7 +43,14 @@ const roles = [
   },
 ];
 
-const frames = ["idle", "walk-left", "walk-right"];
+const frames = [
+  "idle",
+  "walk-left",
+  "walk-right",
+  "walk-up",
+  "walk-down",
+  "work",
+];
 
 function save(relativePath, content) {
   const path = join(assetRoot, relativePath);
@@ -54,13 +61,17 @@ function save(relativePath, content) {
 function characterSvg(role, frame) {
   const walkingLeft = frame === "walk-left";
   const walkingRight = frame === "walk-right";
-  const leftArmY = walkingLeft ? 38 : walkingRight ? 34 : 36;
-  const rightArmY = walkingRight ? 38 : walkingLeft ? 34 : 36;
-  const leftLegY = walkingLeft ? 60 : walkingRight ? 56 : 58;
-  const rightLegY = walkingRight ? 60 : walkingLeft ? 56 : 58;
+  const walkingUp = frame === "walk-up";
+  const walkingDown = frame === "walk-down";
+  const working = frame === "work";
+  const leftArmY = working ? 44 : walkingLeft || walkingDown ? 39 : 34;
+  const rightArmY = working ? 44 : walkingRight || walkingUp ? 39 : 34;
+  const leftLegY = walkingLeft || walkingDown ? 61 : 56;
+  const rightLegY = walkingRight || walkingUp ? 61 : 56;
   const ponytail = role.accessory === "ponytail";
   const cap = role.accessory === "cap";
   const glasses = role.accessory === "glasses";
+  const showFace = !walkingUp;
 
   return `
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="82" viewBox="0 0 64 82" shape-rendering="crispEdges">
@@ -75,9 +86,10 @@ function characterSvg(role, frame) {
   <path d="M22 14h20v9H22zM20 20h24v5H20z" fill="${role.hair}"/>
   ${cap ? `<path d="M18 11h28v7H18zM25 7h16v7H25zM43 15h10v4H43z" fill="${role.jacket}"/><path d="M25 9h16v2H25z" fill="${role.accent}" opacity=".5"/>` : ""}
   ${ponytail ? `<path d="M40 20h9v24h-9zM43 41h6v10h-6z" fill="${role.hair}"/>` : ""}
-  ${glasses ? `<path d="M24 26h7v5h-7zM34 26h7v5h-7zM31 28h3v1h-3z" fill="#111827"/><path d="M25 27h5v3h-5zM35 27h5v3h-5z" fill="#dbeafe"/>` : ""}
-  <path d="M27 29h3v4h-3zM36 29h3v4h-3z" fill="#111827"/>
-  <path d="M30 36h7v2h-7z" fill="#9a3412" opacity=".5"/>
+  ${walkingUp ? `<path d="M21 24h22v16H21z" fill="${role.hair}"/><path d="M26 37h12v3H26z" fill="#d8905f"/>` : ""}
+  ${showFace && glasses ? `<path d="M24 26h7v5h-7zM34 26h7v5h-7zM31 28h3v1h-3z" fill="#111827"/><path d="M25 27h5v3h-5zM35 27h5v3h-5z" fill="#dbeafe"/>` : ""}
+  ${showFace ? `<path d="M27 29h3v4h-3zM36 29h3v4h-3z" fill="#111827"/><path d="M30 36h7v2h-7z" fill="#9a3412" opacity=".5"/>` : ""}
+  ${working ? `<path d="M24 55h16v5H24z" fill="#0f172a"/><path d="M28 50h12v6H28z" fill="${role.accent}"/>` : ""}
   <path d="M22 35h20v4H22zM22 57h20v4H22zM18 ${leftArmY}h7v4h-7zM39 ${rightArmY}h7v4h-7z" fill="#0f172a" opacity=".22"/>
   <path d="M20 17h24v4H20zM20 21h4v14h-4zM40 21h4v14h-4zM22 39h4v18h-4zM38 39h4v18h-4z" fill="#0f172a" opacity=".16"/>
 </svg>`;

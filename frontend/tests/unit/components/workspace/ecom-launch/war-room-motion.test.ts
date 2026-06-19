@@ -62,9 +62,11 @@ describe("war room motion model", () => {
     expect(motion).toMatchObject({
       state: "returning_home",
       home: AGENT_HOME_WAYPOINTS["offer-architect"],
+      position: WAR_ROOM_WAYPOINTS.offerDesk,
       targetWaypoint: "offerDesk",
       target: WAR_ROOM_WAYPOINTS.offerDesk,
     });
+    expect(motion?.previousPosition).not.toEqual(WAR_ROOM_WAYPOINTS.offerDesk);
   });
 
   it("routes completed agents to the artifact conveyor", () => {
@@ -74,6 +76,7 @@ describe("war room motion model", () => {
 
     expect(motion).toMatchObject({
       state: "reporting",
+      position: WAR_ROOM_WAYPOINTS.artifactConveyor,
       targetWaypoint: "artifactConveyor",
       target: WAR_ROOM_WAYPOINTS.artifactConveyor,
     });

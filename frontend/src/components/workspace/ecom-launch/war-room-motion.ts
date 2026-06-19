@@ -127,13 +127,17 @@ export function buildWarRoomMotion(
     const position =
       state === "roaming"
         ? WAR_ROOM_WAYPOINTS[roamWaypoint]
-        : WAR_ROOM_WAYPOINTS[home];
+        : state === "reporting"
+          ? WAR_ROOM_WAYPOINTS.artifactConveyor
+          : WAR_ROOM_WAYPOINTS[home];
     const previousPosition =
       state === "roaming"
         ? WAR_ROOM_WAYPOINTS[previousRoamWaypoint]
         : state === "reporting"
           ? WAR_ROOM_WAYPOINTS[home]
-          : position;
+          : state === "returning_home"
+            ? WAR_ROOM_WAYPOINTS[previousRoamWaypoint]
+            : position;
 
     return {
       id: agent.id,

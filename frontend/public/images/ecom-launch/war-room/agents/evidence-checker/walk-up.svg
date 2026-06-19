@@ -10,9 +10,9 @@
   <path d="M22 14h20v9H22zM20 20h24v5H20z" fill="#151a21"/>
   
   
+  <path d="M21 24h22v16H21z" fill="#151a21"/><path d="M26 37h12v3H26z" fill="#d8905f"/>
   
-  <path d="M24 26h7v5h-7zM34 26h7v5h-7zM31 28h3v1h-3z" fill="#111827"/><path d="M25 27h5v3h-5zM35 27h5v3h-5z" fill="#dbeafe"/>
-  <path d="M27 29h3v4h-3zM36 29h3v4h-3z" fill="#111827"/><path d="M30 36h7v2h-7z" fill="#9a3412" opacity=".5"/>
+  
   
   <path d="M22 35h20v4H22zM22 57h20v4H22zM18 34h7v4h-7zM39 39h7v4h-7z" fill="#0f172a" opacity=".22"/>
   <path d="M20 17h24v4H20zM20 21h4v14h-4zM40 21h4v14h-4zM22 39h4v18h-4zM38 39h4v18h-4z" fill="#0f172a" opacity=".16"/>

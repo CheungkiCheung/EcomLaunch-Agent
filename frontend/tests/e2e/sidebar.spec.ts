@@ -70,6 +70,11 @@ test.describe("Sidebar navigation", () => {
         "[data-war-room-character='market-voc-researcher'][data-war-room-standalone-character='true']",
       ),
     ).toBeVisible();
+    await expect(
+      page.locator(
+        "[data-war-room-sprite-frame='walk-left'], [data-war-room-sprite-frame='walk-right'], [data-war-room-sprite-frame='walk-up'], [data-war-room-sprite-frame='walk-down']",
+      ),
+    ).not.toHaveCount(0);
     await expect(page.locator("[data-motion-state='roaming']")).not.toHaveCount(
       0,
     );
