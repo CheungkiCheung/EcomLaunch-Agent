@@ -6,6 +6,7 @@ import type {
 } from "@/components/workspace/ecom-launch/launch-crew-activity-model";
 import {
   AGENT_HOME_WAYPOINTS,
+  buildWarRoomPath,
   buildWarRoomMotion,
   motionStateForAgent,
   WAR_ROOM_WAYPOINTS,
@@ -67,6 +68,8 @@ describe("war room motion model", () => {
       target: WAR_ROOM_WAYPOINTS.offerDesk,
     });
     expect(motion?.previousPosition).not.toEqual(WAR_ROOM_WAYPOINTS.offerDesk);
+    expect(motion?.path.at(-1)).toEqual(WAR_ROOM_WAYPOINTS.offerDesk);
+    expect(motion?.path).toContainEqual(WAR_ROOM_WAYPOINTS.centerWalkway);
   });
 
   it("routes completed agents to the artifact conveyor", () => {
@@ -80,6 +83,7 @@ describe("war room motion model", () => {
       targetWaypoint: "artifactConveyor",
       target: WAR_ROOM_WAYPOINTS.artifactConveyor,
     });
+    expect(motion?.path.at(-1)).toEqual(WAR_ROOM_WAYPOINTS.artifactConveyor);
   });
 
   it("keeps blocked agents at home with a blocked state", () => {
@@ -92,5 +96,18 @@ describe("war room motion model", () => {
       targetWaypoint: "evidenceDesk",
       target: WAR_ROOM_WAYPOINTS.evidenceDesk,
     });
+  });
+
+  it("routes long moves through walkways instead of a direct table-crossing line", () => {
+    const path = buildWarRoomPath(
+      WAR_ROOM_WAYPOINTS.marketDesk,
+      WAR_ROOM_WAYPOINTS.assetDesk,
+    );
+
+    expect(path.length).toBeGreaterThan(2);
+    expect(path).toContainEqual(WAR_ROOM_WAYPOINTS.leftWalkway);
+    expect(path).toContainEqual(WAR_ROOM_WAYPOINTS.centerWalkway);
+    expect(path).toContainEqual(WAR_ROOM_WAYPOINTS.rightWalkway);
+    expect(path.at(-1)).toEqual(WAR_ROOM_WAYPOINTS.assetDesk);
   });
 });

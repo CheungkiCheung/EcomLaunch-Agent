@@ -37,6 +37,9 @@ type MovingAgentNode = {
   sprite: Sprite;
   label: Text;
   ring: Graphics;
+  pathKey: string;
+  path: Array<{ x: number; y: number }>;
+  pathIndex: number;
   targetX: number;
   targetY: number;
   selected: boolean;
@@ -108,18 +111,22 @@ function drawRoomShell(root: Container) {
 
 function drawSignalLines(lineLayer: Graphics, motions: WarRoomAgentMotion[]) {
   lineLayer.clear();
-  const director = stagePoint(WAR_ROOM_WAYPOINTS.directorDesk);
   for (const motion of motions) {
     if (motion.id === "launch-director") continue;
-    const point = stagePoint(motion.position);
-    lineLayer
-      .moveTo(point.x, point.y)
-      .lineTo(director.x, director.y)
-      .stroke({
-        color: 0x78ffd4,
-        width: motion.state === "roaming" ? 1 : 2,
-        alpha: motion.state === "roaming" ? 0.24 : 0.78,
-      });
+    const points = [motion.previousPosition, ...motion.path].map(stagePoint);
+    for (let index = 0; index < points.length - 1; index += 1) {
+      const start = points[index];
+      const end = points[index + 1];
+      if (!start || !end) continue;
+      lineLayer
+        .moveTo(start.x, start.y)
+        .lineTo(end.x, end.y)
+        .stroke({
+          color: 0x78ffd4,
+          width: motion.state === "roaming" ? 1 : 2,
+          alpha: motion.state === "roaming" ? 0.18 : 0.62,
+        });
+    }
   }
 }
 
@@ -153,6 +160,14 @@ function pointWithOffset(point: WarRoomPoint, offsets = { x: 0, y: 0 }) {
     x: position.x + offsets.x,
     y: position.y + offsets.y,
   };
+}
+
+function stagePath(points: WarRoomPoint[]) {
+  return points.map(stagePoint);
+}
+
+function pathKey(points: WarRoomPoint[]) {
+  return points.map((point) => `${point.x}:${point.y}`).join("|");
 }
 
 function createAgentLabel(label: string, selected: boolean) {
@@ -194,6 +209,12 @@ function updateAgentNodePosition(node: MovingAgentNode) {
 
 function tickAgentNodes(state: PixiStageState) {
   for (const node of state.agents.values()) {
+    const waypoint = node.path[node.pathIndex] ?? {
+      x: node.targetX,
+      y: node.targetY,
+    };
+    node.targetX = waypoint.x;
+    node.targetY = waypoint.y;
     node.sprite.x += (node.targetX - node.sprite.x) * 0.12;
     node.sprite.y += (node.targetY - node.sprite.y) * 0.12;
     if (Math.abs(node.targetX - node.sprite.x) < 0.25) {
@@ -201,6 +222,13 @@ function tickAgentNodes(state: PixiStageState) {
     }
     if (Math.abs(node.targetY - node.sprite.y) < 0.25) {
       node.sprite.y = node.targetY;
+    }
+    if (
+      node.sprite.x === node.targetX &&
+      node.sprite.y === node.targetY &&
+      node.pathIndex < node.path.length - 1
+    ) {
+      node.pathIndex += 1;
     }
     updateAgentNodePosition(node);
   }
@@ -284,7 +312,9 @@ async function syncPixiStage({
       renderedAgent.sprite.src,
     );
     if (state.destroyed) return;
-    const target = stagePoint(renderedAgent.motion.position);
+    const path = stagePath(renderedAgent.motion.path);
+    const key = pathKey(renderedAgent.motion.path);
+    const target = path[0] ?? stagePoint(renderedAgent.motion.position);
     let node = state.agents.get(renderedAgent.agent.id);
     if (!node) {
       const sprite = new Sprite(texture);
@@ -308,6 +338,9 @@ async function syncPixiStage({
         sprite,
         label,
         ring,
+        pathKey: key,
+        path,
+        pathIndex: 0,
         targetX: target.x,
         targetY: target.y,
         selected: renderedAgent.agent.id === selectedAgentId,
@@ -319,8 +352,13 @@ async function syncPixiStage({
     node.sprite.texture = texture;
     node.sprite.width = renderedAgent.sprite.width;
     node.sprite.height = renderedAgent.sprite.height;
-    node.targetX = target.x;
-    node.targetY = target.y;
+    if (node.pathKey !== key) {
+      node.pathKey = key;
+      node.path = path;
+      node.pathIndex = 0;
+      node.targetX = target.x;
+      node.targetY = target.y;
+    }
     node.selected = renderedAgent.agent.id === selectedAgentId;
     node.label.style.fill = node.selected ? 0xeafffb : 0xcffcf1;
     updateAgentNodePosition(node);
@@ -362,6 +400,7 @@ function CanvasHitTargets({
             data-war-room-character={agent.id}
             data-war-room-standalone-character={String(sprite.standalone)}
             data-war-room-sprite-frame={sprite.frame}
+            data-war-room-path-length={motion.path.length}
             data-motion-state={motion.state}
             className={[
               "absolute size-16 -translate-x-1/2 -translate-y-full rounded-full text-[0px] focus-visible:outline-2 focus-visible:outline-cyan-200",

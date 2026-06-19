@@ -37,6 +37,7 @@ export type WarRoomAgentMotion = {
   home: WarRoomWaypointId;
   previousPosition: WarRoomPoint;
   position: WarRoomPoint;
+  path: WarRoomPoint[];
   target: WarRoomPoint | null;
   targetWaypoint: WarRoomWaypointId | null;
   state: WarRoomMotionState;
@@ -83,6 +84,44 @@ function deterministicIndex(id: string, tick: number, length: number) {
     hash = (hash * 31 + id.charCodeAt(i)) % 9973;
   }
   return hash % length;
+}
+
+function samePoint(a: WarRoomPoint, b: WarRoomPoint) {
+  return a.x === b.x && a.y === b.y;
+}
+
+function nearestWalkway(point: WarRoomPoint): WarRoomPoint {
+  if (point.y >= 66 && point.x < 58) {
+    return WAR_ROOM_WAYPOINTS.lowerWalkway;
+  }
+  if (point.x < 42) {
+    return WAR_ROOM_WAYPOINTS.leftWalkway;
+  }
+  if (point.x > 58) {
+    return WAR_ROOM_WAYPOINTS.rightWalkway;
+  }
+  return WAR_ROOM_WAYPOINTS.centerWalkway;
+}
+
+export function buildWarRoomPath(
+  from: WarRoomPoint,
+  to: WarRoomPoint,
+): WarRoomPoint[] {
+  if (samePoint(from, to)) {
+    return [to];
+  }
+
+  const path = [
+    nearestWalkway(from),
+    WAR_ROOM_WAYPOINTS.centerWalkway,
+    nearestWalkway(to),
+    to,
+  ];
+
+  return path.filter(
+    (point, index) =>
+      index === 0 || !samePoint(point, path[index - 1] ?? point),
+  );
 }
 
 export function motionStateForAgent(
@@ -144,6 +183,7 @@ export function buildWarRoomMotion(
       home,
       previousPosition,
       position,
+      path: buildWarRoomPath(previousPosition, position),
       target:
         state === "seated" || state === "working"
           ? null
