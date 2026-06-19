@@ -48,7 +48,7 @@ describe("war room motion model", () => {
     expect(motion?.state).toBe("roaming");
     expect(motion?.targetWaypoint).not.toBeNull();
     expect(
-      ["marketDesk", "whiteboard", "bigScreen", "coffee"].includes(
+      ["leftWalkway", "whiteboard", "bigScreen", "coffee"].includes(
         motion?.targetWaypoint ?? "",
       ),
     ).toBe(true);

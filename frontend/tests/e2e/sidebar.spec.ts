@@ -59,6 +59,17 @@ test.describe("Sidebar navigation", () => {
     await expect(
       page.locator("[data-war-room-agent='launch-director']"),
     ).toHaveAttribute("data-motion-state", "seated");
+    await expect(
+      page.locator("[data-war-room-prop='director-command-console']"),
+    ).toBeVisible();
+    await expect(page.locator("[data-war-room-prop$='-station']")).toHaveCount(
+      5,
+    );
+    await expect(
+      page.locator(
+        "[data-war-room-character='market-voc-researcher'][data-war-room-standalone-character='true']",
+      ),
+    ).toBeVisible();
     await expect(page.locator("[data-motion-state='roaming']")).not.toHaveCount(
       0,
     );

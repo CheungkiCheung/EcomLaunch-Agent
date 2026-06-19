@@ -121,10 +121,11 @@ export function EcomLaunchWarRoomPage() {
                 Live motion rules
               </div>
               {[
+                "Desks, screens, and conveyors are fixed room props.",
+                "Only standalone character sprites move across the room.",
                 "Idle agents roam between room hotspots.",
                 "Assigned agents return to their own station.",
                 "Launch Director stays seated at the command console.",
-                "Completed work moves through the artifact conveyor.",
               ].map((rule) => (
                 <div
                   key={rule}

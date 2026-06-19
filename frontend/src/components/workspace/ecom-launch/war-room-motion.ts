@@ -18,7 +18,11 @@ export type WarRoomWaypointId =
   | "whiteboard"
   | "coffee"
   | "artifactConveyor"
-  | "bigScreen";
+  | "bigScreen"
+  | "leftWalkway"
+  | "rightWalkway"
+  | "centerWalkway"
+  | "lowerWalkway";
 
 export type WarRoomMotionState =
   | "seated"
@@ -31,6 +35,7 @@ export type WarRoomMotionState =
 export type WarRoomAgentMotion = {
   id: LaunchCrewRole;
   home: WarRoomWaypointId;
+  previousPosition: WarRoomPoint;
   position: WarRoomPoint;
   target: WarRoomPoint | null;
   targetWaypoint: WarRoomWaypointId | null;
@@ -48,6 +53,10 @@ export const WAR_ROOM_WAYPOINTS: Record<WarRoomWaypointId, WarRoomPoint> = {
   coffee: { x: 12, y: 78 },
   artifactConveyor: { x: 66, y: 66 },
   bigScreen: { x: 50, y: 16 },
+  leftWalkway: { x: 30, y: 46 },
+  rightWalkway: { x: 70, y: 46 },
+  centerWalkway: { x: 50, y: 58 },
+  lowerWalkway: { x: 36, y: 76 },
 };
 
 export const AGENT_HOME_WAYPOINTS: Record<LaunchCrewRole, WarRoomWaypointId> = {
@@ -60,12 +69,12 @@ export const AGENT_HOME_WAYPOINTS: Record<LaunchCrewRole, WarRoomWaypointId> = {
 };
 
 const ROAM_WAYPOINTS: Record<LaunchCrewRole, WarRoomWaypointId[]> = {
-  "market-voc-researcher": ["marketDesk", "whiteboard", "bigScreen", "coffee"],
-  "offer-architect": ["offerDesk", "whiteboard", "artifactConveyor"],
+  "market-voc-researcher": ["leftWalkway", "whiteboard", "bigScreen", "coffee"],
+  "offer-architect": ["lowerWalkway", "whiteboard", "artifactConveyor"],
   "launch-director": ["directorDesk"],
-  "evidence-checker": ["evidenceDesk", "bigScreen", "artifactConveyor"],
-  "growth-analyst": ["growthDesk", "bigScreen", "artifactConveyor"],
-  "asset-studio": ["assetDesk", "artifactConveyor", "whiteboard"],
+  "evidence-checker": ["rightWalkway", "bigScreen", "artifactConveyor"],
+  "growth-analyst": ["centerWalkway", "bigScreen", "artifactConveyor"],
+  "asset-studio": ["rightWalkway", "artifactConveyor", "whiteboard"],
 };
 
 function deterministicIndex(id: string, tick: number, length: number) {
@@ -105,6 +114,10 @@ export function buildWarRoomMotion(
     const roamWaypoint =
       roamTargets[deterministicIndex(agent.id, tick, roamTargets.length)] ??
       home;
+    const previousRoamWaypoint =
+      roamTargets[
+        deterministicIndex(agent.id, Math.max(tick - 1, 0), roamTargets.length)
+      ] ?? home;
     const targetWaypoint =
       state === "roaming"
         ? roamWaypoint
@@ -115,10 +128,17 @@ export function buildWarRoomMotion(
       state === "roaming"
         ? WAR_ROOM_WAYPOINTS[roamWaypoint]
         : WAR_ROOM_WAYPOINTS[home];
+    const previousPosition =
+      state === "roaming"
+        ? WAR_ROOM_WAYPOINTS[previousRoamWaypoint]
+        : state === "reporting"
+          ? WAR_ROOM_WAYPOINTS[home]
+          : position;
 
     return {
       id: agent.id,
       home,
+      previousPosition,
       position,
       target:
         state === "seated" || state === "working"

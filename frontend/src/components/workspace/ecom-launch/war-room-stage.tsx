@@ -3,30 +3,9 @@
 import Image from "next/image";
 
 import type { LaunchCrewAgent } from "./launch-crew-activity-model";
-import { frameForAgent } from "./pixel-office";
+import { WAR_ROOM_PROPS, warRoomCharacterSprite } from "./war-room-assets";
 import type { WarRoomAgentMotion } from "./war-room-motion";
-
-const SPRITE_SIZES: Record<
-  LaunchCrewAgent["id"],
-  { width: number; height: number }
-> = {
-  "market-voc-researcher": { width: 118, height: 104 },
-  "offer-architect": { width: 118, height: 110 },
-  "launch-director": { width: 170, height: 142 },
-  "evidence-checker": { width: 116, height: 116 },
-  "growth-analyst": { width: 114, height: 114 },
-  "asset-studio": { width: 118, height: 74 },
-};
-
-function spritePath(agent: LaunchCrewAgent) {
-  const frame = frameForAgent(agent);
-  if (agent.id === "launch-director") {
-    return `/images/ecom-launch/sprites/launch-director/${frame}.png`;
-  }
-  const normalizedFrame =
-    frame === "complete" ? "talking" : frame === "error" ? "idle" : frame;
-  return `/images/ecom-launch/sprites/agents/${agent.id}/${normalizedFrame}.png`;
-}
+import { WAR_ROOM_WAYPOINTS } from "./war-room-motion";
 
 function pointStyle(point: { x: number; y: number }) {
   return {
@@ -58,6 +37,32 @@ export function WarRoomStage({
       <div className="absolute top-[3%] left-[24%] h-[7%] w-[52%] border-4 border-[#151e20] bg-[#a8bbc0]/18 shadow-[inset_0_0_0_3px_rgba(255,255,255,0.07)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_48%,rgba(5,9,10,0.48)_100%)]" />
 
+      <div className="absolute inset-0 z-20" aria-label="Fixed war room props">
+        {WAR_ROOM_PROPS.map((prop) => {
+          const waypoint = WAR_ROOM_WAYPOINTS[prop.waypoint];
+          return (
+            <Image
+              key={prop.id}
+              src={prop.src}
+              alt=""
+              width={prop.width}
+              height={prop.height}
+              data-war-room-prop={prop.id}
+              data-war-room-waypoint={prop.waypoint}
+              className="absolute -translate-x-1/2 -translate-y-full object-contain [image-rendering:pixelated]"
+              style={{
+                left: `${waypoint.x}%`,
+                top: `${waypoint.y}%`,
+                marginLeft: prop.offsetX,
+                marginTop: prop.offsetY,
+                zIndex: Math.round(waypoint.y * 10) - 30,
+              }}
+              unoptimized
+            />
+          );
+        })}
+      </div>
+
       <svg
         className="pointer-events-none absolute inset-0 z-10 size-full"
         viewBox="0 0 100 100"
@@ -81,17 +86,10 @@ export function WarRoomStage({
           ))}
       </svg>
 
-      <div className="absolute top-[18%] left-[41%] z-20 h-[23%] w-[18%] border-4 border-[#101716] bg-[#25363a] shadow-[0_0_32px_rgba(110,255,207,0.18)]">
-        <div className="absolute inset-3 bg-[#102126]">
-          <div className="absolute top-[20%] left-[18%] h-[28%] w-[36%] bg-cyan-300/70" />
-          <div className="absolute right-[12%] bottom-[18%] h-[32%] w-[42%] bg-emerald-300/45" />
-        </div>
-      </div>
-
       {agents.map((agent) => {
         const motion = motionByAgent.get(agent.id);
         if (!motion) return null;
-        const size = SPRITE_SIZES[agent.id];
+        const sprite = warRoomCharacterSprite(agent, motion);
         const selected = selectedAgentId === agent.id;
         return (
           <button
@@ -99,6 +97,9 @@ export function WarRoomStage({
             type="button"
             aria-label={`Select ${agent.name}`}
             data-war-room-agent={agent.id}
+            data-war-room-character={agent.id}
+            data-war-room-standalone-character={String(sprite.standalone)}
+            data-war-room-sprite-frame={sprite.frame}
             data-motion-state={motion.state}
             className="group absolute z-30 -translate-x-1/2 -translate-y-full text-left transition-[left,top,transform] duration-700 ease-out focus-visible:outline-none"
             style={{
@@ -117,10 +118,10 @@ export function WarRoomStage({
               <span className="pointer-events-none absolute top-full left-1/2 h-8 w-28 -translate-x-1/2 -translate-y-5 rounded-full border-2 border-cyan-200/90 shadow-[0_0_18px_rgba(103,255,214,0.45)]" />
             )}
             <Image
-              src={spritePath(agent)}
+              src={sprite.src}
               alt=""
-              width={size.width}
-              height={size.height}
+              width={sprite.width}
+              height={sprite.height}
               className={[
                 "relative z-10 object-contain [image-rendering:pixelated]",
                 motion.state === "roaming" ? "animate-pulse" : "",

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="72" viewBox="0 0 96 72" shape-rendering="crispEdges">
+  <path d="M6 44h84v12H6z" fill="#8b6238"/>
+  <path d="M10 56h76v8H10z" fill="#3c2b20"/>
+  <path d="M14 64h12v6H14zM70 64h12v6H70z" fill="#1f2933"/>
+  <path d="M6 42h84v4H6z" fill="#c58b4f"/>
+  <path d="M31 12h48v28h-48z" fill="#17262b"/>
+  <path d="M35 16h40v20h-40z" fill="#0b3a3f"/>
+  <path d="M39 21h10v3h-10zM39 28h28v3h-28zM55 21h12v3h-12z" fill="#bfdbfe"/>
+  <path d="M51 40h8v4h-8zM43 44h24v4h-24z" fill="#1f2937"/>
+  <path d="M30 50h30v6H30z" fill="#111827"/>
+  <path d="M6 32h16v24h-16z" fill="#1f2937"/>
+  <path d="M9 37h10v3h-10zM9 44h10v3h-10z" fill="#bfdbfe"/>
+  <path d="M76 35h10v12h-10z" fill="#d7d1bd"/>
+  <path d="M0 68h96v4H0z" fill="#0f172a" opacity=".22"/>
+  <title>evidence-checker station</title>
+</svg>
