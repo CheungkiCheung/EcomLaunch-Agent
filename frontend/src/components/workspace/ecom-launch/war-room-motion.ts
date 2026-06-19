@@ -78,6 +78,22 @@ const ROAM_WAYPOINTS: Record<LaunchCrewRole, WarRoomWaypointId[]> = {
   "asset-studio": ["rightWalkway", "artifactConveyor", "whiteboard"],
 };
 
+const REPORTING_OFFSETS: Record<LaunchCrewRole, WarRoomPoint> = {
+  "market-voc-researcher": { x: -4, y: -4 },
+  "offer-architect": { x: -2, y: 4 },
+  "launch-director": { x: 0, y: 0 },
+  "evidence-checker": { x: 4, y: -4 },
+  "growth-analyst": { x: -4, y: 5 },
+  "asset-studio": { x: 4, y: 4 },
+};
+
+function pointWithOffset(point: WarRoomPoint, offset: WarRoomPoint) {
+  return {
+    x: point.x + offset.x,
+    y: point.y + offset.y,
+  };
+}
+
 function deterministicIndex(id: string, tick: number, length: number) {
   let hash = tick;
   for (let i = 0; i < id.length; i += 1) {
@@ -163,11 +179,15 @@ export function buildWarRoomMotion(
         : state === "reporting"
           ? "artifactConveyor"
           : home;
+    const reportingPosition = pointWithOffset(
+      WAR_ROOM_WAYPOINTS.artifactConveyor,
+      REPORTING_OFFSETS[agent.id],
+    );
     const position =
       state === "roaming"
         ? WAR_ROOM_WAYPOINTS[roamWaypoint]
         : state === "reporting"
-          ? WAR_ROOM_WAYPOINTS.artifactConveyor
+          ? reportingPosition
           : WAR_ROOM_WAYPOINTS[home];
     const previousPosition =
       state === "roaming"

@@ -178,4 +178,35 @@ test.describe("Sidebar navigation", () => {
       ),
     ).toBeVisible();
   });
+
+  test("War Room keeps the game canvas usable on mobile", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    mockLangGraphAPI(page, {
+      threads: [
+        {
+          thread_id: MOCK_THREAD_ID,
+          title: "Mobile launch thread",
+          agent_name: "ecom-launch",
+          artifacts: ["/outputs/competitor-table.csv"],
+        },
+      ],
+    });
+
+    await page.goto(
+      `/workspace/agents/ecom-launch/war-room?threadId=${MOCK_THREAD_ID}`,
+    );
+    await expect(page.locator("[data-war-room-canvas='true']")).toBeVisible({
+      timeout: 15_000,
+    });
+
+    const stageBox = await page
+      .getByLabel("Animated EcomLaunch war room")
+      .boundingBox();
+    const asideBox = await page.locator("aside").boundingBox();
+
+    expect(stageBox).not.toBeNull();
+    expect(asideBox).not.toBeNull();
+    expect(stageBox!.width).toBeGreaterThan(300);
+    expect(asideBox!.y).toBeGreaterThan(stageBox!.y + stageBox!.height - 1);
+  });
 });

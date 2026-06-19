@@ -79,11 +79,19 @@ describe("war room motion model", () => {
 
     expect(motion).toMatchObject({
       state: "reporting",
-      position: WAR_ROOM_WAYPOINTS.artifactConveyor,
       targetWaypoint: "artifactConveyor",
       target: WAR_ROOM_WAYPOINTS.artifactConveyor,
     });
-    expect(motion?.path.at(-1)).toEqual(WAR_ROOM_WAYPOINTS.artifactConveyor);
+    expect(motion?.position).not.toEqual(WAR_ROOM_WAYPOINTS.artifactConveyor);
+    expect(motion?.position.x).toBeCloseTo(
+      WAR_ROOM_WAYPOINTS.artifactConveyor.x,
+      -1,
+    );
+    expect(motion?.position.y).toBeCloseTo(
+      WAR_ROOM_WAYPOINTS.artifactConveyor.y,
+      -1,
+    );
+    expect(motion?.path.at(-1)).toEqual(motion?.position);
   });
 
   it("keeps blocked agents at home with a blocked state", () => {

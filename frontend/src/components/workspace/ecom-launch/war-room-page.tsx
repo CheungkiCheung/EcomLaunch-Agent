@@ -104,8 +104,8 @@ export function EcomLaunchWarRoomPage() {
         </div>
       </header>
 
-      <section className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-h-0 overflow-hidden p-5">
+      <section className="grid min-h-0 flex-1 grid-rows-[minmax(360px,52vh)_minmax(0,1fr)] overflow-y-auto lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-none lg:overflow-hidden">
+        <div className="min-h-0 overflow-hidden p-4 lg:p-5">
           <div className="relative size-full overflow-hidden rounded-lg border border-cyan-100/15 bg-[#18241f] shadow-[0_0_48px_rgba(17,255,190,0.08)]">
             <WarRoomStage
               agents={model.agents}
@@ -117,7 +117,7 @@ export function EcomLaunchWarRoomPage() {
           </div>
         </div>
 
-        <aside className="min-h-0 border-l border-cyan-100/10 bg-[#0f1715]">
+        <aside className="min-h-0 border-t border-cyan-100/10 bg-[#0f1715] lg:border-t-0 lg:border-l">
           <div className="flex h-full min-h-0 flex-col">
             <section className="border-b border-cyan-100/10 p-5">
               <div className="flex items-center justify-between gap-3">
