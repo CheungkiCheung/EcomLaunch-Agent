@@ -55,5 +55,12 @@ test.describe("Sidebar navigation", () => {
       page.getByRole("heading", { name: "Launch War Room" }),
     ).toBeVisible();
     await expect(page.getByLabel("EcomLaunch full war room")).toBeVisible();
+    await expect(page.getByLabel("Animated EcomLaunch war room")).toBeVisible();
+    await expect(
+      page.locator("[data-war-room-agent='launch-director']"),
+    ).toHaveAttribute("data-motion-state", "seated");
+    await expect(page.locator("[data-motion-state='roaming']")).not.toHaveCount(
+      0,
+    );
   });
 });

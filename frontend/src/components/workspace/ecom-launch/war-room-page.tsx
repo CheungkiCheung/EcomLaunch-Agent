@@ -2,7 +2,7 @@
 
 import { ArrowRightIcon, FileTextIcon, RadioTowerIcon } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,12 +11,13 @@ import {
   buildLaunchCrewActivityModel,
   type LaunchCrewRole,
 } from "@/components/workspace/ecom-launch/launch-crew-activity-model";
-import { PixelOffice } from "@/components/workspace/ecom-launch/pixel-office";
 import { buildWarRoomMotion } from "@/components/workspace/ecom-launch/war-room-motion";
+import { WarRoomStage } from "@/components/workspace/ecom-launch/war-room-stage";
 
 export function EcomLaunchWarRoomPage() {
   const [selectedAgentId, setSelectedAgentId] =
     useState<LaunchCrewRole>("launch-director");
+  const [motionTick, setMotionTick] = useState(7);
 
   const model = useMemo(
     () =>
@@ -32,9 +33,16 @@ export function EcomLaunchWarRoomPage() {
 
   const selectedAgent = model.selectedAgent;
   const motionQueue = useMemo(
-    () => buildWarRoomMotion(model.agents, 2),
-    [model.agents],
+    () => buildWarRoomMotion(model.agents, motionTick),
+    [model.agents, motionTick],
   );
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setMotionTick((tick) => tick + 1);
+    }, 3600);
+    return () => window.clearInterval(id);
+  }, []);
 
   return (
     <main
@@ -67,9 +75,10 @@ export function EcomLaunchWarRoomPage() {
       <section className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-h-0 overflow-hidden p-5">
           <div className="relative size-full overflow-hidden rounded-lg border border-cyan-100/15 bg-[#18241f] shadow-[0_0_48px_rgba(17,255,190,0.08)]">
-            <PixelOffice
+            <WarRoomStage
               agents={model.agents}
-              className="size-full rounded-none border-0 shadow-none [&>div]:h-full"
+              motions={motionQueue}
+              selectedAgentId={selectedAgentId}
               onSelectAgent={setSelectedAgentId}
             />
           </div>
