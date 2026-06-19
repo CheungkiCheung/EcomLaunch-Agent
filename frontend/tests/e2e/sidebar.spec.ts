@@ -56,6 +56,7 @@ test.describe("Sidebar navigation", () => {
     ).toBeVisible();
     await expect(page.getByLabel("EcomLaunch full war room")).toBeVisible();
     await expect(page.getByLabel("Animated EcomLaunch war room")).toBeVisible();
+    await expect(page.locator("[data-war-room-canvas='true']")).toBeVisible();
     await expect(
       page.locator("[data-war-room-agent='launch-director']"),
     ).toHaveAttribute("data-motion-state", "seated");
