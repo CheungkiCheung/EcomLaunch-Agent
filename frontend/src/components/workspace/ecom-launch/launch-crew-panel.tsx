@@ -20,21 +20,12 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { useArtifacts } from "@/components/workspace/artifacts";
 import { useI18n } from "@/core/i18n/hooks";
-import {
-  extractPresentFilesFromMessage,
-  extractTextFromMessage,
-  hasPresentFiles,
-} from "@/core/messages/utils";
 import { useSubtaskContext } from "@/core/tasks/context";
-import { parseSubtaskResult } from "@/core/tasks/subtask-result";
-import type { Subtask } from "@/core/tasks/types";
 import type { AgentThreadState } from "@/core/threads";
 import { explainLastToolCall } from "@/core/tools/utils";
-import { getFileName } from "@/core/utils/files";
 import { cn } from "@/lib/utils";
 
 import {
-  buildLaunchCrewActivityModel,
   type LaunchCrewActivityModel,
   type LaunchCrewAgent,
   type LaunchCrewArtifact,
@@ -42,9 +33,9 @@ import {
   type LaunchCrewEvidenceBadge,
   type LaunchCrewMission,
   type LaunchCrewRole,
-  type LaunchCrewTask,
 } from "./launch-crew-activity-model";
 import { PixelOffice } from "./pixel-office";
+import { buildLaunchCrewActivityModelFromThread } from "./use-launch-crew-activity-model";
 
 type LaunchCrewPanelProps = {
   className?: string;
@@ -52,109 +43,6 @@ type LaunchCrewPanelProps = {
   messages: Message[];
   isStreaming: boolean;
 };
-
-function normalizeRole(role: string | undefined): LaunchCrewRole | null {
-  if (
-    role === "market-voc-researcher" ||
-    role === "offer-architect" ||
-    role === "asset-studio" ||
-    role === "evidence-checker" ||
-    role === "growth-analyst"
-  ) {
-    return role;
-  }
-  return null;
-}
-
-function getToolName(task: Subtask | undefined) {
-  return task?.latestMessage?.tool_calls?.at(-1)?.name ?? null;
-}
-
-function fallbackTasksFromMessages(messages: Message[]) {
-  const taskMap = new Map<string, Subtask>();
-
-  for (const message of messages) {
-    if (message.type === "ai") {
-      for (const toolCall of message.tool_calls ?? []) {
-        if (toolCall.name !== "task" || !toolCall.id) {
-          continue;
-        }
-        const args = toolCall.args as {
-          subagent_type?: string;
-          description?: string;
-          prompt?: string;
-        };
-        const role = normalizeRole(args.subagent_type);
-        if (!role) {
-          continue;
-        }
-        taskMap.set(toolCall.id, {
-          id: toolCall.id,
-          subagent_type: role,
-          description: args.description ?? role,
-          prompt: args.prompt ?? "",
-          status: "in_progress",
-          latestMessage: message,
-        });
-      }
-      continue;
-    }
-
-    if (message.type === "tool" && typeof message.tool_call_id === "string") {
-      const task = taskMap.get(message.tool_call_id);
-      if (!task) {
-        continue;
-      }
-      taskMap.set(message.tool_call_id, {
-        ...task,
-        ...parseSubtaskResult(
-          extractTextFromMessage(message),
-          message.additional_kwargs,
-        ),
-      });
-    }
-  }
-
-  return [...taskMap.values()];
-}
-
-function fallbackArtifactsFromMessages(messages: Message[]) {
-  const files: string[] = [];
-  for (const message of messages) {
-    if (hasPresentFiles(message)) {
-      files.push(...extractPresentFilesFromMessage(message));
-    }
-  }
-  return [...new Set(files)];
-}
-
-function toLaunchCrewTasks(
-  tasks: Subtask[],
-  explainAction: (task: Subtask) => string | null,
-): LaunchCrewTask[] {
-  const result: LaunchCrewTask[] = [];
-  for (const task of tasks) {
-    const role = normalizeRole(task.subagent_type);
-    if (!role) {
-      continue;
-    }
-    result.push({
-      id: task.id,
-      role,
-      status: task.status,
-      description: task.description,
-      prompt: task.prompt,
-      result: task.result,
-      error: task.error,
-      currentAction:
-        task.latestMessage && task.status === "in_progress"
-          ? explainAction(task)
-          : null,
-      toolName: getToolName(task),
-    });
-  }
-  return result;
-}
 
 function statusIcon(agent: LaunchCrewAgent) {
   if (agent.status === "error") {
@@ -423,31 +311,23 @@ function buildActivityModel({
   explainAction,
 }: {
   messages: Message[];
-  contextTasks: Record<string, Subtask>;
+  contextTasks: Parameters<
+    typeof buildLaunchCrewActivityModelFromThread
+  >[0]["contextTasks"];
   threadValues: AgentThreadState;
   selectedAgentId: LaunchCrewRole | null;
   isStreaming: boolean;
-  explainAction: (task: Subtask) => string | null;
+  explainAction: Parameters<
+    typeof buildLaunchCrewActivityModelFromThread
+  >[0]["explainAction"];
 }): LaunchCrewActivityModel {
-  const fallbackTasks = fallbackTasksFromMessages(messages);
-  const taskMap = new Map<string, Subtask>();
-  for (const task of fallbackTasks) {
-    taskMap.set(task.id, task);
-  }
-  for (const task of Object.values(contextTasks)) {
-    taskMap.set(task.id, task);
-  }
-  const fallbackArtifacts = fallbackArtifactsFromMessages(messages);
-  const artifacts = [
-    ...new Set([...(threadValues.artifacts ?? []), ...fallbackArtifacts]),
-  ];
-
-  return buildLaunchCrewActivityModel({
-    tasks: toLaunchCrewTasks([...taskMap.values()], explainAction),
-    artifacts: artifacts.map(getFileName),
-    todos: threadValues.todos,
+  return buildLaunchCrewActivityModelFromThread({
+    messages,
+    contextTasks,
+    threadValues,
     selectedAgentId,
     isStreaming,
+    explainAction,
   });
 }
 

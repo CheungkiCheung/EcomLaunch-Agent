@@ -2,71 +2,61 @@
 
 import { ArrowRightIcon, FileTextIcon, RadioTowerIcon } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import {
-  buildLaunchCrewActivityModel,
-  type LaunchCrewTask,
-  type LaunchCrewRole,
-} from "@/components/workspace/ecom-launch/launch-crew-activity-model";
+import type { LaunchCrewRole } from "@/components/workspace/ecom-launch/launch-crew-activity-model";
+import { buildLaunchCrewActivityModelFromThread } from "@/components/workspace/ecom-launch/use-launch-crew-activity-model";
 import { buildWarRoomMotion } from "@/components/workspace/ecom-launch/war-room-motion";
 import { WarRoomStage } from "@/components/workspace/ecom-launch/war-room-stage";
+import { useI18n } from "@/core/i18n/hooks";
+import { explainLastToolCall } from "@/core/tools/utils";
+import { useThreadState } from "@/core/threads/hooks";
+import type { AgentThreadState } from "@/core/threads/types";
 
-const DEMO_TASKS: LaunchCrewTask[] = [
-  {
-    id: "demo-market",
-    role: "market-voc-researcher",
-    status: "completed",
-    description: "Cluster public demand signals for the launch wedge.",
-    prompt: "Find competitor, VOC, and marketplace signal clusters.",
-    result: "Competitor table and VOC clusters are ready.",
-  },
-  {
-    id: "demo-offer",
-    role: "offer-architect",
-    status: "in_progress",
-    description: "Shape the first testable offer from evidence.",
-    prompt: "Turn research into positioning.",
-    currentAction: "Refining the first wedge and proof points.",
-    toolName: "write_file",
-  },
-  {
-    id: "demo-asset",
-    role: "asset-studio",
-    status: "completed",
-    description: "Prepare listing copy and launch creative package.",
-    prompt: "Draft listing pack and content assets.",
-    result: "Listing package dropped on the conveyor.",
-  },
-];
-
-const DEMO_ARTIFACTS = [
-  "competitor-table.csv",
-  "positioning-brief.md",
-  "listing-pack.md",
-];
+const EMPTY_THREAD_VALUES: AgentThreadState = {
+  title: "Launch War Room",
+  messages: [],
+  artifacts: [],
+  todos: [],
+};
 
 export function EcomLaunchWarRoomPage() {
+  const { t } = useI18n();
+  const searchParams = useSearchParams();
+  const threadId = searchParams.get("threadId");
+  const isMock = searchParams.get("mock") === "true";
   const [selectedAgentId, setSelectedAgentId] =
     useState<LaunchCrewRole>("launch-director");
   const [motionTick, setMotionTick] = useState(7);
+  const threadState = useThreadState(threadId, {
+    enabled: Boolean(threadId),
+    isMock,
+  });
+  const threadValues = threadState.data ?? EMPTY_THREAD_VALUES;
 
   const model = useMemo(
     () =>
-      buildLaunchCrewActivityModel({
-        tasks: DEMO_TASKS,
-        artifacts: DEMO_ARTIFACTS,
-        todos: [],
+      buildLaunchCrewActivityModelFromThread({
+        messages: threadValues.messages ?? [],
+        threadValues,
         selectedAgentId,
-        isStreaming: false,
+        isStreaming: threadState.isFetching,
+        explainAction: (task) =>
+          task.latestMessage
+            ? explainLastToolCall(task.latestMessage, t)
+            : null,
       }),
-    [selectedAgentId],
+    [selectedAgentId, t, threadState.isFetching, threadValues],
   );
 
   const selectedAgent = model.selectedAgent;
+  const readyArtifacts = model.artifactStatuses
+    .filter((artifact) => artifact.status === "ready")
+    .slice(0, 5);
   const motionQueue = useMemo(
     () => buildWarRoomMotion(model.agents, motionTick),
     [model.agents, motionTick],
@@ -94,12 +84,19 @@ export function EcomLaunchWarRoomPage() {
               Launch War Room
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-slate-300">
-              Agents roam the room while idle, return to their stations when
-              assigned, and report back to the Director when work lands.
+              {threadId
+                ? `Synced with ${threadValues.title || "current EcomLaunch thread"}.`
+                : "Open from an EcomLaunch chat to sync live tasks and artifacts into the room."}
             </p>
           </div>
           <Button variant="secondary" asChild>
-            <Link href="/workspace/agents/ecom-launch/chats/new">
+            <Link
+              href={
+                threadId
+                  ? `/workspace/agents/ecom-launch/chats/${threadId}${isMock ? "?mock=true" : ""}`
+                  : "/workspace/agents/ecom-launch/chats/new"
+              }
+            >
               Open Chat
               <ArrowRightIcon />
             </Link>
@@ -198,10 +195,8 @@ export function EcomLaunchWarRoomPage() {
                   Artifacts
                 </div>
                 <div className="space-y-2" data-war-room-artifact-queue>
-                  {model.artifactStatuses
-                    .filter((artifact) => artifact.status === "ready")
-                    .slice(0, 5)
-                    .map((artifact) => (
+                  {readyArtifacts.length > 0 ? (
+                    readyArtifacts.map((artifact) => (
                       <button
                         key={artifact.filepath}
                         type="button"
@@ -221,7 +216,14 @@ export function EcomLaunchWarRoomPage() {
                           ready
                         </span>
                       </button>
-                    ))}
+                    ))
+                  ) : (
+                    <div className="rounded-md border border-cyan-100/10 bg-cyan-50/5 px-3 py-3 text-sm text-slate-400">
+                      {threadId
+                        ? "No delivered artifacts in this thread yet."
+                        : "No thread synced. Open a chat, then jump into the War Room."}
+                    </div>
+                  )}
                 </div>
               </div>
             </section>

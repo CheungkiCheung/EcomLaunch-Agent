@@ -1,6 +1,12 @@
 "use client";
 
-import { BotIcon, PlusSquare, ShoppingBagIcon } from "lucide-react";
+import {
+  BotIcon,
+  Gamepad2Icon,
+  PlusSquare,
+  ShoppingBagIcon,
+} from "lucide-react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -210,6 +216,18 @@ export default function AgentChatPage() {
                 <PlusSquare /> {t.agents.newChat}
               </Button>
             </Tooltip>
+            {isEcomLaunch && (
+              <Tooltip content="Open War Room">
+                <Button size="sm" variant="outline" asChild>
+                  <Link
+                    href={`/workspace/agents/ecom-launch/war-room?threadId=${encodeURIComponent(threadId)}${isMock ? "&mock=true" : ""}`}
+                  >
+                    <Gamepad2Icon />
+                    War Room
+                  </Link>
+                </Button>
+              </Tooltip>
+            )}
             <TokenUsageIndicator
               threadId={isNewThread ? undefined : threadId}
               backendUsage={backendTokenUsage}

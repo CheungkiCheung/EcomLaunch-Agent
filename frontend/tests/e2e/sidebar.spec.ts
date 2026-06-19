@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { mockLangGraphAPI } from "./utils/mock-api";
+import { MOCK_THREAD_ID, mockLangGraphAPI } from "./utils/mock-api";
 
 test.describe("Sidebar navigation", () => {
   test("sidebar contains Chats and Agents nav links", async ({ page }) => {
@@ -82,13 +82,71 @@ test.describe("Sidebar navigation", () => {
         "[data-war-room-path-length='3'], [data-war-room-path-length='4']",
       ),
     ).not.toHaveCount(0);
-    await expect(page.locator("[data-war-room-artifact-drop]")).not.toHaveCount(
-      0,
-    );
     await expect(page.locator("[data-war-room-artifact-queue]")).toBeVisible();
-    await expect(page.locator("[data-war-room-artifact]")).not.toHaveCount(0);
+    await expect(page.locator("[data-war-room-artifact-drop]")).toHaveCount(0);
+    await expect(page.locator("[data-war-room-artifact]")).toHaveCount(0);
     await expect(page.locator("[data-motion-state='roaming']")).not.toHaveCount(
       0,
     );
+  });
+
+  test("War Room syncs artifacts from an EcomLaunch thread", async ({
+    page,
+  }) => {
+    mockLangGraphAPI(page, {
+      threads: [
+        {
+          thread_id: MOCK_THREAD_ID,
+          title: "Real launch thread",
+          agent_name: "ecom-launch",
+          artifacts: [
+            "/outputs/competitor-table.csv",
+            "/outputs/listing-pack.md",
+          ],
+          messages: [
+            {
+              type: "ai",
+              id: "task-call-market",
+              content: "",
+              tool_calls: [
+                {
+                  id: "task-market",
+                  name: "task",
+                  args: {
+                    subagent_type: "market-voc-researcher",
+                    description: "Cluster competitor demand signals.",
+                    prompt: "Find competitor demand signals.",
+                  },
+                },
+              ],
+            },
+            {
+              type: "tool",
+              id: "task-result-market",
+              tool_call_id: "task-market",
+              content: "Competitor table ready.",
+              additional_kwargs: { status: "completed" },
+            },
+          ],
+        },
+      ],
+    });
+
+    await page.goto(
+      `/workspace/agents/ecom-launch/war-room?threadId=${MOCK_THREAD_ID}`,
+    );
+
+    await expect(page.getByText("Synced with Real launch thread.")).toBeVisible(
+      { timeout: 15_000 },
+    );
+    await expect(page.locator("[data-war-room-artifact-drop]")).not.toHaveCount(
+      0,
+    );
+    await expect(
+      page.locator("[data-war-room-artifact='competitor-table.csv']"),
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-war-room-artifact='listing-pack.md']"),
+    ).toBeVisible();
   });
 });

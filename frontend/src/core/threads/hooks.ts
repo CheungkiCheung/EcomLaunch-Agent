@@ -1092,6 +1092,29 @@ export function useThreadRuns(threadId?: string) {
   });
 }
 
+export function useThreadState(
+  threadId?: string | null,
+  {
+    enabled = true,
+    isMock = false,
+  }: { enabled?: boolean; isMock?: boolean } = {},
+) {
+  const apiClient = getAPIClient(isMock);
+  return useQuery<AgentThreadState | null>({
+    queryKey: ["thread", threadId, "state", isMock],
+    queryFn: async () => {
+      if (!threadId) {
+        return null;
+      }
+      const response =
+        await apiClient.threads.getState<AgentThreadState>(threadId);
+      return response.values;
+    },
+    enabled: enabled && Boolean(threadId),
+    refetchOnWindowFocus: false,
+  });
+}
+
 export function useThreadTokenUsage(
   threadId?: string | null,
   { enabled = true }: { enabled?: boolean } = {},

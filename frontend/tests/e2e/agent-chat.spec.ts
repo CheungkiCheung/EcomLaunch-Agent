@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { mockLangGraphAPI } from "./utils/mock-api";
+import { MOCK_THREAD_ID, mockLangGraphAPI } from "./utils/mock-api";
 
 const MOCK_AGENTS = [
   {
@@ -63,5 +63,31 @@ test.describe("Agent chat", () => {
     expect(textareaBox).not.toBeNull();
     expect(cockpitBox).not.toBeNull();
     expect(cockpitBox!.x).toBeGreaterThan(textareaBox!.x);
+  });
+
+  test("ecom launch chat links the current thread to War Room", async ({
+    page,
+  }) => {
+    mockLangGraphAPI(page, {
+      agents: MOCK_AGENTS,
+      threads: [
+        {
+          thread_id: MOCK_THREAD_ID,
+          title: "Live EcomLaunch thread",
+          agent_name: "ecom-launch",
+        },
+      ],
+    });
+
+    await page.goto(`/workspace/agents/ecom-launch/chats/${MOCK_THREAD_ID}`);
+
+    const warRoomLink = page
+      .getByTestId("chat")
+      .getByRole("link", { name: /war room/i });
+    await expect(warRoomLink).toBeVisible({ timeout: 15_000 });
+    await expect(warRoomLink).toHaveAttribute(
+      "href",
+      `/workspace/agents/ecom-launch/war-room?threadId=${MOCK_THREAD_ID}`,
+    );
   });
 });
