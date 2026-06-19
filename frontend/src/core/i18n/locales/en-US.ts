@@ -174,6 +174,8 @@ export const enUS: Translations = {
     demoChats: "Demo chats",
     agents: "Agents",
     ecomLaunch: "EcomLaunch Validation",
+    ecomLaunchChat: "Chat",
+    ecomLaunchWarRoom: "War Room",
   },
 
   // Agents

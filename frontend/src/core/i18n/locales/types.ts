@@ -118,6 +118,8 @@ export interface Translations {
     demoChats: string;
     agents: string;
     ecomLaunch: string;
+    ecomLaunchChat: string;
+    ecomLaunchWarRoom: string;
   };
 
   // Agents

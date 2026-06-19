@@ -13,6 +13,12 @@ test.describe("Sidebar navigation", () => {
     await expect(sidebar.locator("a[href='/workspace/chats']")).toBeVisible({
       timeout: 15_000,
     });
+    await expect(
+      sidebar.getByRole("link", { name: "Chat", exact: true }),
+    ).toBeVisible();
+    await expect(
+      sidebar.locator("a[href='/workspace/agents/ecom-launch/war-room']"),
+    ).toBeVisible();
     await expect(sidebar.locator("a[href='/workspace/agents']")).toBeVisible();
   });
 
@@ -28,5 +34,26 @@ test.describe("Sidebar navigation", () => {
 
     await page.waitForURL("**/workspace/agents");
     await expect(page).toHaveURL(/\/workspace\/agents/);
+  });
+
+  test("War Room link opens the full EcomLaunch game workspace", async ({
+    page,
+  }) => {
+    mockLangGraphAPI(page);
+
+    await page.goto("/workspace/chats/new");
+
+    const sidebar = page.locator("[data-sidebar='sidebar']");
+    const warRoomLink = sidebar.locator(
+      "a[href='/workspace/agents/ecom-launch/war-room']",
+    );
+    await expect(warRoomLink).toBeVisible({ timeout: 15_000 });
+    await warRoomLink.click();
+
+    await page.waitForURL("**/workspace/agents/ecom-launch/war-room");
+    await expect(
+      page.getByRole("heading", { name: "Launch War Room" }),
+    ).toBeVisible();
+    await expect(page.getByLabel("EcomLaunch full war room")).toBeVisible();
   });
 });

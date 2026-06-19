@@ -1,0 +1,131 @@
+import type {
+  LaunchCrewAgent,
+  LaunchCrewRole,
+} from "./launch-crew-activity-model";
+
+export type WarRoomPoint = {
+  x: number;
+  y: number;
+};
+
+export type WarRoomWaypointId =
+  | "marketDesk"
+  | "offerDesk"
+  | "directorDesk"
+  | "evidenceDesk"
+  | "assetDesk"
+  | "growthDesk"
+  | "whiteboard"
+  | "coffee"
+  | "artifactConveyor"
+  | "bigScreen";
+
+export type WarRoomMotionState =
+  | "seated"
+  | "roaming"
+  | "returning_home"
+  | "working"
+  | "reporting"
+  | "blocked";
+
+export type WarRoomAgentMotion = {
+  id: LaunchCrewRole;
+  home: WarRoomWaypointId;
+  position: WarRoomPoint;
+  target: WarRoomPoint | null;
+  targetWaypoint: WarRoomWaypointId | null;
+  state: WarRoomMotionState;
+};
+
+export const WAR_ROOM_WAYPOINTS: Record<WarRoomWaypointId, WarRoomPoint> = {
+  marketDesk: { x: 18, y: 28 },
+  offerDesk: { x: 20, y: 68 },
+  directorDesk: { x: 50, y: 44 },
+  evidenceDesk: { x: 82, y: 28 },
+  assetDesk: { x: 82, y: 68 },
+  growthDesk: { x: 50, y: 78 },
+  whiteboard: { x: 38, y: 18 },
+  coffee: { x: 12, y: 78 },
+  artifactConveyor: { x: 66, y: 66 },
+  bigScreen: { x: 50, y: 16 },
+};
+
+export const AGENT_HOME_WAYPOINTS: Record<LaunchCrewRole, WarRoomWaypointId> = {
+  "market-voc-researcher": "marketDesk",
+  "offer-architect": "offerDesk",
+  "launch-director": "directorDesk",
+  "evidence-checker": "evidenceDesk",
+  "growth-analyst": "growthDesk",
+  "asset-studio": "assetDesk",
+};
+
+const ROAM_WAYPOINTS: Record<LaunchCrewRole, WarRoomWaypointId[]> = {
+  "market-voc-researcher": ["marketDesk", "whiteboard", "bigScreen", "coffee"],
+  "offer-architect": ["offerDesk", "whiteboard", "artifactConveyor"],
+  "launch-director": ["directorDesk"],
+  "evidence-checker": ["evidenceDesk", "bigScreen", "artifactConveyor"],
+  "growth-analyst": ["growthDesk", "bigScreen", "artifactConveyor"],
+  "asset-studio": ["assetDesk", "artifactConveyor", "whiteboard"],
+};
+
+function deterministicIndex(id: string, tick: number, length: number) {
+  let hash = tick;
+  for (let i = 0; i < id.length; i += 1) {
+    hash = (hash * 31 + id.charCodeAt(i)) % 9973;
+  }
+  return hash % length;
+}
+
+export function motionStateForAgent(
+  agent: Pick<LaunchCrewAgent, "id" | "active" | "status">,
+): WarRoomMotionState {
+  if (agent.id === "launch-director") {
+    return "seated";
+  }
+  if (agent.status === "error") {
+    return "blocked";
+  }
+  if (agent.status === "done" || agent.status === "delivered") {
+    return "reporting";
+  }
+  if (agent.active) {
+    return "returning_home";
+  }
+  return "roaming";
+}
+
+export function buildWarRoomMotion(
+  agents: Array<Pick<LaunchCrewAgent, "id" | "active" | "status">>,
+  tick = 0,
+): WarRoomAgentMotion[] {
+  return agents.map((agent) => {
+    const home = AGENT_HOME_WAYPOINTS[agent.id];
+    const state = motionStateForAgent(agent);
+    const roamTargets = ROAM_WAYPOINTS[agent.id];
+    const roamWaypoint =
+      roamTargets[deterministicIndex(agent.id, tick, roamTargets.length)] ??
+      home;
+    const targetWaypoint =
+      state === "roaming"
+        ? roamWaypoint
+        : state === "reporting"
+          ? "artifactConveyor"
+          : home;
+    const position =
+      state === "roaming"
+        ? WAR_ROOM_WAYPOINTS[roamWaypoint]
+        : WAR_ROOM_WAYPOINTS[home];
+
+    return {
+      id: agent.id,
+      home,
+      position,
+      target:
+        state === "seated" || state === "working"
+          ? null
+          : WAR_ROOM_WAYPOINTS[targetWaypoint],
+      targetWaypoint,
+      state,
+    };
+  });
+}

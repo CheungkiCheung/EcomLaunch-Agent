@@ -168,6 +168,8 @@ export const zhCN: Translations = {
     demoChats: "演示对话",
     agents: "智能体",
     ecomLaunch: "EcomLaunch 验证台",
+    ecomLaunchChat: "Chat",
+    ecomLaunchWarRoom: "War Room",
   },
 
   // Agents
