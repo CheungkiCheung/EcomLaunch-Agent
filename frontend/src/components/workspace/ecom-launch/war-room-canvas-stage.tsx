@@ -18,7 +18,11 @@ import type {
 } from "./launch-crew-activity-model";
 import { WAR_ROOM_PROPS, warRoomCharacterSprite } from "./war-room-assets";
 import type { WarRoomAgentMotion } from "./war-room-motion";
-import { WAR_ROOM_WAYPOINTS, type WarRoomPoint } from "./war-room-motion";
+import {
+  AGENT_HOME_WAYPOINTS,
+  WAR_ROOM_WAYPOINTS,
+  type WarRoomPoint,
+} from "./war-room-motion";
 
 type WarRoomCanvasStageProps = {
   agents: LaunchCrewAgent[];
@@ -52,16 +56,24 @@ type ArtifactDropNode = {
   baseY: number;
 };
 
+type EffectNode = {
+  graphic: Graphics;
+  kind: "station-active" | "station-blocked" | "artifact-pulse";
+  phase: number;
+};
+
 type PixiStageState = {
   app: Application;
   root: Container;
   lineLayer: Graphics;
+  effectLayer: Container;
   propLayer: Container;
   artifactLayer: Container;
   agentLayer: Container;
   textureCache: Map<string, Texture>;
   agents: Map<LaunchCrewRole, MovingAgentNode>;
   artifacts: Map<string, ArtifactDropNode>;
+  effects: Map<string, EffectNode>;
   propsRendered: boolean;
   destroyed: boolean;
 };
@@ -180,6 +192,58 @@ function createArtifactDrop(artifact: LaunchCrewArtifact, index: number) {
   return container;
 }
 
+function effectKey(kind: EffectNode["kind"], id: string) {
+  return `${kind}:${id}`;
+}
+
+function drawStationEffect(
+  graphic: Graphics,
+  agent: LaunchCrewAgent,
+  alpha = 0.44,
+) {
+  const point = stagePoint(WAR_ROOM_WAYPOINTS[AGENT_HOME_WAYPOINTS[agent.id]]);
+  const isBlocked = agent.status === "error";
+  graphic.clear();
+  graphic.ellipse(point.x, point.y - 16, 70, 25).fill({
+    color: isBlocked ? 0xef4444 : 0x67ffd6,
+    alpha: isBlocked ? alpha * 0.72 : alpha * 0.38,
+  });
+  graphic.ellipse(point.x, point.y - 16, 78, 29).stroke({
+    color: isBlocked ? 0xfca5a5 : 0x78ffd4,
+    alpha,
+    width: isBlocked ? 4 : 3,
+  });
+  graphic.zIndex = Math.round(point.y) - 35;
+}
+
+function drawArtifactPulse(graphic: Graphics, alpha = 0.5, scale = 1) {
+  const point = stagePoint(WAR_ROOM_WAYPOINTS.artifactConveyor);
+  graphic.clear();
+  graphic
+    .roundRect(
+      point.x - 78 * scale,
+      point.y - 28 * scale,
+      156 * scale,
+      46 * scale,
+      8,
+    )
+    .stroke({
+      color: 0xf8d36a,
+      alpha,
+      width: 3,
+    });
+  graphic
+    .roundRect(
+      point.x - 66 * scale,
+      point.y - 20 * scale,
+      132 * scale,
+      30 * scale,
+      6,
+    )
+    .fill({ color: 0xf8d36a, alpha: alpha * 0.12 });
+  graphic.zIndex = Math.round(point.y) - 10;
+}
+
 async function loadTexture(cache: Map<string, Texture>, src: string) {
   const cached = cache.get(src);
   if (cached) return cached;
@@ -265,6 +329,15 @@ function tickAgentNodes(state: PixiStageState) {
     artifactIndex += 1;
   }
 
+  for (const effect of state.effects.values()) {
+    const wave = (Math.sin(time + effect.phase) + 1) / 2;
+    if (effect.kind === "artifact-pulse") {
+      drawArtifactPulse(effect.graphic, 0.22 + wave * 0.34, 1 + wave * 0.05);
+    } else {
+      effect.graphic.alpha = 0.58 + wave * 0.34;
+    }
+  }
+
   for (const node of state.agents.values()) {
     const waypoint = node.path[node.pathIndex] ?? {
       x: node.targetX,
@@ -289,6 +362,7 @@ function tickAgentNodes(state: PixiStageState) {
     }
     updateAgentNodePosition(node);
   }
+  state.effectLayer.sortChildren();
   state.agentLayer.sortChildren();
 }
 
@@ -362,6 +436,66 @@ function syncArtifactDrops(
   state.artifactLayer.sortChildren();
 }
 
+function syncStatusEffects(
+  state: PixiStageState,
+  agents: LaunchCrewAgent[],
+  artifacts: LaunchCrewArtifact[],
+) {
+  const desired = new Set<string>();
+  for (const agent of agents) {
+    if (agent.id === "launch-director") continue;
+    if (agent.status === "error") {
+      desired.add(effectKey("station-blocked", agent.id));
+      continue;
+    }
+    if (agent.active) {
+      desired.add(effectKey("station-active", agent.id));
+    }
+  }
+  if (artifacts.some((artifact) => artifact.status === "ready")) {
+    desired.add(effectKey("artifact-pulse", "conveyor"));
+  }
+
+  for (const [key, effect] of state.effects) {
+    if (desired.has(key)) continue;
+    effect.graphic.destroy();
+    state.effects.delete(key);
+  }
+
+  for (const agent of agents) {
+    const kind =
+      agent.status === "error"
+        ? "station-blocked"
+        : agent.id !== "launch-director" && agent.active
+          ? "station-active"
+          : null;
+    if (!kind) continue;
+    const key = effectKey(kind, agent.id);
+    if (state.effects.has(key)) continue;
+    const graphic = new Graphics();
+    drawStationEffect(graphic, agent);
+    state.effects.set(key, {
+      graphic,
+      kind,
+      phase: state.effects.size * 0.7,
+    });
+    state.effectLayer.addChild(graphic);
+  }
+
+  const conveyorKey = effectKey("artifact-pulse", "conveyor");
+  if (desired.has(conveyorKey) && !state.effects.has(conveyorKey)) {
+    const graphic = new Graphics();
+    drawArtifactPulse(graphic);
+    state.effects.set(conveyorKey, {
+      graphic,
+      kind: "artifact-pulse",
+      phase: state.effects.size * 0.7,
+    });
+    state.effectLayer.addChild(graphic);
+  }
+  state.effectLayer.sortChildren();
+}
+
 function removeMissingAgentNodes(
   state: PixiStageState,
   renderedAgents: RenderedAgent[],
@@ -395,6 +529,11 @@ async function syncPixiStage({
   if (state.destroyed) return;
 
   drawSignalLines(state.lineLayer, motions);
+  syncStatusEffects(
+    state,
+    renderedAgents.map(({ agent }) => agent),
+    artifacts,
+  );
   syncArtifactDrops(state, artifacts);
   removeMissingAgentNodes(state, renderedAgents);
   for (const renderedAgent of renderedAgents) {
@@ -497,6 +636,49 @@ function CanvasHitTargets({
             }}
           />
         ))}
+      {artifacts.some((artifact) => artifact.status === "ready") && (
+        <span
+          data-war-room-vfx="artifact-pulse"
+          className="pointer-events-none absolute size-1 opacity-0"
+          style={{
+            left: `${WAR_ROOM_WAYPOINTS.artifactConveyor.x}%`,
+            top: `${WAR_ROOM_WAYPOINTS.artifactConveyor.y}%`,
+          }}
+        />
+      )}
+      {renderedAgents
+        .filter(
+          ({ agent }) =>
+            agent.id !== "launch-director" &&
+            agent.status !== "error" &&
+            agent.active,
+        )
+        .map(({ agent, motion }) => (
+          <span
+            key={`active-${agent.id}`}
+            data-war-room-vfx="station-active"
+            data-war-room-vfx-agent={agent.id}
+            className="pointer-events-none absolute size-1 opacity-0"
+            style={{
+              left: `${WAR_ROOM_WAYPOINTS[motion.home].x}%`,
+              top: `${WAR_ROOM_WAYPOINTS[motion.home].y}%`,
+            }}
+          />
+        ))}
+      {renderedAgents
+        .filter(({ agent }) => agent.status === "error")
+        .map(({ agent, motion }) => (
+          <span
+            key={`blocked-${agent.id}`}
+            data-war-room-vfx="station-blocked"
+            data-war-room-vfx-agent={agent.id}
+            className="pointer-events-none absolute size-1 opacity-0"
+            style={{
+              left: `${WAR_ROOM_WAYPOINTS[motion.home].x}%`,
+              top: `${WAR_ROOM_WAYPOINTS[motion.home].y}%`,
+            }}
+          />
+        ))}
       {renderedAgents.map(({ agent, motion, sprite }) => {
         const selected = selectedAgentId === agent.id;
         return (
@@ -561,14 +743,22 @@ export function WarRoomCanvasStage({
       fitRootToContainer(root, mountElement);
       root.sortableChildren = true;
       const lineLayer = new Graphics();
+      const effectLayer = new Container();
       const propLayer = new Container();
       const artifactLayer = new Container();
       const agentLayer = new Container();
+      effectLayer.sortableChildren = true;
       propLayer.sortableChildren = true;
       artifactLayer.sortableChildren = true;
       agentLayer.sortableChildren = true;
       drawRoomShell(root);
-      root.addChild(lineLayer, propLayer, artifactLayer, agentLayer);
+      root.addChild(
+        lineLayer,
+        effectLayer,
+        propLayer,
+        artifactLayer,
+        agentLayer,
+      );
       app.stage.addChild(root);
       app.canvas.setAttribute("data-war-room-canvas", "true");
       app.canvas.classList.add("size-full", "[image-rendering:pixelated]");
@@ -578,12 +768,14 @@ export function WarRoomCanvasStage({
         app,
         root,
         lineLayer,
+        effectLayer,
         propLayer,
         artifactLayer,
         agentLayer,
         textureCache: new Map(),
         agents: new Map(),
         artifacts: new Map(),
+        effects: new Map(),
         propsRendered: false,
         destroyed: false,
       };

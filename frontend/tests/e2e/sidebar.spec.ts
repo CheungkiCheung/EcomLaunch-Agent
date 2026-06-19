@@ -121,6 +121,22 @@ test.describe("Sidebar navigation", () => {
               ],
             },
             {
+              type: "ai",
+              id: "task-call-offer",
+              content: "",
+              tool_calls: [
+                {
+                  id: "task-offer",
+                  name: "task",
+                  args: {
+                    subagent_type: "offer-architect",
+                    description: "Shape the first offer wedge.",
+                    prompt: "Turn market findings into positioning.",
+                  },
+                },
+              ],
+            },
+            {
               type: "tool",
               id: "task-result-market",
               tool_call_id: "task-market",
@@ -147,6 +163,14 @@ test.describe("Sidebar navigation", () => {
     ).toBeVisible();
     await expect(
       page.locator("[data-war-room-artifact='listing-pack.md']"),
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-war-room-vfx='artifact-pulse']"),
+    ).toBeVisible();
+    await expect(
+      page.locator(
+        "[data-war-room-vfx='station-active'][data-war-room-vfx-agent='offer-architect']",
+      ),
     ).toBeVisible();
   });
 });
