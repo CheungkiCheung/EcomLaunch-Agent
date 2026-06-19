@@ -32,10 +32,25 @@ type RenderedAgent = {
   sprite: ReturnType<typeof warRoomCharacterSprite>;
 };
 
+type MovingAgentNode = {
+  id: LaunchCrewRole;
+  sprite: Sprite;
+  label: Text;
+  ring: Graphics;
+  targetX: number;
+  targetY: number;
+  selected: boolean;
+};
+
 type PixiStageState = {
   app: Application;
   root: Container;
+  lineLayer: Graphics;
+  propLayer: Container;
+  agentLayer: Container;
   textureCache: Map<string, Texture>;
+  agents: Map<LaunchCrewRole, MovingAgentNode>;
+  propsRendered: boolean;
   destroyed: boolean;
 };
 
@@ -91,8 +106,8 @@ function drawRoomShell(root: Container) {
   root.addChild(floor, vignette);
 }
 
-function drawSignalLines(root: Container, motions: WarRoomAgentMotion[]) {
-  const lineLayer = new Graphics();
+function drawSignalLines(lineLayer: Graphics, motions: WarRoomAgentMotion[]) {
+  lineLayer.clear();
   const director = stagePoint(WAR_ROOM_WAYPOINTS.directorDesk);
   for (const motion of motions) {
     if (motion.id === "launch-director") continue;
@@ -106,7 +121,6 @@ function drawSignalLines(root: Container, motions: WarRoomAgentMotion[]) {
         alpha: motion.state === "roaming" ? 0.24 : 0.78,
       });
   }
-  root.addChild(lineLayer);
 }
 
 async function loadTexture(cache: Map<string, Texture>, src: string) {
@@ -133,6 +147,14 @@ function fitSprite(
   sprite.zIndex = Math.round(sprite.y);
 }
 
+function pointWithOffset(point: WarRoomPoint, offsets = { x: 0, y: 0 }) {
+  const position = stagePoint(point);
+  return {
+    x: position.x + offsets.x,
+    y: position.y + offsets.y,
+  };
+}
+
 function createAgentLabel(label: string, selected: boolean) {
   const text = new Text({
     text: label,
@@ -148,8 +170,8 @@ function createAgentLabel(label: string, selected: boolean) {
   return text;
 }
 
-function renderSelectionRing(root: Container, x: number, y: number) {
-  const ring = new Graphics();
+function drawSelectionRing(ring: Graphics, x: number, y: number) {
+  ring.clear();
   ring.ellipse(x, y - 2, 54, 18).stroke({
     color: 0x67ffd6,
     alpha: 0.88,
@@ -157,7 +179,32 @@ function renderSelectionRing(root: Container, x: number, y: number) {
   });
   ring.ellipse(x, y, 38, 10).fill({ color: 0x67ffd6, alpha: 0.1 });
   ring.zIndex = Math.round(y) - 1;
-  root.addChild(ring);
+}
+
+function updateAgentNodePosition(node: MovingAgentNode) {
+  node.sprite.zIndex = Math.round(node.sprite.y) + 20;
+  node.label.x = node.sprite.x;
+  node.label.y = node.sprite.y + 6;
+  node.label.zIndex = node.sprite.zIndex + 2;
+  node.ring.visible = node.selected;
+  if (node.selected) {
+    drawSelectionRing(node.ring, node.sprite.x, node.sprite.y);
+  }
+}
+
+function tickAgentNodes(state: PixiStageState) {
+  for (const node of state.agents.values()) {
+    node.sprite.x += (node.targetX - node.sprite.x) * 0.12;
+    node.sprite.y += (node.targetY - node.sprite.y) * 0.12;
+    if (Math.abs(node.targetX - node.sprite.x) < 0.25) {
+      node.sprite.x = node.targetX;
+    }
+    if (Math.abs(node.targetY - node.sprite.y) < 0.25) {
+      node.sprite.y = node.targetY;
+    }
+    updateAgentNodePosition(node);
+  }
+  state.agentLayer.sortChildren();
 }
 
 function useRenderedAgents(
@@ -180,7 +227,40 @@ function useRenderedAgents(
   }, [agents, motions]);
 }
 
-async function renderPixiStage({
+async function renderStaticProps(state: PixiStageState) {
+  if (state.propsRendered) return;
+  for (const prop of WAR_ROOM_PROPS) {
+    const texture = await loadTexture(state.textureCache, prop.src);
+    if (state.destroyed) return;
+    const sprite = new Sprite(texture);
+    fitSprite(
+      sprite,
+      { width: prop.width, height: prop.height },
+      WAR_ROOM_WAYPOINTS[prop.waypoint],
+      { x: prop.offsetX, y: prop.offsetY },
+    );
+    sprite.zIndex -= 30;
+    state.propLayer.addChild(sprite);
+  }
+  state.propLayer.sortChildren();
+  state.propsRendered = true;
+}
+
+function removeMissingAgentNodes(
+  state: PixiStageState,
+  renderedAgents: RenderedAgent[],
+) {
+  const liveIds = new Set(renderedAgents.map(({ agent }) => agent.id));
+  for (const [id, node] of state.agents) {
+    if (liveIds.has(id)) continue;
+    node.sprite.destroy();
+    node.label.destroy();
+    node.ring.destroy();
+    state.agents.delete(id);
+  }
+}
+
+async function syncPixiStage({
   state,
   renderedAgents,
   motions,
@@ -193,60 +273,59 @@ async function renderPixiStage({
   selectedAgentId: LaunchCrewRole;
   onSelectAgent: (id: LaunchCrewRole) => void;
 }) {
-  const { root, textureCache } = state;
-  root.removeChildren();
-  root.sortableChildren = true;
+  await renderStaticProps(state);
+  if (state.destroyed) return;
 
-  drawRoomShell(root);
-  drawSignalLines(root, motions);
-
-  for (const prop of WAR_ROOM_PROPS) {
-    const texture = await loadTexture(textureCache, prop.src);
-    if (state.destroyed) return;
-    const sprite = new Sprite(texture);
-    fitSprite(
-      sprite,
-      { width: prop.width, height: prop.height },
-      WAR_ROOM_WAYPOINTS[prop.waypoint],
-      { x: prop.offsetX, y: prop.offsetY },
-    );
-    sprite.zIndex -= 30;
-    root.addChild(sprite);
-  }
-
+  drawSignalLines(state.lineLayer, motions);
+  removeMissingAgentNodes(state, renderedAgents);
   for (const renderedAgent of renderedAgents) {
-    const texture = await loadTexture(textureCache, renderedAgent.sprite.src);
-    if (state.destroyed) return;
-    const sprite = new Sprite(texture);
-    fitSprite(
-      sprite,
-      {
-        width: renderedAgent.sprite.width,
-        height: renderedAgent.sprite.height,
-      },
-      renderedAgent.motion.position,
+    const texture = await loadTexture(
+      state.textureCache,
+      renderedAgent.sprite.src,
     );
-    sprite.eventMode = "static";
-    sprite.cursor = "pointer";
-    sprite.on("pointertap", () => onSelectAgent(renderedAgent.agent.id));
-    sprite.zIndex += 20;
-    root.addChild(sprite);
+    if (state.destroyed) return;
+    const target = stagePoint(renderedAgent.motion.position);
+    let node = state.agents.get(renderedAgent.agent.id);
+    if (!node) {
+      const sprite = new Sprite(texture);
+      sprite.width = renderedAgent.sprite.width;
+      sprite.height = renderedAgent.sprite.height;
+      sprite.anchor.set(0.5, 1);
+      sprite.x = stagePoint(renderedAgent.motion.previousPosition).x;
+      sprite.y = stagePoint(renderedAgent.motion.previousPosition).y;
+      sprite.eventMode = "static";
+      sprite.cursor = "pointer";
+      sprite.on("pointertap", () => onSelectAgent(renderedAgent.agent.id));
 
-    if (renderedAgent.agent.id === selectedAgentId) {
-      renderSelectionRing(root, sprite.x, sprite.y);
+      const label = createAgentLabel(
+        renderedAgent.agent.shortName,
+        renderedAgent.agent.id === selectedAgentId,
+      );
+      const ring = new Graphics();
+
+      node = {
+        id: renderedAgent.agent.id,
+        sprite,
+        label,
+        ring,
+        targetX: target.x,
+        targetY: target.y,
+        selected: renderedAgent.agent.id === selectedAgentId,
+      };
+      state.agents.set(renderedAgent.agent.id, node);
+      state.agentLayer.addChild(ring, sprite, label);
     }
 
-    const label = createAgentLabel(
-      renderedAgent.agent.shortName,
-      renderedAgent.agent.id === selectedAgentId,
-    );
-    label.x = sprite.x;
-    label.y = sprite.y + 6;
-    label.zIndex = sprite.zIndex + 2;
-    root.addChild(label);
+    node.sprite.texture = texture;
+    node.sprite.width = renderedAgent.sprite.width;
+    node.sprite.height = renderedAgent.sprite.height;
+    node.targetX = target.x;
+    node.targetY = target.y;
+    node.selected = renderedAgent.agent.id === selectedAgentId;
+    node.label.style.fill = node.selected ? 0xeafffb : 0xcffcf1;
+    updateAgentNodePosition(node);
   }
-
-  root.sortChildren();
+  state.agentLayer.sortChildren();
 }
 
 function CanvasHitTargets({
@@ -332,6 +411,14 @@ export function WarRoomCanvasStage({
 
       const root = new Container();
       fitRootToContainer(root, mountElement);
+      root.sortableChildren = true;
+      const lineLayer = new Graphics();
+      const propLayer = new Container();
+      const agentLayer = new Container();
+      propLayer.sortableChildren = true;
+      agentLayer.sortableChildren = true;
+      drawRoomShell(root);
+      root.addChild(lineLayer, propLayer, agentLayer);
       app.stage.addChild(root);
       app.canvas.setAttribute("data-war-room-canvas", "true");
       app.canvas.classList.add("size-full", "[image-rendering:pixelated]");
@@ -340,16 +427,26 @@ export function WarRoomCanvasStage({
       stageRef.current = {
         app,
         root,
+        lineLayer,
+        propLayer,
+        agentLayer,
         textureCache: new Map(),
+        agents: new Map(),
+        propsRendered: false,
         destroyed: false,
       };
+      app.ticker.add(() => {
+        if (stageRef.current) {
+          tickAgentNodes(stageRef.current);
+        }
+      });
 
       resizeObserver = new ResizeObserver(() => {
         fitRootToContainer(root, mountElement);
       });
       resizeObserver.observe(mountElement);
 
-      void renderPixiStage({
+      void syncPixiStage({
         state: stageRef.current,
         renderedAgents,
         motions,
@@ -374,7 +471,7 @@ export function WarRoomCanvasStage({
   useEffect(() => {
     const state = stageRef.current;
     if (!state) return;
-    void renderPixiStage({
+    void syncPixiStage({
       state,
       renderedAgents,
       motions,
