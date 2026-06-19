@@ -82,6 +82,11 @@ test.describe("Sidebar navigation", () => {
         "[data-war-room-path-length='3'], [data-war-room-path-length='4']",
       ),
     ).not.toHaveCount(0);
+    await expect(page.locator("[data-war-room-artifact-drop]")).not.toHaveCount(
+      0,
+    );
+    await expect(page.locator("[data-war-room-artifact-queue]")).toBeVisible();
+    await expect(page.locator("[data-war-room-artifact]")).not.toHaveCount(0);
     await expect(page.locator("[data-motion-state='roaming']")).not.toHaveCount(
       0,
     );

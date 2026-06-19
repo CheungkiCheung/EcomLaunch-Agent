@@ -9,10 +9,45 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
   buildLaunchCrewActivityModel,
+  type LaunchCrewTask,
   type LaunchCrewRole,
 } from "@/components/workspace/ecom-launch/launch-crew-activity-model";
 import { buildWarRoomMotion } from "@/components/workspace/ecom-launch/war-room-motion";
 import { WarRoomStage } from "@/components/workspace/ecom-launch/war-room-stage";
+
+const DEMO_TASKS: LaunchCrewTask[] = [
+  {
+    id: "demo-market",
+    role: "market-voc-researcher",
+    status: "completed",
+    description: "Cluster public demand signals for the launch wedge.",
+    prompt: "Find competitor, VOC, and marketplace signal clusters.",
+    result: "Competitor table and VOC clusters are ready.",
+  },
+  {
+    id: "demo-offer",
+    role: "offer-architect",
+    status: "in_progress",
+    description: "Shape the first testable offer from evidence.",
+    prompt: "Turn research into positioning.",
+    currentAction: "Refining the first wedge and proof points.",
+    toolName: "write_file",
+  },
+  {
+    id: "demo-asset",
+    role: "asset-studio",
+    status: "completed",
+    description: "Prepare listing copy and launch creative package.",
+    prompt: "Draft listing pack and content assets.",
+    result: "Listing package dropped on the conveyor.",
+  },
+];
+
+const DEMO_ARTIFACTS = [
+  "competitor-table.csv",
+  "positioning-brief.md",
+  "listing-pack.md",
+];
 
 export function EcomLaunchWarRoomPage() {
   const [selectedAgentId, setSelectedAgentId] =
@@ -22,8 +57,8 @@ export function EcomLaunchWarRoomPage() {
   const model = useMemo(
     () =>
       buildLaunchCrewActivityModel({
-        tasks: [],
-        artifacts: [],
+        tasks: DEMO_TASKS,
+        artifacts: DEMO_ARTIFACTS,
         todos: [],
         selectedAgentId,
         isStreaming: false,
@@ -77,6 +112,7 @@ export function EcomLaunchWarRoomPage() {
           <div className="relative size-full overflow-hidden rounded-lg border border-cyan-100/15 bg-[#18241f] shadow-[0_0_48px_rgba(17,255,190,0.08)]">
             <WarRoomStage
               agents={model.agents}
+              artifacts={model.artifactStatuses}
               motions={motionQueue}
               selectedAgentId={selectedAgentId}
               onSelectAgent={setSelectedAgentId}
@@ -161,9 +197,31 @@ export function EcomLaunchWarRoomPage() {
                   <FileTextIcon className="size-4 text-cyan-200" />
                   Artifacts
                 </div>
-                <div className="rounded-md border border-cyan-100/10 bg-cyan-50/5 px-3 py-3 text-sm text-slate-400">
-                  No deliverables yet. They will appear here as package drops
-                  when agents report back.
+                <div className="space-y-2" data-war-room-artifact-queue>
+                  {model.artifactStatuses
+                    .filter((artifact) => artifact.status === "ready")
+                    .slice(0, 5)
+                    .map((artifact) => (
+                      <button
+                        key={artifact.filepath}
+                        type="button"
+                        data-war-room-artifact={artifact.name}
+                        className="flex w-full items-center justify-between gap-3 rounded-md border border-cyan-100/10 bg-cyan-50/5 px-3 py-2 text-left text-xs transition-colors hover:border-cyan-100/30 hover:bg-cyan-50/10"
+                        onClick={() => setSelectedAgentId(artifact.role)}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate font-black text-slate-100">
+                            {artifact.label}
+                          </span>
+                          <span className="block truncate text-slate-400">
+                            {artifact.name}
+                          </span>
+                        </span>
+                        <span className="shrink-0 rounded border border-emerald-200/20 bg-emerald-300/10 px-2 py-1 font-black text-emerald-100">
+                          ready
+                        </span>
+                      </button>
+                    ))}
                 </div>
               </div>
             </section>

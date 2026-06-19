@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import type {
   LaunchCrewAgent,
+  LaunchCrewArtifact,
   LaunchCrewRole,
 } from "./launch-crew-activity-model";
 import { WAR_ROOM_PROPS, warRoomCharacterSprite } from "./war-room-assets";
@@ -21,6 +22,7 @@ import { WAR_ROOM_WAYPOINTS, type WarRoomPoint } from "./war-room-motion";
 
 type WarRoomCanvasStageProps = {
   agents: LaunchCrewAgent[];
+  artifacts: LaunchCrewArtifact[];
   motions: WarRoomAgentMotion[];
   selectedAgentId: LaunchCrewAgent["id"];
   onSelectAgent: (id: LaunchCrewAgent["id"]) => void;
@@ -45,14 +47,21 @@ type MovingAgentNode = {
   selected: boolean;
 };
 
+type ArtifactDropNode = {
+  container: Container;
+  baseY: number;
+};
+
 type PixiStageState = {
   app: Application;
   root: Container;
   lineLayer: Graphics;
   propLayer: Container;
+  artifactLayer: Container;
   agentLayer: Container;
   textureCache: Map<string, Texture>;
   agents: Map<LaunchCrewRole, MovingAgentNode>;
+  artifacts: Map<string, ArtifactDropNode>;
   propsRendered: boolean;
   destroyed: boolean;
 };
@@ -128,6 +137,47 @@ function drawSignalLines(lineLayer: Graphics, motions: WarRoomAgentMotion[]) {
         });
     }
   }
+}
+
+function artifactDropPoint(index: number) {
+  const base = stagePoint(WAR_ROOM_WAYPOINTS.artifactConveyor);
+  return {
+    x: base.x - 38 + index * 38,
+    y: base.y + 20 + (index % 2) * 12,
+  };
+}
+
+function createArtifactDrop(artifact: LaunchCrewArtifact, index: number) {
+  const point = artifactDropPoint(index);
+  const container = new Container();
+  container.x = point.x;
+  container.y = point.y - 18;
+  container.alpha = 0.92;
+  container.zIndex = Math.round(point.y) + 8;
+
+  const packageBody = new Graphics();
+  packageBody
+    .roundRect(-16, -16, 32, 24, 4)
+    .fill(artifact.required ? 0xd6b36c : 0x0f766e)
+    .stroke({ color: 0x111827, width: 3 });
+  packageBody.rect(-2, -16, 4, 24).fill({ color: 0x8a6d3b, alpha: 0.6 });
+  packageBody.rect(-16, -4, 32, 4).fill({ color: 0x8a6d3b, alpha: 0.6 });
+
+  const label = new Text({
+    text: artifact.label,
+    style: {
+      fontFamily: "monospace",
+      fontSize: 9,
+      fontWeight: "900",
+      fill: 0xf8fafc,
+      stroke: { color: 0x101714, width: 3 },
+    },
+  });
+  label.anchor.set(0.5, 0);
+  label.y = 10;
+
+  container.addChild(packageBody, label);
+  return container;
 }
 
 async function loadTexture(cache: Map<string, Texture>, src: string) {
@@ -208,6 +258,13 @@ function updateAgentNodePosition(node: MovingAgentNode) {
 }
 
 function tickAgentNodes(state: PixiStageState) {
+  const time = state.app.ticker.lastTime / 280;
+  let artifactIndex = 0;
+  for (const artifact of state.artifacts.values()) {
+    artifact.container.y = artifact.baseY + Math.sin(time + artifactIndex) * 2;
+    artifactIndex += 1;
+  }
+
   for (const node of state.agents.values()) {
     const waypoint = node.path[node.pathIndex] ?? {
       x: node.targetX,
@@ -274,6 +331,37 @@ async function renderStaticProps(state: PixiStageState) {
   state.propsRendered = true;
 }
 
+function syncArtifactDrops(
+  state: PixiStageState,
+  artifacts: LaunchCrewArtifact[],
+) {
+  const readyArtifacts = artifacts
+    .filter((artifact) => artifact.status === "ready")
+    .slice(0, 5);
+  const liveIds = new Set(readyArtifacts.map((artifact) => artifact.filepath));
+
+  for (const [id, drop] of state.artifacts) {
+    if (liveIds.has(id)) continue;
+    drop.container.destroy({ children: true });
+    state.artifacts.delete(id);
+  }
+
+  readyArtifacts.forEach((artifact, index) => {
+    let drop = state.artifacts.get(artifact.filepath);
+    if (!drop) {
+      const container = createArtifactDrop(artifact, index);
+      drop = { container, baseY: container.y };
+      state.artifacts.set(artifact.filepath, drop);
+      state.artifactLayer.addChild(container);
+    }
+    const point = artifactDropPoint(index);
+    drop.container.x = point.x;
+    drop.baseY = point.y - 18;
+    drop.container.zIndex = Math.round(point.y) + 8;
+  });
+  state.artifactLayer.sortChildren();
+}
+
 function removeMissingAgentNodes(
   state: PixiStageState,
   renderedAgents: RenderedAgent[],
@@ -291,12 +379,14 @@ function removeMissingAgentNodes(
 async function syncPixiStage({
   state,
   renderedAgents,
+  artifacts,
   motions,
   selectedAgentId,
   onSelectAgent,
 }: {
   state: PixiStageState;
   renderedAgents: RenderedAgent[];
+  artifacts: LaunchCrewArtifact[];
   motions: WarRoomAgentMotion[];
   selectedAgentId: LaunchCrewRole;
   onSelectAgent: (id: LaunchCrewRole) => void;
@@ -305,6 +395,7 @@ async function syncPixiStage({
   if (state.destroyed) return;
 
   drawSignalLines(state.lineLayer, motions);
+  syncArtifactDrops(state, artifacts);
   removeMissingAgentNodes(state, renderedAgents);
   for (const renderedAgent of renderedAgents) {
     const texture = await loadTexture(
@@ -368,10 +459,12 @@ async function syncPixiStage({
 
 function CanvasHitTargets({
   renderedAgents,
+  artifacts,
   selectedAgentId,
   onSelectAgent,
 }: {
   renderedAgents: RenderedAgent[];
+  artifacts: LaunchCrewArtifact[];
   selectedAgentId: LaunchCrewRole;
   onSelectAgent: (id: LaunchCrewRole) => void;
 }) {
@@ -389,6 +482,21 @@ function CanvasHitTargets({
           }}
         />
       ))}
+      {artifacts
+        .filter((artifact) => artifact.status === "ready")
+        .slice(0, 5)
+        .map((artifact) => (
+          <span
+            key={artifact.filepath}
+            data-war-room-artifact-drop={artifact.name}
+            data-war-room-artifact-role={artifact.role}
+            className="pointer-events-none absolute size-1 opacity-0"
+            style={{
+              left: `${WAR_ROOM_WAYPOINTS.artifactConveyor.x}%`,
+              top: `${WAR_ROOM_WAYPOINTS.artifactConveyor.y}%`,
+            }}
+          />
+        ))}
       {renderedAgents.map(({ agent, motion, sprite }) => {
         const selected = selectedAgentId === agent.id;
         return (
@@ -420,6 +528,7 @@ function CanvasHitTargets({
 
 export function WarRoomCanvasStage({
   agents,
+  artifacts,
   motions,
   selectedAgentId,
   onSelectAgent,
@@ -453,11 +562,13 @@ export function WarRoomCanvasStage({
       root.sortableChildren = true;
       const lineLayer = new Graphics();
       const propLayer = new Container();
+      const artifactLayer = new Container();
       const agentLayer = new Container();
       propLayer.sortableChildren = true;
+      artifactLayer.sortableChildren = true;
       agentLayer.sortableChildren = true;
       drawRoomShell(root);
-      root.addChild(lineLayer, propLayer, agentLayer);
+      root.addChild(lineLayer, propLayer, artifactLayer, agentLayer);
       app.stage.addChild(root);
       app.canvas.setAttribute("data-war-room-canvas", "true");
       app.canvas.classList.add("size-full", "[image-rendering:pixelated]");
@@ -468,9 +579,11 @@ export function WarRoomCanvasStage({
         root,
         lineLayer,
         propLayer,
+        artifactLayer,
         agentLayer,
         textureCache: new Map(),
         agents: new Map(),
+        artifacts: new Map(),
         propsRendered: false,
         destroyed: false,
       };
@@ -488,6 +601,7 @@ export function WarRoomCanvasStage({
       void syncPixiStage({
         state: stageRef.current,
         renderedAgents,
+        artifacts,
         motions,
         selectedAgentId,
         onSelectAgent,
@@ -513,11 +627,12 @@ export function WarRoomCanvasStage({
     void syncPixiStage({
       state,
       renderedAgents,
+      artifacts,
       motions,
       selectedAgentId,
       onSelectAgent,
     });
-  }, [renderedAgents, motions, selectedAgentId, onSelectAgent]);
+  }, [artifacts, renderedAgents, motions, selectedAgentId, onSelectAgent]);
 
   return (
     <section
@@ -527,6 +642,7 @@ export function WarRoomCanvasStage({
       <div ref={containerRef} className="absolute inset-0 z-10" />
       <CanvasHitTargets
         renderedAgents={renderedAgents}
+        artifacts={artifacts}
         selectedAgentId={selectedAgentId}
         onSelectAgent={onSelectAgent}
       />
