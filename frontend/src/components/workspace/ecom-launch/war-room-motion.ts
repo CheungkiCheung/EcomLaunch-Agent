@@ -79,12 +79,12 @@ const ROAM_WAYPOINTS: Record<LaunchCrewRole, WarRoomWaypointId[]> = {
 };
 
 const REPORTING_OFFSETS: Record<LaunchCrewRole, WarRoomPoint> = {
-  "market-voc-researcher": { x: -4, y: -4 },
-  "offer-architect": { x: -2, y: 4 },
+  "market-voc-researcher": { x: -10, y: -7 },
+  "offer-architect": { x: -10, y: 8 },
   "launch-director": { x: 0, y: 0 },
-  "evidence-checker": { x: 4, y: -4 },
-  "growth-analyst": { x: -4, y: 5 },
-  "asset-studio": { x: 4, y: 4 },
+  "evidence-checker": { x: 10, y: -7 },
+  "growth-analyst": { x: -1, y: 11 },
+  "asset-studio": { x: 10, y: 8 },
 };
 
 function pointWithOffset(point: WarRoomPoint, offset: WarRoomPoint) {

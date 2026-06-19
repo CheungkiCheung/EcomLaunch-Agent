@@ -8,38 +8,48 @@ const assetRoot = join(root, "images", "ecom-launch", "war-room");
 const roles = [
   {
     id: "market-voc-researcher",
+    skin: "#f0b27a",
     jacket: "#2582c7",
     hair: "#164560",
     accent: "#7dd3fc",
     accessory: "cap",
+    tool: "tablet",
   },
   {
     id: "offer-architect",
+    skin: "#e7a66f",
     jacket: "#279b63",
     hair: "#174b30",
     accent: "#86efac",
     accessory: "cap",
+    tool: "blueprint",
   },
   {
     id: "evidence-checker",
+    skin: "#f2bd82",
     jacket: "#2563eb",
     hair: "#151a21",
     accent: "#bfdbfe",
     accessory: "glasses",
+    tool: "clipboard",
   },
   {
     id: "growth-analyst",
+    skin: "#d99b6a",
     jacket: "#d18a25",
     hair: "#7a4a28",
     accent: "#fde68a",
     accessory: "none",
+    tool: "chart",
   },
   {
     id: "asset-studio",
+    skin: "#f0a7a7",
     jacket: "#df4c92",
     hair: "#ec5ca2",
     accent: "#f9a8d4",
     accessory: "ponytail",
+    tool: "stylus",
   },
 ];
 
@@ -55,7 +65,12 @@ const frames = [
 function save(relativePath, content) {
   const path = join(assetRoot, relativePath);
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${content.trim()}\n`);
+  const normalizedContent = content
+    .trim()
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .join("\n");
+  writeFileSync(path, `${normalizedContent}\n`);
 }
 
 function characterSvg(role, frame) {
@@ -64,34 +79,73 @@ function characterSvg(role, frame) {
   const walkingUp = frame === "walk-up";
   const walkingDown = frame === "walk-down";
   const working = frame === "work";
-  const leftArmY = working ? 44 : walkingLeft || walkingDown ? 39 : 34;
-  const rightArmY = working ? 44 : walkingRight || walkingUp ? 39 : 34;
-  const leftLegY = walkingLeft || walkingDown ? 61 : 56;
-  const rightLegY = walkingRight || walkingUp ? 61 : 56;
+  const facingSide = walkingLeft || walkingRight;
+  const facingBack = walkingUp;
+  const bodyLean = walkingLeft ? -2 : walkingRight ? 2 : 0;
+  const leftArmY = working ? 54 : walkingLeft || walkingDown ? 49 : 44;
+  const rightArmY = working ? 54 : walkingRight || walkingUp ? 49 : 44;
+  const leftLegY = walkingLeft || walkingDown ? 73 : 68;
+  const rightLegY = walkingRight || walkingUp ? 73 : 68;
+  const sideNose = walkingLeft
+    ? `<path d="M22 35h4v4h-4z" fill="${role.skin}"/>`
+    : walkingRight
+      ? `<path d="M54 35h4v4h-4z" fill="${role.skin}"/>`
+      : "";
   const ponytail = role.accessory === "ponytail";
   const cap = role.accessory === "cap";
   const glasses = role.accessory === "glasses";
-  const showFace = !walkingUp;
+  const showFace = !facingBack;
+  const hairFront = facingBack
+    ? `<path d="M22 19h36v17H22zM18 29h44v12H18zM24 39h32v7H24z" fill="${role.hair}"/>`
+    : `<path d="M22 18h36v12H22zM18 27h44v7H18zM20 33h10v12H20zM50 33h10v12H50z" fill="${role.hair}"/>`;
+  const faceDetails =
+    showFace && glasses
+      ? `<path d="M25 36h10v6H25zM43 36h10v6H43zM35 38h8v2h-8z" fill="#111827"/><path d="M27 37h6v4h-6zM45 37h6v4h-6z" fill="#dbeafe"/>`
+      : showFace
+        ? `<path d="M29 37h4v5h-4zM46 37h4v5h-4z" fill="#111827"/>`
+        : "";
+  const expression = showFace
+    ? `<path d="M34 47h12v3H34z" fill="#9a3412" opacity=".48"/>`
+    : "";
+  const tool =
+    role.tool === "tablet"
+      ? `<path d="M28 59h22v15H28z" fill="#10242f"/><path d="M32 63h14v3H32zM32 69h9v3h-9z" fill="${role.accent}"/>`
+      : role.tool === "blueprint"
+        ? `<path d="M25 58h28v16H25z" fill="#dcfce7"/><path d="M29 63h18v2H29zM29 68h10v2H29z" fill="#15803d"/>`
+        : role.tool === "clipboard"
+          ? `<path d="M30 57h20v18H30z" fill="#e2e8f0"/><path d="M34 62h12v2H34zM34 67h8v2h-8z" fill="#334155"/>`
+          : role.tool === "chart"
+            ? `<path d="M29 58h23v16H29z" fill="#111827"/><path d="M33 69h4v3h-4zM40 64h4v8h-4zM47 60h4v12h-4z" fill="${role.accent}"/>`
+            : `<path d="M29 58h22v16H29z" fill="#2b2130"/><path d="M34 65l13-7 2 3-13 7z" fill="${role.accent}"/>`;
 
   return `
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="82" viewBox="0 0 64 82" shape-rendering="crispEdges">
-  <path d="M22 68h20v4H22z" fill="#111827" opacity=".28"/>
-  <path d="M24 ${leftLegY}h7v12h-7zM34 ${rightLegY}h7v12h-7z" fill="#1f2937"/>
-  <path d="M22 35h20v26H22z" fill="${role.jacket}"/>
-  <path d="M26 38h12v20H26z" fill="${role.accent}" opacity=".35"/>
-  <path d="M18 ${leftArmY}h7v19h-7zM39 ${rightArmY}h7v19h-7z" fill="${role.jacket}"/>
-  <path d="M20 54h7v6h-7zM37 54h7v6h-7z" fill="#f0b27a"/>
-  <path d="M22 17h20v22H22z" fill="#f2bd82"/>
-  <path d="M20 22h4v11h-4zM40 22h4v11h-4z" fill="#d8905f"/>
-  <path d="M22 14h20v9H22zM20 20h24v5H20z" fill="${role.hair}"/>
-  ${cap ? `<path d="M18 11h28v7H18zM25 7h16v7H25zM43 15h10v4H43z" fill="${role.jacket}"/><path d="M25 9h16v2H25z" fill="${role.accent}" opacity=".5"/>` : ""}
-  ${ponytail ? `<path d="M40 20h9v24h-9zM43 41h6v10h-6z" fill="${role.hair}"/>` : ""}
-  ${walkingUp ? `<path d="M21 24h22v16H21z" fill="${role.hair}"/><path d="M26 37h12v3H26z" fill="#d8905f"/>` : ""}
-  ${showFace && glasses ? `<path d="M24 26h7v5h-7zM34 26h7v5h-7zM31 28h3v1h-3z" fill="#111827"/><path d="M25 27h5v3h-5zM35 27h5v3h-5z" fill="#dbeafe"/>` : ""}
-  ${showFace ? `<path d="M27 29h3v4h-3zM36 29h3v4h-3z" fill="#111827"/><path d="M30 36h7v2h-7z" fill="#9a3412" opacity=".5"/>` : ""}
-  ${working ? `<path d="M24 55h16v5H24z" fill="#0f172a"/><path d="M28 50h12v6H28z" fill="${role.accent}"/>` : ""}
-  <path d="M22 35h20v4H22zM22 57h20v4H22zM18 ${leftArmY}h7v4h-7zM39 ${rightArmY}h7v4h-7z" fill="#0f172a" opacity=".22"/>
-  <path d="M20 17h24v4H20zM20 21h4v14h-4zM40 21h4v14h-4zM22 39h4v18h-4zM38 39h4v18h-4z" fill="#0f172a" opacity=".16"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="98" viewBox="0 0 80 98" shape-rendering="crispEdges">
+  <path d="M20 84h40v6H20zM26 80h28v4H26z" fill="#111827" opacity=".3"/>
+  <path d="M25 ${leftLegY}h10v14H25zM45 ${rightLegY}h10v14H45z" fill="#1f2937"/>
+  <path d="M23 ${leftLegY + 12}h15v7H23zM42 ${rightLegY + 12}h15v7H42z" fill="#101827"/>
+  <path d="M25 ${leftLegY}h10v4H25zM45 ${rightLegY}h10v4H45z" fill="#ffffff" opacity=".1"/>
+  <path d="M22 ${43 + bodyLean}h36v31H22z" fill="#111827"/>
+  <path d="M24 ${40 + bodyLean}h32v31H24z" fill="${role.jacket}"/>
+  <path d="M30 ${44 + bodyLean}h20v22H30z" fill="${role.accent}" opacity=".42"/>
+  <path d="M34 ${43 + bodyLean}h12v28H34z" fill="#0f172a" opacity=".14"/>
+  <path d="M16 ${leftArmY}h11v22H16zM53 ${rightArmY}h11v22H53z" fill="#111827"/>
+  <path d="M18 ${leftArmY - 2}h10v23H18zM52 ${rightArmY - 2}h10v23H52z" fill="${role.jacket}"/>
+  <path d="M18 68h11v8H18zM51 68h11v8H51z" fill="${role.skin}"/>
+  <path d="M20 20h40v5H20zM18 25h44v22H18zM22 47h36v11H22z" fill="#111827"/>
+  <path d="M22 22h36v24H22zM26 46h28v9H26z" fill="${role.skin}"/>
+  <path d="M18 32h5v12h-5zM57 32h5v12h-5z" fill="#c97c55"/>
+${hairFront}
+${cap ? `<path d="M19 15h40v8H19zM27 10h26v9H27zM54 20h14v5H54z" fill="${role.jacket}"/><path d="M27 12h26v3H27z" fill="${role.accent}" opacity=".65"/>` : ""}
+${ponytail ? `<path d="M54 26h12v28H54zM58 52h8v12h-8z" fill="${role.hair}"/>` : ""}
+${sideNose}
+${faceDetails}
+${expression}
+${working ? tool : ""}
+${facingSide ? `<path d="${walkingLeft ? "M20 31h13v19H20z" : "M47 31h13v19H47z"}" fill="${role.hair}"/>` : ""}
+  <path d="M24 ${40 + bodyLean}h32v5H24zM24 ${68 + bodyLean}h32v4H24zM18 ${leftArmY - 2}h10v5H18zM52 ${rightArmY - 2}h10v5H52z" fill="#0f172a" opacity=".24"/>
+  <path d="M22 22h36v4H22zM22 26h4v20h-4zM54 26h4v20h-4zM24 45h4v23h-4zM52 45h4v23h-4z" fill="#ffffff" opacity=".1"/>
+  <path d="M16 76h48v4H16z" fill="#0f172a" opacity=".16"/>
+  <title>${role.id} ${frame}</title>
 </svg>`;
 }
 
@@ -135,18 +189,25 @@ function commandConsoleSvg() {
 
 function directorSvg() {
   return `
-<svg xmlns="http://www.w3.org/2000/svg" width="70" height="86" viewBox="0 0 70 86" shape-rendering="crispEdges">
-  <path d="M21 64h28v10H21z" fill="#111827" opacity=".3"/>
-  <path d="M21 58h28v22H21z" fill="#1f2937"/>
-  <path d="M25 45h20v22H25z" fill="#2563eb"/>
-  <path d="M19 47h8v20h-8zM43 47h8v20h-8z" fill="#2563eb"/>
-  <path d="M21 65h8v6h-8zM41 65h8v6h-8z" fill="#f0b27a"/>
-  <path d="M24 22h22v24H24z" fill="#f2bd82"/>
-  <path d="M22 28h4v11h-4zM44 28h4v11h-4z" fill="#d8905f"/>
-  <path d="M22 18h26v10H22zM20 25h30v5H20z" fill="#8b542b"/>
-  <path d="M29 33h3v4h-3zM39 33h3v4h-3z" fill="#111827"/>
-  <path d="M31 41h8v2h-8z" fill="#9a3412" opacity=".55"/>
-  <path d="M24 48h22v5H24zM25 64h20v4H25z" fill="#0f172a" opacity=".2"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="86" height="102" viewBox="0 0 86 102" shape-rendering="crispEdges">
+  <path d="M24 86h38v7H24zM29 81h28v5H29z" fill="#111827" opacity=".32"/>
+  <path d="M27 72h12v18H27zM48 72h12v18H48z" fill="#1f2937"/>
+  <path d="M24 89h18v7H24zM45 89h18v7H45z" fill="#101827"/>
+  <path d="M25 50h36v30H25z" fill="#111827"/>
+  <path d="M28 47h30v30H28z" fill="#2563eb"/>
+  <path d="M34 51h18v22H34z" fill="#93c5fd" opacity=".44"/>
+  <path d="M18 52h12v25H18zM56 52h12v25H56z" fill="#2563eb"/>
+  <path d="M17 72h12v8H17zM57 72h12v8H57z" fill="#f0b27a"/>
+  <path d="M24 23h38v6H24zM22 29h42v24H22zM27 53h32v10H27z" fill="#111827"/>
+  <path d="M25 25h36v27H25zM30 52h26v9H30z" fill="#f2bd82"/>
+  <path d="M20 35h6v13h-6zM60 35h6v13h-6z" fill="#d8905f"/>
+  <path d="M23 20h40v12H23zM20 29h46v7H20zM21 34h11v17H21zM54 34h11v17H54z" fill="#8b542b"/>
+  <path d="M32 39h4v5h-4zM50 39h4v5h-4z" fill="#111827"/>
+  <path d="M38 49h12v3H38z" fill="#9a3412" opacity=".55"/>
+  <path d="M28 47h30v5H28zM28 75h30v4H28zM18 52h12v5H18zM56 52h12v5H56z" fill="#0f172a" opacity=".22"/>
+  <path d="M31 66h24v14H31z" fill="#111827"/>
+  <path d="M35 70h16v3H35zM35 75h10v3H35z" fill="#67e8f9"/>
+  <title>launch-director idle</title>
 </svg>`;
 }
 

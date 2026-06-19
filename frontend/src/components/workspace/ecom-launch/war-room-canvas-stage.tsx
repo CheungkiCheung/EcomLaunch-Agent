@@ -324,10 +324,10 @@ function createAgentLabel(label: string, selected: boolean) {
     text: label,
     style: {
       fontFamily: "monospace",
-      fontSize: 12,
+      fontSize: selected ? 12 : 10,
       fontWeight: "900",
       fill: selected ? 0xeafffb : 0xcffcf1,
-      stroke: { color: 0x101714, width: 4 },
+      stroke: { color: 0x101714, width: selected ? 4 : 3 },
     },
   });
   text.anchor.set(0.5, 0);
@@ -348,8 +348,9 @@ function drawSelectionRing(ring: Graphics, x: number, y: number) {
 function updateAgentNodePosition(node: MovingAgentNode) {
   node.sprite.zIndex = Math.round(node.sprite.y) + 20;
   node.label.x = node.sprite.x;
-  node.label.y = node.sprite.y + 6;
+  node.label.y = node.sprite.y + (node.selected ? 8 : 14);
   node.label.zIndex = node.sprite.zIndex + 2;
+  node.label.visible = node.selected;
   node.ring.visible = node.selected;
   if (node.selected) {
     drawSelectionRing(node.ring, node.sprite.x, node.sprite.y);
@@ -697,6 +698,11 @@ async function syncPixiStage({
     }
     node.selected = renderedAgent.agent.id === selectedAgentId;
     node.label.style.fill = node.selected ? 0xeafffb : 0xcffcf1;
+    node.label.style.fontSize = node.selected ? 12 : 10;
+    node.label.style.stroke = {
+      color: 0x101714,
+      width: node.selected ? 4 : 3,
+    };
     updateAgentNodePosition(node);
   }
   syncCarriedPackages(state, renderedAgents, artifacts);

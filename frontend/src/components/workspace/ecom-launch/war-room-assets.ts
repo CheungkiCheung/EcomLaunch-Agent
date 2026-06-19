@@ -23,12 +23,12 @@ export const WAR_ROOM_AGENT_SPRITE_SIZE: Record<
   LaunchCrewAgent["id"],
   { width: number; height: number }
 > = {
-  "market-voc-researcher": { width: 64, height: 82 },
-  "offer-architect": { width: 64, height: 82 },
-  "launch-director": { width: 70, height: 86 },
-  "evidence-checker": { width: 64, height: 82 },
-  "growth-analyst": { width: 64, height: 82 },
-  "asset-studio": { width: 64, height: 82 },
+  "market-voc-researcher": { width: 80, height: 98 },
+  "offer-architect": { width: 80, height: 98 },
+  "launch-director": { width: 86, height: 102 },
+  "evidence-checker": { width: 80, height: 98 },
+  "growth-analyst": { width: 80, height: 98 },
+  "asset-studio": { width: 80, height: 98 },
 };
 
 export const WAR_ROOM_PROPS: WarRoomPropAsset[] = [

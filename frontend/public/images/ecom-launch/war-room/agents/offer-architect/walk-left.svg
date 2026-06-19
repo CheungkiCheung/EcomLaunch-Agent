@@ -1,19 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="82" viewBox="0 0 64 82" shape-rendering="crispEdges">
-  <path d="M22 68h20v4H22z" fill="#111827" opacity=".28"/>
-  <path d="M24 61h7v12h-7zM34 56h7v12h-7z" fill="#1f2937"/>
-  <path d="M22 35h20v26H22z" fill="#279b63"/>
-  <path d="M26 38h12v20H26z" fill="#86efac" opacity=".35"/>
-  <path d="M18 39h7v19h-7zM39 34h7v19h-7z" fill="#279b63"/>
-  <path d="M20 54h7v6h-7zM37 54h7v6h-7z" fill="#f0b27a"/>
-  <path d="M22 17h20v22H22z" fill="#f2bd82"/>
-  <path d="M20 22h4v11h-4zM40 22h4v11h-4z" fill="#d8905f"/>
-  <path d="M22 14h20v9H22zM20 20h24v5H20z" fill="#174b30"/>
-  <path d="M18 11h28v7H18zM25 7h16v7H25zM43 15h10v4H43z" fill="#279b63"/><path d="M25 9h16v2H25z" fill="#86efac" opacity=".5"/>
-  
-  
-  
-  <path d="M27 29h3v4h-3zM36 29h3v4h-3z" fill="#111827"/><path d="M30 36h7v2h-7z" fill="#9a3412" opacity=".5"/>
-  
-  <path d="M22 35h20v4H22zM22 57h20v4H22zM18 39h7v4h-7zM39 34h7v4h-7z" fill="#0f172a" opacity=".22"/>
-  <path d="M20 17h24v4H20zM20 21h4v14h-4zM40 21h4v14h-4zM22 39h4v18h-4zM38 39h4v18h-4z" fill="#0f172a" opacity=".16"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="98" viewBox="0 0 80 98" shape-rendering="crispEdges">
+  <path d="M20 84h40v6H20zM26 80h28v4H26z" fill="#111827" opacity=".3"/>
+  <path d="M25 73h10v14H25zM45 68h10v14H45z" fill="#1f2937"/>
+  <path d="M23 85h15v7H23zM42 80h15v7H42z" fill="#101827"/>
+  <path d="M25 73h10v4H25zM45 68h10v4H45z" fill="#ffffff" opacity=".1"/>
+  <path d="M22 41h36v31H22z" fill="#111827"/>
+  <path d="M24 38h32v31H24z" fill="#279b63"/>
+  <path d="M30 42h20v22H30z" fill="#86efac" opacity=".42"/>
+  <path d="M34 41h12v28H34z" fill="#0f172a" opacity=".14"/>
+  <path d="M16 49h11v22H16zM53 44h11v22H53z" fill="#111827"/>
+  <path d="M18 47h10v23H18zM52 42h10v23H52z" fill="#279b63"/>
+  <path d="M18 68h11v8H18zM51 68h11v8H51z" fill="#e7a66f"/>
+  <path d="M20 20h40v5H20zM18 25h44v22H18zM22 47h36v11H22z" fill="#111827"/>
+  <path d="M22 22h36v24H22zM26 46h28v9H26z" fill="#e7a66f"/>
+  <path d="M18 32h5v12h-5zM57 32h5v12h-5z" fill="#c97c55"/>
+<path d="M22 18h36v12H22zM18 27h44v7H18zM20 33h10v12H20zM50 33h10v12H50z" fill="#174b30"/>
+<path d="M19 15h40v8H19zM27 10h26v9H27zM54 20h14v5H54z" fill="#279b63"/><path d="M27 12h26v3H27z" fill="#86efac" opacity=".65"/>
+
+<path d="M22 35h4v4h-4z" fill="#e7a66f"/>
+<path d="M29 37h4v5h-4zM46 37h4v5h-4z" fill="#111827"/>
+<path d="M34 47h12v3H34z" fill="#9a3412" opacity=".48"/>
+
+<path d="M20 31h13v19H20z" fill="#174b30"/>
+  <path d="M24 38h32v5H24zM24 66h32v4H24zM18 47h10v5H18zM52 42h10v5H52z" fill="#0f172a" opacity=".24"/>
+  <path d="M22 22h36v4H22zM22 26h4v20h-4zM54 26h4v20h-4zM24 45h4v23h-4zM52 45h4v23h-4z" fill="#ffffff" opacity=".1"/>
+  <path d="M16 76h48v4H16z" fill="#0f172a" opacity=".16"/>
+  <title>offer-architect walk-left</title>
 </svg>

@@ -83,15 +83,32 @@ describe("war room motion model", () => {
       target: WAR_ROOM_WAYPOINTS.artifactConveyor,
     });
     expect(motion?.position).not.toEqual(WAR_ROOM_WAYPOINTS.artifactConveyor);
-    expect(motion?.position.x).toBeCloseTo(
-      WAR_ROOM_WAYPOINTS.artifactConveyor.x,
-      -1,
-    );
-    expect(motion?.position.y).toBeCloseTo(
-      WAR_ROOM_WAYPOINTS.artifactConveyor.y,
-      -1,
-    );
+    expect(
+      Math.hypot(
+        (motion?.position.x ?? 0) - WAR_ROOM_WAYPOINTS.artifactConveyor.x,
+        (motion?.position.y ?? 0) - WAR_ROOM_WAYPOINTS.artifactConveyor.y,
+      ),
+    ).toBeLessThanOrEqual(13);
     expect(motion?.path.at(-1)).toEqual(motion?.position);
+  });
+
+  it("spreads reporting agents around the conveyor so larger sprites do not stack", () => {
+    const motions = buildWarRoomMotion([
+      agent("market-voc-researcher", { status: "done" }),
+      agent("asset-studio", { status: "done" }),
+    ]);
+    const positions = motions.map((motion) => motion.position);
+
+    expect(positions[0]).not.toEqual(positions[1]);
+    expect(
+      Math.hypot(
+        (positions[0]?.x ?? 0) - (positions[1]?.x ?? 0),
+        (positions[0]?.y ?? 0) - (positions[1]?.y ?? 0),
+      ),
+    ).toBeGreaterThan(15);
+    expect(
+      motions.every((motion) => motion.targetWaypoint === "artifactConveyor"),
+    ).toBe(true);
   });
 
   it("keeps blocked agents at home with a blocked state", () => {
