@@ -52,8 +52,7 @@ export default function AgentChatPage() {
   // the thread. `isWelcomeMode` controls only the centered welcome layout, so
   // it can flip immediately on submit without triggering eager history loads.
   const [isWelcomeMode, setIsWelcomeMode] = useState(isNewThread);
-  const [ecomLaunchContextEdited, setEcomLaunchContextEdited] =
-    useState(false);
+  const [ecomLaunchContextEdited, setEcomLaunchContextEdited] = useState(false);
   const [settings, setSettings] = useThreadSettings(threadId);
   const [localSettings, setLocalSettings] = useLocalSettings();
   const { tokenUsageEnabled } = useModels();
@@ -175,159 +174,166 @@ export default function AgentChatPage() {
   const hasTodos = (thread.values.todos?.length ?? 0) > 0;
   const AgentBadgeIcon = isEcomLaunch ? ShoppingBagIcon : BotIcon;
 
-  return (
-    <ThreadContext.Provider value={{ thread }}>
-      <ChatBox threadId={threadId}>
-        <div className="relative flex size-full min-h-0 justify-between">
-          <header
+  const chatExperience = (
+    <ChatBox threadId={threadId}>
+      <div className="relative flex size-full min-h-0 justify-between">
+        <header
+          className={cn(
+            "absolute top-0 right-0 left-0 z-30 flex h-12 shrink-0 items-center gap-2 px-4",
+            isWelcomeMode
+              ? "bg-background/0 backdrop-blur-none"
+              : "bg-background/80 shadow-xs backdrop-blur",
+          )}
+        >
+          {/* Agent badge */}
+          <div className="flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1">
+            <AgentBadgeIcon className="text-primary h-3.5 w-3.5" />
+            <span className="text-xs font-medium">
+              {isEcomLaunch
+                ? t.agents.ecomLaunchName
+                : (agent?.name ?? agent_name)}
+            </span>
+          </div>
+
+          <div className="flex w-full items-center text-sm font-medium">
+            <ThreadTitle threadId={threadId} thread={thread} />
+          </div>
+          <div className="mr-4 flex items-center">
+            <Tooltip content={t.agents.newChat}>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  router.push(`/workspace/agents/${agent_name}/chats/new`);
+                }}
+              >
+                <PlusSquare /> {t.agents.newChat}
+              </Button>
+            </Tooltip>
+            <TokenUsageIndicator
+              threadId={isNewThread ? undefined : threadId}
+              backendUsage={backendTokenUsage}
+              enabled={tokenUsageEnabled}
+              messages={thread.messages}
+              pendingMessages={pendingUsageMessages}
+              preferences={localSettings.tokenUsage}
+              onPreferencesChange={(preferences) =>
+                setLocalSettings("tokenUsage", preferences)
+              }
+            />
+            <ExportTrigger threadId={threadId} />
+            <ArtifactTrigger />
+          </div>
+        </header>
+
+        <main className="relative flex min-h-0 max-w-full grow flex-col">
+          <div className="flex min-h-0 flex-1 justify-center">
+            <MessageList
+              className={cn("size-full", !isWelcomeMode && "pt-10")}
+              threadId={threadId}
+              thread={thread}
+              paddingBottom={MESSAGE_LIST_DEFAULT_PADDING_BOTTOM}
+              hasMoreHistory={hasMoreHistory}
+              loadMoreHistory={loadMoreHistory}
+              isHistoryLoading={isHistoryLoading}
+              tokenUsageInlineMode={tokenUsageInlineMode}
+            />
+          </div>
+
+          <div
             className={cn(
-              "absolute top-0 right-0 left-0 z-30 flex h-12 shrink-0 items-center gap-2 px-4",
-              isWelcomeMode
-                ? "bg-background/0 backdrop-blur-none"
-                : "bg-background/80 shadow-xs backdrop-blur",
+              "right-0 bottom-0 left-0 z-30 flex justify-center px-4",
+              isWelcomeMode ? "absolute" : "relative shrink-0 pb-4",
             )}
           >
-            {/* Agent badge */}
-            <div className="flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1">
-              <AgentBadgeIcon className="text-primary h-3.5 w-3.5" />
-              <span className="text-xs font-medium">
-                {isEcomLaunch
-                  ? t.agents.ecomLaunchName
-                  : (agent?.name ?? agent_name)}
-              </span>
-            </div>
-
-            <div className="flex w-full items-center text-sm font-medium">
-              <ThreadTitle threadId={threadId} thread={thread} />
-            </div>
-            <div className="mr-4 flex items-center">
-              <Tooltip content={t.agents.newChat}>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    router.push(`/workspace/agents/${agent_name}/chats/new`);
-                  }}
-                >
-                  <PlusSquare /> {t.agents.newChat}
-                </Button>
-              </Tooltip>
-              <TokenUsageIndicator
-                threadId={isNewThread ? undefined : threadId}
-                backendUsage={backendTokenUsage}
-                enabled={tokenUsageEnabled}
-                messages={thread.messages}
-                pendingMessages={pendingUsageMessages}
-                preferences={localSettings.tokenUsage}
-                onPreferencesChange={(preferences) =>
-                  setLocalSettings("tokenUsage", preferences)
-                }
-              />
-              <ExportTrigger threadId={threadId} />
-              <ArtifactTrigger />
-            </div>
-          </header>
-
-          <main className="flex min-h-0 max-w-full grow flex-col">
-            <div className="flex min-h-0 flex-1 justify-center">
-              <MessageList
-                className={cn("size-full", !isWelcomeMode && "pt-10")}
-                threadId={threadId}
-                thread={thread}
-                paddingBottom={MESSAGE_LIST_DEFAULT_PADDING_BOTTOM}
-                hasMoreHistory={hasMoreHistory}
-                loadMoreHistory={loadMoreHistory}
-                isHistoryLoading={isHistoryLoading}
-                tokenUsageInlineMode={tokenUsageInlineMode}
-              />
-            </div>
-
             <div
               className={cn(
-                "right-0 bottom-0 left-0 z-30 flex justify-center px-4",
-                isWelcomeMode ? "absolute" : "relative shrink-0 pb-4",
+                "relative w-full",
+                isWelcomeMode && "-translate-y-[calc(50vh-96px)]",
+                isWelcomeMode
+                  ? "max-w-(--container-width-sm)"
+                  : "max-w-(--container-width-md)",
               )}
             >
-              <div
-                className={cn(
-                  "relative w-full",
-                  isWelcomeMode && "-translate-y-[calc(50vh-96px)]",
-                  isWelcomeMode
-                    ? "max-w-(--container-width-sm)"
-                    : "max-w-(--container-width-md)",
-                )}
-              >
-                {hasTodos && (
+              {hasTodos && (
+                <div
+                  className={cn(
+                    "right-0 left-0 z-0",
+                    isWelcomeMode ? "absolute -top-4" : "relative",
+                  )}
+                >
                   <div
                     className={cn(
-                      "right-0 left-0 z-0",
-                      isWelcomeMode ? "absolute -top-4" : "relative",
+                      "right-0 bottom-0 left-0",
+                      isWelcomeMode ? "absolute" : "relative",
                     )}
                   >
-                    <div
-                      className={cn(
-                        "right-0 bottom-0 left-0",
-                        isWelcomeMode ? "absolute" : "relative",
-                      )}
-                    >
-                      <TodoList
-                        className="bg-background/5"
-                        todos={thread.values.todos ?? []}
-                        hidden={false}
-                      />
-                    </div>
+                    <TodoList
+                      className="bg-background/5"
+                      todos={thread.values.todos ?? []}
+                      hidden={false}
+                    />
                   </div>
-                )}
+                </div>
+              )}
 
-                <InputBox
-                  className={cn(
-                    "bg-background/5 w-full",
-                    isWelcomeMode && "-translate-y-4",
-                  )}
-                  isWelcomeMode={isWelcomeMode}
-                  threadId={threadId}
-                  autoFocus={isWelcomeMode}
-                  status={
-                    thread.error
-                      ? "error"
-                      : thread.isLoading
-                        ? "streaming"
-                        : "ready"
-                  }
-                  context={effectiveContext}
-                  extraHeader={
-                    isWelcomeMode && (
-                      <AgentWelcome agent={agent} agentName={agent_name} />
-                    )
-                  }
-                  welcomeSuggestions={
-                    isEcomLaunch ? t.agents.ecomLaunchSuggestions : undefined
-                  }
-                  disabled={
-                    env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ||
-                    isUploading
-                  }
-                  onContextChange={handleContextChange}
-                  onSubmit={handleSubmit}
-                  onStop={handleStop}
-                />
-                {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" && (
-                  <div className="text-muted-foreground/67 w-full translate-y-12 text-center text-xs">
-                    {t.common.notAvailableInDemoMode}
-                  </div>
+              <InputBox
+                className={cn(
+                  "bg-background/5 w-full",
+                  isWelcomeMode && "-translate-y-4",
                 )}
-              </div>
+                isWelcomeMode={isWelcomeMode}
+                threadId={threadId}
+                autoFocus={isWelcomeMode}
+                status={
+                  thread.error
+                    ? "error"
+                    : thread.isLoading
+                      ? "streaming"
+                      : "ready"
+                }
+                context={effectiveContext}
+                extraHeader={
+                  isWelcomeMode && (
+                    <AgentWelcome agent={agent} agentName={agent_name} />
+                  )
+                }
+                welcomeSuggestions={
+                  isEcomLaunch ? t.agents.ecomLaunchSuggestions : undefined
+                }
+                disabled={
+                  env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" || isUploading
+                }
+                onContextChange={handleContextChange}
+                onSubmit={handleSubmit}
+                onStop={handleStop}
+              />
+              {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" && (
+                <div className="text-muted-foreground/67 w-full translate-y-12 text-center text-xs">
+                  {t.common.notAvailableInDemoMode}
+                </div>
+              )}
             </div>
-          </main>
-          {isEcomLaunch && (
-            <LaunchCrewPanel
-              threadValues={thread.values}
-              messages={thread.messages}
-              isStreaming={thread.isLoading}
-            />
-          )}
+          </div>
+        </main>
+      </div>
+    </ChatBox>
+  );
+
+  return (
+    <ThreadContext.Provider value={{ thread }}>
+      {isEcomLaunch ? (
+        <div className="flex size-full min-h-0">
+          <div className="min-w-0 flex-1">{chatExperience}</div>
+          <LaunchCrewPanel
+            threadValues={thread.values}
+            messages={thread.messages}
+            isStreaming={thread.isLoading}
+          />
         </div>
-      </ChatBox>
+      ) : (
+        chatExperience
+      )}
     </ThreadContext.Provider>
   );
 }

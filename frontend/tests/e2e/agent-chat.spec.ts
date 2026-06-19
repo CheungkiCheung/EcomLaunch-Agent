@@ -43,4 +43,25 @@ test.describe("Agent chat", () => {
       page.locator("header span", { hasText: "test-agent" }),
     ).toBeVisible({ timeout: 15_000 });
   });
+
+  test("ecom launch keeps chat on the left and shows cockpit on the right", async ({
+    page,
+  }) => {
+    mockLangGraphAPI(page, { agents: MOCK_AGENTS });
+
+    await page.goto("/workspace/agents/ecom-launch/chats/new");
+
+    const textarea = page.getByPlaceholder(/how can i assist you/i);
+    const cockpit = page.getByLabel("EcomLaunch live agent cockpit");
+
+    await expect(textarea).toBeVisible({ timeout: 15_000 });
+    await expect(cockpit).toBeVisible({ timeout: 15_000 });
+
+    const textareaBox = await textarea.boundingBox();
+    const cockpitBox = await cockpit.boundingBox();
+
+    expect(textareaBox).not.toBeNull();
+    expect(cockpitBox).not.toBeNull();
+    expect(cockpitBox!.x).toBeGreaterThan(textareaBox!.x);
+  });
 });

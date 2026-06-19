@@ -2,17 +2,17 @@
 
 import type { Message } from "@langchain/langgraph-sdk";
 import {
+  AlertCircleIcon,
   CheckCircle2Icon,
   CircleDotDashedIcon,
   FileTextIcon,
   Loader2Icon,
+  MessageSquareTextIcon,
   PackageCheckIcon,
-  SearchIcon,
   ShieldCheckIcon,
-  SparklesIcon,
-  TriangleAlertIcon,
+  TargetIcon,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,49 +29,22 @@ import { useSubtaskContext } from "@/core/tasks/context";
 import { parseSubtaskResult } from "@/core/tasks/subtask-result";
 import type { Subtask } from "@/core/tasks/types";
 import type { AgentThreadState } from "@/core/threads";
-import type { Todo } from "@/core/todos";
 import { explainLastToolCall } from "@/core/tools/utils";
 import { getFileName } from "@/core/utils/files";
 import { cn } from "@/lib/utils";
 
+import {
+  buildLaunchCrewActivityModel,
+  type LaunchCrewActivityModel,
+  type LaunchCrewAgent,
+  type LaunchCrewArtifact,
+  type LaunchCrewCommsEvent,
+  type LaunchCrewEvidenceBadge,
+  type LaunchCrewMission,
+  type LaunchCrewRole,
+  type LaunchCrewTask,
+} from "./launch-crew-activity-model";
 import { PixelOffice } from "./pixel-office";
-
-type LaunchCrewRole =
-  | "market-voc-researcher"
-  | "offer-architect"
-  | "asset-studio"
-  | "evidence-checker"
-  | "growth-analyst";
-
-type LaunchCrewStatus =
-  | "idle"
-  | "assigned"
-  | "searching"
-  | "reading"
-  | "writing"
-  | "delivered"
-  | "done"
-  | "failed";
-
-type LaunchCrewRoleConfig = {
-  id: LaunchCrewRole;
-  name: string;
-  desk: string;
-  accent: string;
-  icon: React.ComponentType<{ className?: string }>;
-};
-
-type RequiredDeliverable = {
-  filepath: string;
-  label: string;
-};
-
-type WorkflowStage = {
-  id: string;
-  label: string;
-  matchers: string[];
-  artifactNames?: string[];
-};
 
 type LaunchCrewPanelProps = {
   className?: string;
@@ -80,168 +53,21 @@ type LaunchCrewPanelProps = {
   isStreaming: boolean;
 };
 
-const ROLE_CONFIGS: LaunchCrewRoleConfig[] = [
-  {
-    id: "market-voc-researcher",
-    name: "Market & VOC Researcher",
-    desk: "市场与用户研究",
-    accent: "bg-cyan-500",
-    icon: SearchIcon,
-  },
-  {
-    id: "offer-architect",
-    name: "Offer Architect",
-    desk: "定位与验证设计",
-    accent: "bg-emerald-500",
-    icon: SparklesIcon,
-  },
-  {
-    id: "asset-studio",
-    name: "Asset Studio",
-    desk: "内容资产与校准",
-    accent: "bg-fuchsia-500",
-    icon: FileTextIcon,
-  },
-  {
-    id: "evidence-checker",
-    name: "Evidence Checker",
-    desk: "证据与口径审计",
-    accent: "bg-sky-600",
-    icon: ShieldCheckIcon,
-  },
-];
-
-const ARTIFACT_TO_ROLE: Array<[string, LaunchCrewRole]> = [
-  ["competitor-table.csv", "market-voc-researcher"],
-  ["source-list.md", "market-voc-researcher"],
-  ["review-insights.json", "market-voc-researcher"],
-  ["positioning-brief.md", "offer-architect"],
-  ["launch-calendar.csv", "offer-architect"],
-  ["listing-pack.md", "asset-studio"],
-  ["content-pack.md", "asset-studio"],
-  ["content-scorecard.md", "asset-studio"],
-  ["rubric.md", "evidence-checker"],
-  ["calibration-ledger.json", "evidence-checker"],
-  ["evidence-ledger.json", "evidence-checker"],
-  ["launch-war-room.html", "evidence-checker"],
-];
-
-const REQUIRED_DELIVERABLES: RequiredDeliverable[] = [
-  { filepath: "competitor-table.csv", label: "市场信号表" },
-  { filepath: "evidence-ledger.json", label: "证据账本" },
-  { filepath: "positioning-brief.md", label: "定位 brief" },
-  { filepath: "listing-pack.md", label: "Listing pack" },
-  { filepath: "content-pack.md", label: "内容包" },
-  { filepath: "launch-calendar.csv", label: "7 天计划" },
-  { filepath: "launch-war-room.html", label: "War room 页面" },
-  { filepath: "calibration-ledger.json", label: "校准账本" },
-  { filepath: "rubric.md", label: "评分公式" },
-  { filepath: "content-scorecard.md", label: "内容评分卡" },
-];
-
-const WORKFLOW_STAGES: WorkflowStage[] = [
-  {
-    id: "brief",
-    label: "简报",
-    matchers: ["clarify", "brief", "context", "launch brief", "启动", "简报"],
-    artifactNames: ["positioning-brief.md"],
-  },
-  {
-    id: "research",
-    label: "研究",
-    matchers: [
-      "market",
-      "voc",
-      "research",
-      "signal",
-      "customer",
-      "review",
-      "市场",
-      "用户",
-      "研究",
-    ],
-    artifactNames: ["competitor-table.csv", "review-insights.json"],
-  },
-  {
-    id: "offer",
-    label: "定位",
-    matchers: ["offer", "position", "wedge", "hypoth", "定位", "卖点", "假设"],
-    artifactNames: ["positioning-brief.md"],
-  },
-  {
-    id: "assets",
-    label: "资产",
-    matchers: ["asset", "listing", "content", "copy", "素材", "内容", "文案"],
-    artifactNames: ["listing-pack.md", "content-pack.md"],
-  },
-  {
-    id: "plan",
-    label: "计划",
-    matchers: [
-      "7-day",
-      "validation plan",
-      "calendar",
-      "experiment",
-      "验证计划",
-      "7 天",
-    ],
-    artifactNames: ["launch-calendar.csv"],
-  },
-  {
-    id: "audit",
-    label: "审计",
-    matchers: [
-      "audit",
-      "evidence",
-      "claim",
-      "unsupported",
-      "证据",
-      "口径",
-      "审计",
-    ],
-    artifactNames: ["evidence-ledger.json"],
-  },
-  {
-    id: "calibrate",
-    label: "校准",
-    matchers: [
-      "calibrate",
-      "score",
-      "predict",
-      "retro",
-      "rubric",
-      "校准",
-      "评分",
-      "回顾",
-      "预测",
-    ],
-    artifactNames: ["calibration-ledger.json", "rubric.md"],
-  },
-  {
-    id: "pack",
-    label: "交付",
-    matchers: ["present", "artifact", "deliver", "输出", "交付"],
-    artifactNames: ["launch-war-room.html"],
-  },
-];
-
-function roleForArtifact(filepath: string): LaunchCrewRole | "launch-director" {
-  const name = getFileName(filepath);
-  const match = ARTIFACT_TO_ROLE.find(([artifactName]) => name === artifactName);
-  return match?.[1] ?? "launch-director";
-}
-
 function normalizeRole(role: string | undefined): LaunchCrewRole | null {
-  if (!role) {
-    return null;
+  if (
+    role === "market-voc-researcher" ||
+    role === "offer-architect" ||
+    role === "asset-studio" ||
+    role === "evidence-checker" ||
+    role === "growth-analyst"
+  ) {
+    return role;
   }
-  return ROLE_CONFIGS.some((config) => config.id === role)
-    ? (role as LaunchCrewRole)
-    : null;
+  return null;
 }
 
-function latestTaskForRole(tasks: Subtask[], role: LaunchCrewRole) {
-  return [...tasks].reverse().find((task) => task.subagent_type === role);
+function getToolName(task: Subtask | undefined) {
+  return task?.latestMessage?.tool_calls?.at(-1)?.name ?? null;
 }
 
 function fallbackTasksFromMessages(messages: Message[]) {
@@ -302,148 +128,327 @@ function fallbackArtifactsFromMessages(messages: Message[]) {
   return [...new Set(files)];
 }
 
-function getToolName(task: Subtask | undefined) {
-  return task?.latestMessage?.tool_calls?.at(-1)?.name;
+function toLaunchCrewTasks(
+  tasks: Subtask[],
+  explainAction: (task: Subtask) => string | null,
+): LaunchCrewTask[] {
+  const result: LaunchCrewTask[] = [];
+  for (const task of tasks) {
+    const role = normalizeRole(task.subagent_type);
+    if (!role) {
+      continue;
+    }
+    result.push({
+      id: task.id,
+      role,
+      status: task.status,
+      description: task.description,
+      prompt: task.prompt,
+      result: task.result,
+      error: task.error,
+      currentAction:
+        task.latestMessage && task.status === "in_progress"
+          ? explainAction(task)
+          : null,
+      toolName: getToolName(task),
+    });
+  }
+  return result;
 }
 
-function isWorkingStatus(status: LaunchCrewStatus) {
-  return (
-    status === "assigned" ||
-    status === "searching" ||
-    status === "reading" ||
-    status === "writing"
-  );
+function statusIcon(agent: LaunchCrewAgent) {
+  if (agent.status === "error") {
+    return <AlertCircleIcon className="size-3.5" />;
+  }
+  if (agent.status === "done" || agent.status === "delivered") {
+    return <CheckCircle2Icon className="size-3.5" />;
+  }
+  if (agent.status !== "idle") {
+    return <Loader2Icon className="size-3.5 animate-spin" />;
+  }
+  return <CircleDotDashedIcon className="size-3.5" />;
 }
 
-function getPhaseLabels(status: LaunchCrewStatus) {
-  return [
-    { label: "分派", active: status !== "idle", done: status !== "idle" },
-    {
-      label: "采集",
-      active: status === "searching" || status === "reading",
-      done:
-        status === "writing" ||
-        status === "done" ||
-        status === "delivered" ||
-        status === "failed",
-    },
-    {
-      label: "整理",
-      active: status === "writing",
-      done: status === "done" || status === "delivered",
-    },
-    {
-      label: "回传",
-      active: status === "done" || status === "delivered",
-      done: status === "done" || status === "delivered",
-    },
-  ];
-}
-
-function getTodoStageStatus(
-  todos: Todo[] | undefined,
-  stage: WorkflowStage,
-): Todo["status"] | undefined {
-  const todo = todos?.find((item) => {
-    const content = item.content?.toLowerCase() ?? "";
-    return stage.matchers.some((matcher) =>
-      content.includes(matcher.toLowerCase()),
-    );
-  });
-  return todo?.status;
-}
-
-function statusForTask(
-  task: Subtask | undefined,
-  artifacts: string[],
-): LaunchCrewStatus {
-  if (!task) {
-    return "idle";
-  }
-  if (task.status === "failed") {
-    return "failed";
-  }
-  if (task.status === "completed") {
-    return "done";
-  }
-
-  const toolName = getToolName(task);
-  if (toolName === "web_search" || toolName === "image_search") {
-    return "searching";
-  }
-  if (toolName === "web_fetch" || toolName === "read_file") {
-    return "reading";
-  }
-  if (toolName === "write_file" || toolName === "present_files") {
-    return "writing";
-  }
-
-  return artifacts.length > 0 ? "writing" : "assigned";
-}
-
-function statusLabel(status: LaunchCrewStatus) {
-  switch (status) {
-    case "assigned":
-      return "已分配";
+function statusLabel(agent: LaunchCrewAgent) {
+  switch (agent.status) {
     case "searching":
       return "搜索中";
     case "reading":
       return "阅读中";
     case "writing":
       return "写作中";
-    case "delivered":
-      return "已落地";
+    case "working":
+      return "行动中";
     case "done":
-      return "已完成";
-    case "failed":
-      return "失败";
+    case "delivered":
+      return "已回传";
+    case "error":
+      return "阻塞";
     default:
       return "待命";
   }
 }
 
-function bubbleForTask(
-  task: Subtask | undefined,
-  status: LaunchCrewStatus,
-  artifactCount: number,
-) {
-  if (!task) {
-    if (status === "delivered" && artifactCount > 0) {
-      return "交付物已落地，已进入 Launch Director 汇总。";
-    }
-    return "等待 Launch Director 分派任务。";
+function evidenceBadgeVariant(status: LaunchCrewEvidenceBadge["status"]) {
+  if (status === "ready") {
+    return "secondary" as const;
   }
-  if (status === "failed") {
-    return task.error ?? "这个工作流遇到阻塞。";
+  if (status === "active") {
+    return "default" as const;
   }
-  if (status === "done") {
-    return task.result ? "结构化发现已回传给 Launch Director。" : "子任务已完成。";
-  }
-
-  const toolName = getToolName(task);
-  if (toolName === "web_search" || toolName === "image_search") {
-    return "正在搜索公开信号。";
-  }
-  if (toolName === "web_fetch") {
-    return "正在读取公开页面。";
-  }
-  if (toolName === "read_file") {
-    return "正在检查已有材料。";
-  }
-  return task.description || "正在处理分派任务。";
+  return "outline" as const;
 }
 
-function statusIcon(status: LaunchCrewStatus) {
-  if (status === "done" || status === "delivered") {
-    return <CheckCircle2Icon className="size-3.5" />;
+function EvidenceBadges({ badges }: { badges: LaunchCrewEvidenceBadge[] }) {
+  return (
+    <section className="grid grid-cols-2 gap-2">
+      {badges.map((badge) => (
+        <Badge
+          key={badge.id}
+          variant={evidenceBadgeVariant(badge.status)}
+          className="h-8 min-w-0 justify-start gap-1.5 px-2 text-[11px]"
+        >
+          <ShieldCheckIcon className="size-3 shrink-0" />
+          <span className="truncate">{badge.label}</span>
+        </Badge>
+      ))}
+    </section>
+  );
+}
+
+function SelectedAgentDetail({
+  agent,
+  onOpenArtifact,
+}: {
+  agent: LaunchCrewAgent;
+  onOpenArtifact: (filepath: string) => void;
+}) {
+  return (
+    <section className="border-border/80 bg-card rounded-lg border p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-muted-foreground text-[11px] font-medium">
+            Selected Agent
+          </div>
+          <h3 className="truncate text-sm font-semibold">{agent.name}</h3>
+          <p className="text-muted-foreground mt-0.5 truncate text-xs">
+            {agent.desk}
+          </p>
+        </div>
+        <Badge
+          variant={
+            agent.status === "error"
+              ? "destructive"
+              : agent.status === "done" || agent.status === "delivered"
+                ? "secondary"
+                : "outline"
+          }
+          className="shrink-0 gap-1"
+        >
+          {statusIcon(agent)}
+          {statusLabel(agent)}
+        </Badge>
+      </div>
+
+      <div className="bg-muted/40 mt-3 rounded-md px-3 py-2 text-xs leading-5">
+        {agent.lastLine}
+      </div>
+
+      {agent.task && (
+        <div className="mt-3 space-y-2">
+          <div>
+            <div className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wide uppercase">
+              分派任务
+            </div>
+            <p className="text-xs leading-5 break-words">
+              {agent.task.description}
+            </p>
+          </div>
+          {agent.currentAction && (
+            <div>
+              <div className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wide uppercase">
+                当前动作
+              </div>
+              <p className="text-xs leading-5 break-words">
+                {agent.currentAction}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {agent.artifacts.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {agent.artifacts.map((artifact) => (
+            <Button
+              key={artifact.filepath}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 max-w-full min-w-0 px-2 text-xs"
+              onClick={() => onOpenArtifact(artifact.filepath)}
+            >
+              <PackageCheckIcon className="size-3.5" />
+              <span className="truncate">{artifact.name}</span>
+            </Button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function LiveComms({ events }: { events: LaunchCrewCommsEvent[] }) {
+  return (
+    <section>
+      <div className="text-muted-foreground mb-2 inline-flex items-center gap-1 text-xs font-medium">
+        <MessageSquareTextIcon className="size-3.5" />
+        Live Comms
+      </div>
+      {events.length === 0 ? (
+        <div className="border-border/80 bg-muted/20 text-muted-foreground rounded-lg border p-3 text-xs">
+          等待第一条 agent 状态回传。
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {events.map((event) => (
+            <div
+              key={event.id}
+              className="border-border/80 bg-background rounded-md border px-3 py-2"
+            >
+              <div className="text-[11px] font-medium">{event.speaker}</div>
+              <div className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-5">
+                {event.text}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ActiveMissions({ missions }: { missions: LaunchCrewMission[] }) {
+  return (
+    <section>
+      <div className="text-muted-foreground mb-2 inline-flex items-center gap-1 text-xs font-medium">
+        <TargetIcon className="size-3.5" />
+        Active Missions
+      </div>
+      {missions.length === 0 ? (
+        <div className="border-border/80 bg-muted/20 text-muted-foreground rounded-lg border p-3 text-xs">
+          暂无活动任务。发送上新验证请求后，这里会显示当前焦点。
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {missions.map((mission) => (
+            <div
+              key={mission.id}
+              className="border-border/80 bg-background flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+            >
+              <span className="min-w-0 truncate text-xs">{mission.label}</span>
+              <Badge
+                variant={mission.status === "done" ? "secondary" : "outline"}
+                className="shrink-0 text-[10px]"
+              >
+                {mission.status === "done"
+                  ? "done"
+                  : mission.status === "active"
+                    ? "live"
+                    : "next"}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ArtifactConveyor({
+  artifacts,
+  onOpenArtifact,
+}: {
+  artifacts: LaunchCrewArtifact[];
+  onOpenArtifact: (filepath: string) => void;
+}) {
+  return (
+    <section>
+      <div className="text-muted-foreground mb-2 inline-flex items-center gap-1 text-xs font-medium">
+        <FileTextIcon className="size-3.5" />
+        Artifact Conveyor
+      </div>
+      <div className="space-y-2">
+        {artifacts.map((artifact) => {
+          const ready = artifact.status === "ready";
+          return (
+            <button
+              key={`${artifact.filepath}-${artifact.status}`}
+              type="button"
+              disabled={!ready}
+              className={cn(
+                "border-border/80 flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-xs transition-colors",
+                ready
+                  ? "bg-background hover:bg-accent/60"
+                  : "bg-muted/20 text-muted-foreground",
+              )}
+              onClick={() => ready && onOpenArtifact(artifact.filepath)}
+            >
+              {ready ? (
+                <PackageCheckIcon className="text-primary size-4 shrink-0" />
+              ) : (
+                <CircleDotDashedIcon className="size-4 shrink-0" />
+              )}
+              <span className="min-w-0 flex-1 truncate">{artifact.label}</span>
+              <Badge
+                variant={ready ? "secondary" : "outline"}
+                className="shrink-0 text-[10px]"
+              >
+                {ready ? "ready" : "pending"}
+              </Badge>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function buildActivityModel({
+  messages,
+  contextTasks,
+  threadValues,
+  selectedAgentId,
+  isStreaming,
+  explainAction,
+}: {
+  messages: Message[];
+  contextTasks: Record<string, Subtask>;
+  threadValues: AgentThreadState;
+  selectedAgentId: LaunchCrewRole | null;
+  isStreaming: boolean;
+  explainAction: (task: Subtask) => string | null;
+}): LaunchCrewActivityModel {
+  const fallbackTasks = fallbackTasksFromMessages(messages);
+  const taskMap = new Map<string, Subtask>();
+  for (const task of fallbackTasks) {
+    taskMap.set(task.id, task);
   }
-  if (status === "failed") {
-    return <TriangleAlertIcon className="size-3.5" />;
+  for (const task of Object.values(contextTasks)) {
+    taskMap.set(task.id, task);
   }
-  if (status !== "idle") {
-    return <Loader2Icon className="size-3.5 animate-spin" />;
-  }
-  return <CircleDotDashedIcon className="size-3.5" />;
+  const fallbackArtifacts = fallbackArtifactsFromMessages(messages);
+  const artifacts = [
+    ...new Set([...(threadValues.artifacts ?? []), ...fallbackArtifacts]),
+  ];
+
+  return buildLaunchCrewActivityModel({
+    tasks: toLaunchCrewTasks([...taskMap.values()], explainAction),
+    artifacts: artifacts.map(getFileName),
+    todos: threadValues.todos,
+    selectedAgentId,
+    isStreaming,
+  });
 }
 
 export function LaunchCrewPanel({
@@ -455,137 +460,25 @@ export function LaunchCrewPanel({
   const { t } = useI18n();
   const { tasks } = useSubtaskContext();
   const { select: selectArtifact, setOpen: setArtifactsOpen } = useArtifacts();
-  const fallbackTasks = useMemo(
-    () => fallbackTasksFromMessages(messages),
-    [messages],
+  const [selectedAgentId, setSelectedAgentId] = useState<LaunchCrewRole | null>(
+    null,
   );
-  const taskList = useMemo(() => {
-    const taskMap = new Map<string, Subtask>();
-    for (const task of fallbackTasks) {
-      taskMap.set(task.id, task);
-    }
-    for (const task of Object.values(tasks)) {
-      taskMap.set(task.id, task);
-    }
-    return [...taskMap.values()];
-  }, [fallbackTasks, tasks]);
-  const fallbackArtifacts = useMemo(
-    () => fallbackArtifactsFromMessages(messages),
-    [messages],
-  );
-  const artifacts = useMemo(
-    () => [
-      ...new Set([...(threadValues.artifacts ?? []), ...fallbackArtifacts]),
-    ],
-    [fallbackArtifacts, threadValues.artifacts],
-  );
-  const mappedArtifacts = useMemo(
+
+  const model = useMemo(
     () =>
-      artifacts.map((filepath) => ({
-        filepath,
-        name: getFileName(filepath),
-        role: roleForArtifact(filepath),
-      })),
-    [artifacts],
+      buildActivityModel({
+        messages,
+        contextTasks: tasks,
+        threadValues,
+        selectedAgentId,
+        isStreaming,
+        explainAction: (task) =>
+          task.latestMessage
+            ? explainLastToolCall(task.latestMessage, t)
+            : null,
+      }),
+    [isStreaming, messages, selectedAgentId, t, tasks, threadValues],
   );
-  const requiredDeliverables = useMemo(() => {
-    const artifactByName = new Map(
-      mappedArtifacts.map((artifact) => [artifact.name, artifact]),
-    );
-    return REQUIRED_DELIVERABLES.map((deliverable) => {
-      const artifact = artifactByName.get(deliverable.filepath);
-      return {
-        ...deliverable,
-        artifact,
-        complete: Boolean(artifact),
-      };
-    });
-  }, [mappedArtifacts]);
-  const completedDeliverableCount = requiredDeliverables.filter(
-    (deliverable) => deliverable.complete,
-  ).length;
-  const missingDeliverables = requiredDeliverables.filter(
-    (deliverable) => !deliverable.complete,
-  );
-  const workflowStages = useMemo(() => {
-    const artifactNames = new Set(
-      mappedArtifacts.map((artifact) => artifact.name),
-    );
-    return WORKFLOW_STAGES.map((stage) => {
-      const todoStatus = getTodoStageStatus(threadValues.todos, stage);
-      const artifactComplete =
-        stage.artifactNames?.some((name) => artifactNames.has(name)) ?? false;
-      const status =
-        todoStatus === "completed" || artifactComplete
-          ? "completed"
-          : todoStatus === "in_progress"
-            ? "in_progress"
-            : "pending";
-      return { ...stage, status };
-    });
-  }, [mappedArtifacts, threadValues.todos]);
-  const currentStage =
-    workflowStages.find((stage) => stage.status === "in_progress") ??
-    workflowStages.find((stage) => stage.status === "pending");
-
-  const activeRoles = useMemo(() => {
-    const roles = new Set<LaunchCrewRole>();
-    for (const task of taskList) {
-      const role = normalizeRole(task.subagent_type);
-      if (role) {
-        roles.add(role);
-      }
-    }
-    for (const artifact of mappedArtifacts) {
-      if (artifact.role !== "launch-director") {
-        roles.add(artifact.role);
-      }
-    }
-    return roles;
-  }, [mappedArtifacts, taskList]);
-
-  const roleViews = ROLE_CONFIGS.map((config) => {
-    const task = latestTaskForRole(taskList, config.id);
-    const roleArtifacts = mappedArtifacts.filter(
-      (artifact) => artifact.role === config.id,
-    );
-    const status =
-      roleArtifacts.length > 0 && !task
-        ? "delivered"
-        : roleArtifacts.length > 0 && task?.status === "completed"
-          ? "done"
-          : statusForTask(
-              task,
-              roleArtifacts.map((artifact) => artifact.filepath),
-            );
-    return {
-      ...config,
-      task,
-      artifacts: roleArtifacts,
-      status,
-      currentAction:
-        task?.latestMessage && task.status === "in_progress"
-          ? explainLastToolCall(task.latestMessage, t)
-          : null,
-      visible: activeRoles.has(config.id) || isStreaming,
-    };
-  });
-
-  const visibleRoles = roleViews.filter((role) => role.visible);
-  const completedCount = roleViews.filter(
-    (role) => role.status === "done" || role.status === "delivered",
-  ).length;
-  const assignedCount = roleViews.filter((role) => role.status !== "idle").length;
-  const progress =
-    assignedCount === 0
-      ? 0
-      : Math.round((completedCount / Math.max(assignedCount, 1)) * 100);
-  const deliverableProgress =
-    requiredDeliverables.length === 0
-      ? 0
-      : Math.round(
-          (completedDeliverableCount / requiredDeliverables.length) * 100,
-        );
 
   const openArtifact = (filepath: string) => {
     selectArtifact(filepath);
@@ -594,8 +487,9 @@ export function LaunchCrewPanel({
 
   return (
     <aside
+      aria-label="EcomLaunch live agent cockpit"
       className={cn(
-        "border-border/80 bg-background/80 hidden h-full min-h-0 w-[380px] shrink-0 border-l backdrop-blur xl:flex",
+        "border-border/80 bg-background/80 hidden h-full min-h-0 w-[460px] shrink-0 border-l backdrop-blur xl:flex 2xl:w-[520px]",
         className,
       )}
     >
@@ -607,7 +501,7 @@ export function LaunchCrewPanel({
                 EcomLaunch
               </div>
               <h2 className="text-base leading-tight font-semibold">
-                Launch Crew
+                Live Agent Cockpit
               </h2>
             </div>
             <Badge variant={isStreaming ? "default" : "secondary"}>
@@ -618,316 +512,37 @@ export function LaunchCrewPanel({
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">协作进度</span>
               <span className="font-medium">
-                {completedCount}/{Math.max(assignedCount, 1)}
+                {model.completedAgentCount}/
+                {Math.max(model.activeAgentCount, 1)}
               </span>
             </div>
-            <Progress className="h-1.5" value={progress} />
-          </div>
-          <div className="mt-4">
-            <div className="mb-2 flex items-center justify-between gap-2 text-xs">
-              <span className="text-muted-foreground">验证阶段</span>
-              <span className="max-w-32 truncate font-medium">
-                {currentStage ? currentStage.label : "完成"}
-              </span>
-            </div>
-            <div className="grid grid-cols-4 gap-1">
-              {workflowStages.map((stage) => (
-                <div
-                  key={stage.id}
-                  className={cn(
-                    "rounded-sm border px-1 py-1 text-center text-[10px] leading-none",
-                    stage.status === "completed"
-                      ? "border-primary/20 bg-primary/10 text-primary"
-                      : stage.status === "in_progress"
-                        ? "border-border bg-muted text-foreground"
-                        : "border-border/60 text-muted-foreground",
-                  )}
-                >
-                  {stage.label}
-                </div>
-              ))}
-            </div>
+            <Progress className="h-1.5" value={model.progress} />
           </div>
         </header>
 
         <Separator />
 
-        {/* 像素艺术办公室 */}
         <div className="shrink-0 px-4 py-3">
           <PixelOffice
-            agentStatuses={{
-              "launch-director": isStreaming ? "working" : "idle",
-              "market-voc-researcher": visibleRoles.some(
-                (r) => r.id === "market-voc-researcher" && isWorkingStatus(r.status),
-              )
-                ? "working"
-                : visibleRoles.some(
-                      (r) =>
-                        r.id === "market-voc-researcher" &&
-                        (r.status === "done" || r.status === "delivered"),
-                    )
-                  ? "done"
-                  : "idle",
-              "offer-architect": visibleRoles.some(
-                (r) => r.id === "offer-architect" && isWorkingStatus(r.status),
-              )
-                ? "working"
-                : visibleRoles.some(
-                      (r) =>
-                        r.id === "offer-architect" &&
-                        (r.status === "done" || r.status === "delivered"),
-                    )
-                  ? "done"
-                  : "idle",
-              "growth-analyst": visibleRoles.some(
-                (r) => r.id === "growth-analyst" && isWorkingStatus(r.status),
-              )
-                ? "working"
-                : visibleRoles.some(
-                      (r) =>
-                        r.id === "growth-analyst" &&
-                        (r.status === "done" || r.status === "delivered"),
-                    )
-                  ? "done"
-                  : "idle",
-              "asset-studio": visibleRoles.some(
-                (r) => r.id === "asset-studio" && isWorkingStatus(r.status),
-              )
-                ? "working"
-                : visibleRoles.some(
-                      (r) =>
-                        r.id === "asset-studio" &&
-                        (r.status === "done" || r.status === "delivered"),
-                    )
-                  ? "done"
-                  : "idle",
-              "evidence-checker": visibleRoles.some(
-                (r) => r.id === "evidence-checker" && isWorkingStatus(r.status),
-              )
-                ? "working"
-                : visibleRoles.some(
-                      (r) =>
-                        r.id === "evidence-checker" &&
-                        (r.status === "done" || r.status === "delivered"),
-                    )
-                  ? "done"
-                  : "idle",
-            }}
-            progress={progress}
-            currentStage={currentStage?.label ?? "等待中"}
+            agents={model.agents}
+            onSelectAgent={setSelectedAgentId}
           />
         </div>
 
         <Separator />
 
-        {(visibleRoles.length > 0 || mappedArtifacts.length > 0 || isStreaming) && (
-          <section className="border-border/80 bg-muted/10 shrink-0 border-b px-4 py-3">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <div className="text-muted-foreground text-xs font-medium">
-                  交付清单
-                </div>
-                <div className="text-[11px] text-muted-foreground/80">
-                  {completedDeliverableCount}/{requiredDeliverables.length}
-                  个核心文件已落地
-                </div>
-              </div>
-              <Badge variant={deliverableProgress === 100 ? "secondary" : "outline"}>
-                {deliverableProgress === 100 ? "已齐" : "推进中"}
-              </Badge>
-            </div>
-            <Progress className="mt-2 h-1.5" value={deliverableProgress} />
-
-            {missingDeliverables.length > 0 && (
-              <div className="mt-3 space-y-2">
-                <div className="text-muted-foreground text-[11px] font-medium">
-                  待补交
-                </div>
-                <div className="space-y-2">
-                  {missingDeliverables.map((deliverable) => (
-                    <div
-                      key={deliverable.filepath}
-                      className="border-border/80 bg-background flex items-center justify-between gap-3 rounded-md border px-3 py-2"
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate text-xs font-medium">
-                          {deliverable.label}
-                        </div>
-                        <div className="text-muted-foreground truncate text-[11px]">
-                          {deliverable.filepath}
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="shrink-0 gap-1">
-                        <CircleDotDashedIcon className="size-3" />
-                        待生成
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
-        )}
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-          <section className="space-y-3">
-            {visibleRoles.length === 0 ? (
-              <div className="border-border/80 bg-muted/20 rounded-lg border p-4 text-sm">
-                <div className="font-medium">等待第一条上新验证任务</div>
-                <p className="text-muted-foreground mt-1 text-xs leading-5">
-                  开启 Ultra 后，Market & VOC Researcher 和 Offer Architect
-                  会在这里显示真实分工状态。
-                </p>
-              </div>
-            ) : (
-              visibleRoles.map((role) => {
-                const Icon = role.icon;
-                return (
-                  <article
-                    key={role.id}
-                    className="border-border/80 bg-card rounded-lg border p-3"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="relative shrink-0">
-                        <div className="bg-muted flex size-9 items-center justify-center rounded-md">
-                          <Icon className="size-4" />
-                        </div>
-                        <span
-                          className={cn(
-                            "absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-background",
-                            role.accent,
-                            isWorkingStatus(role.status) && "animate-pulse",
-                          )}
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="min-w-0">
-                            <h3 className="truncate text-sm font-medium">
-                              {role.name}
-                            </h3>
-                            <p className="text-muted-foreground text-xs">
-                              {role.desk}
-                            </p>
-                          </div>
-                          <Badge
-                            variant={
-                              role.status === "failed"
-                                ? "destructive"
-                                : role.status === "done" ||
-                                    role.status === "delivered"
-                                  ? "secondary"
-                                  : "outline"
-                            }
-                            className="gap-1"
-                          >
-                            {statusIcon(role.status)}
-                            {statusLabel(role.status)}
-                          </Badge>
-                        </div>
-
-                        <div className="bg-muted/40 mt-3 rounded-md px-3 py-2 text-xs leading-5">
-                          {bubbleForTask(
-                            role.task,
-                            role.status,
-                            role.artifacts.length,
-                          )}
-                        </div>
-
-                        {(role.task ?? role.currentAction) && (
-                          <div className="mt-3 space-y-2">
-                            {role.task && (
-                              <div>
-                                <div className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wide uppercase">
-                                  分派任务
-                                </div>
-                                <p className="text-xs leading-5 break-words">
-                                  {role.task.description}
-                                </p>
-                              </div>
-                            )}
-                            {role.currentAction && (
-                              <div>
-                                <div className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wide uppercase">
-                                  当前动作
-                                </div>
-                                <p className="text-xs leading-5 break-words">
-                                  {role.currentAction}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {role.task && role.status !== "idle" && (
-                          <div className="mt-3 grid grid-cols-4 gap-1">
-                            {getPhaseLabels(role.status).map((phase) => (
-                              <div
-                                key={phase.label}
-                                className={cn(
-                                  "rounded-sm border px-1.5 py-1 text-center text-[10px] leading-none",
-                                  phase.done
-                                    ? "border-primary/20 bg-primary/10 text-primary"
-                                    : phase.active
-                                      ? "border-border bg-muted text-foreground"
-                                      : "border-border/60 text-muted-foreground",
-                                )}
-                              >
-                                {phase.label}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {role.artifacts.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {role.artifacts.map((artifact) => (
-                              <Button
-                                key={artifact.filepath}
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-7 min-w-0 max-w-full px-2 text-xs"
-                                onClick={() => openArtifact(artifact.filepath)}
-                              >
-                                <PackageCheckIcon className="size-3.5" />
-                                <span className="truncate">
-                                  {artifact.name}
-                                </span>
-                              </Button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                );
-              })
-            )}
-          </section>
-
-          {mappedArtifacts.length > 0 && (
-            <section className="mt-5">
-              <div className="text-muted-foreground mb-2 text-xs font-medium">
-                交付物
-              </div>
-              <div className="space-y-2">
-                {mappedArtifacts.map((artifact) => (
-                  <button
-                    key={artifact.filepath}
-                    type="button"
-                    className="border-border/80 hover:bg-accent/60 flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-xs transition-colors"
-                    onClick={() => openArtifact(artifact.filepath)}
-                  >
-                    <FileTextIcon className="text-muted-foreground size-4 shrink-0" />
-                    <span className="min-w-0 flex-1 truncate">
-                      {artifact.name}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+          <EvidenceBadges badges={model.evidenceBadges} />
+          <SelectedAgentDetail
+            agent={model.selectedAgent}
+            onOpenArtifact={openArtifact}
+          />
+          <LiveComms events={model.liveComms} />
+          <ActiveMissions missions={model.activeMissions} />
+          <ArtifactConveyor
+            artifacts={model.artifactStatuses}
+            onOpenArtifact={openArtifact}
+          />
         </div>
       </div>
     </aside>
