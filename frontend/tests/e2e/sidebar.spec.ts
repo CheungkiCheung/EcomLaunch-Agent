@@ -140,8 +140,8 @@ test.describe("Sidebar navigation", () => {
               type: "tool",
               id: "task-result-market",
               tool_call_id: "task-market",
-              content: "Competitor table ready.",
-              additional_kwargs: { status: "completed" },
+              content: "Task Succeeded. Result: Competitor table ready.",
+              additional_kwargs: { subagent_status: "completed" },
             },
           ],
         },
@@ -170,6 +170,11 @@ test.describe("Sidebar navigation", () => {
     await expect(
       page.locator(
         "[data-war-room-vfx='station-active'][data-war-room-vfx-agent='offer-architect']",
+      ),
+    ).toBeVisible();
+    await expect(
+      page.locator(
+        "[data-war-room-carried-package][data-war-room-carried-agent='market-voc-researcher']",
       ),
     ).toBeVisible();
   });

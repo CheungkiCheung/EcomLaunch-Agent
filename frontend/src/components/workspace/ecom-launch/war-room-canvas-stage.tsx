@@ -56,6 +56,12 @@ type ArtifactDropNode = {
   baseY: number;
 };
 
+type CarriedPackageNode = {
+  container: Container;
+  agentId: LaunchCrewRole;
+  artifactName: string;
+};
+
 type EffectNode = {
   graphic: Graphics;
   kind: "station-active" | "station-blocked" | "artifact-pulse";
@@ -73,6 +79,7 @@ type PixiStageState = {
   textureCache: Map<string, Texture>;
   agents: Map<LaunchCrewRole, MovingAgentNode>;
   artifacts: Map<string, ArtifactDropNode>;
+  carriedPackages: Map<LaunchCrewRole, CarriedPackageNode>;
   effects: Map<string, EffectNode>;
   propsRendered: boolean;
   destroyed: boolean;
@@ -187,6 +194,34 @@ function createArtifactDrop(artifact: LaunchCrewArtifact, index: number) {
   });
   label.anchor.set(0.5, 0);
   label.y = 10;
+
+  container.addChild(packageBody, label);
+  return container;
+}
+
+function createCarriedPackage(artifact: LaunchCrewArtifact) {
+  const container = new Container();
+  container.alpha = 0.96;
+
+  const packageBody = new Graphics();
+  packageBody
+    .roundRect(-12, -12, 24, 18, 4)
+    .fill(artifact.required ? 0xe5c879 : 0x2dd4bf)
+    .stroke({ color: 0x111827, width: 3 });
+  packageBody.rect(-2, -12, 4, 18).fill({ color: 0x7c5f2d, alpha: 0.55 });
+  packageBody.rect(-12, -3, 24, 4).fill({ color: 0x7c5f2d, alpha: 0.55 });
+
+  const label = new Text({
+    text: "pkg",
+    style: {
+      fontFamily: "monospace",
+      fontSize: 8,
+      fontWeight: "900",
+      fill: 0x10201c,
+    },
+  });
+  label.anchor.set(0.5, 0);
+  label.y = 8;
 
   container.addChild(packageBody, label);
   return container;
@@ -321,6 +356,22 @@ function updateAgentNodePosition(node: MovingAgentNode) {
   }
 }
 
+function updateCarriedPackagePosition(
+  carriedPackage: CarriedPackageNode,
+  agent: MovingAgentNode,
+) {
+  const conveyor = stagePoint(WAR_ROOM_WAYPOINTS.artifactConveyor);
+  const distanceToConveyor = Math.hypot(
+    agent.sprite.x - conveyor.x,
+    agent.sprite.y - conveyor.y,
+  );
+  carriedPackage.container.x = agent.sprite.x + 22;
+  carriedPackage.container.y = agent.sprite.y - 44;
+  carriedPackage.container.alpha =
+    distanceToConveyor < 44 ? 0.24 : 0.78 + Math.sin(agent.sprite.x / 18) * 0.1;
+  carriedPackage.container.zIndex = agent.sprite.zIndex + 1;
+}
+
 function tickAgentNodes(state: PixiStageState) {
   const time = state.app.ticker.lastTime / 280;
   let artifactIndex = 0;
@@ -362,7 +413,14 @@ function tickAgentNodes(state: PixiStageState) {
     }
     updateAgentNodePosition(node);
   }
+
+  for (const carriedPackage of state.carriedPackages.values()) {
+    const agent = state.agents.get(carriedPackage.agentId);
+    if (!agent) continue;
+    updateCarriedPackagePosition(carriedPackage, agent);
+  }
   state.effectLayer.sortChildren();
+  state.artifactLayer.sortChildren();
   state.agentLayer.sortChildren();
 }
 
@@ -433,6 +491,54 @@ function syncArtifactDrops(
     drop.baseY = point.y - 18;
     drop.container.zIndex = Math.round(point.y) + 8;
   });
+  state.artifactLayer.sortChildren();
+}
+
+function readyArtifactsByRole(artifacts: LaunchCrewArtifact[]) {
+  const result = new Map<LaunchCrewRole, LaunchCrewArtifact>();
+  for (const artifact of artifacts) {
+    if (artifact.status !== "ready") continue;
+    if (result.has(artifact.role)) continue;
+    result.set(artifact.role, artifact);
+  }
+  return result;
+}
+
+function syncCarriedPackages(
+  state: PixiStageState,
+  renderedAgents: RenderedAgent[],
+  artifacts: LaunchCrewArtifact[],
+) {
+  const artifactsByRole = readyArtifactsByRole(artifacts);
+  const carryingAgents = new Map(
+    renderedAgents
+      .filter(({ motion }) => motion.state === "reporting")
+      .flatMap(({ agent }) => {
+        const artifact = artifactsByRole.get(agent.id);
+        return artifact ? [[agent.id, artifact] as const] : [];
+      }),
+  );
+
+  for (const [agentId, node] of state.carriedPackages) {
+    const nextArtifact = carryingAgents.get(agentId);
+    if (nextArtifact?.name === node.artifactName) continue;
+    node.container.destroy({ children: true });
+    state.carriedPackages.delete(agentId);
+  }
+
+  for (const [agentId, artifact] of carryingAgents) {
+    let node = state.carriedPackages.get(agentId);
+    if (!node) {
+      const container = createCarriedPackage(artifact);
+      node = { container, agentId, artifactName: artifact.name };
+      state.carriedPackages.set(agentId, node);
+      state.artifactLayer.addChild(container);
+    }
+    const agent = state.agents.get(agentId);
+    if (agent) {
+      updateCarriedPackagePosition(node, agent);
+    }
+  }
   state.artifactLayer.sortChildren();
 }
 
@@ -593,6 +699,7 @@ async function syncPixiStage({
     node.label.style.fill = node.selected ? 0xeafffb : 0xcffcf1;
     updateAgentNodePosition(node);
   }
+  syncCarriedPackages(state, renderedAgents, artifacts);
   state.agentLayer.sortChildren();
 }
 
@@ -636,6 +743,26 @@ function CanvasHitTargets({
             }}
           />
         ))}
+      {renderedAgents
+        .filter(({ motion }) => motion.state === "reporting")
+        .flatMap(({ agent, motion }) => {
+          const artifact = artifacts.find(
+            (item) => item.status === "ready" && item.role === agent.id,
+          );
+          if (!artifact) return [];
+          return [
+            <span
+              key={`carry-${agent.id}-${artifact.filepath}`}
+              data-war-room-carried-package={artifact.name}
+              data-war-room-carried-agent={agent.id}
+              className="pointer-events-none absolute size-1 opacity-0"
+              style={{
+                left: `${motion.position.x}%`,
+                top: `${motion.position.y}%`,
+              }}
+            />,
+          ];
+        })}
       {artifacts.some((artifact) => artifact.status === "ready") && (
         <span
           data-war-room-vfx="artifact-pulse"
@@ -775,6 +902,7 @@ export function WarRoomCanvasStage({
         textureCache: new Map(),
         agents: new Map(),
         artifacts: new Map(),
+        carriedPackages: new Map(),
         effects: new Map(),
         propsRendered: false,
         destroyed: false,
