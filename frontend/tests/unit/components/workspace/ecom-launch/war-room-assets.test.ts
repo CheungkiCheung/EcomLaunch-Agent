@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  WAR_ROOM_BACKGROUND,
   WAR_ROOM_PROPS,
   warRoomCharacterSprite,
 } from "@/components/workspace/ecom-launch/war-room-assets";
@@ -21,6 +22,14 @@ describe("war room asset model", () => {
     for (const prop of WAR_ROOM_PROPS) {
       expect(prop.src).toContain("/war-room/props/");
     }
+    expect(WAR_ROOM_BACKGROUND.src).toBe(
+      "/images/ecom-launch/war-room/room/background.png",
+    );
+    expect(
+      WAR_ROOM_PROPS.filter((prop) => prop.id !== "coffee").every((prop) =>
+        prop.src.endsWith(".png"),
+      ),
+    ).toBe(true);
   });
 
   it("uses standalone war-room character assets for moving agents", () => {
@@ -38,7 +47,7 @@ describe("war room asset model", () => {
       frame: "walk-left",
     });
     expect(sprite.src).toBe(
-      "/images/ecom-launch/war-room/agents/market-voc-researcher/walk-left.svg",
+      "/images/ecom-launch/war-room/agents/market-voc-researcher/walk-left.png",
     );
     expect(sprite.src).not.toContain("/sprites/agents/");
   });
@@ -55,7 +64,7 @@ describe("war room asset model", () => {
 
     expect(sprite.frame).toBe("walk-up");
     expect(sprite.src).toBe(
-      "/images/ecom-launch/war-room/agents/growth-analyst/walk-up.svg",
+      "/images/ecom-launch/war-room/agents/growth-analyst/walk-up.png",
     );
   });
 
@@ -71,7 +80,7 @@ describe("war room asset model", () => {
 
     expect(sprite.frame).toBe("work");
     expect(sprite.src).toBe(
-      "/images/ecom-launch/war-room/agents/asset-studio/work.svg",
+      "/images/ecom-launch/war-room/agents/asset-studio/work.png",
     );
   });
 
@@ -90,7 +99,7 @@ describe("war room asset model", () => {
       frame: "idle",
     });
     expect(sprite.src).toBe(
-      "/images/ecom-launch/war-room/agents/launch-director/idle.svg",
+      "/images/ecom-launch/war-room/agents/launch-director/idle.png",
     );
   });
 });

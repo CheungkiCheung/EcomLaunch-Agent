@@ -72,18 +72,18 @@ export function EcomLaunchWarRoomPage() {
   return (
     <main
       aria-label="EcomLaunch full war room"
-      className="flex h-screen min-h-0 flex-col overflow-hidden bg-[#111815] text-slate-50"
+      className="flex h-screen min-h-0 flex-col overflow-hidden bg-[#f4eadb] text-slate-900"
     >
-      <header className="border-b border-cyan-100/10 bg-[#0e1513]/95 px-6 py-4">
+      <header className="border-b border-amber-900/10 bg-[#fff8ed]/95 px-6 py-4">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="text-xs font-black tracking-[0.22em] text-cyan-200/60 uppercase">
+            <div className="text-xs font-black tracking-[0.22em] text-teal-700/70 uppercase">
               EcomLaunch
             </div>
             <h1 className="mt-1 text-2xl leading-tight font-black">
               Launch War Room
             </h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-300">
+            <p className="mt-1 max-w-2xl text-sm text-slate-600">
               {threadId
                 ? `Synced with ${threadValues.title || "current EcomLaunch thread"}.`
                 : "Open from an EcomLaunch chat to sync live tasks and artifacts into the room."}
@@ -106,7 +106,7 @@ export function EcomLaunchWarRoomPage() {
 
       <section className="grid min-h-0 flex-1 grid-rows-[minmax(360px,52vh)_minmax(0,1fr)] overflow-y-auto lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-none lg:overflow-hidden">
         <div className="min-h-0 overflow-hidden p-4 lg:p-5">
-          <div className="relative size-full overflow-hidden rounded-lg border border-cyan-100/15 bg-[#18241f] shadow-[0_0_48px_rgba(17,255,190,0.08)]">
+          <div className="relative size-full overflow-hidden rounded-lg border border-amber-900/15 bg-[#efe7d8] shadow-[0_18px_40px_rgba(121,83,43,0.16)]">
             <WarRoomStage
               agents={model.agents}
               artifacts={model.artifactStatuses}
@@ -117,29 +117,29 @@ export function EcomLaunchWarRoomPage() {
           </div>
         </div>
 
-        <aside className="min-h-0 border-t border-cyan-100/10 bg-[#0f1715] lg:border-t-0 lg:border-l">
+        <aside className="min-h-0 border-t border-amber-900/10 bg-[#fff8ed] lg:border-t-0 lg:border-l">
           <div className="flex h-full min-h-0 flex-col">
-            <section className="border-b border-cyan-100/10 p-5">
+            <section className="border-b border-amber-900/10 p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-xs font-black tracking-wide text-cyan-200/60 uppercase">
+                  <div className="text-xs font-black tracking-wide text-teal-700/70 uppercase">
                     Selected Agent
                   </div>
                   <h2 className="mt-1 text-lg font-black">
                     {selectedAgent.name}
                   </h2>
-                  <p className="text-sm text-slate-300">{selectedAgent.desk}</p>
+                  <p className="text-sm text-slate-600">{selectedAgent.desk}</p>
                 </div>
                 <Badge variant="secondary">{selectedAgent.status}</Badge>
               </div>
-              <p className="mt-4 rounded-md border border-cyan-100/10 bg-cyan-50/5 p-3 text-sm leading-6 text-slate-200">
+              <p className="mt-4 rounded-md border border-amber-900/10 bg-white/70 p-3 text-sm leading-6 text-slate-700">
                 {selectedAgent.lastLine}
               </p>
             </section>
 
-            <section className="border-b border-cyan-100/10 p-5">
+            <section className="border-b border-amber-900/10 p-5">
               <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="text-slate-300">Crew progress</span>
+                <span className="text-slate-600">Crew progress</span>
                 <span className="font-black">
                   {model.completedAgentCount}/
                   {Math.max(model.activeAgentCount, 1)}
@@ -149,8 +149,8 @@ export function EcomLaunchWarRoomPage() {
             </section>
 
             <section className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">
-              <div className="flex items-center gap-2 text-sm font-black text-slate-200">
-                <RadioTowerIcon className="size-4 text-cyan-200" />
+              <div className="flex items-center gap-2 text-sm font-black text-slate-800">
+                <RadioTowerIcon className="size-4 text-teal-700" />
                 Live motion rules
               </div>
               {[
@@ -162,26 +162,26 @@ export function EcomLaunchWarRoomPage() {
               ].map((rule) => (
                 <div
                   key={rule}
-                  className="rounded-md border border-cyan-100/10 bg-cyan-50/5 px-3 py-2 text-sm text-slate-300"
+                  className="rounded-md border border-amber-900/10 bg-white/70 px-3 py-2 text-sm text-slate-600"
                 >
                   {rule}
                 </div>
               ))}
 
               <div className="pt-3">
-                <div className="mb-2 text-sm font-black text-slate-200">
+                <div className="mb-2 text-sm font-black text-slate-800">
                   Motion queue
                 </div>
                 <div className="space-y-2">
                   {motionQueue.map((motion) => (
                     <div
                       key={motion.id}
-                      className="flex items-center justify-between gap-3 rounded-md border border-cyan-100/10 bg-cyan-50/5 px-3 py-2 text-xs"
+                      className="flex items-center justify-between gap-3 rounded-md border border-amber-900/10 bg-white/70 px-3 py-2 text-xs"
                     >
-                      <span className="min-w-0 truncate text-slate-300">
+                      <span className="min-w-0 truncate text-slate-600">
                         {motion.id}
                       </span>
-                      <span className="shrink-0 font-black text-cyan-100">
+                      <span className="shrink-0 font-black text-teal-700">
                         {motion.state}
                       </span>
                     </div>
@@ -190,8 +190,8 @@ export function EcomLaunchWarRoomPage() {
               </div>
 
               <div className="pt-3">
-                <div className="mb-2 flex items-center gap-2 text-sm font-black text-slate-200">
-                  <FileTextIcon className="size-4 text-cyan-200" />
+                <div className="mb-2 flex items-center gap-2 text-sm font-black text-slate-800">
+                  <FileTextIcon className="size-4 text-teal-700" />
                   Artifacts
                 </div>
                 <div className="space-y-2" data-war-room-artifact-queue>
@@ -201,14 +201,14 @@ export function EcomLaunchWarRoomPage() {
                         key={artifact.filepath}
                         type="button"
                         data-war-room-artifact={artifact.name}
-                        className="flex w-full items-center justify-between gap-3 rounded-md border border-cyan-100/10 bg-cyan-50/5 px-3 py-2 text-left text-xs transition-colors hover:border-cyan-100/30 hover:bg-cyan-50/10"
+                        className="flex w-full items-center justify-between gap-3 rounded-md border border-amber-900/10 bg-white/70 px-3 py-2 text-left text-xs transition-colors hover:border-teal-700/30 hover:bg-white"
                         onClick={() => setSelectedAgentId(artifact.role)}
                       >
                         <span className="min-w-0">
-                          <span className="block truncate font-black text-slate-100">
+                          <span className="block truncate font-black text-slate-800">
                             {artifact.label}
                           </span>
-                          <span className="block truncate text-slate-400">
+                          <span className="block truncate text-slate-500">
                             {artifact.name}
                           </span>
                         </span>
@@ -218,7 +218,7 @@ export function EcomLaunchWarRoomPage() {
                       </button>
                     ))
                   ) : (
-                    <div className="rounded-md border border-cyan-100/10 bg-cyan-50/5 px-3 py-3 text-sm text-slate-400">
+                    <div className="rounded-md border border-amber-900/10 bg-white/70 px-3 py-3 text-sm text-slate-500">
                       {threadId
                         ? "No delivered artifacts in this thread yet."
                         : "No thread synced. Open a chat, then jump into the War Room."}

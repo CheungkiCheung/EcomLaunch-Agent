@@ -16,7 +16,11 @@ import type {
   LaunchCrewArtifact,
   LaunchCrewRole,
 } from "./launch-crew-activity-model";
-import { WAR_ROOM_PROPS, warRoomCharacterSprite } from "./war-room-assets";
+import {
+  WAR_ROOM_BACKGROUND,
+  WAR_ROOM_PROPS,
+  warRoomCharacterSprite,
+} from "./war-room-assets";
 import type { WarRoomAgentMotion } from "./war-room-motion";
 import {
   AGENT_HOME_WAYPOINTS,
@@ -81,6 +85,7 @@ type PixiStageState = {
   artifacts: Map<string, ArtifactDropNode>;
   carriedPackages: Map<LaunchCrewRole, CarriedPackageNode>;
   effects: Map<string, EffectNode>;
+  backgroundRendered: boolean;
   propsRendered: boolean;
   destroyed: boolean;
 };
@@ -107,32 +112,18 @@ function fitRootToContainer(root: Container, container: HTMLElement) {
 
 function drawRoomShell(root: Container) {
   const floor = new Graphics();
-  floor.rect(0, 0, STAGE_WIDTH, STAGE_HEIGHT).fill(0x223038);
-  floor.rect(0, 0, STAGE_WIDTH, 105).fill(0x3a464d);
-  floor.rect(185, 24, 630, 58).stroke({ color: 0x151e20, width: 4 });
-  floor.rect(190, 29, 620, 48).fill({ color: 0xa8bbc0, alpha: 0.14 });
-
-  for (let x = 0; x <= STAGE_WIDTH; x += 32) {
-    floor.moveTo(x, 0).lineTo(x, STAGE_HEIGHT).stroke({
-      color: 0xffffff,
-      alpha: 0.055,
-      width: 1,
-    });
-  }
-  for (let y = 0; y <= STAGE_HEIGHT; y += 32) {
-    floor.moveTo(0, y).lineTo(STAGE_WIDTH, y).stroke({
-      color: 0xffffff,
-      alpha: 0.055,
-      width: 1,
-    });
-  }
+  floor.rect(0, 0, STAGE_WIDTH, STAGE_HEIGHT).fill({
+    color: 0xf1eadf,
+    alpha: 0.08,
+  });
 
   const vignette = new Graphics();
   vignette.rect(0, 0, STAGE_WIDTH, STAGE_HEIGHT).stroke({
-    color: 0x0f1715,
+    color: 0xd6c3a9,
     width: 8,
-    alpha: 0.76,
+    alpha: 0.65,
   });
+  vignette.zIndex = 2000;
 
   root.addChild(floor, vignette);
 }
@@ -288,6 +279,25 @@ async function loadTexture(cache: Map<string, Texture>, src: string) {
   return texture;
 }
 
+async function renderBackground(state: PixiStageState) {
+  if (state.backgroundRendered) return;
+  const texture = await loadTexture(
+    state.textureCache,
+    WAR_ROOM_BACKGROUND.src,
+  );
+  if (state.destroyed) return;
+  const sprite = new Sprite(texture);
+  sprite.width = WAR_ROOM_BACKGROUND.width;
+  sprite.height = WAR_ROOM_BACKGROUND.height;
+  sprite.anchor.set(0.5, 0.5);
+  sprite.x = STAGE_WIDTH / 2;
+  sprite.y = STAGE_HEIGHT / 2;
+  sprite.zIndex = -100;
+  state.root.addChild(sprite);
+  state.root.sortChildren();
+  state.backgroundRendered = true;
+}
+
 function fitSprite(
   sprite: Sprite,
   size: { width: number; height: number },
@@ -350,7 +360,7 @@ function updateAgentNodePosition(node: MovingAgentNode) {
   node.label.x = node.sprite.x;
   node.label.y = node.sprite.y + (node.selected ? 8 : 14);
   node.label.zIndex = node.sprite.zIndex + 2;
-  node.label.visible = node.selected;
+  node.label.visible = false;
   node.ring.visible = node.selected;
   if (node.selected) {
     drawSelectionRing(node.ring, node.sprite.x, node.sprite.y);
@@ -447,6 +457,8 @@ function useRenderedAgents(
 
 async function renderStaticProps(state: PixiStageState) {
   if (state.propsRendered) return;
+  await renderBackground(state);
+  if (state.destroyed) return;
   for (const prop of WAR_ROOM_PROPS) {
     const texture = await loadTexture(state.textureCache, prop.src);
     if (state.destroyed) return;
@@ -910,6 +922,7 @@ export function WarRoomCanvasStage({
         artifacts: new Map(),
         carriedPackages: new Map(),
         effects: new Map(),
+        backgroundRendered: false,
         propsRendered: false,
         destroyed: false,
       };
@@ -963,7 +976,7 @@ export function WarRoomCanvasStage({
   return (
     <section
       aria-label="Animated EcomLaunch war room"
-      className="relative size-full overflow-hidden bg-[#223038]"
+      className="relative size-full overflow-hidden bg-[#efe7d8]"
     >
       <div ref={containerRef} className="absolute inset-0 z-10" />
       <CanvasHitTargets
@@ -972,8 +985,8 @@ export function WarRoomCanvasStage({
         selectedAgentId={selectedAgentId}
         onSelectAgent={onSelectAgent}
       />
-      <div className="pointer-events-none absolute top-5 left-5 z-30 rounded border border-cyan-100/25 bg-[#101714]/88 px-3 py-2 text-cyan-50 shadow-[3px_3px_0_rgba(0,0,0,0.62)]">
-        <div className="text-[10px] font-black tracking-[0.2em] text-cyan-100/70 uppercase">
+      <div className="pointer-events-none absolute top-5 left-5 z-30 rounded border border-amber-900/15 bg-white/88 px-3 py-2 text-slate-900 shadow-[3px_3px_0_rgba(120,84,42,0.18)]">
+        <div className="text-[10px] font-black tracking-[0.2em] text-teal-700/70 uppercase">
           Launch War Room
         </div>
         <div className="mt-1 text-xs font-black">PixiJS canvas stage</div>

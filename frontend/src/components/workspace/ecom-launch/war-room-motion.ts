@@ -44,20 +44,20 @@ export type WarRoomAgentMotion = {
 };
 
 export const WAR_ROOM_WAYPOINTS: Record<WarRoomWaypointId, WarRoomPoint> = {
-  marketDesk: { x: 18, y: 28 },
-  offerDesk: { x: 20, y: 68 },
-  directorDesk: { x: 50, y: 44 },
-  evidenceDesk: { x: 82, y: 28 },
-  assetDesk: { x: 82, y: 68 },
-  growthDesk: { x: 50, y: 78 },
-  whiteboard: { x: 38, y: 18 },
-  coffee: { x: 12, y: 78 },
-  artifactConveyor: { x: 66, y: 66 },
-  bigScreen: { x: 50, y: 16 },
-  leftWalkway: { x: 30, y: 46 },
-  rightWalkway: { x: 70, y: 46 },
-  centerWalkway: { x: 50, y: 58 },
-  lowerWalkway: { x: 36, y: 76 },
+  marketDesk: { x: 18, y: 35 },
+  offerDesk: { x: 26, y: 69 },
+  directorDesk: { x: 50, y: 45 },
+  evidenceDesk: { x: 84, y: 35 },
+  assetDesk: { x: 84, y: 69 },
+  growthDesk: { x: 50, y: 76 },
+  whiteboard: { x: 41, y: 24 },
+  coffee: { x: 12, y: 76 },
+  artifactConveyor: { x: 66, y: 64 },
+  bigScreen: { x: 55, y: 24 },
+  leftWalkway: { x: 34, y: 52 },
+  rightWalkway: { x: 68, y: 52 },
+  centerWalkway: { x: 50, y: 60 },
+  lowerWalkway: { x: 38, y: 74 },
 };
 
 export const AGENT_HOME_WAYPOINTS: Record<LaunchCrewRole, WarRoomWaypointId> = {
