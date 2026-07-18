@@ -1,6 +1,6 @@
 # Commerce Case Agent 完整设计与实施计划
 
-> 状态：设计已收口，Phase 1 已完成，准备进入 Phase 2
+> 状态：设计已收口，Phase 2 确定性数据主干已完成，真实模型候选层与 Peer 执行待完成
 > 日期：2026-07-18
 > 当前分支：`feature/commerce-case-agent`
 > 保护快照：`archive/ecom-launch-pre-commerce-agent-20260718` / `9144237`
@@ -981,6 +981,18 @@ GREEN：添加：
 - 所有 Domain Contract 测试通过。
 
 ### Phase 2：Data Intake 与 Capability
+
+当前完成状态：
+
+- [x] CSV / JSON / JSONL / Excel / ZIP 安全接入与只读原始文件；
+- [x] Schema、质量、主键、时间、范围、重复、前导零和 Join 风险 Profiler；
+- [x] 确定性 Semantic Mapper 与 Workspace 用户确认持久化；
+- [ ] DeepSeek V4 低置信度语义候选层（等待真实模型 Preflight）；
+- [x] Capability Registry 与 GC-CAPABILITY-003 Ablation；
+- [x] Olist Adapter 与 Entity-scoped Normalized Facts；
+- [x] 首批 Metric Registry 与 Gold Case 时间窗复算；
+- [ ] 多卖家 Peer Baseline 和 Geographic Metric 执行；
+- [x] Anomaly Detector、最小样本、严重度、置信度、去重和 Case Candidate Merge。
 
 #### Task 2.1：Input Bundle
 

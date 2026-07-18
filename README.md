@@ -11,7 +11,7 @@
 
 项目正在从旧 OpenSKU / EcomLaunch 方案改造为 Commerce Case Agent。
 
-Phase 0 已完成并提交；Phase 1 的 Commerce Domain Contract 与三条真实 Olist Gold Case 已完成。下一步进入 Phase 2：通用 Data Intake、Capability、Metric 与异常检测。新 Agent 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
+Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric 与 Anomaly 主干已经完成；DeepSeek V4 语义候选层、真实多卖家 Peer Cohort 和持久化仍在实施。新 Agent 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
 
 完整设计与实施计划：
 

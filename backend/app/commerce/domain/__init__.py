@@ -26,6 +26,7 @@ from app.commerce.domain.evaluation import (
 from app.commerce.domain.ids import (
     ActionId,
     AgentTaskId,
+    AnomalyId,
     ApprovalId,
     CapabilityId,
     CaseId,
@@ -66,6 +67,7 @@ __all__ = [
     "ActionRiskLevel",
     "ActionStatus",
     "AgentTaskId",
+    "AnomalyId",
     "ApprovalId",
     "ApprovalRequirement",
     "ApprovalStatus",

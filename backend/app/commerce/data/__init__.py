@@ -1,5 +1,78 @@
 """Dataset ingestion, profiling, capability, and normalization services."""
 
+from app.commerce.data.capabilities import (
+    CapabilityAssessment,
+    CapabilityName,
+    CapabilityProfile,
+    CapabilityReasonCode,
+    CapabilityRegistry,
+    CapabilityStatus,
+)
 from app.commerce.data.gold_cases import GoldCaseIntegrityError, load_evaluation_case
+from app.commerce.data.intake import (
+    DataBundleManifest,
+    DataFileManifest,
+    DataIntakeError,
+    DataIntakeService,
+    FileFormat,
+    TableManifest,
+)
+from app.commerce.data.normalized import (
+    EntityType,
+    NormalizedDataset,
+    NormalizedEntity,
+    OlistAdapter,
+)
+from app.commerce.data.profiler import (
+    ColumnProfile,
+    DataProfiler,
+    DatasetProfile,
+    InferredType,
+    JoinCardinality,
+    JoinRisk,
+    TableProfile,
+)
+from app.commerce.data.semantic_mapper import (
+    FieldMapping,
+    MappingSource,
+    MappingStatus,
+    SemanticField,
+    SemanticMapper,
+    SemanticMappingProfile,
+    WorkspaceSemanticStore,
+)
 
-__all__ = ["GoldCaseIntegrityError", "load_evaluation_case"]
+__all__ = [
+    "DataBundleManifest",
+    "DataFileManifest",
+    "DataIntakeError",
+    "DataIntakeService",
+    "DataProfiler",
+    "DatasetProfile",
+    "FileFormat",
+    "EntityType",
+    "FieldMapping",
+    "GoldCaseIntegrityError",
+    "InferredType",
+    "JoinCardinality",
+    "JoinRisk",
+    "MappingSource",
+    "MappingStatus",
+    "NormalizedDataset",
+    "NormalizedEntity",
+    "OlistAdapter",
+    "ColumnProfile",
+    "CapabilityAssessment",
+    "CapabilityName",
+    "CapabilityProfile",
+    "CapabilityReasonCode",
+    "CapabilityRegistry",
+    "CapabilityStatus",
+    "TableManifest",
+    "TableProfile",
+    "SemanticField",
+    "SemanticMapper",
+    "SemanticMappingProfile",
+    "WorkspaceSemanticStore",
+    "load_evaluation_case",
+]

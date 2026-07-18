@@ -12,6 +12,8 @@ The new application is fail-closed behind `COMMERCE_CASE_AGENT_ENABLED=false`. F
 
 Commerce Phase 1 contracts live under `app/commerce/domain/`: typed IDs, enums, Case transitions, evidence models, Action approval gates and evaluation contracts. Real Olist Gold Cases live under `../evals/commerce/cases/` and are rebuilt by `../scripts/commerce_data/build_olist_gold_cases.py`. `app/commerce/data/gold_cases.py` verifies manifest paths, SHA-256, row counts and columns before loading a case.
 
+Commerce Phase 2 deterministic data modules live under `app/commerce/data/` and `app/commerce/metrics/`: safe heterogeneous intake, profiling, deterministic semantics, Workspace confirmations, Capability Registry, Olist normalized Facts, versioned metrics and anomaly Case candidates. The Semantic Mapper does not yet call an LLM; a future candidate adapter must wait for the real DeepSeek V4 preflight and may never auto-confirm its own suggestions.
+
 **Architecture**:
 - **Gateway API** (port 8001): REST API plus embedded LangGraph-compatible agent runtime
 - **Frontend** (port 3000): Next.js web interface

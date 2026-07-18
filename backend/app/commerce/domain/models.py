@@ -60,6 +60,7 @@ class Fact(CommerceModel):
     workspace_id: WorkspaceId
     entity_id: EntityId | None = None
     name: str = Field(min_length=1)
+    semantic_version: str = Field(default="commerce-semantics@1.0.0", min_length=1)
     semantic_status: SemanticStatus
     value: ScalarValue | None = None
     unit: str | None = Field(default=None, min_length=1)
@@ -95,10 +96,19 @@ class MetricObservation(CommerceModel):
     unit: str | None = Field(default=None, min_length=1)
     formula_version: str | None = Field(default=None, min_length=1)
     source_fact_ids: tuple[FactId, ...] = Field(default_factory=tuple)
+    window_start: datetime | None = None
+    window_end: datetime | None = None
+    sample_size: int | None = Field(default=None, ge=0)
+    numerator: int | Decimal | None = None
+    denominator: int | Decimal | None = None
     unknown_reason: str | None = Field(default=None, min_length=1)
 
     @model_validator(mode="after")
     def validate_semantics(self) -> Self:
+        if (self.window_start is None) != (self.window_end is None):
+            raise ValueError("MetricObservation window requires both start and end")
+        if self.window_start is not None and self.window_end is not None and self.window_start >= self.window_end:
+            raise ValueError("MetricObservation window start must be before end")
         if self.semantic_status in {SemanticStatus.UNKNOWN, SemanticStatus.BLOCKED}:
             if self.value is not None:
                 raise ValueError("Unknown or blocked MetricObservation cannot carry a value")

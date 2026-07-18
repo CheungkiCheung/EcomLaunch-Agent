@@ -66,6 +66,10 @@ class MetricObservationId(TypedId):
     PREFIX = "mobs"
 
 
+class AnomalyId(TypedId):
+    PREFIX = "anom"
+
+
 class CapabilityId(TypedId):
     PREFIX = "cap"
 
