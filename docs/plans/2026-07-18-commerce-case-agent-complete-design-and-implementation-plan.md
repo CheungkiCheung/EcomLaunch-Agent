@@ -1163,32 +1163,44 @@ GREEN：添加：
 
 ### Phase 4：Agent Harness 与 Goal Loop
 
+当前完成状态：
+
+- [x] Lead / Path / Verification ContextPacket 与 ContextManifest；
+- [x] Hidden evaluation label leakage guard；
+- [x] 三条 versioned PathAgentSpec；
+- [x] Capability-first DynamicPathRouter（0–3 Path、Reason Codes）；
+- [x] 并发安全多维 BudgetManager 与原子拒绝；
+- [ ] ModelRouter 与 Assignment Event；
+- [ ] GoalLoopController / Checkpoint / Stop Condition；
+- [ ] Structured PathResult；
+- [ ] 真实 DeepSeek V4 Path Agent 与 Verification 行为测试。
+
 #### Task 4.1：ContextPacket
 
-- Lead Packet；
-- Path Packet；
-- Verification Packet；
-- ContextManifest；
-- Token Budget；
-- Hidden Label Leakage Test。
+- [x] Lead Packet；
+- [x] Path Packet；
+- [x] Verification Packet；
+- [x] ContextManifest；
+- [x] Token Budget；
+- [x] Hidden Label Leakage Test。
 
 #### Task 4.2：PathAgentSpec
 
-- Required Capability；
-- Allowed Tools；
-- Skill Version；
-- Output Schema；
-- Budget；
-- Model Profile。
+- [x] Required Capability；
+- [x] Allowed Tools；
+- [x] Skill Version；
+- [x] Output Schema；
+- [x] Budget；
+- [x] Model Profile。
 
 #### Task 4.3：DynamicPathRouter
 
-- 规则优先；
-- 0–3 Path Agent；
-- 不满足 Capability 时 Skip；
-- 记录 Reason Codes；
-- GC-REVIEW-002 不完整启动 Fulfillment；
-- GC-CAPABILITY-003 不启动 Review。
+- [x] 规则优先；
+- [x] 0–3 Path Agent；
+- [x] 不满足 Capability 时 Skip；
+- [x] 记录 Reason Codes；
+- [x] GC-REVIEW-002 不启动 Fulfillment；
+- [x] GC-CAPABILITY-003 不启动 Review。
 
 #### Task 4.4：ModelRouter
 
@@ -1200,10 +1212,10 @@ GREEN：添加：
 
 #### Task 4.5：BudgetManager
 
-- Run / Agent / Tool / Verification 预算；
-- 原子消费；
-- 并发安全；
-- Budget Exceeded Event。
+- [x] Run / Agent / Tool / Verification 可配置预算合同；
+- [x] 原子消费；
+- [x] 并发安全；
+- [ ] Budget Exceeded Event。
 
 #### Task 4.6：GoalLoopController
 
