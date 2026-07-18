@@ -163,4 +163,4 @@ exit code: 0
 
 ## Next
 
-Continue Phase 3 with Action / Approval / Follow-up persistence, then expose Case, Evidence, Hypothesis and Event read contracts through the feature-flagged Commerce API.
+The read-only Case / Evidence / Hypothesis / Event API slice is documented in [`2026-07-18-commerce-phase3-api-read-slice.md`](./2026-07-18-commerce-phase3-api-read-slice.md). Continue Phase 3 with Data Upload / Profile, Capability, anomaly-to-Case application services and the remaining API contracts. Action / Approval / Follow-up persistence remains a later phase.

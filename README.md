@@ -11,7 +11,7 @@
 
 项目正在从旧 OpenSKU / EcomLaunch 方案改造为 Commerce Case Agent。
 
-Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 也已实现，并在官方端点通过当次新请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成 Case、Domain Event、append-only Evidence 与 versioned Hypothesis 持久化：SQLite 实际运行、PostgreSQL DDL 兼容、独立迁移、乐观并发、证据/假设来源追踪和同事务 Case/Record/Event 写入。DeepSeek V4 语义候选层、Action/Approval/Follow-up 持久化、API 和新 Agent 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
+Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 也已实现，并在官方端点通过当次新请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成 Case、Domain Event、append-only Evidence 与 versioned Hypothesis 持久化，以及第一批 feature-flagged 只读 API：SQLite 实际运行、PostgreSQL DDL 兼容、独立迁移、乐观并发、证据/假设来源追踪、同事务 Case/Record/Event 写入和 Event Stream 读取。Data Upload/Profile、Action/Approval/Follow-up 持久化、Investigation Start、Run API 和新 Agent 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
 
 完整设计与实施计划：
 
@@ -304,6 +304,18 @@ PYTHONPATH=. .venv/bin/python -m app.commerce.persistence.migrations \
 ```
 
 运行时仍复用 DeerFlow 已初始化的异步 Engine / Session Factory；独立的是 Commerce ORM Metadata、表前缀和迁移分支，不是另开一套数据库连接池。
+
+### Commerce 只读 API
+
+Commerce API 默认关闭。只有设置 `COMMERCE_CASE_AGENT_ENABLED=true` 后，Gateway 才挂载 `/api/commerce` 路由。当前已实现的读取合同是：
+
+- `GET /api/commerce/cases`：Workspace-scoped Case 列表和状态过滤；
+- `GET /api/commerce/cases/{case_id}`：Case、最新 Evidence 和 Hypothesis；
+- `GET /api/commerce/cases/{case_id}/evidence` 与 `/evidence/{evidence_id}`；
+- `GET /api/commerce/cases/{case_id}/hypotheses`：每个 Hypothesis 的最新版本；
+- `GET /api/commerce/cases/{case_id}/events`：按 Case Sequence 排序的 Domain Event Stream。
+
+读取请求必须携带 `X-Commerce-Workspace-Id`。该 header 是当前阶段的显式 Workspace 边界合同；正式接入用户 Workspace membership 之前，不应将 Commerce feature flag 在多租户生产环境中打开。没有持久化数据、权限映射或事件时，API 返回空、404 或明确的 503，不从自然语言或前端状态推断 Case。
 
 ## 归属声明
 

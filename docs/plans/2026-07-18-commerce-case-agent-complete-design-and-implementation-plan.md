@@ -1098,7 +1098,7 @@ GREEN：添加：
 - [x] Append-only Evidence 与 versioned Hypothesis Repository（Supporting / Contradicting Evidence、Fact / MetricObservation 来源追踪）；
 - [ ] Action / Approval / Follow-up Repository；
 - [ ] PostgreSQL 真实实例集成测试；
-- [ ] Commerce API 与 Feature Flag Router。
+- [ ] Commerce API 与 Feature Flag Router（只读 Case / Evidence / Hypothesis / Event slice 已实现；Upload/Profile、Investigation Start、Run API 待后续）。
 
 #### Task 3.1：Commerce Persistence
 
@@ -1139,13 +1139,17 @@ GREEN：添加：
 
 首批 API：
 
-- Data Upload / Profile；
-- Capability Report；
-- Case List；
-- Case Detail；
-- Evidence Detail；
-- Investigation Start；
-- Run Detail / Events。
+- [ ] Data Upload / Profile；
+- [ ] Capability Report；
+- [x] Case List；
+- [x] Case Detail；
+- [x] Evidence List / Detail；
+- [x] Latest Hypothesis List；
+- [x] Case Domain Event Stream；
+- [ ] Investigation Start；
+- [ ] Run Detail / Events。
+
+当前 API slice 通过 `COMMERCE_CASE_AGENT_ENABLED` fail-closed 挂载，并要求 `X-Commerce-Workspace-Id`。在 Workspace membership 合同完成前，不满足多租户生产发布退出条件。
 
 退出条件：
 

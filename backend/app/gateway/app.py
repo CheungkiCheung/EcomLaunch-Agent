@@ -394,6 +394,12 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Stateless Runs API (stream/wait without a pre-existing thread)
     app.include_router(runs.router)
 
+    # Commerce Case Agent is fail-closed and mounted only when explicitly enabled.
+    if config.commerce_case_agent_enabled:
+        from app.commerce.api import router as commerce_router
+
+        app.include_router(commerce_router)
+
     @app.get("/health", tags=["health"])
     async def health_check() -> dict[str, str]:
         """Health check endpoint.

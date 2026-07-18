@@ -1,0 +1,80 @@
+"""Application read service for the Commerce Case workspace."""
+
+from __future__ import annotations
+
+import asyncio
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from app.commerce.domain.enums import CaseStatus
+from app.commerce.domain.events import DomainEventEnvelope
+from app.commerce.domain.ids import CaseId, EvidenceId, WorkspaceId
+from app.commerce.domain.models import Case, Evidence, Hypothesis
+from app.commerce.persistence.events import SqlDomainEventStore
+from app.commerce.persistence.repositories import SqlCaseRepository
+from app.commerce.persistence.work_records import (
+    SqlEvidenceRepository,
+    SqlHypothesisRepository,
+)
+
+
+class CommerceReadService:
+    """Read-only application service; it never infers state from chat text."""
+
+    def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
+        self._cases = SqlCaseRepository(session_factory)
+        self._evidence = SqlEvidenceRepository(session_factory)
+        self._hypotheses = SqlHypothesisRepository(session_factory)
+        self._events = SqlDomainEventStore(session_factory)
+
+    async def list_cases(
+        self,
+        workspace_id: WorkspaceId,
+        *,
+        status: CaseStatus | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[Case, ...]:
+        return await self._cases.list(
+            workspace_id,
+            status=status,
+            limit=limit,
+            offset=offset,
+        )
+
+    async def get_case(self, workspace_id: WorkspaceId, case_id: CaseId) -> Case | None:
+        return await self._cases.get(workspace_id, case_id)
+
+    async def get_evidence(
+        self,
+        workspace_id: WorkspaceId,
+        evidence_id: EvidenceId,
+    ) -> Evidence | None:
+        return await self._evidence.get(workspace_id, evidence_id)
+
+    async def list_case_evidence(
+        self,
+        workspace_id: WorkspaceId,
+        case_id: CaseId,
+    ) -> tuple[Evidence, ...]:
+        return await self._evidence.list_case(workspace_id, case_id)
+
+    async def list_case_hypotheses(
+        self,
+        workspace_id: WorkspaceId,
+        case: Case,
+    ) -> tuple[Hypothesis, ...]:
+        versions = await asyncio.gather(
+            *(
+                self._hypotheses.get_latest(workspace_id, hypothesis_id)
+                for hypothesis_id in case.hypothesis_ids
+            )
+        )
+        return tuple(hypothesis for hypothesis in versions if hypothesis is not None)
+
+    async def list_case_events(
+        self,
+        workspace_id: WorkspaceId,
+        case_id: CaseId,
+    ) -> tuple[DomainEventEnvelope, ...]:
+        return await self._events.list_case(workspace_id, case_id)

@@ -38,3 +38,25 @@ def test_commerce_case_agent_true_is_case_insensitive(monkeypatch):
         config = _reload_config()
 
         assert config.commerce_case_agent_enabled is True
+
+
+def test_commerce_router_is_not_mounted_when_disabled(monkeypatch):
+    monkeypatch.delenv("COMMERCE_CASE_AGENT_ENABLED", raising=False)
+    _reload_config()
+
+    from app.gateway.app import create_app
+
+    app = create_app()
+
+    assert not any(route.path == "/api/commerce/cases" for route in app.routes)
+
+
+def test_commerce_router_is_mounted_only_when_enabled(monkeypatch):
+    monkeypatch.setenv("COMMERCE_CASE_AGENT_ENABLED", "true")
+    _reload_config()
+
+    from app.gateway.app import create_app
+
+    app = create_app()
+
+    assert any(route.path == "/api/commerce/cases" for route in app.routes)
