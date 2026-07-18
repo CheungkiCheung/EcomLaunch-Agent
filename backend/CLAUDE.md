@@ -10,6 +10,8 @@ This fork is being extended with **Commerce Case Agent**, an application-layer e
 
 The new application is fail-closed behind `COMMERCE_CASE_AGENT_ENABLED=false`. Future Commerce routers may be mounted only when `GatewayConfig.commerce_case_agent_enabled` is true. Pure domain/configuration tests remain model-free; every LLM or Agent behavior test must use a fresh, identity-verified DeepSeek V4 request and must stop when that model is unavailable or quota is exhausted.
 
+Commerce Phase 1 contracts live under `app/commerce/domain/`: typed IDs, enums, Case transitions, evidence models, Action approval gates and evaluation contracts. Real Olist Gold Cases live under `../evals/commerce/cases/` and are rebuilt by `../scripts/commerce_data/build_olist_gold_cases.py`. `app/commerce/data/gold_cases.py` verifies manifest paths, SHA-256, row counts and columns before loading a case.
+
 **Architecture**:
 - **Gateway API** (port 8001): REST API plus embedded LangGraph-compatible agent runtime
 - **Frontend** (port 3000): Next.js web interface

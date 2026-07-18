@@ -1,6 +1,6 @@
 # Commerce Case Agent 完整设计与实施计划
 
-> 状态：设计已收口，实施进行中（Phase 0）
+> 状态：设计已收口，Phase 1 已完成，准备进入 Phase 2
 > 日期：2026-07-18
 > 当前分支：`feature/commerce-case-agent`
 > 保护快照：`archive/ecom-launch-pre-commerce-agent-20260718` / `9144237`
@@ -886,6 +886,16 @@ REVIEW：阶段评审
 - 新旧系统命名空间不冲突。
 
 ### Phase 1：Domain Contract 与 Gold Case
+
+完成状态：
+
+- [x] Commerce 包骨架与 Harness / App 边界；
+- [x] 基础枚举、强类型 ID 和 Case 状态转换；
+- [x] Fact / MetricObservation / Evidence；
+- [x] Case / Hypothesis / Action / Approval / Rollback；
+- [x] Gold Case Input / ExpectedBehavior 隔离合同；
+- [x] 三条真实 Olist Gold Case Fixture；
+- [x] SHA、行数、列、Join、时间窗口和精确指标回归。
 
 #### Task 1.1：Commerce 包骨架
 

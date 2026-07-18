@@ -1,0 +1,110 @@
+{
+  "declared_missing_fields": [
+    "exposure",
+    "click",
+    "add_to_cart",
+    "ad_spend",
+    "inventory",
+    "profit"
+  ],
+  "files": [
+    {
+      "columns": [
+        "order_id",
+        "customer_id",
+        "order_status",
+        "order_purchase_timestamp",
+        "order_approved_at",
+        "order_delivered_carrier_date",
+        "order_delivered_customer_date",
+        "order_estimated_delivery_date"
+      ],
+      "name": "orders",
+      "relative_path": "input/orders.csv",
+      "row_count": 35,
+      "sha256": "8d9911f3681d76bb4cca8a49cc6a0bcb7a235d38e1829cdcd1e89e1d23d47786",
+      "table_name": "orders"
+    },
+    {
+      "columns": [
+        "order_id",
+        "order_item_id",
+        "product_id",
+        "seller_id",
+        "shipping_limit_date",
+        "price",
+        "freight_value"
+      ],
+      "name": "order_items",
+      "relative_path": "input/order_items.csv",
+      "row_count": 42,
+      "sha256": "3a5e1780f53b14452d3807c3f796378a1caadb55879ae19b6862a673947a4f01",
+      "table_name": "order_items"
+    },
+    {
+      "columns": [
+        "review_id",
+        "order_id",
+        "review_score",
+        "review_comment_title",
+        "review_comment_message",
+        "review_creation_date",
+        "review_answer_timestamp"
+      ],
+      "name": "order_reviews",
+      "relative_path": "input/order_reviews.csv",
+      "row_count": 35,
+      "sha256": "9fcd54c3819c991094a141fe031ed79767a56a8ed823cb3b649b6ff3347f83d6",
+      "table_name": "order_reviews"
+    },
+    {
+      "columns": [
+        "product_id",
+        "product_category_name",
+        "product_name_lenght",
+        "product_description_lenght",
+        "product_photos_qty",
+        "product_weight_g",
+        "product_length_cm",
+        "product_height_cm",
+        "product_width_cm"
+      ],
+      "name": "products",
+      "relative_path": "input/products.csv",
+      "row_count": 11,
+      "sha256": "f666ba3dd5475979571d325577d8fbd5a352bec92aea9e8b81e29c07895160bb",
+      "table_name": "products"
+    },
+    {
+      "columns": [
+        "customer_id",
+        "customer_unique_id",
+        "customer_zip_code_prefix",
+        "customer_city",
+        "customer_state"
+      ],
+      "name": "customers",
+      "relative_path": "input/customers.csv",
+      "row_count": 35,
+      "sha256": "7a66d1999f5d563afd2d0936d074bff1b3a21e9e504a9068e92b39e797d02f7b",
+      "table_name": "customers"
+    },
+    {
+      "columns": [
+        "seller_id",
+        "seller_zip_code_prefix",
+        "seller_city",
+        "seller_state"
+      ],
+      "name": "sellers",
+      "relative_path": "input/sellers.csv",
+      "row_count": 1,
+      "sha256": "360e69ab5a88e2ee2744fe697329a513f3124264a438396a4fdce8245629a1b2",
+      "table_name": "sellers"
+    }
+  ],
+  "not_a_live_merchant_integration": true,
+  "schema_version": "1.0",
+  "source_type": "public_benchmark_fixture",
+  "user_prompt": "评分和低分评价突然恶化，但我不确定是否与物流有关。请基于数据调查原因并说明证据边界。"
+}

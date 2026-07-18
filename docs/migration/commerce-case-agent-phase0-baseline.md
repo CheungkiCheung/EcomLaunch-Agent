@@ -276,7 +276,7 @@ exit code: 0
 - [x] Root, backend and frontend Agent instructions describe the Commerce system.
 - [x] Legacy assets are preserved and excluded from Commerce release claims.
 - [x] Static/type/lint baseline is recorded, including the inherited Legacy lint failure.
-- [ ] Working tree is committed at the Phase 0 boundary.
+- [x] Working tree is committed at the Phase 0 boundary: `c561ca7`.
 
 ## 11. Next implementation point
 

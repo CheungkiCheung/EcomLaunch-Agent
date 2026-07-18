@@ -1,0 +1,110 @@
+{
+  "declared_missing_fields": [
+    "exposure",
+    "click",
+    "add_to_cart",
+    "ad_spend",
+    "inventory",
+    "profit"
+  ],
+  "files": [
+    {
+      "columns": [
+        "order_id",
+        "customer_id",
+        "order_status",
+        "order_purchase_timestamp",
+        "order_approved_at",
+        "order_delivered_carrier_date",
+        "order_delivered_customer_date",
+        "order_estimated_delivery_date"
+      ],
+      "name": "orders",
+      "relative_path": "input/orders.csv",
+      "row_count": 554,
+      "sha256": "a1be46eb88906bb2cef0c5b2dcfae1458f530b6a96b21191b162c8efd24e149e",
+      "table_name": "orders"
+    },
+    {
+      "columns": [
+        "order_id",
+        "order_item_id",
+        "product_id",
+        "seller_id",
+        "shipping_limit_date",
+        "price",
+        "freight_value"
+      ],
+      "name": "order_items",
+      "relative_path": "input/order_items.csv",
+      "row_count": 563,
+      "sha256": "69d1d62831e9c5917e8be8bdcfca4de579b176350d3a3bc5888efec71c53e1bc",
+      "table_name": "order_items"
+    },
+    {
+      "columns": [
+        "review_id",
+        "order_id",
+        "review_score",
+        "review_comment_title",
+        "review_comment_message",
+        "review_creation_date",
+        "review_answer_timestamp"
+      ],
+      "name": "order_reviews",
+      "relative_path": "input/order_reviews.csv",
+      "row_count": 549,
+      "sha256": "44c3aeceabac52070151b91a30e8c0608a8df6850fc69867967ebb59f73c2f03",
+      "table_name": "order_reviews"
+    },
+    {
+      "columns": [
+        "product_id",
+        "product_category_name",
+        "product_name_lenght",
+        "product_description_lenght",
+        "product_photos_qty",
+        "product_weight_g",
+        "product_length_cm",
+        "product_height_cm",
+        "product_width_cm"
+      ],
+      "name": "products",
+      "relative_path": "input/products.csv",
+      "row_count": 47,
+      "sha256": "06557748907cc265616a06bf666dfee5d451d127ad94860e3816745e1a7d2c4b",
+      "table_name": "products"
+    },
+    {
+      "columns": [
+        "customer_id",
+        "customer_unique_id",
+        "customer_zip_code_prefix",
+        "customer_city",
+        "customer_state"
+      ],
+      "name": "customers",
+      "relative_path": "input/customers.csv",
+      "row_count": 554,
+      "sha256": "3e01690e1e0df70ff8837752b3fd8f1b5100d97bca9acd7afb649dbe906a1a87",
+      "table_name": "customers"
+    },
+    {
+      "columns": [
+        "seller_id",
+        "seller_zip_code_prefix",
+        "seller_city",
+        "seller_state"
+      ],
+      "name": "sellers",
+      "relative_path": "input/sellers.csv",
+      "row_count": 1,
+      "sha256": "a969f6ff64949461f140a7f829264c7b5d6cfde605469e078af83d67c2006e03",
+      "table_name": "sellers"
+    }
+  ],
+  "not_a_live_merchant_integration": true,
+  "schema_version": "1.0",
+  "source_type": "public_benchmark_fixture",
+  "user_prompt": "最近一段时间履约和评分出现异常，请定位主要问题、反驳不成立的原因，并给出可验证的后续动作。"
+}

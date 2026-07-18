@@ -1,0 +1,136 @@
+{
+  "expected_capabilities": [
+    "fulfillment_diagnosis",
+    "review_experience"
+  ],
+  "expected_follow_up_outcome": "inconclusive",
+  "expected_path_agents": [
+    "FulfillmentPathAgent",
+    "ReviewExperiencePathAgent"
+  ],
+  "forbidden_claims": [
+    {
+      "code": "no-seller-handling-blame",
+      "description": "Seller handling did not worsen during the anomaly window.",
+      "kind": "unsupported_causal",
+      "match_mode": "any_term",
+      "terms": [
+        "seller handling caused the delay",
+        "seller dispatch capacity caused the delay",
+        "卖家处理时长恶化导致",
+        "卖家出库能力不足导致"
+      ]
+    },
+    {
+      "code": "no-causal-action-effect",
+      "description": "Natural recovery cannot prove an Action caused improvement.",
+      "kind": "unsupported_causal",
+      "match_mode": "any_term",
+      "terms": [
+        "action caused the recovery",
+        "intervention proved effective",
+        "行动导致恢复",
+        "措施已被证明有效"
+      ]
+    },
+    {
+      "code": "no-unavailable-private-metrics",
+      "description": "Do not invent GMV, CTR, CVR, ROI, ad spend, inventory, profit, or causal uplift.",
+      "kind": "unsupported_private_metric",
+      "match_mode": "any_term",
+      "terms": [
+        "confirmed roi",
+        "verified uplift",
+        "真实gmv",
+        "实际转化率",
+        "广告roi已提升"
+      ]
+    }
+  ],
+  "required_facts": [
+    {
+      "expected_value": 141,
+      "name": "baseline.order_count",
+      "semantic_status": "derived"
+    },
+    {
+      "expected_value": 0.03546099290780142,
+      "name": "baseline.late_delivery_rate",
+      "semantic_status": "derived",
+      "tolerance": 1e-12
+    },
+    {
+      "expected_value": 4.228571428571429,
+      "name": "baseline.average_review_score",
+      "semantic_status": "derived",
+      "tolerance": 1e-12
+    },
+    {
+      "expected_value": 50.06023640661939,
+      "name": "baseline.handling_hours",
+      "semantic_status": "derived",
+      "tolerance": 1e-09
+    },
+    {
+      "expected_value": 300.5057781717888,
+      "name": "baseline.transit_hours",
+      "semantic_status": "derived",
+      "tolerance": 1e-09
+    },
+    {
+      "expected_value": 202,
+      "name": "anomaly.order_count",
+      "semantic_status": "derived"
+    },
+    {
+      "expected_value": 0.35148514851485146,
+      "name": "anomaly.late_delivery_rate",
+      "semantic_status": "derived",
+      "tolerance": 1e-12
+    },
+    {
+      "expected_value": 3.5979899497487438,
+      "name": "anomaly.average_review_score",
+      "semantic_status": "derived",
+      "tolerance": 1e-12
+    },
+    {
+      "expected_value": 46.83626512651265,
+      "name": "anomaly.handling_hours",
+      "semantic_status": "derived",
+      "tolerance": 1e-09
+    },
+    {
+      "expected_value": 494.83323569856987,
+      "name": "anomaly.transit_hours",
+      "semantic_status": "derived",
+      "tolerance": 1e-09
+    },
+    {
+      "expected_value": 211,
+      "name": "recovery.order_count",
+      "semantic_status": "derived"
+    },
+    {
+      "expected_value": 0.052132701421800945,
+      "name": "recovery.late_delivery_rate",
+      "semantic_status": "derived",
+      "tolerance": 1e-12
+    },
+    {
+      "expected_value": 4.280952380952381,
+      "name": "recovery.average_review_score",
+      "semantic_status": "derived",
+      "tolerance": 1e-12
+    },
+    {
+      "expected_value": null,
+      "name": "followup.causal_effect",
+      "semantic_status": "unknown",
+      "unknown_reason_contains": "no controlled intervention"
+    }
+  ],
+  "skipped_path_agents": [
+    "SellerPeerPathAgent"
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "capability_ablation": {
+    "baseline_capabilities": [
+      "fulfillment_diagnosis",
+      "review_experience"
+    ],
+    "expected_capabilities": [
+      "fulfillment_diagnosis"
+    ],
+    "removed_files": [
+      "order_reviews"
+    ]
+  },
+  "expected_capabilities": [
+    "fulfillment_diagnosis"
+  ],
+  "expected_path_agents": [
+    "FulfillmentPathAgent"
+  ],
+  "forbidden_claims": [
+    {
+      "code": "no-review-decline-without-review-data",
+      "description": "Review decline cannot be claimed after the review table is removed.",
+      "kind": "capability_overclaim",
+      "match_mode": "any_term",
+      "terms": [
+        "review score declined",
+        "rating declined",
+        "评分下降",
+        "低分率上升"
+      ]
+    },
+    {
+      "code": "no-unavailable-private-metrics",
+      "description": "Do not invent GMV, CTR, CVR, ROI, ad spend, inventory, profit, or causal uplift.",
+      "kind": "unsupported_private_metric",
+      "match_mode": "any_term",
+      "terms": [
+        "confirmed roi",
+        "verified uplift",
+        "真实gmv",
+        "实际转化率",
+        "广告roi已提升"
+      ]
+    }
+  ],
+  "required_facts": [
+    {
+      "expected_value": 141,
+      "name": "baseline.order_count",
+      "semantic_status": "derived"
+    },
+    {
+      "expected_value": 0.03546099290780142,
+      "name": "baseline.late_delivery_rate",
+      "semantic_status": "derived",
+      "tolerance": 1e-12
+    },
+    {
+      "expected_value": 202,
+      "name": "anomaly.order_count",
+      "semantic_status": "derived"
+    },
+    {
+      "expected_value": 0.35148514851485146,
+      "name": "anomaly.late_delivery_rate",
+      "semantic_status": "derived",
+      "tolerance": 1e-12
+    },
+    {
+      "expected_value": 46.83626512651265,
+      "name": "anomaly.handling_hours",
+      "semantic_status": "derived",
+      "tolerance": 1e-09
+    },
+    {
+      "expected_value": 494.83323569856987,
+      "name": "anomaly.transit_hours",
+      "semantic_status": "derived",
+      "tolerance": 1e-09
+    },
+    {
+      "expected_value": null,
+      "name": "anomaly.average_review_score",
+      "semantic_status": "unknown",
+      "unknown_reason_contains": "order_reviews"
+    }
+  ],
+  "skipped_path_agents": [
+    "ReviewExperiencePathAgent",
+    "SellerPeerPathAgent"
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "expected_capabilities": [
+    "fulfillment_diagnosis",
+    "review_experience"
+  ],
+  "expected_path_agents": [
+    "ReviewExperiencePathAgent"
+  ],
+  "forbidden_claims": [
+    {
+      "code": "no-confirmed-counterfeit-or-fraud",
+      "description": "Review allegations support suspicion, not a confirmed counterfeit or fraud finding.",
+      "kind": "unsupported_illegal_conduct",
+      "match_mode": "any_term",
+      "terms": [
+        "confirmed counterfeit",
+        "confirmed fraud",
+        "seller sells counterfeit",
+        "确认售假",
+        "确认欺诈",
+        "卖家就是在售假"
+      ]
+    },
+    {
+      "code": "no-delivery-root-cause",
+      "description": "Both windows have zero late deliveries.",
+      "kind": "unsupported_causal",
+      "match_mode": "any_term",
+      "terms": [
+        "delivery delay caused the rating decline",
+        "logistics lateness caused the decline",
+        "物流延迟导致评分下降",
+        "配送延误是根因"
+      ]
+    },
+    {
+      "code": "no-unavailable-private-metrics",
+      "description": "Do not invent GMV, CTR, CVR, ROI, ad spend, inventory, profit, or causal uplift.",
+      "kind": "unsupported_private_metric",
+      "match_mode": "any_term",
+      "terms": [
+        "confirmed roi",
+        "verified uplift",
+        "真实gmv",
+        "实际转化率",
+        "广告roi已提升"
+      ]
+    }
+  ],
+  "required_facts": [
+    {
+      "expected_value": 17,
+      "name": "baseline.order_count",
+      "semantic_status": "derived"
+    },
+    {
+      "expected_value": 0.0,
+      "name": "baseline.late_delivery_rate",
+      "semantic_status": "derived",
+      "tolerance": 0.0
+    },
+    {
+      "expected_value": 3.8823529411764706,
+      "name": "baseline.average_review_score",
+      "semantic_status": "derived",
+      "tolerance": 1e-12
+    },
+    {
+      "expected_value": 0.23529411764705882,
+      "name": "baseline.low_rating_rate",
+      "semantic_status": "derived",
+      "tolerance": 1e-12
+    },
+    {
+      "expected_value": 18,
+      "name": "anomaly.order_count",
+      "semantic_status": "derived"
+    },
+    {
+      "expected_value": 0.0,
+      "name": "anomaly.late_delivery_rate",
+      "semantic_status": "derived",
+      "tolerance": 0.0
+    },
+    {
+      "expected_value": 2.9444444444444446,
+      "name": "anomaly.average_review_score",
+      "semantic_status": "derived",
+      "tolerance": 1e-12
+    },
+    {
+      "expected_value": 0.4444444444444444,
+      "name": "anomaly.low_rating_rate",
+      "semantic_status": "derived",
+      "tolerance": 1e-12
+    }
+  ],
+  "skipped_path_agents": [
+    "FulfillmentPathAgent",
+    "SellerPeerPathAgent"
+  ]
+}

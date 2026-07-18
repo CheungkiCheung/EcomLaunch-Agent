@@ -11,7 +11,7 @@
 
 项目正在从旧 OpenSKU / EcomLaunch 方案改造为 Commerce Case Agent。
 
-当前阶段是 Phase 0：保护旧成果、建立新旧边界、Feature Flag、基线与实施合同。新 Agent 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
+Phase 0 已完成并提交；Phase 1 的 Commerce Domain Contract 与三条真实 Olist Gold Case 已完成。下一步进入 Phase 2：通用 Data Intake、Capability、Metric 与异常检测。新 Agent 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
 
 完整设计与实施计划：
 
@@ -143,6 +143,8 @@ deerflow.* -X→ app.*
 3. 能力缺失：删除 Review 数据后仍完成履约诊断，但不得声称评分下降；必须跳过 Review Path 并给出精确补数建议。
 
 完整公开数据不进入 Git。仓库只保存来源、Schema、构建脚本和经过审查的小型 Fixture。
+
+当前三条 Fixture 位于 [`evals/commerce/cases/`](./evals/commerce/cases/)，构建与边界说明见 [`evals/commerce/README.md`](./evals/commerce/README.md)。
 
 ## Loop、Harness 与进化
 
