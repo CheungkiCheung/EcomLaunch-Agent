@@ -2,7 +2,7 @@
 
 > Date: 2026-07-18
 > Branch: `feature/commerce-case-agent`
-> Status: first persistence substage complete
+> Status: first persistence substage complete; Evidence / Hypothesis substage follows in a separate record
 > Model requests: `0`
 
 ## Outcome
@@ -157,10 +157,10 @@ exit code: 0
 
 - SQLite repository, migration, concurrency and replay paths were executed locally.
 - PostgreSQL SQLAlchemy DDL was compiled for both tables, but no live PostgreSQL instance was used in this substage.
-- Evidence, Hypothesis, Action, Approval and Follow-up repositories are not implemented yet.
+- Evidence / Hypothesis persistence is documented in [`2026-07-18-commerce-phase3-evidence-hypothesis-persistence.md`](./2026-07-18-commerce-phase3-evidence-hypothesis-persistence.md); Action, Approval and Follow-up repositories are not implemented yet.
 - Commerce API and feature-flagged router are not implemented yet.
 - No Agent behavior was tested; future Agent tests still require a fresh real DeepSeek V4 request.
 
 ## Next
 
-Continue Phase 3 with append-only Evidence, versioned Hypothesis, Action / Approval / Follow-up persistence, then expose Case and Event read contracts through the feature-flagged Commerce API.
+Continue Phase 3 with Action / Approval / Follow-up persistence, then expose Case, Evidence, Hypothesis and Event read contracts through the feature-flagged Commerce API.

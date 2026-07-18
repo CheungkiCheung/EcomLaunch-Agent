@@ -126,6 +126,20 @@ def replay_case_projection(events: tuple[DomainEventEnvelope, ...]) -> CaseProje
                     "last_case_sequence": event.case_sequence,
                 }
             )
+        elif event.event_type in {
+            "evidence.appended",
+            "hypothesis.version_appended",
+        }:
+            if "case_version" not in event.payload:
+                raise ValueError(
+                    f"{event.event_type} requires a case_version payload"
+                )
+            projection = projection.model_copy(
+                update={
+                    "version": int(event.payload["case_version"]),
+                    "last_case_sequence": event.case_sequence,
+                }
+            )
         else:
             projection = projection.model_copy(
                 update={"last_case_sequence": event.case_sequence}

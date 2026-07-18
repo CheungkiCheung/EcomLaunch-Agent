@@ -1095,7 +1095,8 @@ GREEN：添加：
 - [x] Case / Run 双 Sequence、Schema Version、Trace / Correlation / Causation；
 - [x] Case 状态写入与 Domain Event 同事务 Unit of Work；
 - [x] Event Replay 重建 Case Projection；
-- [ ] Evidence / Hypothesis / Action / Approval / Follow-up Repository；
+- [x] Append-only Evidence 与 versioned Hypothesis Repository（Supporting / Contradicting Evidence、Fact / MetricObservation 来源追踪）；
+- [ ] Action / Approval / Follow-up Repository；
 - [ ] PostgreSQL 真实实例集成测试；
 - [ ] Commerce API 与 Feature Flag Router。
 
@@ -1118,10 +1119,12 @@ GREEN：添加：
 
 #### Task 3.3：Evidence / Hypothesis Repository
 
-- Append-only Evidence；
-- Hypothesis Version；
-- Supporting / Contradicting；
-- Source Traceability。
+- [x] Append-only Evidence；
+- [x] Hypothesis Version；
+- [x] Supporting / Contradicting；
+- [x] Source Traceability；
+- [x] Evidence / Hypothesis 与 Case、Domain Event 的同事务 Unit of Work；
+- [x] Case Projection Replay 对记录事件的 `case_version` 支持。
 
 #### Task 3.4：Domain Event Store
 

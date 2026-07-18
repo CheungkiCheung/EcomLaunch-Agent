@@ -11,7 +11,7 @@
 
 项目正在从旧 OpenSKU / EcomLaunch 方案改造为 Commerce Case Agent。
 
-Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 也已实现，并在官方端点通过当次新请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成第一批 Case Repository 与 Domain Event 基础：SQLite 实际运行、PostgreSQL DDL 兼容、独立迁移、乐观并发和同事务 Case/Event 写入。DeepSeek V4 语义候选层、Evidence/Action 持久化、API 和新 Agent 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
+Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 也已实现，并在官方端点通过当次新请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成 Case、Domain Event、append-only Evidence 与 versioned Hypothesis 持久化：SQLite 实际运行、PostgreSQL DDL 兼容、独立迁移、乐观并发、证据/假设来源追踪和同事务 Case/Record/Event 写入。DeepSeek V4 语义候选层、Action/Approval/Follow-up 持久化、API 和新 Agent 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
 
 完整设计与实施计划：
 
@@ -26,6 +26,7 @@ Phase 0 基线与迁移清单：
 - [`docs/progress/2026-07-18-commerce-real-deepseek-v4-preflight.md`](./docs/progress/2026-07-18-commerce-real-deepseek-v4-preflight.md)
 - [`docs/progress/2026-07-18-commerce-phase2-peer-geographic-metrics.md`](./docs/progress/2026-07-18-commerce-phase2-peer-geographic-metrics.md)
 - [`docs/progress/2026-07-18-commerce-phase3-case-event-persistence.md`](./docs/progress/2026-07-18-commerce-phase3-case-event-persistence.md)
+- [`docs/progress/2026-07-18-commerce-phase3-evidence-hypothesis-persistence.md`](./docs/progress/2026-07-18-commerce-phase3-evidence-hypothesis-persistence.md)
 
 ## 解决什么问题
 

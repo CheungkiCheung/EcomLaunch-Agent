@@ -8,6 +8,7 @@ from sqlalchemy import (
     JSON,
     CheckConstraint,
     DateTime,
+    Float,
     Index,
     Integer,
     String,
@@ -105,5 +106,90 @@ class DomainEventRow(CommerceBase):
             "workspace_id",
             "run_id",
             "run_sequence",
+        ),
+    )
+
+
+class EvidenceRow(CommerceBase):
+    """Append-only, Case-scoped evidence record."""
+
+    __tablename__ = "commerce_evidence"
+
+    evidence_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    case_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    relation: Mapped[str] = mapped_column(String(20), nullable=False)
+    semantic_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    fact_ids_json: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    metric_observation_ids_json: Mapped[list[str]] = mapped_column(
+        JSON,
+        default=list,
+        nullable=False,
+    )
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "confidence >= 0 AND confidence <= 1",
+            name="ck_commerce_evidence_confidence_range",
+        ),
+        Index(
+            "ix_commerce_evidence_workspace_case",
+            "workspace_id",
+            "case_id",
+        ),
+    )
+
+
+class HypothesisRow(CommerceBase):
+    """Immutable version of a Case-scoped hypothesis."""
+
+    __tablename__ = "commerce_hypotheses"
+
+    hypothesis_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    case_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    statement: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    supporting_evidence_ids_json: Mapped[list[str]] = mapped_column(
+        JSON,
+        default=list,
+        nullable=False,
+    )
+    contradicting_evidence_ids_json: Mapped[list[str]] = mapped_column(
+        JSON,
+        default=list,
+        nullable=False,
+    )
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        CheckConstraint("version >= 1", name="ck_commerce_hypotheses_version_positive"),
+        CheckConstraint(
+            "confidence >= 0 AND confidence <= 1",
+            name="ck_commerce_hypotheses_confidence_range",
+        ),
+        Index(
+            "ix_commerce_hypotheses_workspace_case",
+            "workspace_id",
+            "case_id",
+        ),
+        Index(
+            "ix_commerce_hypotheses_workspace_case_status",
+            "workspace_id",
+            "case_id",
+            "status",
         ),
     )
