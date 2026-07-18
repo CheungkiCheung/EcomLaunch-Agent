@@ -1141,6 +1141,7 @@ GREEN：添加：
 
 - [x] Data Upload / Profile；
 - [x] Capability Report；
+- [x] Semantic Mapping read / explicit Workspace confirmation API；
 - [x] Case List；
 - [x] Case Detail；
 - [x] Evidence List / Detail；

@@ -10,7 +10,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.commerce.data.capabilities import CapabilityProfile
 from app.commerce.data.intake import DataBundleManifest
 from app.commerce.data.profiler import DatasetProfile
-from app.commerce.data.semantic_mapper import SemanticMappingProfile
+from app.commerce.data.semantic_mapper import (
+    SemanticField,
+    SemanticMappingProfile,
+)
 
 
 class CommerceResponse(BaseModel):
@@ -103,3 +106,9 @@ class DatasetIntakeResponse(CommerceResponse):
     profile: DatasetProfile
     mappings: SemanticMappingProfile
     capabilities: CapabilityProfile
+
+
+class SemanticConfirmationRequest(CommerceResponse):
+    table_name: str = Field(min_length=1)
+    column_name: str = Field(min_length=1)
+    semantic_field: SemanticField

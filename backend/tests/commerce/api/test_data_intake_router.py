@@ -104,3 +104,74 @@ async def test_upload_rejects_path_like_filenames_before_storage(tmp_path):
 
     assert response.status_code == 400
     assert "filename" in json.dumps(response.json()).lower()
+
+
+@pytest.mark.anyio
+async def test_semantic_confirmation_is_persisted_and_changes_mapping_view(tmp_path):
+    app = _app(tmp_path)
+    workspace_id = WorkspaceId.new()
+    headers = {"X-Commerce-Workspace-Id": str(workspace_id)}
+    files = [
+        (
+            "files",
+            (
+                "orders.csv",
+                b"order_id,status\no1,delivered\n",
+                "text/csv",
+            ),
+        )
+    ]
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        uploaded = await client.post(
+            "/api/commerce/datasets/intake",
+            files=files,
+            headers=headers,
+        )
+        dataset_id = uploaded.json()["manifest"]["dataset_id"]
+        confirmed = await client.post(
+            f"/api/commerce/datasets/{dataset_id}/semantic-confirmations",
+            json={
+                "table_name": "orders",
+                "column_name": "status",
+                "semantic_field": "order.status",
+            },
+            headers=headers,
+        )
+        mappings = await client.get(
+            f"/api/commerce/datasets/{dataset_id}/mappings",
+            headers=headers,
+        )
+        invalid_column = await client.post(
+            f"/api/commerce/datasets/{dataset_id}/semantic-confirmations",
+            json={
+                "table_name": "orders",
+                "column_name": "missing",
+                "semantic_field": "order.status",
+            },
+            headers=headers,
+        )
+        hidden = await client.post(
+            f"/api/commerce/datasets/{dataset_id}/semantic-confirmations",
+            json={
+                "table_name": "orders",
+                "column_name": "status",
+                "semantic_field": "order.status",
+            },
+            headers={"X-Commerce-Workspace-Id": str(WorkspaceId.new())},
+        )
+
+    assert uploaded.status_code == 201
+    assert confirmed.status_code == 201
+    assert confirmed.json()["semantic_field"] == "order.status"
+    assert mappings.status_code == 200
+    status_mapping = next(
+        item for item in mappings.json()["mappings"] if item["column_name"] == "status"
+    )
+    assert status_mapping["status"] == "confirmed"
+    assert status_mapping["source"] == "user_confirmed"
+    assert invalid_column.status_code == 400
+    assert hidden.status_code == 404

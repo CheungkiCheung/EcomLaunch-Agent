@@ -27,11 +27,13 @@ from app.commerce.api.schemas import (
     EvidenceResponse,
     HypothesisListResponse,
     HypothesisResponse,
+    SemanticConfirmationRequest,
 )
 from app.commerce.api.service import CommerceReadService
 from app.commerce.data.capabilities import CapabilityProfile
 from app.commerce.data.intake import DataIntakeError
 from app.commerce.data.profiler import DatasetProfile
+from app.commerce.data.semantic_mapper import SemanticConfirmation, SemanticMappingProfile
 from app.commerce.domain.enums import CaseStatus
 from app.commerce.domain.events import DomainEventEnvelope
 from app.commerce.domain.ids import CaseId, DatasetId, EvidenceId, WorkspaceId
@@ -207,6 +209,46 @@ async def get_dataset_profile(
         ).profile
     except DatasetNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Commerce Dataset not found") from exc
+
+
+@router.get("/datasets/{raw_dataset_id}/mappings", response_model=SemanticMappingProfile)
+async def get_dataset_mappings(
+    raw_dataset_id: Annotated[str, Path()],
+    service: Annotated[CommerceDataService, Depends(get_commerce_data_service)],
+    workspace_id: Annotated[WorkspaceId, Depends(get_commerce_workspace_id)],
+) -> SemanticMappingProfile:
+    try:
+        return service.get_view(
+            workspace_id,
+            _parse_dataset_id(raw_dataset_id),
+        ).mappings
+    except DatasetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Commerce Dataset not found") from exc
+
+
+@router.post(
+    "/datasets/{raw_dataset_id}/semantic-confirmations",
+    response_model=SemanticConfirmation,
+    status_code=201,
+)
+async def confirm_dataset_mapping(
+    raw_dataset_id: Annotated[str, Path()],
+    request: SemanticConfirmationRequest,
+    service: Annotated[CommerceDataService, Depends(get_commerce_data_service)],
+    workspace_id: Annotated[WorkspaceId, Depends(get_commerce_workspace_id)],
+) -> SemanticConfirmation:
+    try:
+        return service.confirm_mapping(
+            workspace_id,
+            _parse_dataset_id(raw_dataset_id),
+            table_name=request.table_name,
+            column_name=request.column_name,
+            semantic_field=request.semantic_field,
+        )
+    except DatasetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Commerce Dataset not found") from exc
+    except DataIntakeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/datasets/{raw_dataset_id}/capabilities", response_model=CapabilityProfile)

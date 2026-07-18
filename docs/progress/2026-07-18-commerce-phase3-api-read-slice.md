@@ -12,6 +12,8 @@ The first Commerce HTTP surface is now a deterministic Dataset intake plus a rea
 - `POST /api/commerce/datasets/intake`
 - `GET /api/commerce/datasets/{dataset_id}/profile`
 - `GET /api/commerce/datasets/{dataset_id}/capabilities`
+- `GET /api/commerce/datasets/{dataset_id}/mappings`
+- `POST /api/commerce/datasets/{dataset_id}/semantic-confirmations`
 
 - `GET /api/commerce/cases`
 - `GET /api/commerce/cases/{case_id}`

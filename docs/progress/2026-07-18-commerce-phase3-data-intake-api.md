@@ -23,8 +23,10 @@ Endpoints:
 - `POST /api/commerce/datasets/intake`
 - `GET /api/commerce/datasets/{dataset_id}/profile`
 - `GET /api/commerce/datasets/{dataset_id}/capabilities`
+- `GET /api/commerce/datasets/{dataset_id}/mappings`
+- `POST /api/commerce/datasets/{dataset_id}/semantic-confirmations`
 
-The upload endpoint returns the Manifest, Profile, current Semantic Mapping and Capability Profile together. Later reads reconstruct these views from the saved Manifest, so the API does not maintain a second mutable copy of data facts.
+The upload endpoint returns the Manifest, Profile, current Semantic Mapping and Capability Profile together. Later reads reconstruct these views from the saved Manifest, so the API does not maintain a second mutable copy of data facts. An explicit confirmation is validated against an existing Dataset table/column and stored in the Workspace semantic store; the next Mapping or Capability read incorporates that confirmation.
 
 ## Safety and tenancy boundaries
 
@@ -34,6 +36,7 @@ The upload endpoint returns the Manifest, Profile, current Semantic Mapping and 
 - raw files and `manifest.json` remain read-only after Intake;
 - Dataset lookup constructs a path only from validated `WorkspaceId` and `DatasetId` values;
 - a Dataset from another Workspace returns 404;
+- semantic confirmations cannot target a missing table or column;
 - feature flag false means no Commerce route is mounted.
 
 The current `X-Commerce-Workspace-Id` header is an explicit stage contract, not a finished authentication-to-Workspace membership check. Keep the feature flag disabled for multi-tenant production until membership authorization exists.

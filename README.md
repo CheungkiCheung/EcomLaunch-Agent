@@ -312,6 +312,7 @@ Commerce API 默认关闭。只有设置 `COMMERCE_CASE_AGENT_ENABLED=true` 后�
 - `POST /api/commerce/datasets/intake`：多文件上传、只读存储、Hash/Manifest、Profile、Semantic Mapping 和 Capability 一次返回；
 - `GET /api/commerce/datasets/{dataset_id}/profile`：从不可变 Manifest 重算 Dataset Profile；
 - `GET /api/commerce/datasets/{dataset_id}/capabilities`：从 Profile 和当前 Workspace confirmations 重算 Capability；
+- `GET /api/commerce/datasets/{dataset_id}/mappings` 与 `POST /api/commerce/datasets/{dataset_id}/semantic-confirmations`：读取并持久化显式字段语义确认；
 - `GET /api/commerce/cases`：Workspace-scoped Case 列表和状态过滤；
 - `GET /api/commerce/cases/{case_id}`：Case、最新 Evidence 和 Hypothesis；
 - `GET /api/commerce/cases/{case_id}/evidence` 与 `/evidence/{evidence_id}`；

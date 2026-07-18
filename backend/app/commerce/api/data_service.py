@@ -10,6 +10,8 @@ from app.commerce.data.capabilities import CapabilityProfile, CapabilityRegistry
 from app.commerce.data.intake import DataBundleManifest, DataIntakeError, DataIntakeService
 from app.commerce.data.profiler import DataProfiler, DatasetProfile
 from app.commerce.data.semantic_mapper import (
+    SemanticConfirmation,
+    SemanticField,
     SemanticMapper,
     SemanticMappingProfile,
     WorkspaceSemanticStore,
@@ -81,6 +83,29 @@ class CommerceDataService:
         except Exception as exc:
             raise DataIntakeError(f"Stored Dataset manifest is invalid: {dataset_id}") from exc
         return self._build_view(manifest)
+
+    def confirm_mapping(
+        self,
+        workspace_id: WorkspaceId,
+        dataset_id: DatasetId,
+        *,
+        table_name: str,
+        column_name: str,
+        semantic_field: SemanticField,
+    ) -> SemanticConfirmation:
+        view = self.get_view(workspace_id, dataset_id)
+        try:
+            view.profile.table(table_name).column(column_name)
+        except KeyError as exc:
+            raise DataIntakeError(
+                f"Unknown Dataset column: {table_name}.{column_name}"
+            ) from exc
+        return self._semantic_store.confirm(
+            workspace_id=workspace_id,
+            table_name=table_name,
+            column_name=column_name,
+            semantic_field=semantic_field,
+        )
 
     def _build_view(self, manifest: DataBundleManifest) -> DatasetView:
         profile = self._profiler.profile(manifest)
