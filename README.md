@@ -11,7 +11,7 @@
 
 项目正在从旧 OpenSKU / EcomLaunch 方案改造为 Commerce Case Agent。
 
-Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 也已实现，并在官方端点通过当次新请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成 Case、Domain Event、append-only Evidence 与 versioned Hypothesis 持久化，以及第一批 feature-flagged 只读 API：SQLite 实际运行、PostgreSQL DDL 兼容、独立迁移、乐观并发、证据/假设来源追踪、同事务 Case/Record/Event 写入和 Event Stream 读取。Data Upload/Profile、Action/Approval/Follow-up 持久化、Investigation Start、Run API 和新 Agent 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
+Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 和“只生成候选、不自动确认”的 Semantic Candidate 层也已实现，并通过一次 fresh、身份核验的真实请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成 Case、Domain Event、append-only Evidence 与 versioned Hypothesis 持久化，以及第一批 feature-flagged 数据/读取 API：SQLite 实际运行、PostgreSQL DDL 兼容、独立迁移、乐观并发、证据/假设来源追踪、同事务 Case/Record/Event 写入和 Event Stream 读取。Action/Approval/Follow-up 持久化、Anomaly-to-Case、Investigation Start、Run API 和完整 Agent Loop 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
 
 完整设计与实施计划：
 
@@ -313,6 +313,7 @@ Commerce API 默认关闭。只有设置 `COMMERCE_CASE_AGENT_ENABLED=true` 后�
 - `GET /api/commerce/datasets/{dataset_id}/profile`：从不可变 Manifest 重算 Dataset Profile；
 - `GET /api/commerce/datasets/{dataset_id}/capabilities`：从 Profile 和当前 Workspace confirmations 重算 Capability；
 - `GET /api/commerce/datasets/{dataset_id}/mappings` 与 `POST /api/commerce/datasets/{dataset_id}/semantic-confirmations`：读取并持久化显式字段语义确认；
+- `POST /api/commerce/datasets/{dataset_id}/semantic-candidates`：在真实 DeepSeek V4 门禁后生成 LLM 候选；候选只能进入 `needs_confirmation`，不会直接改变 confirmed 语义；
 - `GET /api/commerce/cases`：Workspace-scoped Case 列表和状态过滤；
 - `GET /api/commerce/cases/{case_id}`：Case、最新 Evidence 和 Hypothesis；
 - `GET /api/commerce/cases/{case_id}/evidence` 与 `/evidence/{evidence_id}`；

@@ -269,7 +269,12 @@ def _raw_model_target(config_path: Path, alias: str) -> tuple[str, str, str]:
     )
 
 
-def _model_settings_for_preflight(model_config: ModelConfig, *, http_client: httpx.Client) -> dict[str, Any]:
+def _model_settings_for_preflight(
+    model_config: ModelConfig,
+    *,
+    http_client: httpx.Client,
+    max_output_tokens: int = PREFLIGHT_MAX_OUTPUT_TOKENS,
+) -> dict[str, Any]:
     """Create a minimal one-attempt model configuration from the real target."""
 
     settings = model_config.model_dump(
@@ -293,7 +298,7 @@ def _model_settings_for_preflight(model_config: ModelConfig, *, http_client: htt
     settings.update(
         {
             "temperature": 0,
-            "max_tokens": PREFLIGHT_MAX_OUTPUT_TOKENS,
+            "max_tokens": max_output_tokens,
             "max_retries": 0,
             "timeout": min(float(settings.get("timeout", PREFLIGHT_TIMEOUT_SECONDS)), PREFLIGHT_TIMEOUT_SECONDS),
             "streaming": False,

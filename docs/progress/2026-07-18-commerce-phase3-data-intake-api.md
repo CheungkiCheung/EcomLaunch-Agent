@@ -25,6 +25,7 @@ Endpoints:
 - `GET /api/commerce/datasets/{dataset_id}/capabilities`
 - `GET /api/commerce/datasets/{dataset_id}/mappings`
 - `POST /api/commerce/datasets/{dataset_id}/semantic-confirmations`
+- `POST /api/commerce/datasets/{dataset_id}/semantic-candidates`（真实 DeepSeek V4 门禁后调用）
 
 The upload endpoint returns the Manifest, Profile, current Semantic Mapping and Capability Profile together. Later reads reconstruct these views from the saved Manifest, so the API does not maintain a second mutable copy of data facts. An explicit confirmation is validated against an existing Dataset table/column and stored in the Workspace semantic store; the next Mapping or Capability read incorporates that confirmation.
 
@@ -40,6 +41,8 @@ The upload endpoint returns the Manifest, Profile, current Semantic Mapping and 
 - feature flag false means no Commerce route is mounted.
 
 The current `X-Commerce-Workspace-Id` header is an explicit stage contract, not a finished authentication-to-Workspace membership check. Keep the feature flag disabled for multi-tenant production until membership authorization exists.
+
+The semantic-candidate endpoint is additionally fail-closed on model availability, server identity and provider telemetry. It never promotes an LLM candidate to `confirmed`; users must use the explicit confirmation endpoint.
 
 ## TDD and verification evidence
 

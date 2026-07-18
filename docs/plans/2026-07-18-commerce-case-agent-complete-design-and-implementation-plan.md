@@ -998,7 +998,7 @@ GREEN：添加：
 - [x] Schema、质量、主键、时间、范围、重复、前导零和 Join 风险 Profiler；
 - [x] 确定性 Semantic Mapper 与 Workspace 用户确认持久化；
 - [x] Real DeepSeek V4 Preflight 与不可覆盖审计；
-- [ ] DeepSeek V4 低置信度语义候选层（Preflight 已完成，候选层尚未实现）；
+- [x] DeepSeek V4 低置信度语义候选层（只生成 Candidate，必须显式确认，不自动修改 Active Mapping）；
 - [x] Capability Registry 与 GC-CAPABILITY-003 Ablation；
 - [x] Olist Adapter 与 Entity-scoped Normalized Facts；
 - [x] 首批 Metric Registry 与 Gold Case 时间窗复算；
@@ -1142,6 +1142,7 @@ GREEN：添加：
 - [x] Data Upload / Profile；
 - [x] Capability Report；
 - [x] Semantic Mapping read / explicit Workspace confirmation API；
+- [x] Real DeepSeek V4 semantic-candidate API with telemetry and fail-closed identity gate；
 - [x] Case List；
 - [x] Case Detail；
 - [x] Evidence List / Detail；

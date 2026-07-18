@@ -6,6 +6,7 @@ import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, UploadFile
+from starlette.concurrency import run_in_threadpool
 
 from app.commerce.api.data_service import (
     CommerceDataService,
@@ -14,6 +15,7 @@ from app.commerce.api.data_service import (
 from app.commerce.api.dependencies import (
     get_commerce_data_service,
     get_commerce_read_service,
+    get_commerce_semantic_candidate_service,
     get_commerce_workspace_id,
 )
 from app.commerce.api.schemas import (
@@ -33,6 +35,12 @@ from app.commerce.api.service import CommerceReadService
 from app.commerce.data.capabilities import CapabilityProfile
 from app.commerce.data.intake import DataIntakeError
 from app.commerce.data.profiler import DatasetProfile
+from app.commerce.data.semantic_candidate_service import (
+    RealModelBlockedError,
+    SemanticCandidateParseError,
+    SemanticCandidateResult,
+    SemanticCandidateService,
+)
 from app.commerce.data.semantic_mapper import SemanticConfirmation, SemanticMappingProfile
 from app.commerce.domain.enums import CaseStatus
 from app.commerce.domain.events import DomainEventEnvelope
@@ -249,6 +257,44 @@ async def confirm_dataset_mapping(
         raise HTTPException(status_code=404, detail="Commerce Dataset not found") from exc
     except DataIntakeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/datasets/{raw_dataset_id}/semantic-candidates",
+    response_model=SemanticCandidateResult,
+)
+async def generate_semantic_candidates(
+    raw_dataset_id: Annotated[str, Path()],
+    data_service: Annotated[CommerceDataService, Depends(get_commerce_data_service)],
+    candidate_service: Annotated[
+        SemanticCandidateService,
+        Depends(get_commerce_semantic_candidate_service),
+    ],
+    workspace_id: Annotated[WorkspaceId, Depends(get_commerce_workspace_id)],
+) -> SemanticCandidateResult:
+    try:
+        view = data_service.get_view(
+            workspace_id,
+            _parse_dataset_id(raw_dataset_id),
+        )
+        return await run_in_threadpool(
+            candidate_service.suggest,
+            view.profile,
+            view.mappings,
+        )
+    except DatasetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Commerce Dataset not found") from exc
+    except RealModelBlockedError as exc:
+        code = exc.preflight.status.value if exc.preflight is not None else "blocked_real_model"
+        raise HTTPException(
+            status_code=503,
+            detail={"code": code, "message": str(exc)},
+        ) from exc
+    except SemanticCandidateParseError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={"code": "semantic_candidate_parse_failed", "message": str(exc)},
+        ) from exc
 
 
 @router.get("/datasets/{raw_dataset_id}/capabilities", response_model=CapabilityProfile)

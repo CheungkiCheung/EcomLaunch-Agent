@@ -10,6 +10,7 @@ from fastapi import Header, HTTPException
 
 from app.commerce.api.data_service import CommerceDataService
 from app.commerce.api.service import CommerceReadService
+from app.commerce.data.semantic_candidate_service import SemanticCandidateService
 from app.commerce.domain.ids import WorkspaceId
 from deerflow.persistence.engine import get_session_factory
 
@@ -29,6 +30,10 @@ def get_commerce_data_service() -> CommerceDataService:
         os.getenv("COMMERCE_STORAGE_ROOT", ".deer-flow/commerce/data")
     )
     return CommerceDataService(storage_root=storage_root)
+
+
+def get_commerce_semantic_candidate_service() -> SemanticCandidateService:
+    return SemanticCandidateService()
 
 
 def get_commerce_workspace_id(

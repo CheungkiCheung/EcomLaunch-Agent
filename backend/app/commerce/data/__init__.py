@@ -32,6 +32,21 @@ from app.commerce.data.profiler import (
     JoinRisk,
     TableProfile,
 )
+from app.commerce.data.semantic_candidate_service import (
+    CandidateRunStatus,
+    RealModelBlockedError,
+    SemanticCandidateAuditStore,
+    SemanticCandidateResult,
+    SemanticCandidateService,
+    SemanticCandidateTelemetry,
+)
+from app.commerce.data.semantic_candidates import (
+    SemanticCandidateEnvelope,
+    SemanticCandidateParseError,
+    SemanticCandidateParser,
+    SemanticMappingCandidate,
+    keep_candidates_unconfirmed,
+)
 from app.commerce.data.semantic_mapper import (
     FieldMapping,
     MappingSource,
@@ -74,5 +89,16 @@ __all__ = [
     "SemanticMapper",
     "SemanticMappingProfile",
     "WorkspaceSemanticStore",
+    "CandidateRunStatus",
+    "RealModelBlockedError",
+    "SemanticCandidateAuditStore",
+    "SemanticCandidateEnvelope",
+    "SemanticCandidateParseError",
+    "SemanticCandidateParser",
+    "SemanticCandidateResult",
+    "SemanticCandidateService",
+    "SemanticCandidateTelemetry",
+    "SemanticMappingCandidate",
+    "keep_candidates_unconfirmed",
     "load_evaluation_case",
 ]
