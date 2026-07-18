@@ -738,6 +738,15 @@ https://api.deepseek.com/v1
 6. 无法确认模型版本时停止；
 7. 额度不足、认证失败、限额不可恢复或服务不可用时停止。
 
+2026-07-18 实施状态：
+
+- [x] `backend/app/commerce/evaluation/real_model_preflight.py` 已实现；
+- [x] 官方 `https://api.deepseek.com/v1` 新鲜请求已返回 `deepseek-v4-flash`；
+- [x] Provider Request / Response ID、Token、Latency、Retry、Stop Reason、Fingerprint 与版本元数据已进入不可覆盖审计；
+- [x] 每次请求注入唯一 nonce，LangChain 响应缓存与 SDK 自动重试显式关闭，只保存 nonce / 响应 SHA-256；
+- [x] 缺密钥、鉴权、额度、服务、身份或遥测时失败关闭，真实模型测试不 Skip、不回退；
+- [ ] 该门禁尚未接入未实现的 Semantic LLM Candidate、Lead / Path Agent 与后续 Gold Case E2E。
+
 阻塞状态：
 
 - `blocked_real_model_unavailable`
@@ -987,7 +996,8 @@ GREEN：添加：
 - [x] CSV / JSON / JSONL / Excel / ZIP 安全接入与只读原始文件；
 - [x] Schema、质量、主键、时间、范围、重复、前导零和 Join 风险 Profiler；
 - [x] 确定性 Semantic Mapper 与 Workspace 用户确认持久化；
-- [ ] DeepSeek V4 低置信度语义候选层（等待真实模型 Preflight）；
+- [x] Real DeepSeek V4 Preflight 与不可覆盖审计；
+- [ ] DeepSeek V4 低置信度语义候选层（Preflight 已完成，候选层尚未实现）；
 - [x] Capability Registry 与 GC-CAPABILITY-003 Ablation；
 - [x] Olist Adapter 与 Entity-scoped Normalized Facts；
 - [x] 首批 Metric Registry 与 Gold Case 时间窗复算；

@@ -11,7 +11,7 @@
 
 项目正在从旧 OpenSKU / EcomLaunch 方案改造为 Commerce Case Agent。
 
-Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric 与 Anomaly 主干已经完成；DeepSeek V4 语义候选层、真实多卖家 Peer Cohort 和持久化仍在实施。新 Agent 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
+Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric 与 Anomaly 主干已经完成；真实 DeepSeek V4 Preflight 也已实现，并在官方端点通过当次新请求验证，服务端返回身份为 `deepseek-v4-flash`。DeepSeek V4 语义候选层、真实多卖家 Peer Cohort 和持久化仍在实施。新 Agent 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
 
 完整设计与实施计划：
 
@@ -20,6 +20,10 @@ Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Prof
 Phase 0 基线与迁移清单：
 
 - [`docs/migration/commerce-case-agent-phase0-baseline.md`](./docs/migration/commerce-case-agent-phase0-baseline.md)
+
+真实模型门禁记录：
+
+- [`docs/progress/2026-07-18-commerce-real-deepseek-v4-preflight.md`](./docs/progress/2026-07-18-commerce-real-deepseek-v4-preflight.md)
 
 ## 解决什么问题
 
@@ -185,7 +189,7 @@ Skill Candidate
 - 其他厂商模型；
 - 历史 Trace。
 
-当前本地别名 `deepseek-reasoner` 不能单独证明服务端是 DeepSeek V4。Agent 测试前必须通过 `real_model_preflight`，确认实际模型身份并记录 Provider Request ID、Token、Latency、Retry 和配置版本。
+当前本地别名 `deepseek-reasoner` 不能单独证明服务端是 DeepSeek V4。Agent 测试前必须通过 `backend/app/commerce/evaluation/real_model_preflight.py`，确认实际模型身份并记录 Provider Request ID、Token、Latency、Retry 和配置版本。预检为每次请求注入唯一 nonce，显式关闭 LangChain 响应缓存与 SDK 自动重试，不保存 Prompt 或响应正文，只保存 nonce / 响应内容 SHA-256 与审计元数据；每次结果以不可覆盖 JSON 写入 `.deer-flow/commerce/evaluation/real-model-preflight/`。
 
 如果模型不可用、身份无法确认、鉴权失败或额度不足，测试必须停止并报告 `blocked`，不能静默 Skip 或切换模型。
 
@@ -266,7 +270,8 @@ http://localhost:2026
 
 ```bash
 cd backend
-PYTHONPATH=. uv run pytest tests/test_commerce_feature_flag.py -v
+PYTHONPATH=. uv run pytest tests/commerce \
+  --ignore=tests/commerce/evaluation/test_real_model_preflight_live.py -v
 
 cd ../frontend
 pnpm typecheck
@@ -275,12 +280,14 @@ pnpm lint
 
 ### 真实模型验证
 
-`real_model_preflight` 尚未实现前，不运行 Commerce Agent 测试。实现后统一入口将是：
+真实模型测试不会因为缺少密钥、额度或网络而静默跳过；预检会持久化明确的 `blocked_*` 状态并使测试失败。统一入口是：
 
 ```bash
 cd backend
 PYTHONPATH=. uv run pytest -m real_model tests/commerce -v
 ```
+
+截至 2026-07-18，最终加固版预检已通过带唯一 nonce 的新鲜官方请求，返回 `deepseek-v4-flash`、72 Tokens、单次请求、零重试；此前两次独立官方请求也分别返回相同 V4 身份。该结果只证明真实模型门禁可用，不代表尚未实现的 Commerce Agent 行为已经通过。
 
 ## 归属声明
 

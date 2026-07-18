@@ -15,6 +15,7 @@ import pytest
         "app.commerce.agents",
         "app.commerce.data",
         "app.commerce.domain",
+        "app.commerce.evaluation",
         "app.commerce.metrics",
         "app.commerce.persistence",
     ),

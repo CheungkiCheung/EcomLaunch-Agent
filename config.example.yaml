@@ -209,17 +209,18 @@ models:
   #       thinking:
   #         type: disabled
 
-  # Example: DeepSeek model (with thinking support)
-  # - name: deepseek-v3
-  #   display_name: DeepSeek V3 (Thinking)
+  # Example: DeepSeek reasoner alias (server identity must be verified at runtime)
+  # - name: deepseek-reasoner
+  #   display_name: DeepSeek Reasoner
   #   use: deerflow.models.patched_deepseek:PatchedChatDeepSeek
   #   model: deepseek-reasoner
+  #   api_base: https://api.deepseek.com/v1
   #   api_key: $DEEPSEEK_API_KEY
   #   timeout: 600.0
   #   max_retries: 2
   #   max_tokens: 8192
   #   supports_thinking: true
-  #   supports_vision: false  # DeepSeek V3 does not support vision
+  #   supports_vision: false
   #   when_thinking_enabled:
   #     extra_body:
   #       thinking:
