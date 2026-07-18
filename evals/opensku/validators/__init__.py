@@ -1,0 +1,2 @@
+"""OpenSKU artifact validators."""
+

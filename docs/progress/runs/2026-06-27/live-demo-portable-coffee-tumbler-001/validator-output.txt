@@ -1,0 +1,14 @@
+bundle=/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/c4d345e6-402a-4113-a7c6-836a16b88009/threads/opensku-live-live-demo-portable-coffee-tumbler-001-1782529769/user-data/outputs
+artifact_count=0
+status=FAIL
+- missing required artifact launch-war-room.html
+- missing required artifact evidence-ledger.json
+- missing required artifact competitor-table.csv
+- missing required artifact positioning-brief.md
+- missing required artifact listing-pack.md
+- missing required artifact content-pack.md
+- missing required artifact launch-calendar.csv
+- missing required artifact launch-state.json
+- missing required artifact promotion-replan.md
+- missing required artifact knowledge-deltas.json
+- missing evidence-ledger.json

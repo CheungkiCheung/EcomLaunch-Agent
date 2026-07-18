@@ -1,0 +1,27 @@
+[
+  {
+    "confidence": "high",
+    "evidence_type": "observed_public",
+    "id": "EVID-001",
+    "metric": "review_score",
+    "source_type": "public_benchmark_fixture",
+    "summary": "Public review signal supports VOC analysis.",
+    "used_in": [
+      "positioning-brief.md",
+      "listing-pack.md"
+    ],
+    "value": 4
+  },
+  {
+    "confidence": "high",
+    "evidence_type": "unavailable",
+    "id": "EVID-002",
+    "metric": "GMV",
+    "source_type": "public_benchmark_fixture",
+    "summary": "GMV is unavailable because no merchant backend data was uploaded.",
+    "used_in": [
+      "launch-calendar.csv"
+    ],
+    "value": null
+  }
+]

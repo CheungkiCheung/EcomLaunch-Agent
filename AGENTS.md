@@ -1,8 +1,10 @@
-# DeerFlow Agent Instructions
+# OpenSKU Agent Instructions
 
 ## Project Identity
 
-DeerFlow 2.0 is a LangGraph-based AI super agent harness. This repo has been forked and extended with **EcomLaunch Agent** — a vertical ecommerce growth experiment engine covering pre-launch validation and post-launch content calibration.
+OpenSKU is an open-source AI launch loop for ecommerce SKU decisions. It helps merchants, ecommerce operators, and indie sellers turn rough product ideas, listing URLs, competitor links, public signals, uploaded context, and post-test feedback into an evidence-backed Go/Pivot/Hold/Kill/Scale decision loop.
+
+The runtime is a LangGraph-based agent harness extended with **EcomLaunch Agent** for adaptive SKU launch validation, promotion replanning, knowledge capture, and content calibration. Public positioning should lead with OpenSKU and the ecommerce launch-loop workflow, not the underlying harness.
 
 **Key custom addition**: `agents/ecom-launch/` + `skills/custom/ecom-launch/` + `frontend/src/components/workspace/ecom-launch/`
 
@@ -53,9 +55,9 @@ deer-flow/
 └── extensions_config.json      # MCP servers + skills config
 ```
 
-## EcomLaunch Architecture
+## OpenSKU / EcomLaunch Architecture
 
-Multi-agent system using **Orchestrator-subagent** pattern:
+Multi-agent system using an **Orchestrator-subagent** pattern:
 
 ```
 Launch Director (lead agent)
@@ -106,8 +108,10 @@ Default `validate-launch` workflow outputs:
 ├── positioning-brief.md      # Positioning strategy
 ├── listing-pack.md           # Product listing copy
 ├── content-pack.md           # Content hooks & scripts
-└── launch-calendar.csv       # 7-day validation plan
+└── launch-calendar.csv       # adaptive validation sprint
 ```
+
+The professional deliverable is the evidence-backed launch loop: stage diagnosis, Launch Decision Pack, promotion replan, and next experiment. The War Room is the visual demo layer, not the core value by itself.
 
 ## Common Pitfalls
 

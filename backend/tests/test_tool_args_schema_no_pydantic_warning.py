@@ -28,6 +28,7 @@ from deerflow.sandbox.tools import (
     write_file_tool,
 )
 from deerflow.tools.builtins.present_file_tool import present_file_tool
+from deerflow.tools.builtins.opensku_artifact_writer import write_opensku_artifact_bundle_tool
 from deerflow.tools.builtins.setup_agent_tool import setup_agent
 from deerflow.tools.builtins.task_tool import task_tool
 from deerflow.tools.builtins.update_agent_tool import update_agent
@@ -54,6 +55,7 @@ _TOOL_CASES = [
     (grep_tool, {"description": "search", "pattern": "x", "path": "/tmp"}),
     (read_file_tool, {"description": "read", "path": "/tmp/x"}),
     (write_file_tool, {"description": "write", "path": "/tmp/x", "content": "hi"}),
+    (write_opensku_artifact_bundle_tool, {"case_id": "case-1"}),
     (str_replace_tool, {"description": "replace", "path": "/tmp/x", "old_str": "a", "new_str": "b"}),
     (present_file_tool, {"filepaths": ["/tmp/x"], "tool_call_id": "call-1"}),
     (view_image_tool, {"image_path": "/tmp/img.png", "tool_call_id": "call-1"}),

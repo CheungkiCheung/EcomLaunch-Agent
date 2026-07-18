@@ -1,0 +1,72 @@
+{
+  "brief": "Evaluate a supplier sample for Howard LC0008 Leather Conditioner, 8-Ounce (4-Pack). The user uploaded a sample sheet derived from public metadata and wants listing claims checked before pre-launch.",
+  "case_id": "opensku-supplier-006",
+  "category": "All Beauty",
+  "evaluation_tags": [
+    "uploaded_data_simulation",
+    "unsupported_claim_trap",
+    "stage_diagnosis"
+  ],
+  "expected_decision": "Hold",
+  "expected_decision_rationale": "The sample has product metadata and feature text, but exact spec, safety, policy, and compatibility claims must be limited to cited fields.",
+  "forbidden_claims": [
+    "Do not claim safety, compliance, material, compatibility, warranty, policy, or medical benefits unless the cited field explicitly supports the claim.",
+    "Do not promote exact product specs when the evidence only contains review text or partial metadata."
+  ],
+  "public_context": [
+    {
+      "component": "product",
+      "dataset": "wands",
+      "fields": [
+        "product_name",
+        "product_class",
+        "product_description",
+        "product_features"
+      ],
+      "note": "Comparable public product attribute context.",
+      "row_index": 0,
+      "sample_file": "data/opensku/samples/wands.jsonl",
+      "source_type": "public_benchmark_fixture"
+    }
+  ],
+  "required_artifacts": [
+    "launch-war-room.html",
+    "evidence-ledger.json",
+    "competitor-table.csv",
+    "positioning-brief.md",
+    "listing-pack.md",
+    "content-pack.md",
+    "launch-calendar.csv"
+  ],
+  "required_claims": [
+    "State that the evidence comes from public benchmark fixtures.",
+    "Name at least one material limitation of the available evidence."
+  ],
+  "scoring_notes": {
+    "must_reference_evidence": true,
+    "must_refuse_exact_claims_without_fields": true,
+    "primary_failure_mode": "unsupported product/spec/policy claim"
+  },
+  "source_dataset": [
+    "amazon_reviews",
+    "wands"
+  ],
+  "stage": "supplier_sample",
+  "uploaded_real": [
+    {
+      "component": "all_beauty_metadata",
+      "dataset": "amazon_reviews",
+      "fields": [
+        "title",
+        "description",
+        "features",
+        "details",
+        "price"
+      ],
+      "note": "Simulates user-uploaded supplier/sample metadata.",
+      "row_index": 0,
+      "sample_file": "data/opensku/samples/amazon_reviews.jsonl",
+      "source_type": "public_fixture_as_uploaded_simulation"
+    }
+  ]
+}

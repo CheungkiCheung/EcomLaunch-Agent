@@ -17,24 +17,38 @@ export type WarRoomPropAsset = {
   height: number;
   offsetX: number;
   offsetY: number;
+  shadow?: {
+    width: number;
+    height: number;
+    offsetX?: number;
+    offsetY?: number;
+    alpha?: number;
+  };
+};
+
+export type WarRoomArtifactItemAsset = {
+  id: string;
+  src: string;
+  width: number;
+  height: number;
 };
 
 export const WAR_ROOM_BACKGROUND = {
   src: "/images/ecom-launch/war-room/room/background.png",
-  width: 1000,
-  height: 700,
+  width: 1080,
+  height: 756,
 };
 
 export const WAR_ROOM_AGENT_SPRITE_SIZE: Record<
   LaunchCrewAgent["id"],
   { width: number; height: number }
 > = {
-  "market-voc-researcher": { width: 58, height: 112 },
-  "offer-architect": { width: 60, height: 108 },
-  "launch-director": { width: 78, height: 124 },
-  "evidence-checker": { width: 58, height: 108 },
-  "growth-analyst": { width: 66, height: 112 },
-  "asset-studio": { width: 68, height: 112 },
+  "market-voc-researcher": { width: 64, height: 124 },
+  "offer-architect": { width: 66, height: 119 },
+  "launch-director": { width: 86, height: 136 },
+  "evidence-checker": { width: 64, height: 119 },
+  "growth-analyst": { width: 73, height: 124 },
+  "asset-studio": { width: 75, height: 124 },
 };
 
 export const WAR_ROOM_PROPS: WarRoomPropAsset[] = [
@@ -42,62 +56,68 @@ export const WAR_ROOM_PROPS: WarRoomPropAsset[] = [
     id: "market-station",
     waypoint: "marketDesk",
     src: "/images/ecom-launch/war-room/props/workstation.png",
-    width: 110,
-    height: 120,
-    offsetX: -2,
-    offsetY: 28,
+    width: 132,
+    height: 144,
+    offsetX: -8,
+    offsetY: 20,
+    shadow: { width: 120, height: 30, offsetY: -3 },
   },
   {
     id: "offer-station",
     waypoint: "offerDesk",
     src: "/images/ecom-launch/war-room/props/workstation.png",
-    width: 110,
-    height: 120,
-    offsetX: -4,
-    offsetY: 20,
+    width: 132,
+    height: 144,
+    offsetX: -8,
+    offsetY: 14,
+    shadow: { width: 120, height: 30, offsetY: -3 },
   },
   {
     id: "evidence-station",
     waypoint: "evidenceDesk",
     src: "/images/ecom-launch/war-room/props/workstation.png",
-    width: 110,
-    height: 120,
-    offsetX: 2,
-    offsetY: 28,
+    width: 132,
+    height: 144,
+    offsetX: 10,
+    offsetY: 20,
+    shadow: { width: 120, height: 30, offsetY: -3 },
   },
   {
     id: "growth-station",
     waypoint: "growthDesk",
     src: "/images/ecom-launch/war-room/props/workstation.png",
-    width: 110,
-    height: 120,
+    width: 132,
+    height: 144,
     offsetX: 0,
-    offsetY: 18,
+    offsetY: 16,
+    shadow: { width: 120, height: 30, offsetY: -3 },
   },
   {
     id: "asset-station",
     waypoint: "assetDesk",
     src: "/images/ecom-launch/war-room/props/workstation.png",
-    width: 110,
-    height: 120,
-    offsetX: 4,
-    offsetY: 20,
+    width: 132,
+    height: 144,
+    offsetX: 10,
+    offsetY: 14,
+    shadow: { width: 120, height: 30, offsetY: -3 },
   },
   {
     id: "director-command-console",
     waypoint: "directorDesk",
     src: "/images/ecom-launch/war-room/props/command-console.png",
-    width: 230,
-    height: 116,
+    width: 260,
+    height: 132,
     offsetX: 0,
-    offsetY: 32,
+    offsetY: 34,
+    shadow: { width: 208, height: 38, offsetY: -4, alpha: 0.16 },
   },
   {
     id: "big-screen",
     waypoint: "bigScreen",
     src: "/images/ecom-launch/war-room/props/big-screen.png",
-    width: 168,
-    height: 73,
+    width: 186,
+    height: 80,
     offsetX: 0,
     offsetY: -2,
   },
@@ -105,30 +125,48 @@ export const WAR_ROOM_PROPS: WarRoomPropAsset[] = [
     id: "whiteboard",
     waypoint: "whiteboard",
     src: "/images/ecom-launch/war-room/props/whiteboard.png",
-    width: 142,
-    height: 91,
-    offsetX: -18,
+    width: 156,
+    height: 101,
+    offsetX: -20,
     offsetY: -2,
   },
   {
     id: "artifact-conveyor",
     waypoint: "artifactConveyor",
     src: "/images/ecom-launch/war-room/props/artifact-conveyor.png",
-    width: 124,
-    height: 102,
-    offsetX: 0,
+    width: 168,
+    height: 136,
+    offsetX: 4,
     offsetY: 28,
+    shadow: { width: 158, height: 34, offsetY: -5, alpha: 0.14 },
   },
   {
     id: "coffee",
     waypoint: "coffee",
-    src: "/images/ecom-launch/war-room/props/coffee.svg",
-    width: 48,
-    height: 50,
-    offsetX: 0,
-    offsetY: 6,
+    src: "/images/ecom-launch/war-room/props/coffee-station.png",
+    width: 124,
+    height: 136,
+    offsetX: 4,
+    offsetY: 26,
+    shadow: { width: 108, height: 30, offsetY: -4, alpha: 0.14 },
   },
 ];
+
+export const WAR_ROOM_ARTIFACT_ITEMS: WarRoomArtifactItemAsset[] = [
+  "package",
+  "product-card",
+  "research-report",
+  "evidence-checklist",
+  "creative-thumbnail",
+  "analytics-folder",
+  "launch-calendar",
+  "approval-stamp",
+].map((id) => ({
+  id,
+  src: `/images/ecom-launch/war-room/artifacts/${id}.png`,
+  width: 42,
+  height: 42,
+}));
 
 function characterFrameForMotion(
   motionState: WarRoomMotionState,

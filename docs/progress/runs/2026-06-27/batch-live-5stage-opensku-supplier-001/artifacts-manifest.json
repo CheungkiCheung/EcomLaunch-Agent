@@ -1,0 +1,163 @@
+{
+  "case_id": "batch-live-5stage-opensku-supplier-001",
+  "run_id": "a5294739-b72f-43ce-9662-7a1413fc9a59",
+  "thread_id": "opensku-live-batch-live-5stage-opensku-supplier-001-1782538126",
+  "user_id": "3fc1e5e5-2d8a-4000-8961-cd57a4ebe934",
+  "model_provider": "deepseek",
+  "model_name": "deepseek-v4-flash",
+  "token_usage": {
+    "completion_tokens": 601,
+    "prompt_tokens": 24536,
+    "total_tokens": 25137,
+    "completion_tokens_details": {
+      "accepted_prediction_tokens": null,
+      "audio_tokens": null,
+      "reasoning_tokens": 11,
+      "rejected_prediction_tokens": null
+    },
+    "prompt_tokens_details": {
+      "audio_tokens": null,
+      "cached_tokens": 24192
+    },
+    "prompt_cache_hit_tokens": 24192,
+    "prompt_cache_miss_tokens": 344
+  },
+  "present_files_called": true,
+  "tool_call_names": [
+    "read_file",
+    "read_file",
+    "read_file",
+    "read_file",
+    "read_file",
+    "task",
+    "task",
+    "task",
+    "task",
+    "task",
+    "write_opensku_artifact_bundle",
+    "validate_opensku_artifacts",
+    "present_files"
+  ],
+  "subagent_types": [
+    "asset-studio",
+    "evidence-checker",
+    "growth-analyst",
+    "market-voc-researcher",
+    "offer-architect"
+  ],
+  "uploaded_files": [
+    {
+      "name": "opensku-case.json",
+      "virtual_path": "/mnt/user-data/uploads/opensku-case.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3fc1e5e5-2d8a-4000-8961-cd57a4ebe934/threads/opensku-live-batch-live-5stage-opensku-supplier-001-1782538126/user-data/uploads/opensku-case.json",
+      "size_bytes": 2280,
+      "sha256": "f8f2974adea923854b2342ecebd2c78439689eeb2de8e53364ff6fa3aa6cda71"
+    },
+    {
+      "name": "opensku-case-brief.json",
+      "virtual_path": "/mnt/user-data/uploads/opensku-case-brief.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3fc1e5e5-2d8a-4000-8961-cd57a4ebe934/threads/opensku-live-batch-live-5stage-opensku-supplier-001-1782538126/user-data/uploads/opensku-case-brief.json",
+      "size_bytes": 805,
+      "sha256": "14a1945db7705fef67284e46a10c61f14cf094d49a084e3c2cc6698c291db211"
+    },
+    {
+      "name": "wands.jsonl",
+      "virtual_path": "/mnt/user-data/uploads/wands.jsonl",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3fc1e5e5-2d8a-4000-8961-cd57a4ebe934/threads/opensku-live-batch-live-5stage-opensku-supplier-001-1782538126/user-data/uploads/wands.jsonl",
+      "size_bytes": 11611,
+      "sha256": "d08f34401216e202878d89b12b32596e6c82215eaa6e3af6edd026acc1064c25"
+    },
+    {
+      "name": "amazon_reviews.jsonl",
+      "virtual_path": "/mnt/user-data/uploads/amazon_reviews.jsonl",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3fc1e5e5-2d8a-4000-8961-cd57a4ebe934/threads/opensku-live-batch-live-5stage-opensku-supplier-001-1782538126/user-data/uploads/amazon_reviews.jsonl",
+      "size_bytes": 8708,
+      "sha256": "28169be585f2f0d315f23b826ab094cf221d7e29dfb70c288014244602273818"
+    }
+  ],
+  "outputs_dir": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3fc1e5e5-2d8a-4000-8961-cd57a4ebe934/threads/opensku-live-batch-live-5stage-opensku-supplier-001-1782538126/user-data/outputs",
+  "artifacts": [
+    {
+      "name": "competitor-table.csv",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3fc1e5e5-2d8a-4000-8961-cd57a4ebe934/threads/opensku-live-batch-live-5stage-opensku-supplier-001-1782538126/user-data/outputs/competitor-table.csv",
+      "virtual_path": "/mnt/user-data/outputs/competitor-table.csv",
+      "size_bytes": 821,
+      "sha256": "494a16978d989903274c62d1cf06631d0f8b1e7a95c329258c303adbee014229"
+    },
+    {
+      "name": "content-pack.md",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3fc1e5e5-2d8a-4000-8961-cd57a4ebe934/threads/opensku-live-batch-live-5stage-opensku-supplier-001-1782538126/user-data/outputs/content-pack.md",
+      "virtual_path": "/mnt/user-data/outputs/content-pack.md",
+      "size_bytes": 1377,
+      "sha256": "d9487d78f3fa953f8db4602f32c7d9ddf04a62e13ca3ed711932c181fbbaf54f"
+    },
+    {
+      "name": "evidence-ledger.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3fc1e5e5-2d8a-4000-8961-cd57a4ebe934/threads/opensku-live-batch-live-5stage-opensku-supplier-001-1782538126/user-data/outputs/evidence-ledger.json",
+      "virtual_path": "/mnt/user-data/outputs/evidence-ledger.json",
+      "size_bytes": 3767,
+      "sha256": "f6141f43dc1e581edc4835f691cb3b2882e66d2f44c418776d9efe3e0b567f48"
+    },
+    {
+      "name": "knowledge-deltas.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3fc1e5e5-2d8a-4000-8961-cd57a4ebe934/threads/opensku-live-batch-live-5stage-opensku-supplier-001-1782538126/user-data/outputs/knowledge-deltas.json",
+      "virtual_path": "/mnt/user-data/outputs/knowledge-deltas.json",
+      "size_bytes": 847,
+      "sha256": "b6795d5204aef7f666ed67657e9cbc946ad7ec24879c1bf5252f4bb96a72d2b0"
+    },
+    {
+      "name": "launch-calendar.csv",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3fc1e5e5-2d8a-4000-8961-cd57a4ebe934/threads/opensku-live-batch-live-5stage-opensku-supplier-001-1782538126/user-data/outputs/launch-calendar.csv",
+      "virtual_path": "/mnt/user-data/outputs/launch-calendar.csv",
+      "size_bytes": 2418,
+      "sha256": "d10b02fa061a3fb4f4a35c165c266c0fdedbc29445a7b7194f6059c40bd9286f"
+    },
+    {
+      "name": "launch-state.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3fc1e5e5-2d8a-4000-8961-cd57a4ebe934/threads/opensku-live-batch-live-5stage-opensku-supplier-001-1782538126/user-data/outputs/launch-state.json",
+      "virtual_path": "/mnt/user-data/outputs/launch-state.json",
+      "size_bytes": 1208,
+      "sha256": "922063f0f7f76dec0c67ee0169f5dee0000b76d3328eeb4418e607fd0c935542"
+    },
+    {
+      "name": "launch-war-room.html",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3fc1e5e5-2d8a-4000-8961-cd57a4ebe934/threads/opensku-live-batch-live-5stage-opensku-supplier-001-1782538126/user-data/outputs/launch-war-room.html",
+      "virtual_path": "/mnt/user-data/outputs/launch-war-room.html",
+      "size_bytes": 5984,
+      "sha256": "4320723793cb51aa4c37d43b3bce960a0955a0b269af0e6c63aa752eb533cb7e"
+    },
+    {
+      "name": "listing-pack.md",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3fc1e5e5-2d8a-4000-8961-cd57a4ebe934/threads/opensku-live-batch-live-5stage-opensku-supplier-001-1782538126/user-data/outputs/listing-pack.md",
+      "virtual_path": "/mnt/user-data/outputs/listing-pack.md",
+      "size_bytes": 2323,
+      "sha256": "7cde12923de3446e1d4b217498801ff4dabc96908b39a5eb2ca7fb8bdc91862a"
+    },
+    {
+      "name": "positioning-brief.md",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3fc1e5e5-2d8a-4000-8961-cd57a4ebe934/threads/opensku-live-batch-live-5stage-opensku-supplier-001-1782538126/user-data/outputs/positioning-brief.md",
+      "virtual_path": "/mnt/user-data/outputs/positioning-brief.md",
+      "size_bytes": 2437,
+      "sha256": "80f1f37e34513525e3f5ea1e4f0fa4aae9d81e8bd4ac83279b6157f792123a67"
+    },
+    {
+      "name": "promotion-replan.md",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3fc1e5e5-2d8a-4000-8961-cd57a4ebe934/threads/opensku-live-batch-live-5stage-opensku-supplier-001-1782538126/user-data/outputs/promotion-replan.md",
+      "virtual_path": "/mnt/user-data/outputs/promotion-replan.md",
+      "size_bytes": 1100,
+      "sha256": "5d0de25e59c9ec825c9fadf9dce72ad7401577efa33becd4afb338e74a75f2fb"
+    }
+  ],
+  "state_artifacts": [
+    "/mnt/user-data/outputs/launch-war-room.html",
+    "/mnt/user-data/outputs/evidence-ledger.json",
+    "/mnt/user-data/outputs/competitor-table.csv",
+    "/mnt/user-data/outputs/positioning-brief.md",
+    "/mnt/user-data/outputs/listing-pack.md",
+    "/mnt/user-data/outputs/content-pack.md",
+    "/mnt/user-data/outputs/launch-calendar.csv",
+    "/mnt/user-data/outputs/launch-state.json",
+    "/mnt/user-data/outputs/promotion-replan.md",
+    "/mnt/user-data/outputs/knowledge-deltas.json"
+  ]
+}

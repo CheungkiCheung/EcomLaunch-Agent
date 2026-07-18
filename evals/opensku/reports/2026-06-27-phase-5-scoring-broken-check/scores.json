@@ -1,0 +1,108 @@
+{
+  "status": "FAIL",
+  "score": 30,
+  "max_score": 60,
+  "score_ratio": 0.5,
+  "results": [
+    {
+      "name": "case-suite",
+      "subject": "evals/opensku/cases",
+      "status": "PASS",
+      "score": 20,
+      "max_score": 20,
+      "score_ratio": 1.0,
+      "checks": [
+        {
+          "name": "case_validation",
+          "passed": true,
+          "score": 8,
+          "max_score": 8,
+          "details": []
+        },
+        {
+          "name": "case_count",
+          "passed": true,
+          "score": 3,
+          "max_score": 3,
+          "details": [
+            "case_count=30"
+          ]
+        },
+        {
+          "name": "stage_coverage",
+          "passed": true,
+          "score": 3,
+          "max_score": 3,
+          "details": [
+            "stage_counts={'idea_only': 6, 'supplier_sample': 6, 'pre_launch_test': 6, 'soft_launch': 8, 'scale_iterate': 4}",
+            "target={'idea_only': 6, 'supplier_sample': 6, 'pre_launch_test': 6, 'soft_launch': 8, 'scale_iterate': 4}"
+          ]
+        },
+        {
+          "name": "tag_traps",
+          "passed": true,
+          "score": 4,
+          "max_score": 4,
+          "details": [
+            "tag_counts={'public_signal_context': 16, 'stage_diagnosis': 30, 'forbidden_metric_trap': 20, 'unsupported_claim_trap': 8, 'promotion_replan': 12, 'knowledge_delta': 12, 'uploaded_data_simulation': 14}",
+            "minimums={'uploaded_data_simulation': 10, 'public_signal_context': 10, 'forbidden_metric_trap': 5, 'unsupported_claim_trap': 5}"
+          ]
+        },
+        {
+          "name": "source_references",
+          "passed": true,
+          "score": 2,
+          "max_score": 2,
+          "details": []
+        }
+      ]
+    },
+    {
+      "name": "artifact-bundle",
+      "subject": "evals/opensku/fixtures/broken/broken-003",
+      "status": "FAIL",
+      "score": 10,
+      "max_score": 40,
+      "score_ratio": 0.25,
+      "checks": [
+        {
+          "name": "artifact_validator",
+          "passed": false,
+          "score": 0,
+          "max_score": 25,
+          "details": [
+            "evals/opensku/fixtures/broken/broken-003/evidence-ledger.json: evidence item 1 treats private metric 'gmv' as observed_public; private metric must be uploaded_real or unavailable"
+          ]
+        },
+        {
+          "name": "required_artifacts",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "present=['competitor-table.csv', 'content-pack.md', 'evidence-ledger.json', 'knowledge-deltas.json', 'launch-calendar.csv', 'launch-state.json', 'launch-war-room.html', 'listing-pack.md', 'positioning-brief.md', 'promotion-replan.md']",
+            "missing=[]"
+          ]
+        },
+        {
+          "name": "evidence_boundary",
+          "passed": false,
+          "score": 0,
+          "max_score": 5,
+          "details": [
+            "evals/opensku/fixtures/broken/broken-003/evidence-ledger.json: evidence item 1 treats private metric 'gmv' as observed_public; private metric must be uploaded_real or unavailable"
+          ]
+        },
+        {
+          "name": "loop_artifacts",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "missing=[]"
+          ]
+        }
+      ]
+    }
+  ]
+}

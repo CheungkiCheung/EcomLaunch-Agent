@@ -1,0 +1,39 @@
+{
+  "status": "PASS",
+  "date": "2026-06-27",
+  "case_id_prefix": "batch-live-stage2-rerun",
+  "timeout_seconds": 900.0,
+  "reasoning_effort": "medium",
+  "plan_only": false,
+  "score_existing": false,
+  "records": [
+    {
+      "case_id": "opensku-scale-002",
+      "live_case_id": "batch-live-stage2-rerun-opensku-scale-002",
+      "stage": "scale_iterate",
+      "command": [
+        "uv",
+        "run",
+        "--project",
+        "backend",
+        "python",
+        "evals/opensku/run_live_agent_validation.py",
+        "--case-id",
+        "batch-live-stage2-rerun-opensku-scale-002",
+        "--case-file",
+        "evals/opensku/cases/opensku-scale-002.json",
+        "--date",
+        "2026-06-27",
+        "--timeout-seconds",
+        "900",
+        "--reasoning-effort",
+        "medium"
+      ],
+      "exit_code": 0,
+      "run_dir": "docs/progress/runs/2026-06-27/batch-live-stage2-rerun-opensku-scale-002",
+      "score_status": "PASS",
+      "score": 40,
+      "max_score": 40
+    }
+  ]
+}

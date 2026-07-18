@@ -1,0 +1,186 @@
+{
+  "case_id": "live-demo-portable-coffee-tumbler-001-validator-tool",
+  "run_id": "001c0928-145a-4654-9b85-482fcd0836e3",
+  "thread_id": "opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974",
+  "user_id": "7a1aff22-a9af-459e-bbfe-ae3f9249eaa4",
+  "model_provider": "deepseek",
+  "model_name": "deepseek-v4-flash",
+  "token_usage": {
+    "completion_tokens": 3482,
+    "prompt_tokens": 24703,
+    "total_tokens": 28185,
+    "completion_tokens_details": {
+      "accepted_prediction_tokens": null,
+      "audio_tokens": null,
+      "reasoning_tokens": 207,
+      "rejected_prediction_tokens": null
+    },
+    "prompt_tokens_details": {
+      "audio_tokens": null,
+      "cached_tokens": 23296
+    },
+    "prompt_cache_hit_tokens": 23296,
+    "prompt_cache_miss_tokens": 1407
+  },
+  "present_files_called": false,
+  "tool_call_names": [
+    "read_file",
+    "read_file",
+    "read_file",
+    "read_file",
+    "read_file",
+    "read_file",
+    "task",
+    "task",
+    "task",
+    "task",
+    "task",
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_file",
+    "validate_opensku_artifacts",
+    "read_file",
+    "read_file",
+    "read_file",
+    "read_file",
+    "read_file",
+    "str_replace",
+    "str_replace",
+    "str_replace",
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_file",
+    "read_file",
+    "read_file",
+    "grep",
+    "write_file",
+    "write_file"
+  ],
+  "subagent_types": [
+    "asset-studio",
+    "evidence-checker",
+    "growth-analyst",
+    "market-voc-researcher",
+    "offer-architect"
+  ],
+  "uploaded_files": [
+    {
+      "name": "demo-brief.portable-coffee-tumbler.json",
+      "virtual_path": "/mnt/user-data/uploads/demo-brief.portable-coffee-tumbler.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/uploads/demo-brief.portable-coffee-tumbler.json",
+      "size_bytes": 1235,
+      "sha256": "29cf266db3fcce021d108553ae7c41ab08b3fe0ef7f780487952364f9a32ac7d"
+    },
+    {
+      "name": "amazon_reviews.jsonl",
+      "virtual_path": "/mnt/user-data/uploads/amazon_reviews.jsonl",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/uploads/amazon_reviews.jsonl",
+      "size_bytes": 8708,
+      "sha256": "28169be585f2f0d315f23b826ab094cf221d7e29dfb70c288014244602273818"
+    },
+    {
+      "name": "wands.jsonl",
+      "virtual_path": "/mnt/user-data/uploads/wands.jsonl",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/uploads/wands.jsonl",
+      "size_bytes": 11611,
+      "sha256": "d08f34401216e202878d89b12b32596e6c82215eaa6e3af6edd026acc1064c25"
+    },
+    {
+      "name": "amazon_reviews.schema.json",
+      "virtual_path": "/mnt/user-data/uploads/amazon_reviews.schema.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/uploads/amazon_reviews.schema.json",
+      "size_bytes": 8023,
+      "sha256": "9ae96311794fbfc059b505b575ec7af2438e2625b045ef8e6df3aec87b35bfca"
+    },
+    {
+      "name": "wands.schema.json",
+      "virtual_path": "/mnt/user-data/uploads/wands.schema.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/uploads/wands.schema.json",
+      "size_bytes": 6217,
+      "sha256": "586edfcba16d150a1bdd283f0640f35ed66b9bd1d45a5e9e25d0f49845b39d48"
+    }
+  ],
+  "outputs_dir": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/outputs",
+  "artifacts": [
+    {
+      "name": "competitor-table.csv",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/outputs/competitor-table.csv",
+      "virtual_path": "/mnt/user-data/outputs/competitor-table.csv",
+      "size_bytes": 1133,
+      "sha256": "c807a70f8cd8b50fd429fed28f90ba83c97050c1a38051b65483615db5ff5a5f"
+    },
+    {
+      "name": "content-pack.md",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/outputs/content-pack.md",
+      "virtual_path": "/mnt/user-data/outputs/content-pack.md",
+      "size_bytes": 7230,
+      "sha256": "f90b31e167a3dadd4f10cef0a06639982648197dbe4a62be1d518107a9a1dce9"
+    },
+    {
+      "name": "evidence-ledger.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/outputs/evidence-ledger.json",
+      "virtual_path": "/mnt/user-data/outputs/evidence-ledger.json",
+      "size_bytes": 9894,
+      "sha256": "9218dbf6d0fd759c6ebc043860b7e9870294624d4c99181aea3ba84dfe5b4a58"
+    },
+    {
+      "name": "knowledge-deltas.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/outputs/knowledge-deltas.json",
+      "virtual_path": "/mnt/user-data/outputs/knowledge-deltas.json",
+      "size_bytes": 2192,
+      "sha256": "046e219d22e2f985b787f5741863eaf8cf0e02f2e5027892ca18490a852f27c0"
+    },
+    {
+      "name": "launch-calendar.csv",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/outputs/launch-calendar.csv",
+      "virtual_path": "/mnt/user-data/outputs/launch-calendar.csv",
+      "size_bytes": 3855,
+      "sha256": "87aa194783bd92140d39e352f056b93f0dba8de59ddf39b9d49f1883ab9dea2d"
+    },
+    {
+      "name": "launch-state.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/outputs/launch-state.json",
+      "virtual_path": "/mnt/user-data/outputs/launch-state.json",
+      "size_bytes": 1617,
+      "sha256": "d609b976ed46782aedd9d23dfc33abcb94b3df7614c082083605611f09995bdc"
+    },
+    {
+      "name": "launch-war-room.html",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/outputs/launch-war-room.html",
+      "virtual_path": "/mnt/user-data/outputs/launch-war-room.html",
+      "size_bytes": 17385,
+      "sha256": "0e82614388fc804f4e4fed7125cb302b2de03a21de318ad7d870e9c1f736edd4"
+    },
+    {
+      "name": "listing-pack.md",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/outputs/listing-pack.md",
+      "virtual_path": "/mnt/user-data/outputs/listing-pack.md",
+      "size_bytes": 6221,
+      "sha256": "dcaf25b99df361bb0c92c4d9ae1b8d84499470f0af516e4cf667600364e5eebb"
+    },
+    {
+      "name": "positioning-brief.md",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/outputs/positioning-brief.md",
+      "virtual_path": "/mnt/user-data/outputs/positioning-brief.md",
+      "size_bytes": 3289,
+      "sha256": "a31ac44ec3b3a372ba3ac3513d79d8cde8110a4bff7d1be816d57be4fa188656"
+    },
+    {
+      "name": "promotion-replan.md",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/outputs/promotion-replan.md",
+      "virtual_path": "/mnt/user-data/outputs/promotion-replan.md",
+      "size_bytes": 4384,
+      "sha256": "ec9a0594e9b80f2c8dac269d98a5ae1010263cb02d7f2b8ec2fcb8b107fc19b1"
+    }
+  ],
+  "state_artifacts": []
+}

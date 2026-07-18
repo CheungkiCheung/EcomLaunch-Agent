@@ -1,0 +1,39 @@
+[
+  {
+    "confidence": "high",
+    "evidence_type": "observed_public",
+    "metric": "review_score",
+    "source_type": "public_benchmark_fixture",
+    "summary": "Public review signal supports VOC analysis.",
+    "used_in": [
+      "positioning-brief.md",
+      "listing-pack.md"
+    ],
+    "value": 4
+  },
+  {
+    "confidence": "high",
+    "evidence_type": "unavailable",
+    "id": "EVID-002",
+    "metric": "GMV",
+    "source_type": "public_benchmark_fixture",
+    "summary": "GMV is unavailable because no merchant backend data was uploaded.",
+    "used_in": [
+      "launch-calendar.csv"
+    ],
+    "value": null
+  },
+  {
+    "confidence": "medium",
+    "evidence_type": "uploaded_real",
+    "id": "EVID-003",
+    "metric": "payment_value",
+    "source_type": "public_fixture_as_uploaded_simulation",
+    "summary": "Uploaded-data simulation row for payment value.",
+    "used_in": [
+      "launch-state.json",
+      "promotion-replan.md"
+    ],
+    "value": 31.9
+  }
+]

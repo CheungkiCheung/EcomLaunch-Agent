@@ -62,11 +62,11 @@ export const enUS: Translations = {
   welcome: {
     greeting: "Hello, again!",
     description:
-      "Welcome to 🦌 openGrowth, an open source super agent. With built-in and custom skills, openGrowth helps you search on the web, analyze data, and generate artifacts like slides, web pages and do almost anything.",
+      "Welcome to OpenSKU, an open-source SKU launch copilot. Use agent skills, public signals, uploaded context, and evaluation artifacts to decide what to test, change, or stop next.",
 
     createYourOwnSkill: "Create Your Own Skill",
     createYourOwnSkillDescription:
-      "Create your own skill to release the power of openGrowth. With customized skills,\nopenGrowth can help you search on the web, analyze data, and generate\n artifacts like slides, web pages and do almost anything.",
+      "Create your own skill to extend the OpenSKU workspace. Custom skills can search the web, analyze data, and generate launch artifacts for your own workflow.",
   },
 
   // Clipboard
@@ -173,7 +173,7 @@ export const enUS: Translations = {
     recentChats: "Recent chats",
     demoChats: "Demo chats",
     agents: "Agents",
-    ecomLaunch: "EcomLaunch Validation",
+    ecomLaunch: "OpenSKU Launch Loop",
     ecomLaunchChat: "Chat",
     ecomLaunchWarRoom: "War Room",
   },
@@ -215,37 +215,37 @@ export const enUS: Translations = {
     save: "Save agent",
     saving: "Saving agent...",
     saveRequested:
-      "Save requested. openGrowth is generating and saving an initial version now.",
+      "Save requested. OpenSKU is generating and saving an initial version now.",
     saveHint:
       "You can save this agent at any time from the top-right menu, even if this is only a first draft.",
     saveCommandMessage:
       "Please save this custom agent now based on everything we have discussed so far. Treat this as my explicit confirmation to save. If some details are still missing, make reasonable assumptions, generate a concise first SOUL.md in English, and call setup_agent immediately without asking me for more confirmation.",
     agentCreatedPendingRefresh:
-      "The agent was created, but openGrowth could not load it yet. Please refresh this page in a moment.",
+      "The agent was created, but OpenSKU could not load it yet. Please refresh this page in a moment.",
     more: "More actions",
     agentCreated: "Agent created!",
     startChatting: "Start chatting",
     backToGallery: "Back to Gallery",
-    ecomLaunchName: "EcomLaunch Validation",
+    ecomLaunchName: "OpenSKU Launch Loop",
     ecomLaunchWelcomeDescription:
-      "Turn a rough product idea into a 7-day ecommerce launch validation pack using public signals, uploaded context, and labeled assumptions.",
+      "Turn rough SKU ideas, public signals, uploaded context, and feedback into an adaptive launch decision loop.",
     ecomLaunchWelcomeBadges: [
       "Public signals",
       "No backend data needed",
       "Launch Crew",
-      "7-day pack",
+      "Adaptive loop",
     ],
     ecomLaunchSuggestions: [
       {
         suggestion: "No-data validation",
         prompt:
-          "I want to launch a $15-$30 commuter coffee tumbler, but I have no store backend data. Use public signals to judge whether it is worth a 7-day lightweight validation test and output a Launch Validation Pack.",
+          "I want to launch a $15-$30 commuter coffee tumbler, but I have no store backend data. Use public signals to diagnose the launch stage, judge whether it is worth testing, and output a Launch Decision Pack with the next experiment.",
         icon: CompassIcon,
       },
       {
         suggestion: "Category wedge",
         prompt:
-          "Find a low-cost new-product opportunity in pet supplies. Start from public signals, then give me an audience wedge, offer hypotheses, and a 7-day validation plan.",
+          "Find a low-cost new-product opportunity in pet supplies. Start from public signals, then give me an audience wedge, offer hypotheses, and an adaptive next-loop validation plan.",
         icon: MicroscopeIcon,
       },
       {
@@ -257,7 +257,7 @@ export const enUS: Translations = {
       {
         suggestion: "Incomplete brief",
         prompt:
-          "I only have a rough new-product idea. Ask me the single most important clarifying question first; if information is still missing, continue with clearly labeled assumptions and build a lightweight validation plan.",
+          "I only have a rough new-product idea. Ask me the single most important clarifying question first; if information is still missing, continue with clearly labeled assumptions and build an adaptive launch loop.",
         icon: SparklesIcon,
       },
     ],
@@ -271,13 +271,13 @@ export const enUS: Translations = {
 
   // Workspace
   workspace: {
-    officialWebsite: "openGrowth's official website",
-    githubTooltip: "openGrowth on Github",
+    officialWebsite: "OpenSKU official website",
+    githubTooltip: "OpenSKU on Github",
     settingsAndMore: "Settings and more",
-    visitGithub: "openGrowth on GitHub",
+    visitGithub: "OpenSKU on GitHub",
     reportIssue: "Report a issue",
     contactUs: "Contact us",
-    about: "About openGrowth",
+    about: "About OpenSKU",
     logout: "Log out",
   },
 
@@ -294,7 +294,7 @@ export const enUS: Translations = {
 
   // Page titles (document title)
   pages: {
-    appName: "openGrowth",
+    appName: "OpenSKU",
     chats: "Chats",
     newChat: "New chat",
     untitled: "Untitled",
@@ -320,7 +320,7 @@ export const enUS: Translations = {
     writeFile: "Write file",
     clickToViewContent: "Click to view file content",
     writeTodos: "Update to-do list",
-    skillInstallTooltip: "Install skill and make it available to openGrowth",
+    skillInstallTooltip: "Install skill and make it available to OpenSKU",
   },
 
   // Subtasks
@@ -380,7 +380,7 @@ export const enUS: Translations = {
     actions: "Actions",
     keyboardShortcuts: "Keyboard Shortcuts",
     keyboardShortcutsDescription:
-      "Navigate openGrowth faster with keyboard shortcuts.",
+      "Navigate OpenSKU faster with keyboard shortcuts.",
     openCommandPalette: "Open Command Palette",
     toggleSidebar: "Toggle Sidebar",
   },
@@ -388,7 +388,7 @@ export const enUS: Translations = {
   // Settings
   settings: {
     title: "Settings",
-    description: "Adjust how openGrowth looks and behaves for you.",
+    description: "Adjust how OpenSKU looks and behaves for you.",
     sections: {
       account: "Account",
       appearance: "Appearance",
@@ -401,7 +401,7 @@ export const enUS: Translations = {
     memory: {
       title: "Memory",
       description:
-        "openGrowth automatically learns from your conversations in the background. These memories help openGrowth understand you better and deliver a more personalized experience.",
+        "OpenSKU automatically learns from your conversations in the background. These memories help OpenSKU understand you better and deliver a more personalized experience.",
       empty: "No memory data to display.",
       rawJson: "Raw JSON",
       exportButton: "Export memory",
@@ -501,18 +501,18 @@ export const enUS: Translations = {
       createSkill: "Create skill",
       emptyTitle: "No agent skill yet",
       emptyDescription:
-        "Put your agent skill folders under the `/skills/custom` folder under the root folder of openGrowth.",
+        "Put your agent skill folders under the `/skills/custom` folder under the root folder of OpenSKU.",
       emptyButton: "Create Your First Skill",
     },
     notification: {
       title: "Notification",
       description:
-        "openGrowth only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
+        "OpenSKU only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
       requestPermission: "Request notification permission",
       deniedHint:
         "Notification permission was denied. You can enable it in your browser's site settings to receive completion alerts.",
       testButton: "Send test notification",
-      testTitle: "openGrowth",
+      testTitle: "OpenSKU",
       testBody: "This is a test notification.",
       notSupported: "Your browser does not support notifications.",
       disableNotification: "Disable notification",

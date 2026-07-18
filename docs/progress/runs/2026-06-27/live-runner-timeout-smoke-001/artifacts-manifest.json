@@ -1,0 +1,80 @@
+{
+  "case_id": "live-runner-timeout-smoke-001",
+  "run_id": "427809b1-8358-4610-9e4e-a32627b972be",
+  "thread_id": "opensku-live-live-runner-timeout-smoke-001-1782530886",
+  "user_id": "332ac921-a4dd-4ec6-a30b-df07e8255f5e",
+  "model_provider": "deepseek",
+  "model_name": "deepseek-v4-flash",
+  "token_usage": {
+    "completion_tokens": 283,
+    "prompt_tokens": 28813,
+    "total_tokens": 29096,
+    "completion_tokens_details": {
+      "accepted_prediction_tokens": null,
+      "audio_tokens": null,
+      "reasoning_tokens": 18,
+      "rejected_prediction_tokens": null
+    },
+    "prompt_tokens_details": {
+      "audio_tokens": null,
+      "cached_tokens": 27776
+    },
+    "prompt_cache_hit_tokens": 27776,
+    "prompt_cache_miss_tokens": 1037
+  },
+  "present_files_called": false,
+  "tool_call_names": [
+    "read_file",
+    "read_file",
+    "read_file",
+    "read_file",
+    "read_file",
+    "read_file",
+    "write_todos",
+    "web_search",
+    "web_search",
+    "web_search",
+    "web_search"
+  ],
+  "subagent_types": [],
+  "uploaded_files": [
+    {
+      "name": "demo-brief.portable-coffee-tumbler.json",
+      "virtual_path": "/mnt/user-data/uploads/demo-brief.portable-coffee-tumbler.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/332ac921-a4dd-4ec6-a30b-df07e8255f5e/threads/opensku-live-live-runner-timeout-smoke-001-1782530886/user-data/uploads/demo-brief.portable-coffee-tumbler.json",
+      "size_bytes": 1235,
+      "sha256": "29cf266db3fcce021d108553ae7c41ab08b3fe0ef7f780487952364f9a32ac7d"
+    },
+    {
+      "name": "amazon_reviews.jsonl",
+      "virtual_path": "/mnt/user-data/uploads/amazon_reviews.jsonl",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/332ac921-a4dd-4ec6-a30b-df07e8255f5e/threads/opensku-live-live-runner-timeout-smoke-001-1782530886/user-data/uploads/amazon_reviews.jsonl",
+      "size_bytes": 8708,
+      "sha256": "28169be585f2f0d315f23b826ab094cf221d7e29dfb70c288014244602273818"
+    },
+    {
+      "name": "wands.jsonl",
+      "virtual_path": "/mnt/user-data/uploads/wands.jsonl",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/332ac921-a4dd-4ec6-a30b-df07e8255f5e/threads/opensku-live-live-runner-timeout-smoke-001-1782530886/user-data/uploads/wands.jsonl",
+      "size_bytes": 11611,
+      "sha256": "d08f34401216e202878d89b12b32596e6c82215eaa6e3af6edd026acc1064c25"
+    },
+    {
+      "name": "amazon_reviews.schema.json",
+      "virtual_path": "/mnt/user-data/uploads/amazon_reviews.schema.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/332ac921-a4dd-4ec6-a30b-df07e8255f5e/threads/opensku-live-live-runner-timeout-smoke-001-1782530886/user-data/uploads/amazon_reviews.schema.json",
+      "size_bytes": 8023,
+      "sha256": "9ae96311794fbfc059b505b575ec7af2438e2625b045ef8e6df3aec87b35bfca"
+    },
+    {
+      "name": "wands.schema.json",
+      "virtual_path": "/mnt/user-data/uploads/wands.schema.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/332ac921-a4dd-4ec6-a30b-df07e8255f5e/threads/opensku-live-live-runner-timeout-smoke-001-1782530886/user-data/uploads/wands.schema.json",
+      "size_bytes": 6217,
+      "sha256": "586edfcba16d150a1bdd283f0640f35ed66b9bd1d45a5e9e25d0f49845b39d48"
+    }
+  ],
+  "outputs_dir": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/332ac921-a4dd-4ec6-a30b-df07e8255f5e/threads/opensku-live-live-runner-timeout-smoke-001-1782530886/user-data/outputs",
+  "artifacts": [],
+  "state_artifacts": []
+}

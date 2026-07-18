@@ -1,0 +1,70 @@
+{
+  "artifacts": {
+    "competitor-table.csv": {
+      "required_columns": [
+        "competitor",
+        "observed_claim",
+        "evidence_id",
+        "confidence",
+        "limitation"
+      ]
+    },
+    "evidence-ledger.json": {
+      "evidence_type": [
+        "observed_public",
+        "uploaded_real",
+        "estimated",
+        "unavailable",
+        "assumption"
+      ],
+      "required_fields": [
+        "id",
+        "evidence_type",
+        "source_type",
+        "confidence"
+      ]
+    },
+    "knowledge-deltas.json": {
+      "maturity": [
+        "draft",
+        "verified",
+        "proven"
+      ],
+      "required_fields": [
+        "type",
+        "maturity",
+        "source_case_id"
+      ],
+      "type": [
+        "decision",
+        "guideline",
+        "pitfall",
+        "process",
+        "model"
+      ]
+    },
+    "launch-calendar.csv": {
+      "required_columns": [
+        "day",
+        "objective",
+        "experiment",
+        "asset",
+        "channel",
+        "validation_signal_to_collect",
+        "decision_rule",
+        "owner",
+        "expected_output"
+      ]
+    },
+    "promotion-replan.md": {
+      "required_sections": [
+        "Observed signal",
+        "Interpretation",
+        "Plan change",
+        "Next test",
+        "Stop/continue rule"
+      ]
+    }
+  }
+}
+

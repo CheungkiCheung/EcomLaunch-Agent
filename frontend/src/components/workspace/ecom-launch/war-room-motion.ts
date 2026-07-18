@@ -44,20 +44,20 @@ export type WarRoomAgentMotion = {
 };
 
 export const WAR_ROOM_WAYPOINTS: Record<WarRoomWaypointId, WarRoomPoint> = {
-  marketDesk: { x: 18, y: 35 },
-  offerDesk: { x: 26, y: 69 },
-  directorDesk: { x: 50, y: 45 },
-  evidenceDesk: { x: 84, y: 35 },
-  assetDesk: { x: 84, y: 69 },
-  growthDesk: { x: 50, y: 76 },
-  whiteboard: { x: 41, y: 24 },
-  coffee: { x: 12, y: 76 },
-  artifactConveyor: { x: 66, y: 64 },
-  bigScreen: { x: 55, y: 24 },
-  leftWalkway: { x: 34, y: 52 },
-  rightWalkway: { x: 68, y: 52 },
-  centerWalkway: { x: 50, y: 60 },
-  lowerWalkway: { x: 38, y: 74 },
+  marketDesk: { x: 22, y: 48 },
+  offerDesk: { x: 34, y: 75 },
+  directorDesk: { x: 50, y: 43 },
+  evidenceDesk: { x: 78, y: 48 },
+  assetDesk: { x: 76, y: 74 },
+  growthDesk: { x: 52, y: 77 },
+  whiteboard: { x: 38, y: 24 },
+  coffee: { x: 20, y: 72 },
+  artifactConveyor: { x: 67, y: 66 },
+  bigScreen: { x: 57, y: 24 },
+  leftWalkway: { x: 35, y: 61 },
+  rightWalkway: { x: 70, y: 61 },
+  centerWalkway: { x: 48, y: 67 },
+  lowerWalkway: { x: 42, y: 81 },
 };
 
 export const AGENT_HOME_WAYPOINTS: Record<LaunchCrewRole, WarRoomWaypointId> = {
@@ -70,20 +70,20 @@ export const AGENT_HOME_WAYPOINTS: Record<LaunchCrewRole, WarRoomWaypointId> = {
 };
 
 const ROAM_WAYPOINTS: Record<LaunchCrewRole, WarRoomWaypointId[]> = {
-  "market-voc-researcher": ["leftWalkway", "whiteboard", "bigScreen", "coffee"],
-  "offer-architect": ["lowerWalkway", "whiteboard", "artifactConveyor"],
+  "market-voc-researcher": ["leftWalkway", "marketDesk", "coffee"],
+  "offer-architect": ["lowerWalkway", "offerDesk", "whiteboard"],
   "launch-director": ["directorDesk"],
-  "evidence-checker": ["rightWalkway", "bigScreen", "artifactConveyor"],
-  "growth-analyst": ["centerWalkway", "bigScreen", "artifactConveyor"],
-  "asset-studio": ["rightWalkway", "artifactConveyor", "whiteboard"],
+  "evidence-checker": ["rightWalkway", "evidenceDesk", "bigScreen"],
+  "growth-analyst": ["centerWalkway", "growthDesk", "artifactConveyor"],
+  "asset-studio": ["artifactConveyor", "assetDesk", "rightWalkway"],
 };
 
 const REPORTING_OFFSETS: Record<LaunchCrewRole, WarRoomPoint> = {
-  "market-voc-researcher": { x: -10, y: -7 },
+  "market-voc-researcher": { x: -11, y: -7 },
   "offer-architect": { x: -10, y: 8 },
   "launch-director": { x: 0, y: 0 },
-  "evidence-checker": { x: 10, y: -7 },
-  "growth-analyst": { x: -1, y: 11 },
+  "evidence-checker": { x: 11, y: -7 },
+  "growth-analyst": { x: -2, y: 12 },
   "asset-studio": { x: 10, y: 8 },
 };
 

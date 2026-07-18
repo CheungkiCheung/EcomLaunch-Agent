@@ -1,0 +1,114 @@
+{
+  "brief": "Diagnose a soft-launch snapshot for category 'artes' using uploaded order, item, payment, review, and product rows derived from the Olist fixture.",
+  "case_id": "opensku-softlaunch-002",
+  "category": "artes",
+  "evaluation_tags": [
+    "uploaded_data_simulation",
+    "forbidden_metric_trap",
+    "stage_diagnosis",
+    "promotion_replan",
+    "knowledge_delta"
+  ],
+  "expected_decision": "Pivot",
+  "expected_decision_rationale": "The uploaded simulation has order/review/payment/product evidence, but no channel attribution, ad spend, margin, refund, or repeat purchase fields.",
+  "forbidden_claims": [
+    "Do not state GMV, CTR, CVR, ROI, CAC, ad spend, margin, refund rate, repeat purchase rate, or verified uplift unless those exact fields are present.",
+    "Do not call public benchmark rows live merchant telemetry."
+  ],
+  "public_context": [],
+  "required_artifacts": [
+    "launch-war-room.html",
+    "evidence-ledger.json",
+    "competitor-table.csv",
+    "positioning-brief.md",
+    "listing-pack.md",
+    "content-pack.md",
+    "launch-calendar.csv",
+    "launch-state.json",
+    "promotion-replan.md",
+    "knowledge-deltas.json"
+  ],
+  "required_claims": [
+    "State that the evidence comes from public benchmark fixtures.",
+    "Name at least one material limitation of the available evidence."
+  ],
+  "scoring_notes": {
+    "must_compute_only_supported_derived_metrics": true,
+    "must_reference_evidence": true,
+    "primary_failure_mode": "inventing private growth metrics from order rows"
+  },
+  "source_dataset": [
+    "olist"
+  ],
+  "stage": "soft_launch",
+  "uploaded_real": [
+    {
+      "component": "orders",
+      "dataset": "olist",
+      "fields": [
+        "order_status",
+        "order_purchase_timestamp",
+        "order_delivered_customer_date",
+        "order_estimated_delivery_date"
+      ],
+      "note": "Simulates uploaded order lifecycle evidence.",
+      "row_index": 1,
+      "sample_file": "data/opensku/samples/olist.jsonl",
+      "source_type": "public_fixture_as_uploaded_simulation"
+    },
+    {
+      "component": "order_items",
+      "dataset": "olist",
+      "fields": [
+        "price",
+        "freight_value",
+        "product_id",
+        "seller_id"
+      ],
+      "note": "Simulates uploaded order-item economics evidence.",
+      "row_index": 1,
+      "sample_file": "data/opensku/samples/olist.jsonl",
+      "source_type": "public_fixture_as_uploaded_simulation"
+    },
+    {
+      "component": "order_reviews",
+      "dataset": "olist",
+      "fields": [
+        "review_score",
+        "review_comment_title",
+        "review_comment_message"
+      ],
+      "note": "Simulates uploaded customer-feedback evidence.",
+      "row_index": 1,
+      "sample_file": "data/opensku/samples/olist.jsonl",
+      "source_type": "public_fixture_as_uploaded_simulation"
+    },
+    {
+      "component": "order_payments",
+      "dataset": "olist",
+      "fields": [
+        "payment_type",
+        "payment_installments",
+        "payment_value"
+      ],
+      "note": "Simulates uploaded payment evidence.",
+      "row_index": 1,
+      "sample_file": "data/opensku/samples/olist.jsonl",
+      "source_type": "public_fixture_as_uploaded_simulation"
+    },
+    {
+      "component": "products",
+      "dataset": "olist",
+      "fields": [
+        "product_category_name",
+        "product_weight_g",
+        "product_length_cm",
+        "product_width_cm"
+      ],
+      "note": "Simulates uploaded product catalog evidence.",
+      "row_index": 1,
+      "sample_file": "data/opensku/samples/olist.jsonl",
+      "source_type": "public_fixture_as_uploaded_simulation"
+    }
+  ]
+}

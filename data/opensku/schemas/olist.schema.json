@@ -1,0 +1,451 @@
+{
+  "components": [
+    {
+      "component": "orders",
+      "dataset": "olist",
+      "fields": {
+        "customer_id": {
+          "example_values": [
+            "9ef432eb6251297304e76186b10a928d",
+            "b0830fb4747a6c6d20dea0b8c802d7ef",
+            "41ce2a54c0b03bf3443c3d931a367089"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "order_approved_at": {
+          "example_values": [
+            "2017-10-02 11:07:15",
+            "2018-07-26 03:24:27",
+            "2018-08-08 08:55:23"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "order_delivered_carrier_date": {
+          "example_values": [
+            "2017-10-04 19:55:00",
+            "2018-07-26 14:31:00",
+            "2018-08-08 13:50:00"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "order_delivered_customer_date": {
+          "example_values": [
+            "2017-10-10 21:25:13",
+            "2018-08-07 15:27:45",
+            "2018-08-17 18:06:29"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "order_estimated_delivery_date": {
+          "example_values": [
+            "2017-10-18 00:00:00",
+            "2018-08-13 00:00:00",
+            "2018-09-04 00:00:00"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "order_id": {
+          "example_values": [
+            "e481f51cbdc54678b7cc49136f2d6af7",
+            "53cdb2fc8bc7dce0b6741e2150273451",
+            "47770eb9100c2d0c44946d9cf07ec65d"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "order_purchase_timestamp": {
+          "example_values": [
+            "2017-10-02 10:56:33",
+            "2018-07-24 20:41:37",
+            "2018-08-08 08:38:49"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "order_status": {
+          "example_values": [
+            "delivered",
+            "delivered",
+            "delivered"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        }
+      },
+      "format": "csv",
+      "note": "Order lifecycle timestamps and delivery status.",
+      "row_count": 5,
+      "source_url": "https://raw.githubusercontent.com/olist/work-at-olist-data/master/datasets/olist_orders_dataset.csv"
+    },
+    {
+      "component": "order_items",
+      "dataset": "olist",
+      "fields": {
+        "freight_value": {
+          "example_values": [
+            "13.29",
+            "19.93",
+            "17.87"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "order_id": {
+          "example_values": [
+            "00010242fe8c5a6d1ba2dd792cb16214",
+            "00018f77f2f0320c557190d7a144bdd3",
+            "000229ec398224ef6ca0657da4fc703e"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "order_item_id": {
+          "example_values": [
+            "1",
+            "1",
+            "1"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "price": {
+          "example_values": [
+            "58.90",
+            "239.90",
+            "199.00"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "product_id": {
+          "example_values": [
+            "4244733e06e7ecb4970a6e2683c13e61",
+            "e5f2d52b802189ee658865ca93d83a8f",
+            "c777355d18b72b67abbeef9df44fd0fd"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "seller_id": {
+          "example_values": [
+            "48436dade18ac8b2bce089ec2a041202",
+            "dd7ddc04e1b6c2c614352b383efe2d36",
+            "5b51032eddd242adc84c38acab88f23d"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "shipping_limit_date": {
+          "example_values": [
+            "2017-09-19 09:45:35",
+            "2017-05-03 11:05:13",
+            "2018-01-18 14:48:30"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        }
+      },
+      "format": "csv",
+      "note": "Order-item price, freight, seller, and product linkage.",
+      "row_count": 5,
+      "source_url": "https://raw.githubusercontent.com/olist/work-at-olist-data/master/datasets/olist_order_items_dataset.csv"
+    },
+    {
+      "component": "order_reviews",
+      "dataset": "olist",
+      "fields": {
+        "order_id": {
+          "example_values": [
+            "73fc7af87114b39712e6da79b0a377eb",
+            "a548910a1c6147796b98fdf73dbeba33",
+            "f9e4b658b201a9f2ecdecbb34bed034b"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "review_answer_timestamp": {
+          "example_values": [
+            "2018-01-18 21:46:59",
+            "2018-03-11 03:05:13",
+            "2018-02-18 14:36:24"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "review_comment_message": {
+          "example_values": [
+            "Recebi bem antes do prazo estipulado.",
+            "Parabéns lojas lannister adorei comprar pela Internet seguro e prático Parabéns a todos feliz Páscoa"
+          ],
+          "non_null_count": 2,
+          "observed_types": [
+            "empty_string",
+            "string"
+          ]
+        },
+        "review_comment_title": {
+          "example_values": [],
+          "non_null_count": 0,
+          "observed_types": [
+            "empty_string"
+          ]
+        },
+        "review_creation_date": {
+          "example_values": [
+            "2018-01-18 00:00:00",
+            "2018-03-10 00:00:00",
+            "2018-02-17 00:00:00"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "review_id": {
+          "example_values": [
+            "7bc2406110b926393aa56f80a40eba40",
+            "80e641a11e56f04c1ad469d5645fdfde",
+            "228ce5500dc1d8e020d8d1322874b6f0"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "review_score": {
+          "example_values": [
+            "4",
+            "5",
+            "5"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        }
+      },
+      "format": "csv",
+      "note": "Post-purchase review scores and review text.",
+      "row_count": 5,
+      "source_url": "https://raw.githubusercontent.com/olist/work-at-olist-data/master/datasets/olist_order_reviews_dataset.csv"
+    },
+    {
+      "component": "order_payments",
+      "dataset": "olist",
+      "fields": {
+        "order_id": {
+          "example_values": [
+            "b81ef226f3fe1789b1e8b2acac839d17",
+            "a9810da82917af2d9aefd1278f1dcfa0",
+            "25e8ea4e93396b6fa0d3dd708e76c1bd"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "payment_installments": {
+          "example_values": [
+            "8",
+            "1",
+            "1"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "payment_sequential": {
+          "example_values": [
+            "1",
+            "1",
+            "1"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "payment_type": {
+          "example_values": [
+            "credit_card",
+            "credit_card",
+            "credit_card"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "payment_value": {
+          "example_values": [
+            "99.33",
+            "24.39",
+            "65.71"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        }
+      },
+      "format": "csv",
+      "note": "Payment type, installments, and payment value.",
+      "row_count": 5,
+      "source_url": "https://raw.githubusercontent.com/olist/work-at-olist-data/master/datasets/olist_order_payments_dataset.csv"
+    },
+    {
+      "component": "products",
+      "dataset": "olist",
+      "fields": {
+        "product_category_name": {
+          "example_values": [
+            "perfumaria",
+            "artes",
+            "esporte_lazer"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "product_description_lenght": {
+          "example_values": [
+            "287",
+            "276",
+            "250"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "product_height_cm": {
+          "example_values": [
+            "10",
+            "18",
+            "9"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "product_id": {
+          "example_values": [
+            "1e9e8ef04dbcff4541ed26657ea517e5",
+            "3aa071139cb16b67ca9e5dea641aaa2f",
+            "96bd76ec8810374ed1b65e291975717f"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "product_length_cm": {
+          "example_values": [
+            "16",
+            "30",
+            "18"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "product_name_lenght": {
+          "example_values": [
+            "40",
+            "44",
+            "46"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "product_photos_qty": {
+          "example_values": [
+            "1",
+            "1",
+            "1"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "product_weight_g": {
+          "example_values": [
+            "225",
+            "1000",
+            "154"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "product_width_cm": {
+          "example_values": [
+            "14",
+            "20",
+            "15"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        }
+      },
+      "format": "csv",
+      "note": "Product category, dimensions, and photo/text metadata counts.",
+      "row_count": 5,
+      "source_url": "https://raw.githubusercontent.com/olist/work-at-olist-data/master/datasets/olist_products_dataset.csv"
+    }
+  ],
+  "dataset": "olist",
+  "generated_at": "2026-06-27T02:40:45.104208Z",
+  "limit_per_component": 5,
+  "sample_path": "data/opensku/samples/olist.jsonl",
+  "schema_path": "data/opensku/schemas/olist.schema.json"
+}

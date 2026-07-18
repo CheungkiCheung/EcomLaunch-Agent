@@ -1,0 +1,3 @@
+bundle=/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/d60fce2b-cf7b-48dd-82f9-606ea51310fa/threads/opensku-live-live-decision-taxonomy-prelaunch-002-1782573088/user-data/outputs
+artifact_count=10
+status=PASS

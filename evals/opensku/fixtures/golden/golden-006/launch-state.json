@@ -1,0 +1,9 @@
+{
+  "decision": "Hold",
+  "evidence_ids": [
+    "EVID-001",
+    "EVID-003"
+  ],
+  "limitation": "Fixture only.",
+  "stage": "soft_launch"
+}

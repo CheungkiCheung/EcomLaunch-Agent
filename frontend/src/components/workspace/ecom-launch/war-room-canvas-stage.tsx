@@ -17,6 +17,7 @@ import type {
   LaunchCrewRole,
 } from "./launch-crew-activity-model";
 import {
+  WAR_ROOM_ARTIFACT_ITEMS,
   WAR_ROOM_BACKGROUND,
   WAR_ROOM_PROPS,
   warRoomCharacterSprite,
@@ -47,6 +48,7 @@ type MovingAgentNode = {
   sprite: Sprite;
   label: Text;
   ring: Graphics;
+  shadow: Graphics;
   pathKey: string;
   path: Array<{ x: number; y: number }>;
   pathIndex: number;
@@ -58,12 +60,14 @@ type MovingAgentNode = {
 type ArtifactDropNode = {
   container: Container;
   baseY: number;
+  itemId: string;
 };
 
 type CarriedPackageNode = {
   container: Container;
   agentId: LaunchCrewRole;
   artifactName: string;
+  itemId: string;
 };
 
 type EffectNode = {
@@ -128,10 +132,15 @@ function drawRoomShell(root: Container) {
   root.addChild(floor, vignette);
 }
 
-function drawSignalLines(lineLayer: Graphics, motions: WarRoomAgentMotion[]) {
+function drawSignalLines(
+  lineLayer: Graphics,
+  motions: WarRoomAgentMotion[],
+  selectedAgentId: LaunchCrewRole,
+) {
   lineLayer.clear();
   for (const motion of motions) {
     if (motion.id === "launch-director") continue;
+    if (motion.id !== selectedAgentId) continue;
     const points = [motion.previousPosition, ...motion.path].map(stagePoint);
     for (let index = 0; index < points.length - 1; index += 1) {
       const start = points[index];
@@ -143,7 +152,7 @@ function drawSignalLines(lineLayer: Graphics, motions: WarRoomAgentMotion[]) {
         .stroke({
           color: 0x78ffd4,
           width: motion.state === "roaming" ? 1 : 2,
-          alpha: motion.state === "roaming" ? 0.18 : 0.62,
+          alpha: motion.state === "roaming" ? 0.12 : 0.42,
         });
     }
   }
@@ -157,7 +166,35 @@ function artifactDropPoint(index: number) {
   };
 }
 
-function createArtifactDrop(artifact: LaunchCrewArtifact, index: number) {
+const ARTIFACT_ITEM_BY_ROLE: Record<LaunchCrewRole, string> = {
+  "launch-director": "approval-stamp",
+  "market-voc-researcher": "research-report",
+  "offer-architect": "product-card",
+  "growth-analyst": "analytics-folder",
+  "asset-studio": "creative-thumbnail",
+  "evidence-checker": "evidence-checklist",
+};
+
+function artifactItemFor(artifact: LaunchCrewArtifact, index: number) {
+  const fallbackItem =
+    WAR_ROOM_ARTIFACT_ITEMS[index % WAR_ROOM_ARTIFACT_ITEMS.length] ??
+    WAR_ROOM_ARTIFACT_ITEMS[0];
+  if (!fallbackItem) {
+    throw new Error("War room artifact item assets are not configured.");
+  }
+  const itemId =
+    ARTIFACT_ITEM_BY_ROLE[artifact.role] ?? fallbackItem.id;
+  return (
+    WAR_ROOM_ARTIFACT_ITEMS.find((item) => item.id === itemId) ??
+    fallbackItem
+  );
+}
+
+function createArtifactDrop(
+  artifact: LaunchCrewArtifact,
+  index: number,
+  texture: Texture,
+) {
   const point = artifactDropPoint(index);
   const container = new Container();
   container.x = point.x;
@@ -165,56 +202,26 @@ function createArtifactDrop(artifact: LaunchCrewArtifact, index: number) {
   container.alpha = 0.92;
   container.zIndex = Math.round(point.y) + 8;
 
-  const packageBody = new Graphics();
-  packageBody
-    .roundRect(-16, -16, 32, 24, 4)
-    .fill(artifact.required ? 0xd6b36c : 0x0f766e)
-    .stroke({ color: 0x111827, width: 3 });
-  packageBody.rect(-2, -16, 4, 24).fill({ color: 0x8a6d3b, alpha: 0.6 });
-  packageBody.rect(-16, -4, 32, 4).fill({ color: 0x8a6d3b, alpha: 0.6 });
-
-  const label = new Text({
-    text: artifact.label,
-    style: {
-      fontFamily: "monospace",
-      fontSize: 9,
-      fontWeight: "900",
-      fill: 0xf8fafc,
-      stroke: { color: 0x101714, width: 3 },
-    },
-  });
-  label.anchor.set(0.5, 0);
-  label.y = 10;
-
-  container.addChild(packageBody, label);
+  const sprite = new Sprite(texture);
+  sprite.anchor.set(0.5, 1);
+  sprite.width = artifact.required ? 42 : 38;
+  sprite.height = artifact.required ? 42 : 38;
+  container.addChild(sprite);
   return container;
 }
 
-function createCarriedPackage(artifact: LaunchCrewArtifact) {
+function createCarriedPackage(
+  artifact: LaunchCrewArtifact,
+  texture: Texture,
+) {
   const container = new Container();
   container.alpha = 0.96;
 
-  const packageBody = new Graphics();
-  packageBody
-    .roundRect(-12, -12, 24, 18, 4)
-    .fill(artifact.required ? 0xe5c879 : 0x2dd4bf)
-    .stroke({ color: 0x111827, width: 3 });
-  packageBody.rect(-2, -12, 4, 18).fill({ color: 0x7c5f2d, alpha: 0.55 });
-  packageBody.rect(-12, -3, 24, 4).fill({ color: 0x7c5f2d, alpha: 0.55 });
-
-  const label = new Text({
-    text: "pkg",
-    style: {
-      fontFamily: "monospace",
-      fontSize: 8,
-      fontWeight: "900",
-      fill: 0x10201c,
-    },
-  });
-  label.anchor.set(0.5, 0);
-  label.y = 8;
-
-  container.addChild(packageBody, label);
+  const sprite = new Sprite(texture);
+  sprite.anchor.set(0.5, 1);
+  sprite.width = artifact.required ? 34 : 30;
+  sprite.height = artifact.required ? 34 : 30;
+  container.addChild(sprite);
   return container;
 }
 
@@ -291,7 +298,7 @@ async function renderBackground(state: PixiStageState) {
   sprite.height = WAR_ROOM_BACKGROUND.height;
   sprite.anchor.set(0.5, 0.5);
   sprite.x = STAGE_WIDTH / 2;
-  sprite.y = STAGE_HEIGHT / 2;
+  sprite.y = STAGE_HEIGHT / 2 - 10;
   sprite.zIndex = -100;
   state.root.addChild(sprite);
   state.root.sortChildren();
@@ -356,6 +363,12 @@ function drawSelectionRing(ring: Graphics, x: number, y: number) {
 }
 
 function updateAgentNodePosition(node: MovingAgentNode) {
+  node.shadow.clear();
+  node.shadow.ellipse(node.sprite.x, node.sprite.y - 5, 23, 8).fill({
+    color: 0x5f4a32,
+    alpha: 0.14,
+  });
+  node.shadow.zIndex = Math.round(node.sprite.y) - 2;
   node.sprite.zIndex = Math.round(node.sprite.y) + 20;
   node.label.x = node.sprite.x;
   node.label.y = node.sprite.y + (node.selected ? 8 : 14);
@@ -462,6 +475,24 @@ async function renderStaticProps(state: PixiStageState) {
   for (const prop of WAR_ROOM_PROPS) {
     const texture = await loadTexture(state.textureCache, prop.src);
     if (state.destroyed) return;
+    if (prop.shadow) {
+      const position = pointWithOffset(WAR_ROOM_WAYPOINTS[prop.waypoint], {
+        x: prop.offsetX + (prop.shadow.offsetX ?? 0),
+        y: prop.offsetY + (prop.shadow.offsetY ?? 0),
+      });
+      const shadow = new Graphics();
+      shadow.ellipse(
+        position.x,
+        position.y - prop.shadow.height / 2,
+        prop.shadow.width / 2,
+        prop.shadow.height / 2,
+      ).fill({
+        color: 0x5f4a32,
+        alpha: prop.shadow.alpha ?? 0.12,
+      });
+      shadow.zIndex = Math.round(position.y) - 42;
+      state.propLayer.addChild(shadow);
+    }
     const sprite = new Sprite(texture);
     fitSprite(
       sprite,
@@ -476,7 +507,7 @@ async function renderStaticProps(state: PixiStageState) {
   state.propsRendered = true;
 }
 
-function syncArtifactDrops(
+async function syncArtifactDrops(
   state: PixiStageState,
   artifacts: LaunchCrewArtifact[],
 ) {
@@ -491,11 +522,15 @@ function syncArtifactDrops(
     state.artifacts.delete(id);
   }
 
-  readyArtifacts.forEach((artifact, index) => {
+  for (const [index, artifact] of readyArtifacts.entries()) {
+    const item = artifactItemFor(artifact, index);
+    const texture = await loadTexture(state.textureCache, item.src);
+    if (state.destroyed) return;
     let drop = state.artifacts.get(artifact.filepath);
-    if (!drop) {
-      const container = createArtifactDrop(artifact, index);
-      drop = { container, baseY: container.y };
+    if (!drop || drop.itemId !== item.id) {
+      drop?.container.destroy({ children: true });
+      const container = createArtifactDrop(artifact, index, texture);
+      drop = { container, baseY: container.y, itemId: item.id };
       state.artifacts.set(artifact.filepath, drop);
       state.artifactLayer.addChild(container);
     }
@@ -503,7 +538,7 @@ function syncArtifactDrops(
     drop.container.x = point.x;
     drop.baseY = point.y - 18;
     drop.container.zIndex = Math.round(point.y) + 8;
-  });
+  }
   state.artifactLayer.sortChildren();
 }
 
@@ -517,7 +552,7 @@ function readyArtifactsByRole(artifacts: LaunchCrewArtifact[]) {
   return result;
 }
 
-function syncCarriedPackages(
+async function syncCarriedPackages(
   state: PixiStageState,
   renderedAgents: RenderedAgent[],
   artifacts: LaunchCrewArtifact[],
@@ -540,10 +575,19 @@ function syncCarriedPackages(
   }
 
   for (const [agentId, artifact] of carryingAgents) {
+    const item = artifactItemFor(artifact, 0);
+    const texture = await loadTexture(state.textureCache, item.src);
+    if (state.destroyed) return;
     let node = state.carriedPackages.get(agentId);
-    if (!node) {
-      const container = createCarriedPackage(artifact);
-      node = { container, agentId, artifactName: artifact.name };
+    if (!node || node.itemId !== item.id) {
+      node?.container.destroy({ children: true });
+      const container = createCarriedPackage(artifact, texture);
+      node = {
+        container,
+        agentId,
+        artifactName: artifact.name,
+        itemId: item.id,
+      };
       state.carriedPackages.set(agentId, node);
       state.artifactLayer.addChild(container);
     }
@@ -625,6 +669,7 @@ function removeMissingAgentNodes(
     node.sprite.destroy();
     node.label.destroy();
     node.ring.destroy();
+    node.shadow.destroy();
     state.agents.delete(id);
   }
 }
@@ -635,6 +680,7 @@ async function syncPixiStage({
   artifacts,
   motions,
   selectedAgentId,
+  focusAgentId,
   onSelectAgent,
 }: {
   state: PixiStageState;
@@ -642,18 +688,20 @@ async function syncPixiStage({
   artifacts: LaunchCrewArtifact[];
   motions: WarRoomAgentMotion[];
   selectedAgentId: LaunchCrewRole;
+  focusAgentId: LaunchCrewRole;
   onSelectAgent: (id: LaunchCrewRole) => void;
 }) {
   await renderStaticProps(state);
   if (state.destroyed) return;
 
-  drawSignalLines(state.lineLayer, motions);
+  drawSignalLines(state.lineLayer, motions, focusAgentId);
   syncStatusEffects(
     state,
     renderedAgents.map(({ agent }) => agent),
     artifacts,
   );
-  syncArtifactDrops(state, artifacts);
+  await syncArtifactDrops(state, artifacts);
+  if (state.destroyed) return;
   removeMissingAgentNodes(state, renderedAgents);
   for (const renderedAgent of renderedAgents) {
     const texture = await loadTexture(
@@ -681,12 +729,14 @@ async function syncPixiStage({
         renderedAgent.agent.id === selectedAgentId,
       );
       const ring = new Graphics();
+      const shadow = new Graphics();
 
       node = {
         id: renderedAgent.agent.id,
         sprite,
         label,
         ring,
+        shadow,
         pathKey: key,
         path,
         pathIndex: 0,
@@ -695,7 +745,7 @@ async function syncPixiStage({
         selected: renderedAgent.agent.id === selectedAgentId,
       };
       state.agents.set(renderedAgent.agent.id, node);
-      state.agentLayer.addChild(ring, sprite, label);
+      state.agentLayer.addChild(shadow, ring, sprite, label);
     }
 
     node.sprite.texture = texture;
@@ -717,7 +767,8 @@ async function syncPixiStage({
     };
     updateAgentNodePosition(node);
   }
-  syncCarriedPackages(state, renderedAgents, artifacts);
+  await syncCarriedPackages(state, renderedAgents, artifacts);
+  if (state.destroyed) return;
   state.agentLayer.sortChildren();
 }
 
@@ -726,11 +777,15 @@ function CanvasHitTargets({
   artifacts,
   selectedAgentId,
   onSelectAgent,
+  onFocusAgent,
+  onBlurAgent,
 }: {
   renderedAgents: RenderedAgent[];
   artifacts: LaunchCrewArtifact[];
   selectedAgentId: LaunchCrewRole;
   onSelectAgent: (id: LaunchCrewRole) => void;
+  onFocusAgent: (id: LaunchCrewRole) => void;
+  onBlurAgent: () => void;
 }) {
   return (
     <div className="absolute inset-0 z-20">
@@ -846,9 +901,117 @@ function CanvasHitTargets({
               top: `${motion.position.y}%`,
             }}
             onClick={() => onSelectAgent(agent.id)}
+            onMouseEnter={() => onFocusAgent(agent.id)}
+            onMouseLeave={onBlurAgent}
+            onFocus={() => onFocusAgent(agent.id)}
+            onBlur={onBlurAgent}
           />
         );
       })}
+    </div>
+  );
+}
+
+function percentX(value: number) {
+  return `${(value / STAGE_WIDTH) * 100}%`;
+}
+
+function percentY(value: number) {
+  return `${(value / STAGE_HEIGHT) * 100}%`;
+}
+
+function staticPosition(point: WarRoomPoint, offsetX = 0, offsetY = 0) {
+  const position = stagePoint(point);
+  return {
+    left: percentX(position.x + offsetX),
+    top: percentY(position.y + offsetY),
+  };
+}
+
+function StaticWarRoomFallback({
+  renderedAgents,
+  artifacts,
+}: {
+  renderedAgents: RenderedAgent[];
+  artifacts: LaunchCrewArtifact[];
+}) {
+  const readyArtifacts = artifacts
+    .filter((artifact) => artifact.status === "ready")
+    .slice(0, 5);
+
+  return (
+    <div
+      aria-hidden="true"
+      data-war-room-static-layer
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+    >
+      <img
+        alt=""
+        className="absolute inset-0 size-full object-cover"
+        draggable={false}
+        src={WAR_ROOM_BACKGROUND.src}
+      />
+      {WAR_ROOM_PROPS.map((prop) => {
+        const style = staticPosition(
+          WAR_ROOM_WAYPOINTS[prop.waypoint],
+          prop.offsetX,
+          prop.offsetY,
+        );
+        return (
+          <img
+            key={prop.id}
+            alt=""
+            data-war-room-static-prop={prop.id}
+            className="absolute -translate-x-1/2 -translate-y-full drop-shadow-sm"
+            draggable={false}
+            src={prop.src}
+            style={{
+              ...style,
+              width: percentX(prop.width),
+              height: percentY(prop.height),
+              zIndex: Math.round(stagePoint(WAR_ROOM_WAYPOINTS[prop.waypoint]).y),
+            }}
+          />
+        );
+      })}
+      {readyArtifacts.map((artifact, index) => {
+        const item = artifactItemFor(artifact, index);
+        const point = artifactDropPoint(index);
+        return (
+          <img
+            key={artifact.filepath}
+            alt=""
+            data-war-room-static-artifact={artifact.name}
+            className="absolute -translate-x-1/2 -translate-y-full drop-shadow"
+            draggable={false}
+            src={item.src}
+            style={{
+              left: percentX(point.x),
+              top: percentY(point.y),
+              width: percentX(item.width),
+              height: percentY(item.height),
+              zIndex: Math.round(point.y) + 8,
+            }}
+          />
+        );
+      })}
+      {renderedAgents.map(({ agent, motion, sprite }) => (
+        <img
+          key={agent.id}
+          alt=""
+          data-war-room-static-agent={agent.id}
+          className="absolute -translate-x-1/2 -translate-y-full drop-shadow-md"
+          draggable={false}
+          src={sprite.src}
+          style={{
+            left: `${motion.position.x}%`,
+            top: `${motion.position.y}%`,
+            width: percentX(sprite.width),
+            height: percentY(sprite.height),
+            zIndex: Math.round(stagePoint(motion.position).y) + 20,
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -862,7 +1025,9 @@ export function WarRoomCanvasStage({
 }: WarRoomCanvasStageProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<PixiStageState | null>(null);
+  const hoveredAgentIdRef = useRef<LaunchCrewRole | null>(null);
   const renderedAgents = useRenderedAgents(agents, motions);
+  const focusAgentId = hoveredAgentIdRef.current ?? selectedAgentId;
 
   useEffect(() => {
     let cancelled = false;
@@ -943,6 +1108,7 @@ export function WarRoomCanvasStage({
         artifacts,
         motions,
         selectedAgentId,
+        focusAgentId,
         onSelectAgent,
       });
     }
@@ -969,28 +1135,51 @@ export function WarRoomCanvasStage({
       artifacts,
       motions,
       selectedAgentId,
+      focusAgentId,
       onSelectAgent,
     });
-  }, [artifacts, renderedAgents, motions, selectedAgentId, onSelectAgent]);
+  }, [
+    artifacts,
+    renderedAgents,
+    motions,
+    selectedAgentId,
+    focusAgentId,
+    onSelectAgent,
+  ]);
+
+  function setFocusAgent(id: LaunchCrewRole | null) {
+    hoveredAgentIdRef.current = id;
+    const state = stageRef.current;
+    if (!state) return;
+    void syncPixiStage({
+      state,
+      renderedAgents,
+      artifacts,
+      motions,
+      selectedAgentId,
+      focusAgentId: id ?? selectedAgentId,
+      onSelectAgent,
+    });
+  }
 
   return (
     <section
       aria-label="Animated EcomLaunch war room"
       className="relative size-full overflow-hidden bg-[#efe7d8]"
     >
+      <StaticWarRoomFallback
+        renderedAgents={renderedAgents}
+        artifacts={artifacts}
+      />
       <div ref={containerRef} className="absolute inset-0 z-10" />
       <CanvasHitTargets
         renderedAgents={renderedAgents}
         artifacts={artifacts}
         selectedAgentId={selectedAgentId}
         onSelectAgent={onSelectAgent}
+        onFocusAgent={(id) => setFocusAgent(id)}
+        onBlurAgent={() => setFocusAgent(null)}
       />
-      <div className="pointer-events-none absolute top-5 left-5 z-30 rounded border border-amber-900/15 bg-white/88 px-3 py-2 text-slate-900 shadow-[3px_3px_0_rgba(120,84,42,0.18)]">
-        <div className="text-[10px] font-black tracking-[0.2em] text-teal-700/70 uppercase">
-          Launch War Room
-        </div>
-        <div className="mt-1 text-xs font-black">PixiJS canvas stage</div>
-      </div>
     </section>
   );
 }

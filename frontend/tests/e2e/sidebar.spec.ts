@@ -102,6 +102,9 @@ test.describe("Sidebar navigation", () => {
           artifacts: [
             "/outputs/competitor-table.csv",
             "/outputs/listing-pack.md",
+            "/outputs/launch-state.json",
+            "/outputs/promotion-replan.md",
+            "/outputs/knowledge-deltas.json",
           ],
           messages: [
             {
@@ -143,6 +146,12 @@ test.describe("Sidebar navigation", () => {
               content: "Task Succeeded. Result: Competitor table ready.",
               additional_kwargs: { subagent_status: "completed" },
             },
+            {
+              type: "ai",
+              id: "final-summary",
+              content:
+                "当前阶段: scale_iterate\n推荐决策: Hold\n数据边界: GMV/CTR/CVR/ROI 不可用，除非用户上传私域指标。",
+            },
           ],
         },
       ],
@@ -163,6 +172,24 @@ test.describe("Sidebar navigation", () => {
     ).toBeVisible();
     await expect(
       page.locator("[data-war-room-artifact='listing-pack.md']"),
+    ).toBeVisible();
+    await expect(page.locator("[data-war-room-stage]")).toContainText(
+      "scale_iterate",
+    );
+    await expect(page.locator("[data-war-room-decision]")).toContainText(
+      "Hold",
+    );
+    await expect(page.locator("[data-war-room-private-metrics]")).toContainText(
+      "GMV/CTR/CVR/ROI",
+    );
+    await expect(
+      page.locator("[data-war-room-loop-artifact='launch-state.json']"),
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-war-room-loop-artifact='promotion-replan.md']"),
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-war-room-loop-artifact='knowledge-deltas.json']"),
     ).toBeVisible();
     await expect(
       page.locator("[data-war-room-vfx='artifact-pulse']"),

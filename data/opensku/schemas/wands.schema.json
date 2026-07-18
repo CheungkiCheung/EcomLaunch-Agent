@@ -1,0 +1,215 @@
+{
+  "components": [
+    {
+      "component": "query",
+      "dataset": "wands",
+      "fields": {
+        "query": {
+          "example_values": [
+            "salon chair",
+            "smart coffee table",
+            "dinosaur"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "query_class": {
+          "example_values": [
+            "Massage Chairs",
+            "Coffee & Cocktail Tables",
+            "Kids Wall Décor"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "query_id": {
+          "example_values": [
+            "0",
+            "1",
+            "2"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        }
+      },
+      "format": "csv",
+      "note": "Search queries and query classes.",
+      "row_count": 5,
+      "source_url": "https://raw.githubusercontent.com/wayfair/WANDS/main/dataset/query.csv"
+    },
+    {
+      "component": "product",
+      "dataset": "wands",
+      "fields": {
+        "average_rating": {
+          "example_values": [
+            "4.5",
+            "2.0",
+            "3.0"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "category hierarchy": {
+          "example_values": [
+            "Furniture / Bedroom Furniture / Beds & Headboards / Beds / Twin Beds",
+            "Kitchen & Tabletop / Small Kitchen Appliances / Pressure & Slow Cookers / Slow Cookers / Slow Slow Cookers",
+            "Kitchen & Tabletop / Small Kitchen Appliances / Pressure & Slow Cookers / Slow Cookers / Slow Slow Cookers"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "product_class": {
+          "example_values": [
+            "Beds",
+            "Slow Cookers",
+            "Slow Cookers"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "product_description": {
+          "example_values": [
+            "good , deep sleep can be quite difficult to have in this busy age . fortunately , there ’ s an antidote to such a problem : a nice , quality bed frame like the...",
+            "create delicious slow-cooked meals , from tender meat to flavorful veggies , with this easy-to-use slow cooker . the unit features a nonstick cast-aluminum ins...",
+            "prepare home-cooked meals on any schedule with this essential slow cooker , featuring a dishwasher-safe insert and 26-hour timer ."
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "product_features": {
+          "example_values": [
+            "overallwidth-sidetoside:64.7|dsprimaryproductstyle : modern|countryoforigin-additionaldetails : made in viet nam|headboardtype : slat|headboardheight-toptobedf...",
+            "capacityquarts:7|producttype : slow cooker|programmablecookingsettings : slow cook|overallheight-toptobottom:14.2|overalldepth-fronttoback:11.3|programmablefoo...",
+            "features : keep warm setting|capacityquarts:6.5|programmablefoodsettings : soup|warrantylength:1 year| : slow cooker , lid and insert|features : adjustable tem..."
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "product_id": {
+          "example_values": [
+            "0",
+            "1",
+            "2"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "product_name": {
+          "example_values": [
+            "solid wood platform bed",
+            "all-clad 7 qt . slow cooker",
+            "all-clad electrics 6.5 qt . slow cooker"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "rating_count": {
+          "example_values": [
+            "15.0",
+            "100.0",
+            "208.0"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "review_count": {
+          "example_values": [
+            "15.0",
+            "98.0",
+            "181.0"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        }
+      },
+      "format": "csv",
+      "note": "Candidate products, descriptions, feature strings, ratings, and review counts.",
+      "row_count": 5,
+      "source_url": "https://raw.githubusercontent.com/wayfair/WANDS/main/dataset/product.csv"
+    },
+    {
+      "component": "label",
+      "dataset": "wands",
+      "fields": {
+        "id": {
+          "example_values": [
+            "0",
+            "1",
+            "2"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "label": {
+          "example_values": [
+            "Exact",
+            "Irrelevant",
+            "Exact"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "product_id": {
+          "example_values": [
+            "25434",
+            "12088",
+            "42931"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        },
+        "query_id": {
+          "example_values": [
+            "0",
+            "0",
+            "0"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "number_string"
+          ]
+        }
+      },
+      "format": "csv",
+      "note": "Query-product relevance labels.",
+      "row_count": 5,
+      "source_url": "https://raw.githubusercontent.com/wayfair/WANDS/main/dataset/label.csv"
+    }
+  ],
+  "dataset": "wands",
+  "generated_at": "2026-06-27T02:40:44.238638Z",
+  "limit_per_component": 5,
+  "sample_path": "data/opensku/samples/wands.jsonl",
+  "schema_path": "data/opensku/schemas/wands.schema.json"
+}

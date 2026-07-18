@@ -1,0 +1,11 @@
+{
+  "accepted_run_count": 21,
+  "discovered_run_count": 28,
+  "errors": [],
+  "output_dir": "docs/knowledge/opensku",
+  "pattern_count": 13,
+  "record_count": 63,
+  "runs_root": "docs/progress/runs",
+  "skipped_run_count": 7,
+  "status": "PASS"
+}

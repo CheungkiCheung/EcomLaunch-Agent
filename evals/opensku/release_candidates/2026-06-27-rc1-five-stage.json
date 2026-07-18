@@ -1,0 +1,48 @@
+{
+  "name": "2026-06-27-rc1-five-stage",
+  "description": "Five-stage OpenSKU release-candidate decision gate over accepted real live-run evidence. This is the first semantic RC gate; the full 10-run RC set is tracked separately because historical stage-2 runs still need taxonomy reruns.",
+  "cases_dir": "evals/opensku/cases",
+  "decision_gate": true,
+  "acceptance": {
+    "min_live_runs": 5,
+    "required_stage_counts": {
+      "idea_only": 1,
+      "supplier_sample": 1,
+      "pre_launch_test": 1,
+      "soft_launch": 1,
+      "scale_iterate": 1
+    }
+  },
+  "live_runs": [
+    {
+      "case_id": "opensku-idea-001",
+      "stage": "idea_only",
+      "run_dir": "docs/progress/runs/2026-06-27/batch-live-5stage-opensku-idea-001",
+      "note": "Accepted real live run; expected-decision gate observed Hold."
+    },
+    {
+      "case_id": "opensku-supplier-001",
+      "stage": "supplier_sample",
+      "run_dir": "docs/progress/runs/2026-06-27/batch-live-5stage-opensku-supplier-001",
+      "note": "Accepted real live run; expected-decision gate observed Hold."
+    },
+    {
+      "case_id": "opensku-prelaunch-002",
+      "stage": "pre_launch_test",
+      "run_dir": "docs/progress/runs/2026-06-27/live-decision-taxonomy-prelaunch-002",
+      "note": "Accepted real live rerun after Pivot/Kill taxonomy fix; expected-decision gate observed Pivot."
+    },
+    {
+      "case_id": "opensku-softlaunch-001",
+      "stage": "soft_launch",
+      "run_dir": "docs/progress/runs/2026-06-27/batch-live-5stage-opensku-softlaunch-001",
+      "note": "Accepted real live run; expected-decision gate observed Hold."
+    },
+    {
+      "case_id": "opensku-scale-001",
+      "stage": "scale_iterate",
+      "run_dir": "docs/progress/runs/2026-06-27/batch-live-5stage-opensku-scale-001",
+      "note": "Accepted real live run; expected-decision gate observed Scale."
+    }
+  ]
+}

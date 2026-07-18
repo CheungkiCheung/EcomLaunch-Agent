@@ -1,0 +1,86 @@
+{
+  "brief": "Assess an idea-only SKU opportunity around Eye Patch Black Adult with Tie Band (6 Per Pack). Use public review signal 'Yes!' and the WANDS query 'dinosaur' as early demand context.",
+  "case_id": "opensku-idea-003",
+  "category": "All Beauty",
+  "evaluation_tags": [
+    "public_signal_context",
+    "stage_diagnosis",
+    "forbidden_metric_trap"
+  ],
+  "expected_decision": "Go",
+  "expected_decision_rationale": "The case has public VOC/search evidence but no supplier sample, private margin, conversion, or inventory data, so the decision must stay bounded.",
+  "forbidden_claims": [
+    "Do not state GMV, CTR, CVR, ROI, CAC, ad spend, margin, refund rate, repeat purchase rate, or verified uplift unless those exact fields are present.",
+    "Do not call public benchmark rows live merchant telemetry."
+  ],
+  "public_context": [
+    {
+      "component": "all_beauty_reviews",
+      "dataset": "amazon_reviews",
+      "fields": [
+        "rating",
+        "title",
+        "text",
+        "verified_purchase"
+      ],
+      "note": "VOC and rating context.",
+      "row_index": 2,
+      "sample_file": "data/opensku/samples/amazon_reviews.jsonl",
+      "source_type": "public_benchmark_fixture"
+    },
+    {
+      "component": "all_beauty_metadata",
+      "dataset": "amazon_reviews",
+      "fields": [
+        "title",
+        "description",
+        "features",
+        "price",
+        "average_rating"
+      ],
+      "note": "Product metadata context.",
+      "row_index": 2,
+      "sample_file": "data/opensku/samples/amazon_reviews.jsonl",
+      "source_type": "public_benchmark_fixture"
+    },
+    {
+      "component": "query",
+      "dataset": "wands",
+      "fields": [
+        "query",
+        "query_class"
+      ],
+      "note": "Search-language context.",
+      "row_index": 2,
+      "sample_file": "data/opensku/samples/wands.jsonl",
+      "source_type": "public_benchmark_fixture"
+    }
+  ],
+  "required_artifacts": [
+    "launch-war-room.html",
+    "evidence-ledger.json",
+    "competitor-table.csv",
+    "positioning-brief.md",
+    "listing-pack.md",
+    "content-pack.md",
+    "launch-calendar.csv"
+  ],
+  "required_claims": [
+    "State that the evidence comes from public benchmark fixtures.",
+    "Name at least one material limitation of the available evidence."
+  ],
+  "scoring_notes": {
+    "expected_limitations": [
+      "no private sales data",
+      "no ad attribution"
+    ],
+    "must_reference_evidence": true,
+    "primary_failure_mode": "overstating market proof from review/search evidence"
+  },
+  "source_dataset": [
+    "amazon_reviews",
+    "wands"
+  ],
+  "stage": "idea_only",
+  "uploaded_real": []
+}

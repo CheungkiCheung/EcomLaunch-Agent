@@ -1,0 +1,181 @@
+{
+  "status": "PASS",
+  "score": 70,
+  "max_score": 70,
+  "score_ratio": 1.0,
+  "results": [
+    {
+      "name": "case-suite",
+      "subject": "evals/opensku/cases",
+      "status": "PASS",
+      "score": 20,
+      "max_score": 20,
+      "score_ratio": 1.0,
+      "checks": [
+        {
+          "name": "case_validation",
+          "passed": true,
+          "score": 8,
+          "max_score": 8,
+          "details": []
+        },
+        {
+          "name": "case_count",
+          "passed": true,
+          "score": 3,
+          "max_score": 3,
+          "details": [
+            "case_count=30"
+          ]
+        },
+        {
+          "name": "stage_coverage",
+          "passed": true,
+          "score": 3,
+          "max_score": 3,
+          "details": [
+            "stage_counts={'idea_only': 6, 'supplier_sample': 6, 'pre_launch_test': 6, 'soft_launch': 8, 'scale_iterate': 4}",
+            "target={'idea_only': 6, 'supplier_sample': 6, 'pre_launch_test': 6, 'soft_launch': 8, 'scale_iterate': 4}"
+          ]
+        },
+        {
+          "name": "tag_traps",
+          "passed": true,
+          "score": 4,
+          "max_score": 4,
+          "details": [
+            "tag_counts={'public_signal_context': 16, 'stage_diagnosis': 30, 'forbidden_metric_trap': 20, 'unsupported_claim_trap': 8, 'promotion_replan': 12, 'knowledge_delta': 12, 'uploaded_data_simulation': 14}",
+            "minimums={'uploaded_data_simulation': 10, 'public_signal_context': 10, 'forbidden_metric_trap': 5, 'unsupported_claim_trap': 5}"
+          ]
+        },
+        {
+          "name": "source_references",
+          "passed": true,
+          "score": 2,
+          "max_score": 2,
+          "details": []
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-28/rc2-rerun-opensku-supplier-002",
+      "status": "PASS",
+      "score": 40,
+      "max_score": 40,
+      "score_ratio": 1.0,
+      "checks": [
+        {
+          "name": "run_status",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "Status: PASS",
+            "- run_status: success"
+          ]
+        },
+        {
+          "name": "present_files",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "present_files_called=True",
+            "state_artifacts=['/mnt/user-data/outputs/launch-war-room.html', '/mnt/user-data/outputs/evidence-ledger.json', '/mnt/user-data/outputs/competitor-table.csv', '/mnt/user-data/outputs/positioning-brief.md', '/mnt/user-data/outputs/listing-pack.md', '/mnt/user-data/outputs/content-pack.md', '/mnt/user-data/outputs/launch-calendar.csv', '/mnt/user-data/outputs/launch-state.json', '/mnt/user-data/outputs/promotion-replan.md', '/mnt/user-data/outputs/knowledge-deltas.json']"
+          ]
+        },
+        {
+          "name": "subagents",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "observed=['asset-studio', 'evidence-checker', 'growth-analyst', 'market-voc-researcher', 'offer-architect']",
+            "missing=[]"
+          ]
+        },
+        {
+          "name": "artifact_writer_called",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "tool_call_names=['read_file', 'read_file', 'read_file', 'read_file', 'read_file', 'task', 'task', 'task', 'task', 'task', 'write_opensku_artifact_bundle', 'present_files']"
+          ]
+        },
+        {
+          "name": "external_search_gate",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "external_search_calls=[]"
+          ]
+        },
+        {
+          "name": "artifact_manifest",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "artifacts=['competitor-table.csv', 'content-pack.md', 'evidence-ledger.json', 'knowledge-deltas.json', 'launch-calendar.csv', 'launch-state.json', 'launch-war-room.html', 'listing-pack.md', 'positioning-brief.md', 'promotion-replan.md']",
+            "missing=[]"
+          ]
+        },
+        {
+          "name": "validator_output",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "bundle=/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/9a1f3c11-d389-42f0-908e-8629b98bd493/threads/opensku-live-rc2-rerun-opensku-supplier-002-1782576686/user-data/outputs",
+            "artifact_count=10",
+            "status=PASS"
+          ]
+        },
+        {
+          "name": "final_response",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "missing_requirements=[]",
+            "consistency_errors=[]"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "expected-decision",
+      "subject": "docs/progress/runs/2026-06-28/rc2-rerun-opensku-supplier-002",
+      "status": "PASS",
+      "score": 10,
+      "max_score": 10,
+      "score_ratio": 1.0,
+      "checks": [
+        {
+          "name": "case_resolution",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "case_path=evals/opensku/cases/opensku-supplier-002.json",
+            "case_candidates=['opensku-supplier-002']",
+            "expected=Pivot"
+          ]
+        },
+        {
+          "name": "decision_match",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "expected=Pivot",
+            "actual=Pivot"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "case_id": "live-demo-portable-coffee-tumbler-001-tool-gated",
+  "run_id": "79943e1a-ce18-4755-bccc-8aa478652403",
+  "thread_id": "opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167",
+  "user_id": "3413a138-c6aa-4be0-a516-1ab6a670b558",
+  "model_provider": null,
+  "model_name": null,
+  "token_usage": {},
+  "present_files_called": true,
+  "tool_call_names": [
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_file",
+    "write_todos",
+    "write_file",
+    "write_todos",
+    "present_files",
+    "write_todos"
+  ],
+  "subagent_types": [],
+  "uploaded_files": [
+    {
+      "name": "demo-brief.portable-coffee-tumbler.json",
+      "virtual_path": "/mnt/user-data/uploads/demo-brief.portable-coffee-tumbler.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/uploads/demo-brief.portable-coffee-tumbler.json",
+      "size_bytes": 1235,
+      "sha256": "29cf266db3fcce021d108553ae7c41ab08b3fe0ef7f780487952364f9a32ac7d"
+    },
+    {
+      "name": "amazon_reviews.jsonl",
+      "virtual_path": "/mnt/user-data/uploads/amazon_reviews.jsonl",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/uploads/amazon_reviews.jsonl",
+      "size_bytes": 8708,
+      "sha256": "28169be585f2f0d315f23b826ab094cf221d7e29dfb70c288014244602273818"
+    },
+    {
+      "name": "wands.jsonl",
+      "virtual_path": "/mnt/user-data/uploads/wands.jsonl",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/uploads/wands.jsonl",
+      "size_bytes": 11611,
+      "sha256": "d08f34401216e202878d89b12b32596e6c82215eaa6e3af6edd026acc1064c25"
+    },
+    {
+      "name": "amazon_reviews.schema.json",
+      "virtual_path": "/mnt/user-data/uploads/amazon_reviews.schema.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/uploads/amazon_reviews.schema.json",
+      "size_bytes": 8023,
+      "sha256": "9ae96311794fbfc059b505b575ec7af2438e2625b045ef8e6df3aec87b35bfca"
+    },
+    {
+      "name": "wands.schema.json",
+      "virtual_path": "/mnt/user-data/uploads/wands.schema.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/uploads/wands.schema.json",
+      "size_bytes": 6217,
+      "sha256": "586edfcba16d150a1bdd283f0640f35ed66b9bd1d45a5e9e25d0f49845b39d48"
+    }
+  ],
+  "outputs_dir": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/outputs",
+  "artifacts": [
+    {
+      "name": "competitor-table.csv",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/outputs/competitor-table.csv",
+      "virtual_path": "/mnt/user-data/outputs/competitor-table.csv",
+      "size_bytes": 1369,
+      "sha256": "966fa85c681598aef43fbd4e2e48a0f7764b7e8f3d55724917c7c5d3a5d2758e"
+    },
+    {
+      "name": "content-pack.md",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/outputs/content-pack.md",
+      "virtual_path": "/mnt/user-data/outputs/content-pack.md",
+      "size_bytes": 8039,
+      "sha256": "1d0619cf09699d5f6c75d0baca38a93867d8e61fbe22741ebd98241d773fdccf"
+    },
+    {
+      "name": "evidence-ledger.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/outputs/evidence-ledger.json",
+      "virtual_path": "/mnt/user-data/outputs/evidence-ledger.json",
+      "size_bytes": 8343,
+      "sha256": "5419a0b8ec5abf8836dac9daa9c2e1ddede5339fbdfa070d273ce0eba9396ff5"
+    },
+    {
+      "name": "knowledge-deltas.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/outputs/knowledge-deltas.json",
+      "virtual_path": "/mnt/user-data/outputs/knowledge-deltas.json",
+      "size_bytes": 2663,
+      "sha256": "957b2157d7d45e4244ad64b4a224c9fa6eda4f25156da774f003b4548c23d7d8"
+    },
+    {
+      "name": "launch-calendar.csv",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/outputs/launch-calendar.csv",
+      "virtual_path": "/mnt/user-data/outputs/launch-calendar.csv",
+      "size_bytes": 4580,
+      "sha256": "f6983520891a2d151cc01325c6a03986e27b9e25d14007a7a55a1ffe00d7f1f3"
+    },
+    {
+      "name": "launch-state.json",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/outputs/launch-state.json",
+      "virtual_path": "/mnt/user-data/outputs/launch-state.json",
+      "size_bytes": 2421,
+      "sha256": "6b6d25a2710a484790a55afd0d0c47413aa17e43f1733a972081950b31910592"
+    },
+    {
+      "name": "launch-war-room.html",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/outputs/launch-war-room.html",
+      "virtual_path": "/mnt/user-data/outputs/launch-war-room.html",
+      "size_bytes": 15533,
+      "sha256": "8fc6aa5b833d37aa55f663b1786bad8972eee01244a2e0ca62fcb025808daa24"
+    },
+    {
+      "name": "listing-pack.md",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/outputs/listing-pack.md",
+      "virtual_path": "/mnt/user-data/outputs/listing-pack.md",
+      "size_bytes": 5493,
+      "sha256": "a2600c49b3654241ff8c452417a4f0a3ce596d57c3cef7b287224bfc1b659209"
+    },
+    {
+      "name": "positioning-brief.md",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/outputs/positioning-brief.md",
+      "virtual_path": "/mnt/user-data/outputs/positioning-brief.md",
+      "size_bytes": 4526,
+      "sha256": "284b1c2d85980e1f2c54ec6e69df092b3653fb70e54c3e008df3e47e9042965c"
+    },
+    {
+      "name": "promotion-replan.md",
+      "host_path": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/3413a138-c6aa-4be0-a516-1ab6a670b558/threads/opensku-live-live-demo-portable-coffee-tumbler-001-tool-gated-1782532167/user-data/outputs/promotion-replan.md",
+      "virtual_path": "/mnt/user-data/outputs/promotion-replan.md",
+      "size_bytes": 4824,
+      "sha256": "711c45ec435de85980bdf089a0ba0fc2cf5d1f480e296361ecacfaa8869b1ef7"
+    }
+  ],
+  "state_artifacts": [
+    "/mnt/user-data/outputs/launch-war-room.html",
+    "/mnt/user-data/outputs/evidence-ledger.json",
+    "/mnt/user-data/outputs/competitor-table.csv",
+    "/mnt/user-data/outputs/positioning-brief.md",
+    "/mnt/user-data/outputs/listing-pack.md",
+    "/mnt/user-data/outputs/content-pack.md",
+    "/mnt/user-data/outputs/launch-calendar.csv",
+    "/mnt/user-data/outputs/launch-state.json",
+    "/mnt/user-data/outputs/promotion-replan.md",
+    "/mnt/user-data/outputs/knowledge-deltas.json"
+  ]
+}

@@ -96,6 +96,28 @@ export function fallbackArtifactsFromMessages(messages: Message[]) {
   return [...new Set(files)];
 }
 
+export function latestAssistantTextFromMessages(messages: Message[]) {
+  for (const message of [...messages].reverse()) {
+    if (message.type !== "ai" || (message.tool_calls?.length ?? 0) > 0) {
+      continue;
+    }
+    const text = extractTextFromMessage(message).trim();
+    if (text) {
+      return text;
+    }
+  }
+  for (const message of [...messages].reverse()) {
+    if (message.type !== "ai") {
+      continue;
+    }
+    const text = extractTextFromMessage(message).trim();
+    if (text) {
+      return text;
+    }
+  }
+  return "";
+}
+
 export function toLaunchCrewTasks(
   tasks: Subtask[],
   explainAction: (task: Subtask) => string | null,
@@ -157,6 +179,7 @@ export function buildLaunchCrewActivityModelFromThread({
     artifacts: artifacts.map(getFileName),
     todos: threadValues.todos,
     selectedAgentId,
+    finalResponseText: latestAssistantTextFromMessages(messages),
     isStreaming,
   });
 }

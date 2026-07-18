@@ -132,7 +132,7 @@ subagents:
         - launch readiness verdict: test_now, test_after_fixing_assumptions, hold,
           or insufficient_evidence
         - opportunity score with evidence labels
-        - 7-day validation hypotheses and decision rules
+        - adaptive validation hypotheses, cadence, and decision rules
 
         Do not write generic ad copy. Keep the output decision-oriented.
 

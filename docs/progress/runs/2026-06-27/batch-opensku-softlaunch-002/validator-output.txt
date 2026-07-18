@@ -1,0 +1,3 @@
+bundle=/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/a626f777-a31b-4b67-92a0-70e9dc1de91f/threads/opensku-live-batch-opensku-softlaunch-002-1782692327/user-data/outputs
+artifact_count=10
+status=PASS

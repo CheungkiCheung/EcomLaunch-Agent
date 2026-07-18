@@ -1,6 +1,8 @@
-# DeerFlow Frontend
+# OpenSKU Frontend
 
-Like the original DeerFlow 1.0, we would love to give the community a minimalistic and easy-to-use web interface with a more modern and flexible architecture.
+This is the Next.js frontend for OpenSKU. It provides the chat workspace, OpenSKU Launch Loop entry point, EcomLaunch War Room visualization, artifact previews, settings, skill management, and authentication UI.
+
+The frontend is built on the DeerFlow runtime UI foundation, but the public product surface in this repository should lead with OpenSKU and the adaptive SKU launch loop.
 
 ## Tech Stack
 
@@ -70,9 +72,11 @@ pnpm start
 
 ```
 ├── /                    # Landing page
+├── /workspace           # Authenticated workspace shell
 ├── /chats               # Chat list
 ├── /chats/new           # New chat page
-└── /chats/[thread_id]   # A specific chat page
+├── /chats/[thread_id]   # A specific chat page
+└── /agents/ecom-launch  # OpenSKU Launch Loop workspace
 ```
 
 ## Configuration

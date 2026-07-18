@@ -290,6 +290,52 @@ def test_task_tool_propagates_tool_groups_to_subagent(monkeypatch):
     get_available_tools.assert_called_once_with(model_name="ark-model", groups=parent_tool_groups, subagent_enabled=False)
 
 
+def test_task_tool_filters_external_search_tools_in_opensku_benchmark_mode(monkeypatch):
+    config = _make_subagent_config()
+    runtime = _make_runtime()
+    runtime.context["opensku_benchmark_fixture_mode"] = True
+    events = []
+    captured = {}
+    raw_tools = [
+        SimpleNamespace(name="web_search"),
+        SimpleNamespace(name="web_fetch"),
+        SimpleNamespace(name="image_search"),
+        SimpleNamespace(name="read_file"),
+        SimpleNamespace(name="write_file"),
+    ]
+
+    class DummyExecutor:
+        def __init__(self, **kwargs):
+            captured["executor_kwargs"] = kwargs
+
+        def execute_async(self, prompt, task_id=None):
+            return task_id or "generated-task-id"
+
+    monkeypatch.setattr(task_tool_module, "SubagentStatus", FakeSubagentStatus)
+    monkeypatch.setattr(task_tool_module, "SubagentExecutor", DummyExecutor)
+    monkeypatch.setattr(task_tool_module, "get_available_subagent_names", lambda: ["general-purpose"])
+    monkeypatch.setattr(task_tool_module, "get_subagent_config", lambda _: config)
+    monkeypatch.setattr(
+        task_tool_module,
+        "get_background_task_result",
+        lambda _: _make_result(FakeSubagentStatus.COMPLETED, result="done"),
+    )
+    monkeypatch.setattr(task_tool_module, "get_stream_writer", lambda: events.append)
+    monkeypatch.setattr(task_tool_module.asyncio, "sleep", _no_sleep)
+    monkeypatch.setattr("deerflow.tools.get_available_tools", MagicMock(return_value=raw_tools))
+
+    output = _run_task_tool(
+        runtime=runtime,
+        description="生成资产",
+        prompt="build fixture-only assets",
+        subagent_type="general-purpose",
+        tool_call_id="tc-opensku-benchmark",
+    )
+
+    assert output == "Task Succeeded. Result: done"
+    assert [tool.name for tool in captured["executor_kwargs"]["tools"]] == ["read_file", "write_file"]
+
+
 def test_task_tool_uses_subagent_model_override_for_tool_loading(monkeypatch):
     """Subagent model overrides should drive model-gated tool loading."""
     config = SubagentConfig(

@@ -1,0 +1,71 @@
+{
+  "case_id": "live-demo-portable-coffee-tumbler-001",
+  "run_id": "5c453404-75c8-4918-b9a8-8db8b7718623",
+  "thread_id": "opensku-live-live-demo-portable-coffee-tumbler-001-1782529769",
+  "user_id": "c4d345e6-402a-4113-a7c6-836a16b88009",
+  "model_provider": "deepseek",
+  "model_name": "deepseek-reasoner",
+  "runtime_context": {
+    "agent_name": "ecom-launch",
+    "mode": "ultra",
+    "thinking_enabled": true,
+    "is_plan_mode": true,
+    "subagent_enabled": true,
+    "reasoning_effort": "high"
+  },
+  "run_status": "interrupted",
+  "present_files_called": false,
+  "observed_subagent_types": [
+    "market-voc-researcher",
+    "offer-architect",
+    "growth-analyst"
+  ],
+  "observed_subagent_failures": [
+    {
+      "subagent_type": "offer-architect",
+      "timeout_seconds": 300
+    },
+    {
+      "subagent_type": "growth-analyst",
+      "timeout_seconds": 360
+    },
+    {
+      "subagent_type": "market-voc-researcher",
+      "timeout_seconds": 480
+    }
+  ],
+  "missing_subagent_types": [
+    "asset-studio",
+    "evidence-checker"
+  ],
+  "uploaded_files": [
+    {
+      "name": "demo-brief.portable-coffee-tumbler.json",
+      "virtual_path": "/mnt/user-data/uploads/demo-brief.portable-coffee-tumbler.json",
+      "sha256": "29cf266db3fcce021d108553ae7c41ab08b3fe0ef7f780487952364f9a32ac7d"
+    },
+    {
+      "name": "amazon_reviews.jsonl",
+      "virtual_path": "/mnt/user-data/uploads/amazon_reviews.jsonl",
+      "sha256": "28169be585f2f0d315f23b826ab094cf221d7e29dfb70c288014244602273818"
+    },
+    {
+      "name": "wands.jsonl",
+      "virtual_path": "/mnt/user-data/uploads/wands.jsonl",
+      "sha256": "d08f34401216e202878d89b12b32596e6c82215eaa6e3af6edd026acc1064c25"
+    },
+    {
+      "name": "amazon_reviews.schema.json",
+      "virtual_path": "/mnt/user-data/uploads/amazon_reviews.schema.json",
+      "sha256": "9ae96311794fbfc059b505b575ec7af2438e2625b045ef8e6df3aec87b35bfca"
+    },
+    {
+      "name": "wands.schema.json",
+      "virtual_path": "/mnt/user-data/uploads/wands.schema.json",
+      "sha256": "586edfcba16d150a1bdd283f0640f35ed66b9bd1d45a5e9e25d0f49845b39d48"
+    }
+  ],
+  "outputs_dir": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/c4d345e6-402a-4113-a7c6-836a16b88009/threads/opensku-live-live-demo-portable-coffee-tumbler-001-1782529769/user-data/outputs",
+  "artifacts": [],
+  "validator_status": "FAIL"
+}

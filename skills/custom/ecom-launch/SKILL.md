@@ -1,6 +1,6 @@
 ---
 name: ecom-launch
-description: Public-data-driven ecommerce new-product launch workflow for market scouting, review mining, positioning, listing copy, content planning, launch experiments, and evidence-aware artifacts.
+description: Public-data-driven ecommerce SKU launch loop for stage diagnosis, market scouting, review mining, positioning, listing copy, content planning, promotion replanning, launch experiments, knowledge capture, and evidence-aware artifacts.
 allowed-tools:
   - web_search
   - web_fetch
@@ -10,36 +10,60 @@ allowed-tools:
   - grep
   - glob
   - present_files
+  - write_opensku_artifact_bundle
+  - validate_opensku_artifacts
   - task
   - ask_clarification
 ---
 
 # EcomLaunch
 
-Use this skill when the user asks for ecommerce new-product launch validation, public market opportunity analysis, product positioning, listing optimization, review/VOC insight mining, short-video or livestream content planning, or a 7-day launch test plan.
+Use this skill when the user asks for ecommerce new-product launch validation, public market opportunity analysis, product positioning, listing optimization, review/VOC insight mining, short-video or livestream content planning, promotion replanning, uploaded feedback analysis, or an adaptive launch test plan.
 
 This skill is designed for situations where the user does **not** have private merchant backend data. The workflow must use public web evidence, uploaded files, and clearly labeled estimates instead of inventing store metrics.
 
 ## Product Contract
 
-EcomLaunch is not generic competitive analysis. It is a public-signal ecommerce launch validation workflow.
+EcomLaunch is not generic competitive analysis. It is the agent workflow behind OpenSKU: a public-signal and uploaded-data ecommerce launch-loop system for SKU ideas, samples, soft launches, and scale decisions.
 
 Flagship workflow:
 
 ```text
-validate-launch -> Launch Validation Pack
+validate-launch -> Adaptive Launch Loop snapshot
 ```
 
-The end product is a launch operating package, not a long research essay. The user should be able to decide:
+The end product is a launch-loop decision snapshot, not a long research essay. The user should be able to decide:
 
-- whether this product is worth a small test
+- what launch stage the SKU is in: idea-only, supplier/sample, pre-launch test, soft launch, or scale/iterate
+- whether this SKU should Go, Pivot, Hold, Kill, or Scale before or during early launch
 - which audience wedge to start with
 - what first offer promise to test
 - what listing and content assets to use
+- what promotion plan, channel, price signal, content hook, creator brief, or product-page claim should change after new feedback
 - what evidence is public, uploaded, estimated, or unavailable
-- what to do in the next 7 days
+- what to do in the next experiment loop
 
 If private merchant metrics are unavailable, say so directly and propose validation tests.
+
+## Decision Taxonomy
+
+Use Go, Pivot, Hold, Kill, and Scale as operational launch-loop states:
+
+- Go: evidence is good enough to run the next bounded launch test.
+- Pivot: change target query, audience, channel, positioning, claim, offer, or product-page route while the SKU may still be worth testing.
+- Hold: evidence is insufficient; collect missing product, supplier, customer, or market proof before spending more.
+- Kill: abandon the SKU or offer because evidence shows a non-salvageable product, supply, compliance, safety, economics, or trust failure.
+- Scale: evidence supports increasing volume, budget, channel count, or SKU variants.
+
+For `pre_launch_test`, search-fit cases test whether a query, product, page claim, or audience route is viable before launch. `pre_launch_test search-fit mismatch defaults to Pivot` when the product/query/category pairing is wrong but the SKU could still be tested under another query, category, positioning, or audience wedge. `Kill only when the SKU or offer itself is not worth continuing`, such as non-salvageable product quality, impossible supply, compliance/safety failure, or no viable retargeting path. Do not choose Kill merely because the current query is wrong.
+
+Go/Pivot/Hold calibration:
+
+- Do not choose Hold solely because private metrics, ad attribution, margin, refund, or repeat-purchase data are unavailable.
+- Choose Pivot when available evidence supports a specific change to query, claim, format, offer, channel, or promotion plan.
+- Choose Go for a bounded pre_launch_test when public relevance or category-fit evidence supports the next test and no blocking risk is present.
+- For supplier_sample, unsupported claims usually mean Pivot the claim set or listing plan, not Hold, when uploaded sample or metadata is enough to continue under safer claims.
+- For soft_launch uploaded-data cases, missing attribution is not by itself Hold when order, review, payment, or product rows support a plan change.
 
 ## Mode Adaptation (渐进式适配)
 
@@ -57,7 +81,7 @@ EcomLaunch supports 4 modes with progressive complexity:
 - **Agent**: Single agent, no subagents
 - **Tools**: web_search + last30days
 - **Output**: Market insights, user pain points
-- **Use case**: "分析一下AI写作助手的市场"
+- **Use case**: "分析一下通勤防漏咖啡杯的公开市场信号"
 
 ### Pro Mode (专业模式)
 - **Purpose**: Professional analysis, detailed reports
@@ -67,7 +91,7 @@ EcomLaunch supports 4 modes with progressive complexity:
 - **Use case**: "帮我做一个竞品分析报告"
 
 ### Ultra Mode (极致模式) - DEFAULT
-- **Purpose**: Full launch validation pack
+- **Purpose**: Full adaptive launch-loop snapshot
 - **Agent**: 5 subagents in parallel
   - market-voc-researcher
   - offer-architect
@@ -75,21 +99,21 @@ EcomLaunch supports 4 modes with progressive complexity:
   - asset-studio
   - evidence-checker
 - **Tools**: All tools + PM Skills
-- **Output**: 7-artifact launch validation pack
-- **Use case**: "帮我做一个完整的增长验证包"
+- **Output**: Launch Decision Pack plus next-loop recommendation
+- **Use case**: "帮我判断这个 SKU 当前处在哪个上新阶段，应该 Go、Pivot、Hold 还是 Kill，并给出下一轮宣传和测试怎么调"
 
 **Mode Selection Logic**:
 - If user asks for quick answer → Flash
 - If user asks for analysis → Thinking
 - If user asks for detailed report → Pro
-- If user asks for full validation → Ultra (default)
+- If user asks for full validation, stage diagnosis, launch decision, or feedback-driven replanning → Ultra (default)
 
 Default output scope:
 
-- `validate-launch` means a full Launch Validation Pack by default.
-- A full pack should create the seven required artifacts listed in this skill.
+- `validate-launch` means a full adaptive launch-loop snapshot by default.
+- A full snapshot should create the seven required artifacts listed in this skill, plus optional loop-state artifacts when the user provides feedback or the run identifies reusable knowledge.
 - Only reduce scope when the user explicitly asks for a smoke test, lightweight run, partial run, limited time/budget, or names a smaller artifact set.
-- If the user asks for a smaller run, honor the requested artifact set and state that it is a partial validation pack.
+- If the user asks for a smaller run, honor the requested artifact set and state that it is a partial validation loop.
 
 ## Trigger
 
@@ -100,7 +124,8 @@ Run the `validate-launch` workflow when the user asks to:
 - choose a positioning or audience wedge for an ecommerce product
 - turn a product link, category, screenshot, or upload into a launch plan
 - create listing copy, content hooks, or a short-video/live-commerce plan for a first test
-- generate a 7-day ecommerce launch validation package
+- adjust a promotion plan after content, store, creator, customer, review, or return feedback
+- generate an adaptive ecommerce launch validation package
 
 If the user asks for a broad competitive analysis but the context is ecommerce/new-product launch, steer toward launch validation instead of a generic competitor report.
 
@@ -113,7 +138,7 @@ Run the `calibrate-content` workflow when the user asks to:
 - run a post-publish retrospective
 - decide which content variant to ship first
 
-For content calibration tasks, delegate to the `content-calibration` skill. The `asset-studio` subagent handles content scoring and prediction; `evidence-checker` handles retro analysis and rubric auditing.
+For content calibration tasks, delegate to the `content-calibration` skill. The `asset-studio` subagent handles content scoring and prediction; `evidence-checker` handles retro analysis and rubric auditing. When content calibration changes the SKU launch decision or promotion plan, summarize the impact in the launch loop.
 
 ## Forbidden Claims
 
@@ -341,6 +366,7 @@ Responsibilities:
 - synthesize specialist findings into a coherent launch decision
 - enforce evidence labels and forbidden-claim rules
 - write artifacts under `/mnt/user-data/outputs`
+- prefer `write_opensku_artifact_bundle` for full OpenSKU benchmark/full runs so JSON, CSV, Markdown, and HTML contracts are generated deterministically
 - call `present_files`
 
 Do not ask the user to manually choose subagents. The user interacts with one EcomLaunch Agent.
@@ -385,13 +411,16 @@ In plan/Ultra mode, maintain a todo list that follows the launch workflow:
 
 ```text
 clarify launch brief
+classify SKU launch stage
 collect public market signals
 collect customer voice signals
 draft audience wedge and offer hypotheses
 draft listing/content assets
-design 7-day validation plan
+design adaptive validation sprint
+adjust promotion plan if feedback or data is available
 audit evidence and unsupported claims
-write and present artifacts
+capture reusable launch knowledge
+write artifact bundle, validate it, and present artifacts
 ```
 
 ### 3. Decompose With Subagents When Available
@@ -401,7 +430,8 @@ If subagent mode is available, the lead agent should act as `launch-director` an
 Recommended subagents:
 
 - `market-voc-researcher`: combined market signals, competitors, pricing, and customer voice/VOC analysis
-- `offer-architect`: segment, job-to-be-done, core promise, differentiators, risks, launch hypotheses, 7-day test plan
+- `offer-architect`: segment, job-to-be-done, core promise, differentiators, risks, launch hypotheses, adaptive test plan
+- `growth-analyst`: SKU stage, feedback interpretation, no-backend validation signals, decision rules, and promotion replanning
 - `asset-studio`: title, bullets, detail page, FAQ, short-video scripts, livestream talk tracks, social posts, creator brief
 - `evidence-checker`: final evidence audit and unsupported-claim cleanup
 
@@ -413,7 +443,7 @@ offer-architect
 evidence-checker
 ```
 
-Use all five specialist roles when the user asks for the full Launch Validation Pack, or when the user has not explicitly limited scope. A smoke test or explicitly partial run may use fewer roles, but the final response must say it is partial.
+Use all five specialist roles when the user asks for the full adaptive launch-loop snapshot, or when the user has not explicitly limited scope. A smoke test or explicitly partial run may use fewer roles, but the final response must say it is partial.
 
 When using the `task` tool, the `subagent_type` argument must be the exact specialist name, for example:
 
@@ -443,6 +473,14 @@ If custom ecommerce subagents are not available, complete the same workflow sequ
 
 The workflow should be useful in a demo without burning minutes on endless public search fallbacks.
 
+Hard rule for uploaded-data or benchmark-fixture runs:
+
+```text
+If the user provides uploaded files, benchmark fixtures, or explicit public sample rows that are enough to make a bounded launch decision, inspect those files first and do not perform broad external web search unless the user explicitly asks for fresh web research.
+```
+
+For benchmark-fixture validation, each specialist should use the uploaded files and return quickly. Do not call `web_search`, `web_fetch`, or `image_search` in benchmark-fixture mode unless the prompt explicitly permits external research. The goal is to test launch-loop reasoning, artifact contracts, evidence boundaries, and knowledge capture, not open-ended market crawling.
+
 Default search/fetch budget for a full run:
 
 ```text
@@ -453,6 +491,8 @@ evidence-checker: no broad search; inspect final draft/evidence and fetch only m
 ```
 
 If sources are thin, blocked, login-only, or rate-limited, stop expanding search after the budget and record the limitation. Do not keep rewriting similar queries. Prefer a concise "insufficient public evidence" note over a long search loop.
+
+If any specialist returns partial findings, times out, or fails, the launch-director must continue with the evidence already available, mark the missing role as a limitation in `evidence-ledger.json` and `launch-state.json`, and write the required artifacts instead of starting a new broad search loop. A partial specialist result is acceptable evidence for a Hold/Pivot decision; missing private data is not a reason to skip artifacts.
 
 Each specialist should return:
 
@@ -499,9 +539,22 @@ Return:
 - reasons to believe
 - risk assumptions
 - opportunity score with evidence labels
-- 7-day validation hypotheses and decision rules
+- adaptive validation hypotheses and decision rules
 
 Do not write generic ad copy. Keep the output decision-oriented.
+
+#### growth-analyst
+
+Return:
+
+- launch-stage diagnosis: `idea_only`, `supplier_sample`, `pre_launch_test`, `soft_launch`, or `scale_iterate`
+- available-data map and missing-data map
+- lightweight validation signals for no-backend users
+- interpretation of uploaded feedback, if any
+- promotion replan recommendations when data suggests a change in hook, channel, price, page evidence, audience, or creator brief
+- next-loop cadence: 3, 7, 14, or 30 days, with explicit decision rules
+
+Do not treat 7 days as mandatory. Choose the shortest useful loop that matches the SKU stage and available evidence.
 
 #### asset-studio
 
@@ -717,7 +770,7 @@ Asset quality rules:
 - Keep objection handling honest: answer with public concern + what to verify + suggested proof to collect.
 - Include a `Claim Readiness Matrix` so the user can see which claims are ready, which need specs, and which should not be used yet.
 
-### 10. Create 7-Day Launch Test Plan
+### 10. Create Adaptive Launch Sprint
 
 Each test should include:
 
@@ -731,6 +784,22 @@ Each test should include:
 - next action
 
 Phrase platform metrics as `unavailable` or "to collect after launch" when private performance data is unavailable. Do not make CTR, CVR, ROI, repeat purchase rate, or refund rate the default KPI for no-backend users.
+
+Choose the loop duration by stage:
+
+```text
+idea_only: 3-7 days for demand, audience, and claim validation
+supplier_sample: 7-14 days for sample/spec proof, content proof, and price acceptance
+pre_launch_test: 7-14 days for hooks, creator briefs, preorder/waitlist, and page claims
+soft_launch: 7-30 days for uploaded store/content/customer data interpretation
+scale_iterate: 14-30 days for channel, budget, inventory, content, and page optimization
+```
+
+If the user uploads feedback or real early-launch data, include a promotion replan:
+
+```text
+observed signal -> likely interpretation -> plan change -> next test -> stop/continue rule
+```
 
 Example:
 
@@ -755,14 +824,25 @@ Before final delivery:
 - ensure listing/content outputs do not contain fake "实测", "用了X个月", "用户反馈", "退货承诺", or exact technical values unless supported
 - ensure `evidence-ledger.json` is a valid JSON array, not Markdown, and contains no unescaped line breaks inside string values
 - ensure CSV artifacts use valid CSV quoting: wrap fields containing commas, quotes, or line breaks in double quotes; escape internal quotes as `""`; every row must have the declared column count
+- ensure `competitor-table.csv` `evidence_id` values are exact `EVID-...` IDs that already exist in `evidence-ledger.json`; never put a descriptive label, price band, claim text, or competitor name in `evidence_id`
+- ensure `positioning-brief.md` includes the exact case-sensitive literal label `Evidence limitations:`
+- ensure both `listing-pack.md` and `content-pack.md` include the exact case-sensitive literal label `Claim readiness:`
+- ensure `promotion-replan.md` includes the exact section text `stop/continue rule`
 - if JSON validation fails, rewrite the file before calling `present_files`
 - if CSV validation fails, rewrite the file before calling `present_files`
+- For complete OpenSKU benchmark/full runs, prefer the `write_opensku_artifact_bundle` tool when it is exposed. Pass concise synthesis fields from the five specialists; do not emit a giant `launch-war-room.html` through `write_file`.
+- Run OpenSKU artifact validators before `present_files` when available. Prefer the `validate_opensku_artifacts` tool when it is exposed. If validators fail, rewrite the invalid artifacts and rerun validation before presenting files.
+- If `write_opensku_artifact_bundle` returns `status=PASS`, call `present_files` immediately for the generated files; do not rewrite the HTML by hand.
+- After `validate_opensku_artifacts` returns PASS, call `present_files` immediately; do not perform extra polishing, unrelated reads, or another synthesis loop.
+- If a todo tool is available, mark all artifact and self-audit todos complete before calling `present_files`. After `present_files` succeeds, do not call another tool; immediately send the final Chinese response and stop.
+- Do not claim row counts or internal artifact counts in the final response unless they were returned by a tool or you read the artifact. Listing filenames is enough.
+- Final artifact list must be filenames only. Do not add per-file descriptions, evidence counts, row counts, or entry counts.
 
 ## Required Artifacts
 
 Final deliverables must be saved under `/mnt/user-data/outputs` and presented with `present_files`.
 
-Default `validate-launch` delivery is the complete artifact set below. Do not silently downgrade to only a competitor memo, positioning brief, or three-file smoke test unless the user explicitly requested a smaller run.
+Default `validate-launch` delivery is the complete artifact set below. Treat it as a snapshot of the current launch loop, not as the end of the product. Do not silently downgrade to only a competitor memo, positioning brief, or three-file smoke test unless the user explicitly requested a smaller run.
 
 Create these files:
 
@@ -782,7 +862,12 @@ Recommended optional files:
 review-insights.json
 risk-notes.md
 source-list.md
+launch-state.json
+promotion-replan.md
+knowledge-deltas.json
 ```
+
+When uploaded feedback, uploaded real data, or benchmark context is present, create and present `launch-state.json`, `promotion-replan.md`, and `knowledge-deltas.json` so the output records stage, decision, observed signal, plan change, next test, stop/continue rule, and reusable knowledge deltas.
 
 If the run cannot create every artifact because of tool failure or missing information, create the artifacts that are possible and explain the missing ones in the final response. Do not silently omit required files.
 
@@ -836,10 +921,10 @@ The ledger must be a JSON array, not a Markdown code block.
 Columns:
 
 ```csv
-competitor_name,platform,product_url,price_low,price_high,key_claims,visible_strengths,visible_weaknesses,evidence_type,source_type,confidence,notes
+competitor,observed_claim,evidence_id,confidence,limitation
 ```
 
-The CSV must be parseable by a standard CSV reader. Avoid raw line breaks inside cells unless they are properly quoted.
+The CSV must be parseable by a standard CSV reader. `evidence_id` must be one exact `EVID-...` id from `evidence-ledger.json`. Avoid raw line breaks inside cells unless they are properly quoted.
 
 ### launch-calendar.csv
 
@@ -849,6 +934,8 @@ Columns:
 day,objective,experiment,asset,channel,validation_signal_to_collect,decision_rule,owner,expected_output
 ```
 
+This file represents the next adaptive sprint. It may be 3, 7, 14, or 30 days depending on launch stage and available data. Use a 7-day cadence only when no better cadence is implied by the brief.
+
 ### launch-war-room.html
 
 The HTML dashboard should be self-contained and readable in DeerFlow's artifact preview.
@@ -856,6 +943,7 @@ The HTML dashboard should be self-contained and readable in DeerFlow's artifact 
 Required sections:
 
 - product brief
+- launch stage diagnosis
 - target platform and user segment
 - opportunity score
 - top market findings
@@ -864,7 +952,8 @@ Required sections:
 - positioning recommendation
 - listing preview
 - content hooks
-- 7-day launch plan
+- adaptive launch sprint
+- promotion replan when feedback/data is available
 - evidence confidence summary
 - limitations
 
@@ -917,3 +1006,5 @@ In the visible response:
 2. Mention that private ecommerce metrics were not available if applicable.
 3. Point the user to the presented artifacts.
 4. Do not paste every artifact in chat; the files are the source of truth.
+
+Final response must state launch stage, decision, next-loop test, promotion adjustment, data limitations, and artifact list.

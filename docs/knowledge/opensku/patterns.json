@@ -1,0 +1,510 @@
+{
+  "pattern_count": 13,
+  "patterns": [
+    {
+      "evidence_ids": [
+        "EVID-001",
+        "EVID-005"
+      ],
+      "id": "kp_0001",
+      "maturities": [
+        "draft",
+        "verified"
+      ],
+      "maturity": "verified",
+      "occurrence_count": 7,
+      "reuse_evidence": [
+        {
+          "case_id": "live-knowledge-injection-opensku-idea-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-27/live-knowledge-injection-opensku-idea-002",
+          "run_id": "e91225b6-a1aa-4769-9e6c-a9b53a73b62a"
+        },
+        {
+          "case_id": "live-knowledge-injection-v2-opensku-idea-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-27/live-knowledge-injection-v2-opensku-idea-002",
+          "run_id": "37cfe736-fb6c-410c-a070-fed13e6957fb"
+        }
+      ],
+      "reuse_key": "decision|workflow|current loop state is hold at stage idea_only.",
+      "scope": "workflow",
+      "source_case_ids": [
+        "batch-live-5stage-opensku-idea-001",
+        "batch-live-smoke-opensku-idea-001",
+        "live-demo-portable-coffee-tumbler-001-bundle-writer",
+        "live-demo-portable-coffee-tumbler-001-bundle-writer-final-check",
+        "live-knowledge-injection-opensku-idea-002",
+        "live-knowledge-injection-v2-opensku-idea-002",
+        "opensku-idea-002"
+      ],
+      "source_run_ids": [
+        "1b509691-6fc1-4df6-949b-0d0214349c76",
+        "3673f3a9-6c51-4ed6-bb12-760f4d5bcbf1",
+        "37cfe736-fb6c-410c-a070-fed13e6957fb",
+        "6a1e641a-3990-4929-a6e9-90bb3638beb3",
+        "859ef561-d6fe-4827-a506-6ce7d5b65716",
+        "e91225b6-a1aa-4769-9e6c-a9b53a73b62a",
+        "fbaa72f2-c13d-44f4-9b85-b7f0d17c1e96"
+      ],
+      "statement": "Current loop state is Hold at stage idea_only.",
+      "type": "decision"
+    },
+    {
+      "evidence_ids": [
+        "EVID-001",
+        "EVID-005"
+      ],
+      "id": "kp_0002",
+      "maturities": [
+        "draft"
+      ],
+      "occurrence_count": 1,
+      "reuse_key": "decision|workflow|current loop state is hold at stage pre_launch_test.",
+      "scope": "workflow",
+      "source_case_ids": [
+        "batch-live-stage2-opensku-softlaunch-002"
+      ],
+      "source_run_ids": [
+        "b3d88a6f-8c40-480e-b055-8b00a5e04129"
+      ],
+      "statement": "Current loop state is Hold at stage pre_launch_test.",
+      "type": "decision"
+    },
+    {
+      "evidence_ids": [
+        "EVID-001",
+        "EVID-005"
+      ],
+      "id": "kp_0003",
+      "maturities": [
+        "draft"
+      ],
+      "occurrence_count": 1,
+      "reuse_key": "decision|workflow|current loop state is hold at stage scale_iterate.",
+      "scope": "workflow",
+      "source_case_ids": [
+        "batch-live-stage2-rerun-opensku-scale-002"
+      ],
+      "source_run_ids": [
+        "07e9f507-a291-47d6-820b-c2d3f9662abe"
+      ],
+      "statement": "Current loop state is Hold at stage scale_iterate.",
+      "type": "decision"
+    },
+    {
+      "evidence_ids": [
+        "EVID-001",
+        "EVID-005"
+      ],
+      "id": "kp_0004",
+      "maturities": [
+        "draft"
+      ],
+      "occurrence_count": 1,
+      "reuse_key": "decision|workflow|current loop state is hold at stage soft_launch.",
+      "scope": "workflow",
+      "source_case_ids": [
+        "batch-live-5stage-opensku-softlaunch-001"
+      ],
+      "source_run_ids": [
+        "72450b53-1951-4961-a1f5-14f49b3c04e3"
+      ],
+      "statement": "Current loop state is Hold at stage soft_launch.",
+      "type": "decision"
+    },
+    {
+      "evidence_ids": [
+        "EVID-001",
+        "EVID-005"
+      ],
+      "id": "kp_0005",
+      "maturities": [
+        "draft"
+      ],
+      "occurrence_count": 2,
+      "reuse_key": "decision|workflow|current loop state is hold at stage supplier_sample.",
+      "scope": "workflow",
+      "source_case_ids": [
+        "batch-live-5stage-opensku-supplier-001",
+        "batch-live-stage2-opensku-supplier-002"
+      ],
+      "source_run_ids": [
+        "4f73454f-befc-4d04-a719-33942d1cdc74",
+        "a5294739-b72f-43ce-9662-7a1413fc9a59"
+      ],
+      "statement": "Current loop state is Hold at stage supplier_sample.",
+      "type": "decision"
+    },
+    {
+      "evidence_ids": [
+        "EVID-001",
+        "EVID-005"
+      ],
+      "id": "kp_0006",
+      "maturities": [
+        "draft"
+      ],
+      "occurrence_count": 1,
+      "reuse_key": "decision|workflow|current loop state is kill at stage pre_launch_test.",
+      "scope": "workflow",
+      "source_case_ids": [
+        "live-knowledge-injection-prelaunch-002"
+      ],
+      "source_run_ids": [
+        "9bdf284d-addd-4e31-abae-319ffe3f1c35"
+      ],
+      "statement": "Current loop state is Kill at stage pre_launch_test.",
+      "type": "decision"
+    },
+    {
+      "evidence_ids": [
+        "EVID-001",
+        "EVID-005"
+      ],
+      "id": "kp_0007",
+      "maturities": [
+        "draft"
+      ],
+      "occurrence_count": 1,
+      "reuse_key": "decision|workflow|current loop state is pivot at stage idea_only.",
+      "scope": "workflow",
+      "source_case_ids": [
+        "opensku-idea-002"
+      ],
+      "source_run_ids": [
+        "90229aca-c891-434a-9d93-5c1e41e8bb42"
+      ],
+      "statement": "Current loop state is Pivot at stage idea_only.",
+      "type": "decision"
+    },
+    {
+      "evidence_ids": [
+        "EVID-001",
+        "EVID-005"
+      ],
+      "id": "kp_0008",
+      "maturities": [
+        "draft",
+        "verified"
+      ],
+      "maturity": "verified",
+      "occurrence_count": 4,
+      "reuse_evidence": [
+        {
+          "case_id": "live-decision-taxonomy-prelaunch-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-27/live-decision-taxonomy-prelaunch-002",
+          "run_id": "b31036d6-76c5-45d9-8e82-ad9bd73b4c4e"
+        },
+        {
+          "case_id": "rc2-rerun-opensku-prelaunch-001",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-28/rc2-rerun-opensku-prelaunch-001",
+          "run_id": "685bd73d-f204-43e4-9d74-9d0cc086435c"
+        }
+      ],
+      "reuse_key": "decision|workflow|current loop state is pivot at stage pre_launch_test.",
+      "scope": "workflow",
+      "source_case_ids": [
+        "batch-live-stage2-opensku-prelaunch-002",
+        "live-decision-taxonomy-prelaunch-002",
+        "opensku-prelaunch-001",
+        "rc2-rerun-opensku-prelaunch-001"
+      ],
+      "source_run_ids": [
+        "1992db1e-6cfc-4c84-b477-8711df951af6",
+        "350ecafc-e314-4329-9c2f-c0b28787e273",
+        "685bd73d-f204-43e4-9d74-9d0cc086435c",
+        "b31036d6-76c5-45d9-8e82-ad9bd73b4c4e"
+      ],
+      "statement": "Current loop state is Pivot at stage pre_launch_test.",
+      "type": "decision"
+    },
+    {
+      "evidence_ids": [
+        "EVID-001",
+        "EVID-005"
+      ],
+      "id": "kp_0009",
+      "maturities": [
+        "draft"
+      ],
+      "occurrence_count": 1,
+      "reuse_key": "decision|workflow|current loop state is pivot at stage soft_launch.",
+      "scope": "workflow",
+      "source_case_ids": [
+        "rc2-rerun-opensku-softlaunch-002"
+      ],
+      "source_run_ids": [
+        "352781f8-b0fa-4c66-9573-df1cb4ee4275"
+      ],
+      "statement": "Current loop state is Pivot at stage soft_launch.",
+      "type": "decision"
+    },
+    {
+      "evidence_ids": [
+        "EVID-001",
+        "EVID-005"
+      ],
+      "id": "kp_0010",
+      "maturities": [
+        "draft"
+      ],
+      "occurrence_count": 1,
+      "reuse_key": "decision|workflow|current loop state is pivot at stage supplier_sample.",
+      "scope": "workflow",
+      "source_case_ids": [
+        "rc2-rerun-opensku-supplier-002"
+      ],
+      "source_run_ids": [
+        "e1e6507d-44ba-4b1f-ba42-a0c1d6665eff"
+      ],
+      "statement": "Current loop state is Pivot at stage supplier_sample.",
+      "type": "decision"
+    },
+    {
+      "evidence_ids": [
+        "EVID-001",
+        "EVID-005"
+      ],
+      "id": "kp_0011",
+      "maturities": [
+        "draft"
+      ],
+      "occurrence_count": 1,
+      "reuse_key": "decision|workflow|current loop state is scale at stage scale_iterate.",
+      "scope": "workflow",
+      "source_case_ids": [
+        "opensku-scale-001"
+      ],
+      "source_run_ids": [
+        "c10d8fa5-0b9f-4648-99cc-d0f53fa2ea5d"
+      ],
+      "statement": "Current loop state is Scale at stage scale_iterate.",
+      "type": "decision"
+    },
+    {
+      "evidence_ids": [
+        "EVID-004"
+      ],
+      "id": "kp_0012",
+      "maturities": [
+        "draft",
+        "verified"
+      ],
+      "maturity": "verified",
+      "occurrence_count": 21,
+      "reuse_evidence": [
+        {
+          "case_id": "live-decision-taxonomy-prelaunch-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-27/live-decision-taxonomy-prelaunch-002",
+          "run_id": "b31036d6-76c5-45d9-8e82-ad9bd73b4c4e"
+        },
+        {
+          "case_id": "live-knowledge-injection-opensku-idea-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-27/live-knowledge-injection-opensku-idea-002",
+          "run_id": "e91225b6-a1aa-4769-9e6c-a9b53a73b62a"
+        },
+        {
+          "case_id": "live-knowledge-injection-prelaunch-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-27/live-knowledge-injection-prelaunch-002",
+          "run_id": "9bdf284d-addd-4e31-abae-319ffe3f1c35"
+        },
+        {
+          "case_id": "live-knowledge-injection-v2-opensku-idea-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-27/live-knowledge-injection-v2-opensku-idea-002",
+          "run_id": "37cfe736-fb6c-410c-a070-fed13e6957fb"
+        },
+        {
+          "case_id": "rc2-rerun-opensku-idea-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-28/rc2-rerun-opensku-idea-002",
+          "run_id": "90229aca-c891-434a-9d93-5c1e41e8bb42"
+        },
+        {
+          "case_id": "rc2-rerun-opensku-prelaunch-001",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-28/rc2-rerun-opensku-prelaunch-001",
+          "run_id": "685bd73d-f204-43e4-9d74-9d0cc086435c"
+        },
+        {
+          "case_id": "rc2-rerun-opensku-softlaunch-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-28/rc2-rerun-opensku-softlaunch-002",
+          "run_id": "352781f8-b0fa-4c66-9573-df1cb4ee4275"
+        },
+        {
+          "case_id": "rc2-rerun-opensku-supplier-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-28/rc2-rerun-opensku-supplier-002",
+          "run_id": "e1e6507d-44ba-4b1f-ba42-a0c1d6665eff"
+        }
+      ],
+      "reuse_key": "pitfall|workflow|do not convert public fixtures or public review language into private commerce metrics.",
+      "scope": "workflow",
+      "source_case_ids": [
+        "batch-live-5stage-opensku-idea-001",
+        "batch-live-5stage-opensku-softlaunch-001",
+        "batch-live-5stage-opensku-supplier-001",
+        "batch-live-smoke-opensku-idea-001",
+        "batch-live-stage2-opensku-prelaunch-002",
+        "batch-live-stage2-opensku-softlaunch-002",
+        "batch-live-stage2-opensku-supplier-002",
+        "batch-live-stage2-rerun-opensku-scale-002",
+        "live-decision-taxonomy-prelaunch-002",
+        "live-demo-portable-coffee-tumbler-001-bundle-writer",
+        "live-demo-portable-coffee-tumbler-001-bundle-writer-final-check",
+        "live-knowledge-injection-opensku-idea-002",
+        "live-knowledge-injection-prelaunch-002",
+        "live-knowledge-injection-v2-opensku-idea-002",
+        "opensku-idea-002",
+        "opensku-prelaunch-001",
+        "opensku-scale-001",
+        "rc2-rerun-opensku-prelaunch-001",
+        "rc2-rerun-opensku-softlaunch-002",
+        "rc2-rerun-opensku-supplier-002"
+      ],
+      "source_run_ids": [
+        "07e9f507-a291-47d6-820b-c2d3f9662abe",
+        "1992db1e-6cfc-4c84-b477-8711df951af6",
+        "1b509691-6fc1-4df6-949b-0d0214349c76",
+        "350ecafc-e314-4329-9c2f-c0b28787e273",
+        "352781f8-b0fa-4c66-9573-df1cb4ee4275",
+        "3673f3a9-6c51-4ed6-bb12-760f4d5bcbf1",
+        "37cfe736-fb6c-410c-a070-fed13e6957fb",
+        "4f73454f-befc-4d04-a719-33942d1cdc74",
+        "685bd73d-f204-43e4-9d74-9d0cc086435c",
+        "6a1e641a-3990-4929-a6e9-90bb3638beb3",
+        "72450b53-1951-4961-a1f5-14f49b3c04e3",
+        "859ef561-d6fe-4827-a506-6ce7d5b65716",
+        "90229aca-c891-434a-9d93-5c1e41e8bb42",
+        "9bdf284d-addd-4e31-abae-319ffe3f1c35",
+        "a5294739-b72f-43ce-9662-7a1413fc9a59",
+        "b31036d6-76c5-45d9-8e82-ad9bd73b4c4e",
+        "b3d88a6f-8c40-480e-b055-8b00a5e04129",
+        "c10d8fa5-0b9f-4648-99cc-d0f53fa2ea5d",
+        "e1e6507d-44ba-4b1f-ba42-a0c1d6665eff",
+        "e91225b6-a1aa-4769-9e6c-a9b53a73b62a",
+        "fbaa72f2-c13d-44f4-9b85-b7f0d17c1e96"
+      ],
+      "statement": "Do not convert public fixtures or public review language into private commerce metrics.",
+      "type": "pitfall"
+    },
+    {
+      "evidence_ids": [
+        "EVID-005"
+      ],
+      "id": "kp_0013",
+      "maturities": [
+        "draft",
+        "verified"
+      ],
+      "maturity": "verified",
+      "occurrence_count": 21,
+      "reuse_evidence": [
+        {
+          "case_id": "live-decision-taxonomy-prelaunch-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-27/live-decision-taxonomy-prelaunch-002",
+          "run_id": "b31036d6-76c5-45d9-8e82-ad9bd73b4c4e"
+        },
+        {
+          "case_id": "live-knowledge-injection-opensku-idea-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-27/live-knowledge-injection-opensku-idea-002",
+          "run_id": "e91225b6-a1aa-4769-9e6c-a9b53a73b62a"
+        },
+        {
+          "case_id": "live-knowledge-injection-prelaunch-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-27/live-knowledge-injection-prelaunch-002",
+          "run_id": "9bdf284d-addd-4e31-abae-319ffe3f1c35"
+        },
+        {
+          "case_id": "live-knowledge-injection-v2-opensku-idea-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-27/live-knowledge-injection-v2-opensku-idea-002",
+          "run_id": "37cfe736-fb6c-410c-a070-fed13e6957fb"
+        },
+        {
+          "case_id": "rc2-rerun-opensku-idea-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-28/rc2-rerun-opensku-idea-002",
+          "run_id": "90229aca-c891-434a-9d93-5c1e41e8bb42"
+        },
+        {
+          "case_id": "rc2-rerun-opensku-prelaunch-001",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-28/rc2-rerun-opensku-prelaunch-001",
+          "run_id": "685bd73d-f204-43e4-9d74-9d0cc086435c"
+        },
+        {
+          "case_id": "rc2-rerun-opensku-softlaunch-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-28/rc2-rerun-opensku-softlaunch-002",
+          "run_id": "352781f8-b0fa-4c66-9573-df1cb4ee4275"
+        },
+        {
+          "case_id": "rc2-rerun-opensku-supplier-002",
+          "promoted_to": "verified",
+          "run_dir": "docs/progress/runs/2026-06-28/rc2-rerun-opensku-supplier-002",
+          "run_id": "e1e6507d-44ba-4b1f-ba42-a0c1d6665eff"
+        }
+      ],
+      "reuse_key": "process|workflow|use a runtime artifact writer plus validator for benchmark runs so long html/csv payloads do not depend on a giant model tool call.",
+      "scope": "workflow",
+      "source_case_ids": [
+        "batch-live-5stage-opensku-idea-001",
+        "batch-live-5stage-opensku-softlaunch-001",
+        "batch-live-5stage-opensku-supplier-001",
+        "batch-live-smoke-opensku-idea-001",
+        "batch-live-stage2-opensku-prelaunch-002",
+        "batch-live-stage2-opensku-softlaunch-002",
+        "batch-live-stage2-opensku-supplier-002",
+        "batch-live-stage2-rerun-opensku-scale-002",
+        "live-decision-taxonomy-prelaunch-002",
+        "live-demo-portable-coffee-tumbler-001-bundle-writer",
+        "live-demo-portable-coffee-tumbler-001-bundle-writer-final-check",
+        "live-knowledge-injection-opensku-idea-002",
+        "live-knowledge-injection-prelaunch-002",
+        "live-knowledge-injection-v2-opensku-idea-002",
+        "opensku-idea-002",
+        "opensku-prelaunch-001",
+        "opensku-scale-001",
+        "rc2-rerun-opensku-prelaunch-001",
+        "rc2-rerun-opensku-softlaunch-002",
+        "rc2-rerun-opensku-supplier-002"
+      ],
+      "source_run_ids": [
+        "07e9f507-a291-47d6-820b-c2d3f9662abe",
+        "1992db1e-6cfc-4c84-b477-8711df951af6",
+        "1b509691-6fc1-4df6-949b-0d0214349c76",
+        "350ecafc-e314-4329-9c2f-c0b28787e273",
+        "352781f8-b0fa-4c66-9573-df1cb4ee4275",
+        "3673f3a9-6c51-4ed6-bb12-760f4d5bcbf1",
+        "37cfe736-fb6c-410c-a070-fed13e6957fb",
+        "4f73454f-befc-4d04-a719-33942d1cdc74",
+        "685bd73d-f204-43e4-9d74-9d0cc086435c",
+        "6a1e641a-3990-4929-a6e9-90bb3638beb3",
+        "72450b53-1951-4961-a1f5-14f49b3c04e3",
+        "859ef561-d6fe-4827-a506-6ce7d5b65716",
+        "90229aca-c891-434a-9d93-5c1e41e8bb42",
+        "9bdf284d-addd-4e31-abae-319ffe3f1c35",
+        "a5294739-b72f-43ce-9662-7a1413fc9a59",
+        "b31036d6-76c5-45d9-8e82-ad9bd73b4c4e",
+        "b3d88a6f-8c40-480e-b055-8b00a5e04129",
+        "c10d8fa5-0b9f-4648-99cc-d0f53fa2ea5d",
+        "e1e6507d-44ba-4b1f-ba42-a0c1d6665eff",
+        "e91225b6-a1aa-4769-9e6c-a9b53a73b62a",
+        "fbaa72f2-c13d-44f4-9b85-b7f0d17c1e96"
+      ],
+      "statement": "Use a runtime artifact writer plus validator for benchmark runs so long HTML/CSV payloads do not depend on a giant model tool call.",
+      "type": "process"
+    }
+  ]
+}

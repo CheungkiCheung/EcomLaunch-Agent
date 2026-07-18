@@ -62,11 +62,11 @@ export const zhCN: Translations = {
   welcome: {
     greeting: "你好，欢迎回来！",
     description:
-      "欢迎使用 🦌 openGrowth，一个完全开源的超级智能体。通过内置和自定义的 Skills，\nopenGrowth 可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n图片、视频、播客及网页等，几乎可以做任何事情。",
+      "欢迎使用 OpenSKU，一个开源 SKU 上新决策助手。它用 Agent Skill、公开信号、上传材料和评测文件，帮你判断下一轮该测试、调整还是停止。",
 
     createYourOwnSkill: "创建你自己的 Agent SKill",
     createYourOwnSkillDescription:
-      "创建你的 Agent Skill 来释放 openGrowth 的潜力。通过自定义技能，openGrowth\n可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n网页等作品，几乎可以做任何事情。",
+      "创建你的 Agent Skill 来扩展 OpenSKU 工作区。自定义技能可以搜索网络、分析数据，并生成适合你流程的上新决策文件。",
   },
 
   // Clipboard
@@ -167,7 +167,7 @@ export const zhCN: Translations = {
     recentChats: "最近的对话",
     demoChats: "演示对话",
     agents: "智能体",
-    ecomLaunch: "EcomLaunch 验证台",
+    ecomLaunch: "OpenSKU 上新循环",
     ecomLaunchChat: "Chat",
     ecomLaunchWarRoom: "War Room",
   },
@@ -203,37 +203,37 @@ export const zhCN: Translations = {
     save: "保存智能体",
     saving: "正在保存智能体...",
     saveRequested:
-      "已提交保存请求，openGrowth 正在根据当前对话生成并保存初版智能体。",
+      "已提交保存请求，OpenSKU 正在根据当前对话生成并保存初版智能体。",
     saveHint:
       "你可以在右上角的菜单里随时保存这个智能体，就算目前还只是初稿也可以。",
     saveCommandMessage:
       "请现在根据我们目前已经讨论的全部内容保存这个自定义智能体。这就是我明确的保存确认。如果仍有少量细节缺失，请根据上下文做出合理假设，生成一份简洁的英文初始 SOUL.md，并直接调用 setup_agent，不要再向我索要额外确认。",
     agentCreatedPendingRefresh:
-      "智能体已创建，但 openGrowth 暂时还无法读取到它。请稍后刷新当前页面。",
+      "智能体已创建，但 OpenSKU 暂时还无法读取到它。请稍后刷新当前页面。",
     more: "更多操作",
     agentCreated: "智能体已创建！",
     startChatting: "开始对话",
     backToGallery: "返回 Gallery",
-    ecomLaunchName: "EcomLaunch 验证台",
+    ecomLaunchName: "OpenSKU 上新循环",
     ecomLaunchWelcomeDescription:
-      "用公开信号、上传材料和明确假设，把模糊新品想法变成 7 天电商上新验证包。",
+      "用公开信号、上传材料、反馈数据和明确假设，把模糊新品想法变成自适应上新决策循环。",
     ecomLaunchWelcomeBadges: [
       "公开信号",
       "无后台数据可用",
       "Launch Crew",
-      "7 天验证包",
+      "自适应循环",
     ],
     ecomLaunchSuggestions: [
       {
         suggestion: "无数据验证",
         prompt:
-          "我想做一个 99-199 元的通勤咖啡杯，但没有任何店铺后台数据。请用公开信号帮我判断是否值得做 7 天轻量验证，并输出 Launch Validation Pack。",
+          "我想做一个 99-199 元的通勤咖啡杯，但没有任何店铺后台数据。请用公开信号判断当前上新阶段、是否值得测试，并输出 Launch Decision Pack 和下一轮实验方案。",
         icon: CompassIcon,
       },
       {
         suggestion: "类目机会",
         prompt:
-          "我想在宠物用品类目找一个适合低成本测试的新品机会。请先用公开信号扫描，再给出受众楔子、卖点假设和 7 天验证计划。",
+          "我想在宠物用品类目找一个适合低成本测试的新品机会。请先用公开信号扫描，再给出受众楔子、卖点假设和下一轮自适应验证计划。",
         icon: MicroscopeIcon,
       },
       {
@@ -245,7 +245,7 @@ export const zhCN: Translations = {
       {
         suggestion: "信息不完整",
         prompt:
-          "我只有一个很粗糙的新品想法。请先问我一个最关键的问题；如果信息仍然不足，就用明确标注的假设继续生成轻量验证方案。",
+          "我只有一个很粗糙的新品想法。请先问我一个最关键的问题；如果信息仍然不足，就用明确标注的假设继续生成自适应上新循环。",
         icon: SparklesIcon,
       },
     ],
@@ -259,13 +259,13 @@ export const zhCN: Translations = {
 
   // Workspace
   workspace: {
-    officialWebsite: "访问 openGrowth 官方网站",
-    githubTooltip: "访问 openGrowth 的 Github 仓库",
+    officialWebsite: "访问 OpenSKU 官方网站",
+    githubTooltip: "访问 OpenSKU 的 Github 仓库",
     settingsAndMore: "设置和更多",
-    visitGithub: "在 Github 上查看 openGrowth",
+    visitGithub: "在 Github 上查看 OpenSKU",
     reportIssue: "报告问题",
     contactUs: "联系我们",
-    about: "关于 openGrowth",
+    about: "关于 OpenSKU",
     logout: "退出登录",
   },
 
@@ -282,7 +282,7 @@ export const zhCN: Translations = {
 
   // Page titles (document title)
   pages: {
-    appName: "openGrowth",
+    appName: "OpenSKU",
     chats: "对话",
     newChat: "新对话",
     untitled: "未命名",
@@ -307,7 +307,7 @@ export const zhCN: Translations = {
     writeFile: "写入文件",
     clickToViewContent: "点击查看文件内容",
     writeTodos: "更新 To-do 列表",
-    skillInstallTooltip: "安装技能并使其可在 openGrowth 中使用",
+    skillInstallTooltip: "安装技能并使其可在 OpenSKU 中使用",
   },
 
   uploads: {
@@ -364,7 +364,7 @@ export const zhCN: Translations = {
     noResults: "未找到结果。",
     actions: "操作",
     keyboardShortcuts: "键盘快捷键",
-    keyboardShortcutsDescription: "使用键盘快捷键更快地操作 openGrowth。",
+    keyboardShortcutsDescription: "使用键盘快捷键更快地操作 OpenSKU。",
     openCommandPalette: "打开命令面板",
     toggleSidebar: "切换侧边栏",
   },
@@ -372,7 +372,7 @@ export const zhCN: Translations = {
   // Settings
   settings: {
     title: "设置",
-    description: "根据你的偏好调整 openGrowth 的界面和行为。",
+    description: "根据你的偏好调整 OpenSKU 的界面和行为。",
     sections: {
       account: "账号",
       appearance: "外观",
@@ -385,7 +385,7 @@ export const zhCN: Translations = {
     memory: {
       title: "记忆",
       description:
-        "openGrowth 会在后台不断从你的对话中自动学习。这些记忆能帮助 openGrowth 更好地理解你，并提供更个性化的体验。",
+        "OpenSKU 会在后台不断从你的对话中自动学习。这些记忆能帮助 OpenSKU 更好地理解你，并提供更个性化的体验。",
       empty: "暂无可展示的记忆数据。",
       rawJson: "原始 JSON",
       exportButton: "导出记忆",
@@ -481,18 +481,18 @@ export const zhCN: Translations = {
       createSkill: "新建技能",
       emptyTitle: "还没有技能",
       emptyDescription:
-        "将你的 Agent Skill 文件夹放在 openGrowth 根目录下的 `/skills/custom` 文件夹中。",
+        "将你的 Agent Skill 文件夹放在 OpenSKU 根目录下的 `/skills/custom` 文件夹中。",
       emptyButton: "创建你的第一个技能",
     },
     notification: {
       title: "通知",
       description:
-        "openGrowth 只会在窗口不活跃时发送完成通知，特别适合长时间任务：你可以先去做别的事，完成后会收到提醒。",
+        "OpenSKU 只会在窗口不活跃时发送完成通知，特别适合长时间任务：你可以先去做别的事，完成后会收到提醒。",
       requestPermission: "请求通知权限",
       deniedHint:
         "通知权限已被拒绝。可在浏览器的网站设置中重新开启，以接收完成提醒。",
       testButton: "发送测试通知",
-      testTitle: "openGrowth",
+      testTitle: "OpenSKU",
       testBody: "这是一条测试通知。",
       notSupported: "当前浏览器不支持通知功能。",
       disableNotification: "关闭通知",

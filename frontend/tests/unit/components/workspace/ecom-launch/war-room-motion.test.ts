@@ -49,7 +49,7 @@ describe("war room motion model", () => {
     expect(motion?.state).toBe("roaming");
     expect(motion?.targetWaypoint).not.toBeNull();
     expect(
-      ["leftWalkway", "whiteboard", "bigScreen", "coffee"].includes(
+      ["leftWalkway", "marketDesk", "coffee"].includes(
         motion?.targetWaypoint ?? "",
       ),
     ).toBe(true);
@@ -109,6 +109,27 @@ describe("war room motion model", () => {
     expect(
       motions.every((motion) => motion.targetWaypoint === "artifactConveyor"),
     ).toBe(true);
+  });
+
+  it("keeps idle roaming agents out of the director command zone", () => {
+    const motions = buildWarRoomMotion(
+      [
+        agent("market-voc-researcher"),
+        agent("offer-architect"),
+        agent("evidence-checker"),
+        agent("growth-analyst"),
+        agent("asset-studio"),
+      ],
+      7,
+    );
+
+    for (const motion of motions) {
+      const distanceToDirector = Math.hypot(
+        motion.position.x - WAR_ROOM_WAYPOINTS.directorDesk.x,
+        motion.position.y - WAR_ROOM_WAYPOINTS.directorDesk.y,
+      );
+      expect(distanceToDirector).toBeGreaterThan(16);
+    }
   });
 
   it("keeps blocked agents at home with a blocked state", () => {

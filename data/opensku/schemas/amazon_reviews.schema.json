@@ -1,0 +1,290 @@
+{
+  "components": [
+    {
+      "component": "all_beauty_reviews",
+      "dataset": "amazon_reviews",
+      "fields": {
+        "asin": {
+          "example_values": [
+            "B00YQ6X8EO",
+            "B081TJ8YS3",
+            "B07PNNCSP9"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "helpful_vote": {
+          "example_values": [
+            0,
+            1,
+            2
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "integer"
+          ]
+        },
+        "images": {
+          "example_values": [
+            [],
+            [],
+            []
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "array"
+          ]
+        },
+        "parent_asin": {
+          "example_values": [
+            "B00YQ6X8EO",
+            "B081TJ8YS3",
+            "B097R46CSY"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "rating": {
+          "example_values": [
+            5.0,
+            4.0,
+            5.0
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "float"
+          ]
+        },
+        "text": {
+          "example_values": [
+            "This spray is really nice. It smells really good, goes on really fine, and does the trick. I will say it feels like you need a lot of it though to get the text...",
+            "This product does what I need it to do, I just wish it was odorless or had a soft coconut smell. Having my head smell like an orange coffee is offputting. (gra...",
+            "Smells good, feels great!"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "timestamp": {
+          "example_values": [
+            1588687728923,
+            1588615855070,
+            1589665266052
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "integer"
+          ]
+        },
+        "title": {
+          "example_values": [
+            "Such a lovely scent but not overpowering.",
+            "Works great but smells a little weird.",
+            "Yes!"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "user_id": {
+          "example_values": [
+            "AGKHLEW2SOWHNMFQIJGBECAF7INQ",
+            "AGKHLEW2SOWHNMFQIJGBECAF7INQ",
+            "AE74DYR3QUGVPZJ3P7RFWBGIX7XQ"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "verified_purchase": {
+          "example_values": [
+            true,
+            true,
+            true
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "boolean"
+          ]
+        }
+      },
+      "format": "jsonl.gz",
+      "note": "Review ratings, review text, timestamps, helpful votes, and verified-purchase flags.",
+      "row_count": 5,
+      "source_url": "https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/raw/review_categories/All_Beauty.jsonl.gz"
+    },
+    {
+      "component": "all_beauty_metadata",
+      "dataset": "amazon_reviews",
+      "fields": {
+        "average_rating": {
+          "example_values": [
+            4.8,
+            4.5,
+            4.4
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "float"
+          ]
+        },
+        "bought_together": {
+          "example_values": [],
+          "non_null_count": 0,
+          "observed_types": [
+            "null"
+          ]
+        },
+        "categories": {
+          "example_values": [
+            [],
+            [],
+            []
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "array"
+          ]
+        },
+        "description": {
+          "example_values": [
+            [],
+            [],
+            []
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "array"
+          ]
+        },
+        "details": {
+          "example_values": [
+            {
+              "Package Dimensions": "7.1 x 5.5 x 3 inches; 2.38 Pounds",
+              "UPC": "617390882781"
+            },
+            "{\"Age Range (Description)\": \"Adult\", \"Brand\": \"Yes To\", \"Is Discontinued By Manufacturer\": \"No\", \"Item Form\": \"Powder\", \"Item model number\": \"SG_B076WQZGPM_US\"...",
+            {
+              "Manufacturer": "Levine Health Products"
+            }
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "object"
+          ]
+        },
+        "features": {
+          "example_values": [
+            [],
+            [],
+            []
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "array"
+          ]
+        },
+        "images": {
+          "example_values": [
+            "[{\"hi_res\": null, \"large\": \"https://m.media-amazon.com/images/I/41qfjSfqNyL.jpg\", \"thumb\": \"https://m.media-amazon.com/images/I/41qfjSfqNyL._SS40_.jpg\", \"varia...",
+            "[{\"hi_res\": \"https://m.media-amazon.com/images/I/71g1lP0pMbL._SL1500_.jpg\", \"large\": \"https://m.media-amazon.com/images/I/41b+11d5igL.jpg\", \"thumb\": \"https://m...",
+            "[{\"hi_res\": null, \"large\": \"https://m.media-amazon.com/images/I/31bz+uqzWCL.jpg\", \"thumb\": \"https://m.media-amazon.com/images/I/31bz+uqzWCL._SS40_.jpg\", \"varia..."
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "array"
+          ]
+        },
+        "main_category": {
+          "example_values": [
+            "All Beauty",
+            "All Beauty",
+            "All Beauty"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "parent_asin": {
+          "example_values": [
+            "B01CUPMQZE",
+            "B076WQZGPM",
+            "B000B658RI"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "price": {
+          "example_values": [],
+          "non_null_count": 0,
+          "observed_types": [
+            "null"
+          ]
+        },
+        "rating_number": {
+          "example_values": [
+            10,
+            3,
+            26
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "integer"
+          ]
+        },
+        "store": {
+          "example_values": [
+            "Howard Products",
+            "Yes To",
+            "Levine Health Products"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "title": {
+          "example_values": [
+            "Howard LC0008 Leather Conditioner, 8-Ounce (4-Pack)",
+            "Yes to Tomatoes Detoxifying Charcoal Cleanser (Pack of 2) with Charcoal Powder, Tomato Fruit Extract, and Gingko Biloba Leaf Extract, 5 fl. oz.",
+            "Eye Patch Black Adult with Tie Band (6 Per Pack)"
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "string"
+          ]
+        },
+        "videos": {
+          "example_values": [
+            [],
+            [],
+            []
+          ],
+          "non_null_count": 5,
+          "observed_types": [
+            "array"
+          ]
+        }
+      },
+      "format": "jsonl.gz",
+      "note": "Item metadata for matching reviews to product titles, descriptions, price, images, and store context.",
+      "row_count": 5,
+      "source_url": "https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/raw/meta_categories/meta_All_Beauty.jsonl.gz"
+    }
+  ],
+  "dataset": "amazon_reviews",
+  "generated_at": "2026-06-27T02:40:42.214588Z",
+  "limit_per_component": 5,
+  "sample_path": "data/opensku/samples/amazon_reviews.jsonl",
+  "schema_path": "data/opensku/schemas/amazon_reviews.schema.json"
+}

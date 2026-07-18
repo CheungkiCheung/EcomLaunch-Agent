@@ -34,9 +34,9 @@ describe("launch crew activity model", () => {
       "info",
       "pending",
     ]);
-    expect(model.artifactStatuses.every((artifact) => artifact.status === "pending")).toBe(
-      true,
-    );
+    expect(
+      model.artifactStatuses.every((artifact) => artifact.status === "pending"),
+    ).toBe(true);
   });
 
   it("marks active tasks, caps live comms, and selects the working agent", () => {
@@ -109,7 +109,9 @@ describe("launch crew activity model", () => {
 
     expect(model.selectedAgent.id).toBe("evidence-checker");
     expect(model.selectedAgent.status).toBe("error");
-    expect(model.selectedAgent.lastLine).toBe("Evidence ledger JSON parse failed");
+    expect(model.selectedAgent.lastLine).toBe(
+      "Evidence ledger JSON parse failed",
+    );
   });
 
   it("preserves a valid user-selected agent", () => {
@@ -134,9 +136,9 @@ describe("launch crew activity model", () => {
 
     expect(model.selectedAgent.id).toBe("asset-studio");
     expect(model.selectedAgent.status).toBe("done");
-    expect(model.selectedAgent.artifacts.map((artifact) => artifact.name)).toEqual([
-      "listing-pack.md",
-    ]);
+    expect(
+      model.selectedAgent.artifacts.map((artifact) => artifact.name),
+    ).toEqual(["listing-pack.md"]);
   });
 
   it("maps real artifacts and evidence badges without fake ready states", () => {
@@ -160,12 +162,48 @@ describe("launch crew activity model", () => {
       "evidence-ledger.json",
       "unknown-extra.md",
     ]);
-    expect(model.evidenceBadges.find((badge) => badge.id === "evidence-ledger")?.status).toBe(
-      "ready",
-    );
-    expect(model.evidenceBadges.find((badge) => badge.id === "claims-audit")?.status).toBe(
-      "ready",
-    );
+    expect(
+      model.evidenceBadges.find((badge) => badge.id === "evidence-ledger")
+        ?.status,
+    ).toBe("ready");
+    expect(
+      model.evidenceBadges.find((badge) => badge.id === "claims-audit")?.status,
+    ).toBe("ready");
+  });
+
+  it("summarizes the adaptive launch loop and loop-state artifacts", () => {
+    const model = buildLaunchCrewActivityModel({
+      tasks: [],
+      artifacts: [
+        "launch-state.json",
+        "promotion-replan.md",
+        "knowledge-deltas.json",
+        "evidence-ledger.json",
+      ],
+      todos: [],
+      finalResponseText: `
+        当前阶段: scale_iterate
+        推荐决策: Hold
+        数据边界: GMV/CTR/CVR/ROI 不可用，除非用户上传私域指标。
+      `,
+      isStreaming: false,
+    });
+
+    expect(model.loopSnapshot.stage).toBe("scale_iterate");
+    expect(model.loopSnapshot.decision).toBe("Hold");
+    expect(model.loopSnapshot.privateMetricBoundary.status).toBe("info");
+    expect(
+      model.loopSnapshot.loopArtifacts.map((artifact) => artifact.name),
+    ).toEqual([
+      "launch-state.json",
+      "promotion-replan.md",
+      "knowledge-deltas.json",
+    ]);
+    expect(
+      model.artifactStatuses
+        .filter((artifact) => artifact.name === "promotion-replan.md")
+        .map((artifact) => artifact.required),
+    ).toEqual([false]);
   });
 
   it("builds non-linear active missions from todos, tasks, and artifacts", () => {

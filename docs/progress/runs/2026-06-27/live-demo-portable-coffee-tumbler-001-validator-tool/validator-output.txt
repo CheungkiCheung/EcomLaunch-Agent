@@ -1,0 +1,3 @@
+bundle=/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/7a1aff22-a9af-459e-bbfe-ae3f9249eaa4/threads/opensku-live-live-demo-portable-coffee-tumbler-001-validator-tool-1782532974/user-data/outputs
+artifact_count=10
+status=PASS

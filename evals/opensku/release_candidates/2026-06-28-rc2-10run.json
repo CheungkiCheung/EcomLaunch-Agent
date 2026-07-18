@@ -1,0 +1,78 @@
+{
+  "name": "2026-06-28-rc2-10run",
+  "description": "Ten-run OpenSKU release-candidate decision gate over accepted real live-run evidence, with two cases per launch stage and expected-decision validation enabled.",
+  "cases_dir": "evals/opensku/cases",
+  "decision_gate": true,
+  "acceptance": {
+    "min_live_runs": 10,
+    "required_stage_counts": {
+      "idea_only": 2,
+      "supplier_sample": 2,
+      "pre_launch_test": 2,
+      "soft_launch": 2,
+      "scale_iterate": 2
+    }
+  },
+  "live_runs": [
+    {
+      "case_id": "opensku-idea-001",
+      "stage": "idea_only",
+      "run_dir": "docs/progress/runs/2026-06-27/batch-live-5stage-opensku-idea-001",
+      "note": "Accepted real live run from the original five-stage batch."
+    },
+    {
+      "case_id": "opensku-idea-002",
+      "stage": "idea_only",
+      "run_dir": "docs/progress/runs/2026-06-28/rc2-rerun-opensku-idea-002",
+      "note": "Real rerun after Go/Pivot/Hold calibration; expected-decision gate observed Pivot."
+    },
+    {
+      "case_id": "opensku-supplier-001",
+      "stage": "supplier_sample",
+      "run_dir": "docs/progress/runs/2026-06-27/batch-live-5stage-opensku-supplier-001",
+      "note": "Accepted real live run from the original five-stage batch."
+    },
+    {
+      "case_id": "opensku-supplier-002",
+      "stage": "supplier_sample",
+      "run_dir": "docs/progress/runs/2026-06-28/rc2-rerun-opensku-supplier-002",
+      "note": "Real rerun after supplier_sample claim-set Pivot calibration; expected-decision gate observed Pivot."
+    },
+    {
+      "case_id": "opensku-prelaunch-001",
+      "stage": "pre_launch_test",
+      "run_dir": "docs/progress/runs/2026-06-28/rc2-rerun-opensku-prelaunch-001",
+      "note": "Real rerun plus benchmark-case correction: salon-chair query and platform-bed SKU are a search-fit Pivot case."
+    },
+    {
+      "case_id": "opensku-prelaunch-002",
+      "stage": "pre_launch_test",
+      "run_dir": "docs/progress/runs/2026-06-27/live-decision-taxonomy-prelaunch-002",
+      "note": "Real rerun after pre_launch_test Pivot/Kill taxonomy fix; expected-decision gate observed Pivot."
+    },
+    {
+      "case_id": "opensku-softlaunch-001",
+      "stage": "soft_launch",
+      "run_dir": "docs/progress/runs/2026-06-27/batch-live-5stage-opensku-softlaunch-001",
+      "note": "Accepted real live run from the original five-stage batch."
+    },
+    {
+      "case_id": "opensku-softlaunch-002",
+      "stage": "soft_launch",
+      "run_dir": "docs/progress/runs/2026-06-28/rc2-rerun-opensku-softlaunch-002",
+      "note": "Real rerun after soft_launch uploaded-data Pivot calibration; expected-decision gate observed Pivot."
+    },
+    {
+      "case_id": "opensku-scale-001",
+      "stage": "scale_iterate",
+      "run_dir": "docs/progress/runs/2026-06-27/batch-live-5stage-opensku-scale-001",
+      "note": "Accepted real live run from the original five-stage batch."
+    },
+    {
+      "case_id": "opensku-scale-002",
+      "stage": "scale_iterate",
+      "run_dir": "docs/progress/runs/2026-06-27/batch-live-stage2-rerun-opensku-scale-002",
+      "note": "Accepted real rerun from the 10-run acceptance set."
+    }
+  ]
+}

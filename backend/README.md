@@ -1,6 +1,8 @@
-# DeerFlow Backend
+# OpenSKU Backend
 
-DeerFlow is a LangGraph-based AI super agent with sandbox execution, persistent memory, and extensible tool integration. The backend enables AI agents to execute code, browse the web, manage files, delegate tasks to subagents, and retain context across conversations - all in isolated, per-thread environments.
+This is the backend runtime for OpenSKU. It provides the LangGraph-compatible agent service, sandboxed file/artifact execution, persistent memory, skill loading, subagent delegation, uploads, and streaming APIs used by the OpenSKU frontend and EcomLaunch workflow.
+
+The backend is built on the DeerFlow harness. Product-facing documentation should describe OpenSKU as the adaptive SKU launch loop, while backend internals may still use DeerFlow package and runtime names.
 
 ---
 
@@ -143,7 +145,7 @@ For Feishu card updates, DeerFlow stores the running card's `message_id` per inb
 ### Installation
 
 ```bash
-cd deer-flow
+cd OpenSKU
 
 # Copy configuration files
 cp config.example.yaml config.yaml

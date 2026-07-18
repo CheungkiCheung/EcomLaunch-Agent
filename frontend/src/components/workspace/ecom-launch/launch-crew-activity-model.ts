@@ -82,6 +82,17 @@ export type LaunchCrewEvidenceBadge = {
   status: LaunchCrewBadgeStatus;
 };
 
+export type LaunchLoopSnapshot = {
+  stage: string;
+  decision: string;
+  status: LaunchCrewMissionStatus | "failed";
+  privateMetricBoundary: LaunchCrewEvidenceBadge;
+  coreArtifacts: LaunchCrewArtifact[];
+  loopArtifacts: LaunchCrewArtifact[];
+  readyArtifactCount: number;
+  totalArtifactCount: number;
+};
+
 export type LaunchCrewActivityModel = {
   agents: LaunchCrewAgent[];
   selectedAgent: LaunchCrewAgent;
@@ -89,6 +100,7 @@ export type LaunchCrewActivityModel = {
   activeMissions: LaunchCrewMission[];
   artifactStatuses: LaunchCrewArtifact[];
   evidenceBadges: LaunchCrewEvidenceBadge[];
+  loopSnapshot: LaunchLoopSnapshot;
   activeAgentCount: number;
   completedAgentCount: number;
   progress: number;
@@ -99,6 +111,7 @@ export type BuildLaunchCrewActivityInput = {
   artifacts: string[];
   todos?: Todo[];
   selectedAgentId?: LaunchCrewRole | null;
+  finalResponseText?: string;
   isStreaming: boolean;
 };
 
@@ -170,65 +183,110 @@ export const LAUNCH_CREW_AGENTS: Array<
   },
 ];
 
-const REQUIRED_DELIVERABLES: Array<{
+type LaunchDeliverableGroup = "core" | "loop" | "calibration";
+
+const LAUNCH_DELIVERABLES: Array<{
   filepath: string;
   label: string;
   role: LaunchCrewRole;
+  required: boolean;
+  group: LaunchDeliverableGroup;
 }> = [
   {
     filepath: "competitor-table.csv",
     label: "市场信号表",
     role: "market-voc-researcher",
+    required: true,
+    group: "core",
   },
   {
     filepath: "evidence-ledger.json",
     label: "证据账本",
     role: "evidence-checker",
+    required: true,
+    group: "core",
   },
   {
     filepath: "positioning-brief.md",
     label: "定位 brief",
     role: "offer-architect",
+    required: true,
+    group: "core",
   },
   {
     filepath: "listing-pack.md",
     label: "Listing pack",
     role: "asset-studio",
+    required: true,
+    group: "core",
   },
   {
     filepath: "content-pack.md",
     label: "内容包",
     role: "asset-studio",
+    required: true,
+    group: "core",
   },
   {
     filepath: "launch-calendar.csv",
-    label: "7 天计划",
+    label: "下一轮计划",
     role: "growth-analyst",
+    required: true,
+    group: "core",
   },
   {
     filepath: "launch-war-room.html",
     label: "War room 页面",
     role: "evidence-checker",
+    required: true,
+    group: "core",
+  },
+  {
+    filepath: "launch-state.json",
+    label: "循环状态",
+    role: "launch-director",
+    required: false,
+    group: "loop",
+  },
+  {
+    filepath: "promotion-replan.md",
+    label: "推广重排",
+    role: "growth-analyst",
+    required: false,
+    group: "loop",
+  },
+  {
+    filepath: "knowledge-deltas.json",
+    label: "知识增量",
+    role: "evidence-checker",
+    required: false,
+    group: "loop",
   },
   {
     filepath: "calibration-ledger.json",
     label: "校准账本",
     role: "evidence-checker",
+    required: false,
+    group: "calibration",
   },
   {
     filepath: "rubric.md",
     label: "评分公式",
     role: "evidence-checker",
+    required: false,
+    group: "calibration",
   },
   {
     filepath: "content-scorecard.md",
     label: "内容评分卡",
     role: "asset-studio",
+    required: false,
+    group: "calibration",
   },
 ];
 
 const ARTIFACT_ROLE_OVERRIDES = new Map(
-  REQUIRED_DELIVERABLES.map((artifact) => [artifact.filepath, artifact.role]),
+  LAUNCH_DELIVERABLES.map((artifact) => [artifact.filepath, artifact.role]),
 );
 
 export function buildLaunchCrewActivityModel({
@@ -236,6 +294,7 @@ export function buildLaunchCrewActivityModel({
   artifacts,
   todos,
   selectedAgentId,
+  finalResponseText,
   isStreaming,
 }: BuildLaunchCrewActivityInput): LaunchCrewActivityModel {
   const taskByRole = latestTaskByRole(tasks);
@@ -279,6 +338,12 @@ export function buildLaunchCrewActivityModel({
     activeMissions: buildActiveMissions(tasks, artifactStatuses, todos),
     artifactStatuses,
     evidenceBadges: buildEvidenceBadges(tasks, artifactStatuses, isStreaming),
+    loopSnapshot: buildLoopSnapshot({
+      tasks,
+      artifacts: artifactStatuses,
+      finalResponseText,
+      isStreaming,
+    }),
     activeAgentCount,
     completedAgentCount,
     progress:
@@ -297,13 +362,15 @@ function latestTaskByRole(tasks: LaunchCrewTask[]) {
 }
 
 function buildArtifacts(filepaths: string[]): LaunchCrewArtifact[] {
-  const readyByName = new Map(filepaths.map((filepath) => [getFileName(filepath), filepath]));
-  const required = REQUIRED_DELIVERABLES.map((deliverable) => ({
+  const readyByName = new Map(
+    filepaths.map((filepath) => [getFileName(filepath), filepath]),
+  );
+  const known = LAUNCH_DELIVERABLES.map((deliverable) => ({
     filepath: readyByName.get(deliverable.filepath) ?? deliverable.filepath,
     name: deliverable.filepath,
     label: deliverable.label,
     role: deliverable.role,
-    required: true,
+    required: deliverable.required,
     status: readyByName.has(deliverable.filepath) ? "ready" : "pending",
   })) satisfies LaunchCrewArtifact[];
   const extra = filepaths
@@ -311,7 +378,9 @@ function buildArtifacts(filepaths: string[]): LaunchCrewArtifact[] {
       const name = getFileName(filepath);
       return { filepath, name };
     })
-    .filter(({ name }) => !REQUIRED_DELIVERABLES.some((item) => item.filepath === name))
+    .filter(
+      ({ name }) => !LAUNCH_DELIVERABLES.some((item) => item.filepath === name),
+    )
     .map(({ filepath, name }) => ({
       filepath,
       name,
@@ -320,7 +389,7 @@ function buildArtifacts(filepaths: string[]): LaunchCrewArtifact[] {
       required: false,
       status: "ready" as const,
     }));
-  return [...required, ...extra];
+  return [...known, ...extra];
 }
 
 function roleForArtifactName(name: string): LaunchCrewRole {
@@ -386,7 +455,9 @@ function lineForAgent(
     return task.currentAction;
   }
   if (task?.status === "completed") {
-    return task.result ? "结构化发现已回传给 Launch Director。" : "子任务已完成。";
+    return task.result
+      ? "结构化发现已回传给 Launch Director。"
+      : "子任务已完成。";
   }
   if (task) {
     return task.description;
@@ -423,11 +494,15 @@ function chooseSelectedAgentId({
   if (failed) {
     return failed.role;
   }
-  const working = [...tasks].reverse().find((task) => task.status === "in_progress");
+  const working = [...tasks]
+    .reverse()
+    .find((task) => task.status === "in_progress");
   if (working) {
     return working.role;
   }
-  const completed = [...tasks].reverse().find((task) => task.status === "completed");
+  const completed = [...tasks]
+    .reverse()
+    .find((task) => task.status === "completed");
   if (completed) {
     return completed.role;
   }
@@ -449,7 +524,9 @@ function buildLiveComms(
       task.status === "failed"
         ? (task.error ?? "任务阻塞")
         : task.status === "completed"
-          ? (task.result ? "结构化发现已回传。" : "子任务已完成。")
+          ? task.result
+            ? "结构化发现已回传。"
+            : "子任务已完成。"
           : (task.currentAction ?? task.description),
     kind:
       task.status === "failed"
@@ -525,7 +602,9 @@ function buildEvidenceBadges(
   isStreaming: boolean,
 ): LaunchCrewEvidenceBadge[] {
   const artifactNames = new Set(
-    artifacts.filter((artifact) => artifact.status === "ready").map((artifact) => artifact.name),
+    artifacts
+      .filter((artifact) => artifact.status === "ready")
+      .map((artifact) => artifact.name),
   );
   const evidenceTask = tasks.find((task) => task.role === "evidence-checker");
   return [
@@ -558,6 +637,91 @@ function buildEvidenceBadges(
   ];
 }
 
+function buildLoopSnapshot({
+  tasks,
+  artifacts,
+  finalResponseText,
+  isStreaming,
+}: {
+  tasks: LaunchCrewTask[];
+  artifacts: LaunchCrewArtifact[];
+  finalResponseText?: string;
+  isStreaming: boolean;
+}): LaunchLoopSnapshot {
+  const readyArtifacts = artifacts.filter(
+    (artifact) => artifact.status === "ready",
+  );
+  const failed = tasks.some((task) => task.status === "failed");
+  const stage = extractStage(finalResponseText) ?? "待诊断";
+  const decision =
+    extractDecision(finalResponseText) ?? (isStreaming ? "判断中" : "待决策");
+  const coreArtifacts = artifacts.filter(
+    (artifact) => deliverableGroup(artifact.name) === "core",
+  );
+  const loopArtifacts = artifacts.filter(
+    (artifact) => deliverableGroup(artifact.name) === "loop",
+  );
+  const hasDecisionEvidence =
+    decision !== "待决策" ||
+    readyArtifacts.some((artifact) => artifact.name === "launch-state.json");
+
+  return {
+    stage,
+    decision,
+    status: failed
+      ? "failed"
+      : hasDecisionEvidence
+        ? "done"
+        : isStreaming
+          ? "active"
+          : "pending",
+    privateMetricBoundary: {
+      id: "private-metrics",
+      label: "GMV/CTR/CVR/ROI unavailable unless uploaded",
+      status: "info",
+    },
+    coreArtifacts,
+    loopArtifacts,
+    readyArtifactCount: readyArtifacts.length,
+    totalArtifactCount: artifacts.length,
+  };
+}
+
+function deliverableGroup(name: string): LaunchDeliverableGroup | null {
+  return (
+    LAUNCH_DELIVERABLES.find((deliverable) => deliverable.filepath === name)
+      ?.group ?? null
+  );
+}
+
+function extractStage(text: string | undefined) {
+  if (!text) {
+    return null;
+  }
+  const lower = text.toLowerCase();
+  const stages = [
+    "idea_only",
+    "supplier_sample",
+    "pre_launch_test",
+    "soft_launch",
+    "scale_iterate",
+  ];
+  return stages.find((stage) => lower.includes(stage)) ?? null;
+}
+
+function extractDecision(text: string | undefined) {
+  if (!text) {
+    return null;
+  }
+  const match = text.match(/\b(go|pivot|hold|kill|scale)\b/i);
+  if (!match) {
+    return null;
+  }
+  return match[1]!.slice(0, 1).toUpperCase() + match[1]!.slice(1).toLowerCase();
+}
+
 function agentName(role: LaunchCrewRole) {
-  return LAUNCH_CREW_AGENTS.find((agent) => agent.id === role)?.shortName ?? role;
+  return (
+    LAUNCH_CREW_AGENTS.find((agent) => agent.id === role)?.shortName ?? role
+  );
 }

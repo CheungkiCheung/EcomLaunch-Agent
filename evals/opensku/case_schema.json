@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenSKU Benchmark Case",
+  "type": "object",
+  "required": [
+    "case_id",
+    "stage",
+    "category",
+    "brief",
+    "public_context",
+    "uploaded_real",
+    "expected_decision",
+    "expected_decision_rationale",
+    "required_artifacts",
+    "required_claims",
+    "forbidden_claims",
+    "scoring_notes",
+    "source_dataset",
+    "evaluation_tags"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "pattern": "^opensku-[a-z-]+-[0-9]{3}$"
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "idea_only",
+        "supplier_sample",
+        "pre_launch_test",
+        "soft_launch",
+        "scale_iterate"
+      ]
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brief": {
+      "type": "string",
+      "minLength": 20
+    },
+    "public_context": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/context_ref"
+      }
+    },
+    "uploaded_real": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/context_ref"
+      }
+    },
+    "expected_decision": {
+      "type": "string",
+      "enum": [
+        "Go",
+        "Pivot",
+        "Hold",
+        "Kill",
+        "Scale"
+      ]
+    },
+    "expected_decision_rationale": {
+      "type": "string",
+      "minLength": 20
+    },
+    "required_artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "required_claims": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden_claims": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "scoring_notes": {
+      "type": "object"
+    },
+    "source_dataset": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "evaluation_tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "public_signal_context",
+          "uploaded_data_simulation",
+          "forbidden_metric_trap",
+          "unsupported_claim_trap",
+          "stage_diagnosis",
+          "promotion_replan",
+          "knowledge_delta"
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "context_ref": {
+      "type": "object",
+      "required": [
+        "source_type",
+        "dataset",
+        "component",
+        "sample_file",
+        "row_index",
+        "fields"
+      ],
+      "properties": {
+        "source_type": {
+          "type": "string",
+          "enum": [
+            "public_benchmark_fixture",
+            "public_fixture_as_uploaded_simulation"
+          ]
+        },
+        "dataset": {
+          "type": "string"
+        },
+        "component": {
+          "type": "string"
+        },
+        "sample_file": {
+          "type": "string"
+        },
+        "row_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+

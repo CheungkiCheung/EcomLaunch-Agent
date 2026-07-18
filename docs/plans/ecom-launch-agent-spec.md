@@ -1,46 +1,49 @@
-# EcomLaunch Agent Spec
+# OpenSKU / EcomLaunch Agent Spec
 
 ## 1. Product Thesis
 
-EcomLaunch Agent is a vertical ecommerce new-product launch validation product built on DeerFlow's mature agent runtime.
+EcomLaunch Agent is the agent workflow behind OpenSKU, a vertical ecommerce SKU launch-loop product built on DeerFlow's mature agent runtime.
 
-It is not a generic competitor-analysis wrapper and it is not a full-platform crawler. Its core job is:
+It is not a generic competitor-analysis wrapper, a fixed seven-day report generator, or a full-platform crawler. Its core job is:
 
 ```text
-Turn a rough ecommerce product idea, category, product link, or uploaded material
-into a 7-day Launch Validation Pack using public signals, user-provided context,
-clearly labeled assumptions, and evidence-aware outputs.
+Turn a rough ecommerce product idea, category, product link, supplier/sample note,
+uploaded material, or early launch feedback into an adaptive launch loop:
+stage diagnosis -> evidence-backed decision -> promotion replan -> next experiment.
 ```
 
 The product should be explainable as:
 
 ```text
-Public-signal ecommerce launch validation agent.
-Built on DeerFlow's Lead Agent, skills, tools, Ultra-mode subagents, streaming events, and artifact system.
+Evidence-governed ecommerce SKU launch-loop agent.
+Built on DeerFlow's Lead Agent, skills, tools, Ultra-mode subagents, streaming events, artifacts, and launch knowledge capture.
 ```
 
 ## 2. Positioning
 
 ### 2.1 One-Line Positioning
 
-EcomLaunch-Agent helps ecommerce launch operators validate a new product idea before committing inventory, creative production, or ad budget.
+OpenSKU helps ecommerce launch operators decide what to do next with a SKU before and during early launch: Go, Pivot, Hold, Kill, or Scale.
 
 ### 2.2 What It Produces
 
-The primary deliverable is a **Launch Validation Pack**, not a generic research report.
+The primary deliverable is an **Adaptive Launch Loop Snapshot**, not a generic research report. The current artifact set is the Launch Decision Pack for one loop.
 
 Required output modules:
 
 - Launch context
+- Launch stage diagnosis
 - Public market signal brief
 - Market pattern map
 - Customer voice and scenario map
 - Audience wedge
 - Offer hypotheses
 - Listing and content assets
-- 7-day validation plan
+- Adaptive validation sprint
+- Promotion replan when feedback or uploaded data exists
 - Evidence ledger
 - Missing-data and limitations summary
+- Knowledge deltas for reusable category, channel, claim-risk, and experiment learnings
 
 Required artifact files:
 
@@ -54,6 +57,8 @@ content-pack.md
 launch-calendar.csv
 ```
 
+`launch-calendar.csv` is the sprint artifact for the next loop. It may cover 3, 7, 14, or 30 days depending on stage and evidence. Seven days remains a demo-friendly default, not a product boundary.
+
 Optional artifact files:
 
 ```text
@@ -61,6 +66,9 @@ review-insights.json
 risk-notes.md
 source-list.md
 launch-crew-events.json
+launch-state.json
+promotion-replan.md
+knowledge-deltas.json
 ```
 
 ### 2.3 What It Is Not
@@ -73,6 +81,7 @@ EcomLaunch must not position itself as:
 - a platform private-metric analyst
 - a generic DeerFlow research clone
 - a pure competitor-analysis report generator
+- a one-shot seven-day plan generator
 
 It must not claim access to:
 
@@ -126,7 +135,8 @@ Their job is not to read a report. Their job is to decide:
 - What should the first offer promise be?
 - What content angles should we test first?
 - What data is missing?
-- What should we do in the next 7 days?
+- What should we change after seeing content, customer, creator, store, review, or return feedback?
+- What should we do in the next loop?
 
 ### 3.2 Secondary Users
 
@@ -152,14 +162,17 @@ The core journey is:
 ```text
 Rough product idea
 -> conversational clarification
+-> launch stage diagnosis
 -> public signal collection
 -> source quality and evidence classification
 -> market pattern synthesis
 -> customer voice and scenario extraction
 -> audience wedge and offer hypotheses
 -> listing/content assets
--> 7-day validation plan
+-> adaptive validation sprint
+-> promotion replan when feedback or uploaded data exists
 -> evidence ledger
+-> knowledge deltas
 -> user feedback/uploaded test results
 -> revised launch recommendation
 ```
@@ -176,8 +189,10 @@ Rough product idea
 | VOC extraction | "Why would customers buy?" | Extract pain points, triggers, objections, scenarios, customer wording | VOC insight map |
 | Strategy | "How should we enter?" | Generate audience wedge, offer hypotheses, risk notes | Offer strategy |
 | Assets | "What can I test tomorrow?" | Generate listing copy, content hooks, scripts, creator brief | Content and listing pack |
-| Validation | "How do I decide continue/stop?" | Build 7-day tests with validation signals and decision rules | Launch calendar |
+| Validation | "How do I decide continue/stop?" | Build adaptive tests with validation signals and decision rules | Launch calendar |
+| Replan | "What should change after the data?" | Adjust hook, page, price signal, channel, audience, or creator brief | Promotion replan |
 | Audit | "What is evidence vs assumption?" | Remove unsupported private metrics, create evidence ledger | Evidence ledger |
+| Knowledge capture | "What should the next run remember?" | Extract reusable decisions, pitfalls, guidelines, and process notes | Knowledge deltas |
 
 ## 5. DeerFlow Foundation
 
@@ -426,16 +441,16 @@ Mapping to EcomLaunch:
 | pm-skills pattern | EcomLaunch equivalent |
 | --- | --- |
 | `/discover` | Launch opportunity clarification and assumptions |
-| `/plan-launch` | Launch Validation Pack |
+| `/plan-launch` | Launch Decision Pack for one loop |
 | `beachhead-segment` | Audience wedge |
-| `gtm-strategy` | 7-day launch validation strategy |
+| `gtm-strategy` | Adaptive launch-loop strategy |
 | `prioritize-assumptions` | Offer hypothesis priority |
 | `strategy-red-team` | Evidence checker and kill-assumption audit |
 
 EcomLaunch should not become a marketplace of many ecommerce skills in MVP. It should first perfect one flagship workflow:
 
 ```text
-validate-launch -> Launch Validation Pack
+validate-launch -> Adaptive Launch Loop Snapshot
 ```
 
 ## 7. EcomLaunch Agent Architecture
@@ -491,7 +506,7 @@ Minimum viable internal roles:
 market-scout + offer-architect + evidence-checker
 ```
 
-But the spec target remains 5 subagents because each corresponds to a distinct Launch Validation Pack module.
+But the spec target remains 5 subagents because each corresponds to a distinct launch-loop module.
 
 ## 8. Evidence Model
 
@@ -690,7 +705,7 @@ Use this workflow when the user asks to:
 - decide how to position a new product
 - turn a product link into a launch plan
 - generate listing/content assets for a first test
-- create a 7-day ecommerce launch plan
+- create an adaptive ecommerce launch plan
 
 ### 10.2 Clarification Behavior
 
@@ -725,7 +740,7 @@ If optional fields are missing, proceed with labeled assumptions unless the answ
 7. Synthesize market patterns and VOC
 8. Build audience wedge and offer hypotheses
 9. Generate listing/content assets
-10. Design 7-day validation plan
+10. Design adaptive validation sprint
 11. Run evidence audit
 12. Write artifacts under /mnt/user-data/outputs
 13. Call present_files
@@ -955,7 +970,7 @@ Examples:
 ```text
 我想验证一个新品想法
 我有一个竞品链接，帮我找差异化切入
-帮我生成 7 天上新验证包
+帮我根据当前阶段生成下一轮上新测试和宣传调整方案
 帮我把这个产品做成抖音/小红书内容测试方案
 我有测试反馈，帮我复盘是否继续
 ```
@@ -1074,12 +1089,12 @@ Acceptance:
 - JSON artifacts are arrays/objects with escaped string values, not Markdown code blocks or multiline raw strings
 - CSV artifacts parse with the declared column count
 
-### Milestone 3: Artifact-First MVP
+### Milestone 3: Artifact-First Loop Snapshot
 
 Goal:
 
 ```text
-Launch Validation Pack can be generated reliably.
+Launch Decision Pack can be generated reliably as the current loop snapshot.
 ```
 
 Deliverables:
@@ -1119,6 +1134,29 @@ Acceptance:
 - agent asks one targeted clarification when necessary
 - uploaded files are available to the task
 - output remains artifact-first
+
+### Milestone 4.5: Adaptive Launch State
+
+Goal:
+
+```text
+OpenSKU can treat each run as a launch-loop state update, not a one-shot report.
+```
+
+Deliverables:
+
+- `launch-state.json`
+- `promotion-replan.md`
+- `knowledge-deltas.json`
+- launch-stage classifier rules
+- feedback-to-replan examples
+
+Acceptance:
+
+- idea-only, supplier/sample, pre-launch, soft-launch, and scale-stage cases produce different next-loop recommendations
+- uploaded feedback changes the promotion plan instead of only regenerating the same pack
+- reusable pitfalls, decisions, and guidelines are captured as knowledge deltas
+- 7 days is used only as a default cadence when no better loop length is implied
 
 ### Milestone 5: Launch Crew State Model
 
@@ -1170,8 +1208,8 @@ Acceptance:
 
 Good result:
 
-- feels like an ecommerce launch validation product
-- produces a concrete Launch Validation Pack
+- feels like an ecommerce launch-loop product
+- produces a concrete Launch Decision Pack and next-loop recommendation
 - recommendations are actionable
 - private-data gaps are clearly named
 - evidence is labeled
@@ -1227,7 +1265,7 @@ Recommended Chinese demo:
 
 ```text
 我想做一款送女生的高颜值陶瓷杯，主要想在小红书和抖音种草，
-但我没有真实后台数据。帮我判断怎么切入，并生成 7 天上新验证包。
+但我没有真实后台数据。帮我判断当前阶段怎么切入，并生成下一轮上新测试和宣传调整方案。
 ```
 
 Why it works:
@@ -1246,7 +1284,7 @@ Expected result:
 - public signal summary
 - content hooks
 - listing copy
-- 7-day validation plan
+- adaptive validation sprint
 - evidence ledger and unavailable-metrics list
 
 Alternative demo:
@@ -1263,7 +1301,7 @@ Constraints: stainless steel, easy to clean, no electronics.
 Target repository:
 
 ```text
-git@github.com:CheungkiCheung/EcomLaunch-Agent.git
+git@github.com:CheungkiCheung/OpenSKU.git
 ```
 
 Local source:

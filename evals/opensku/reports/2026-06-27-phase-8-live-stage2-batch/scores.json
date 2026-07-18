@@ -1,0 +1,506 @@
+{
+  "status": "FAIL",
+  "score": 210,
+  "max_score": 220,
+  "score_ratio": 0.9545,
+  "results": [
+    {
+      "name": "case-suite",
+      "subject": "evals/opensku/cases",
+      "status": "PASS",
+      "score": 20,
+      "max_score": 20,
+      "score_ratio": 1.0,
+      "checks": [
+        {
+          "name": "case_validation",
+          "passed": true,
+          "score": 8,
+          "max_score": 8,
+          "details": []
+        },
+        {
+          "name": "case_count",
+          "passed": true,
+          "score": 3,
+          "max_score": 3,
+          "details": [
+            "case_count=30"
+          ]
+        },
+        {
+          "name": "stage_coverage",
+          "passed": true,
+          "score": 3,
+          "max_score": 3,
+          "details": [
+            "stage_counts={'idea_only': 6, 'supplier_sample': 6, 'pre_launch_test': 6, 'soft_launch': 8, 'scale_iterate': 4}",
+            "target={'idea_only': 6, 'supplier_sample': 6, 'pre_launch_test': 6, 'soft_launch': 8, 'scale_iterate': 4}"
+          ]
+        },
+        {
+          "name": "tag_traps",
+          "passed": true,
+          "score": 4,
+          "max_score": 4,
+          "details": [
+            "tag_counts={'public_signal_context': 16, 'stage_diagnosis': 30, 'forbidden_metric_trap': 20, 'unsupported_claim_trap': 8, 'promotion_replan': 12, 'knowledge_delta': 12, 'uploaded_data_simulation': 14}",
+            "minimums={'uploaded_data_simulation': 10, 'public_signal_context': 10, 'forbidden_metric_trap': 5, 'unsupported_claim_trap': 5}"
+          ]
+        },
+        {
+          "name": "source_references",
+          "passed": true,
+          "score": 2,
+          "max_score": 2,
+          "details": []
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-live-stage2-opensku-idea-002",
+      "status": "PASS",
+      "score": 40,
+      "max_score": 40,
+      "score_ratio": 1.0,
+      "checks": [
+        {
+          "name": "run_status",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "Status: PASS",
+            "- run_status: success"
+          ]
+        },
+        {
+          "name": "present_files",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "present_files_called=True",
+            "state_artifacts=['/mnt/user-data/outputs/launch-war-room.html', '/mnt/user-data/outputs/evidence-ledger.json', '/mnt/user-data/outputs/competitor-table.csv', '/mnt/user-data/outputs/positioning-brief.md', '/mnt/user-data/outputs/listing-pack.md', '/mnt/user-data/outputs/content-pack.md', '/mnt/user-data/outputs/launch-calendar.csv', '/mnt/user-data/outputs/launch-state.json', '/mnt/user-data/outputs/promotion-replan.md', '/mnt/user-data/outputs/knowledge-deltas.json']"
+          ]
+        },
+        {
+          "name": "subagents",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "observed=['asset-studio', 'evidence-checker', 'growth-analyst', 'market-voc-researcher', 'offer-architect']",
+            "missing=[]"
+          ]
+        },
+        {
+          "name": "artifact_writer_called",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "tool_call_names=['read_file', 'read_file', 'read_file', 'read_file', 'read_file', 'task', 'task', 'task', 'task', 'task', 'write_opensku_artifact_bundle', 'present_files']"
+          ]
+        },
+        {
+          "name": "external_search_gate",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "external_search_calls=[]"
+          ]
+        },
+        {
+          "name": "artifact_manifest",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "artifacts=['competitor-table.csv', 'content-pack.md', 'evidence-ledger.json', 'knowledge-deltas.json', 'launch-calendar.csv', 'launch-state.json', 'launch-war-room.html', 'listing-pack.md', 'positioning-brief.md', 'promotion-replan.md']",
+            "missing=[]"
+          ]
+        },
+        {
+          "name": "validator_output",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "bundle=/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/ea79972f-c161-40b4-a30d-e451828b1939/threads/opensku-live-batch-live-stage2-opensku-idea-002-1782540348/user-data/outputs",
+            "artifact_count=10",
+            "status=PASS"
+          ]
+        },
+        {
+          "name": "final_response",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "missing_requirements=[]",
+            "consistency_errors=[]"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-live-stage2-opensku-supplier-002",
+      "status": "PASS",
+      "score": 40,
+      "max_score": 40,
+      "score_ratio": 1.0,
+      "checks": [
+        {
+          "name": "run_status",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "Status: PASS",
+            "- run_status: success"
+          ]
+        },
+        {
+          "name": "present_files",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "present_files_called=True",
+            "state_artifacts=['/mnt/user-data/outputs/launch-war-room.html', '/mnt/user-data/outputs/evidence-ledger.json', '/mnt/user-data/outputs/competitor-table.csv', '/mnt/user-data/outputs/positioning-brief.md', '/mnt/user-data/outputs/listing-pack.md', '/mnt/user-data/outputs/content-pack.md', '/mnt/user-data/outputs/launch-calendar.csv', '/mnt/user-data/outputs/launch-state.json', '/mnt/user-data/outputs/promotion-replan.md', '/mnt/user-data/outputs/knowledge-deltas.json']"
+          ]
+        },
+        {
+          "name": "subagents",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "observed=['asset-studio', 'evidence-checker', 'growth-analyst', 'market-voc-researcher', 'offer-architect']",
+            "missing=[]"
+          ]
+        },
+        {
+          "name": "artifact_writer_called",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "tool_call_names=['read_file', 'read_file', 'grep', 'grep', 'read_file', 'read_file', 'read_file', 'task', 'task', 'task', 'task', 'task', 'write_opensku_artifact_bundle', 'validate_opensku_artifacts', 'present_files']"
+          ]
+        },
+        {
+          "name": "external_search_gate",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "external_search_calls=[]"
+          ]
+        },
+        {
+          "name": "artifact_manifest",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "artifacts=['competitor-table.csv', 'content-pack.md', 'evidence-ledger.json', 'knowledge-deltas.json', 'launch-calendar.csv', 'launch-state.json', 'launch-war-room.html', 'listing-pack.md', 'positioning-brief.md', 'promotion-replan.md']",
+            "missing=[]"
+          ]
+        },
+        {
+          "name": "validator_output",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "bundle=/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/676a1a0a-e693-4202-82b2-e1555dd4cc73/threads/opensku-live-batch-live-stage2-opensku-supplier-002-1782540595/user-data/outputs",
+            "artifact_count=10",
+            "status=PASS"
+          ]
+        },
+        {
+          "name": "final_response",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "missing_requirements=[]",
+            "consistency_errors=[]"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-live-stage2-opensku-prelaunch-002",
+      "status": "PASS",
+      "score": 40,
+      "max_score": 40,
+      "score_ratio": 1.0,
+      "checks": [
+        {
+          "name": "run_status",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "Status: PASS",
+            "- run_status: success"
+          ]
+        },
+        {
+          "name": "present_files",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "present_files_called=True",
+            "state_artifacts=['/mnt/user-data/outputs/launch-war-room.html', '/mnt/user-data/outputs/evidence-ledger.json', '/mnt/user-data/outputs/competitor-table.csv', '/mnt/user-data/outputs/positioning-brief.md', '/mnt/user-data/outputs/listing-pack.md', '/mnt/user-data/outputs/content-pack.md', '/mnt/user-data/outputs/launch-calendar.csv', '/mnt/user-data/outputs/launch-state.json', '/mnt/user-data/outputs/promotion-replan.md', '/mnt/user-data/outputs/knowledge-deltas.json']"
+          ]
+        },
+        {
+          "name": "subagents",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "observed=['asset-studio', 'evidence-checker', 'growth-analyst', 'market-voc-researcher', 'offer-architect']",
+            "missing=[]"
+          ]
+        },
+        {
+          "name": "artifact_writer_called",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "tool_call_names=['read_file', 'read_file', 'read_file', 'read_file', 'task', 'task', 'task', 'task', 'task', 'write_opensku_artifact_bundle', 'validate_opensku_artifacts', 'present_files']"
+          ]
+        },
+        {
+          "name": "external_search_gate",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "external_search_calls=[]"
+          ]
+        },
+        {
+          "name": "artifact_manifest",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "artifacts=['competitor-table.csv', 'content-pack.md', 'evidence-ledger.json', 'knowledge-deltas.json', 'launch-calendar.csv', 'launch-state.json', 'launch-war-room.html', 'listing-pack.md', 'positioning-brief.md', 'promotion-replan.md']",
+            "missing=[]"
+          ]
+        },
+        {
+          "name": "validator_output",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "bundle=/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/e2c6cb12-7fd8-47d6-a79e-be65b27366c5/threads/opensku-live-batch-live-stage2-opensku-prelaunch-002-1782540807/user-data/outputs",
+            "artifact_count=10",
+            "status=PASS"
+          ]
+        },
+        {
+          "name": "final_response",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "missing_requirements=[]",
+            "consistency_errors=[]"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-live-stage2-opensku-softlaunch-002",
+      "status": "PASS",
+      "score": 40,
+      "max_score": 40,
+      "score_ratio": 1.0,
+      "checks": [
+        {
+          "name": "run_status",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "Status: PASS",
+            "- run_status: success"
+          ]
+        },
+        {
+          "name": "present_files",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "present_files_called=True",
+            "state_artifacts=['/mnt/user-data/outputs/launch-war-room.html', '/mnt/user-data/outputs/evidence-ledger.json', '/mnt/user-data/outputs/competitor-table.csv', '/mnt/user-data/outputs/positioning-brief.md', '/mnt/user-data/outputs/listing-pack.md', '/mnt/user-data/outputs/content-pack.md', '/mnt/user-data/outputs/launch-calendar.csv', '/mnt/user-data/outputs/launch-state.json', '/mnt/user-data/outputs/promotion-replan.md', '/mnt/user-data/outputs/knowledge-deltas.json']"
+          ]
+        },
+        {
+          "name": "subagents",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "observed=['asset-studio', 'evidence-checker', 'growth-analyst', 'market-voc-researcher', 'offer-architect']",
+            "missing=[]"
+          ]
+        },
+        {
+          "name": "artifact_writer_called",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "tool_call_names=['read_file', 'read_file', 'read_file', 'grep', 'grep', 'read_file', 'task', 'task', 'task', 'task', 'task', 'write_opensku_artifact_bundle', 'validate_opensku_artifacts', 'present_files']"
+          ]
+        },
+        {
+          "name": "external_search_gate",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "external_search_calls=[]"
+          ]
+        },
+        {
+          "name": "artifact_manifest",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "artifacts=['competitor-table.csv', 'content-pack.md', 'evidence-ledger.json', 'knowledge-deltas.json', 'launch-calendar.csv', 'launch-state.json', 'launch-war-room.html', 'listing-pack.md', 'positioning-brief.md', 'promotion-replan.md']",
+            "missing=[]"
+          ]
+        },
+        {
+          "name": "validator_output",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "bundle=/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/17a334ab-7916-4c5c-bcf4-fc211966bcec/threads/opensku-live-batch-live-stage2-opensku-softlaunch-002-1782541033/user-data/outputs",
+            "artifact_count=10",
+            "status=PASS"
+          ]
+        },
+        {
+          "name": "final_response",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "missing_requirements=[]",
+            "consistency_errors=[]"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-live-stage2-opensku-scale-002",
+      "status": "FAIL",
+      "score": 30,
+      "max_score": 40,
+      "score_ratio": 0.75,
+      "checks": [
+        {
+          "name": "run_status",
+          "passed": false,
+          "score": 0,
+          "max_score": 5,
+          "details": [
+            "Status: FAIL",
+            "- run_status: success"
+          ]
+        },
+        {
+          "name": "present_files",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "present_files_called=True",
+            "state_artifacts=['/mnt/user-data/outputs/launch-war-room.html', '/mnt/user-data/outputs/evidence-ledger.json', '/mnt/user-data/outputs/competitor-table.csv', '/mnt/user-data/outputs/positioning-brief.md', '/mnt/user-data/outputs/listing-pack.md', '/mnt/user-data/outputs/content-pack.md', '/mnt/user-data/outputs/launch-calendar.csv', '/mnt/user-data/outputs/launch-state.json', '/mnt/user-data/outputs/promotion-replan.md', '/mnt/user-data/outputs/knowledge-deltas.json']"
+          ]
+        },
+        {
+          "name": "subagents",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "observed=['asset-studio', 'evidence-checker', 'growth-analyst', 'market-voc-researcher', 'offer-architect']",
+            "missing=[]"
+          ]
+        },
+        {
+          "name": "artifact_writer_called",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "tool_call_names=['read_file', 'read_file', 'read_file', 'read_file', 'task', 'task', 'task', 'task', 'task', 'read_file', 'glob', 'glob', 'read_file', 'write_opensku_artifact_bundle', 'present_files']"
+          ]
+        },
+        {
+          "name": "external_search_gate",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "external_search_calls=[]"
+          ]
+        },
+        {
+          "name": "artifact_manifest",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "artifacts=['competitor-table.csv', 'content-pack.md', 'evidence-ledger.json', 'knowledge-deltas.json', 'launch-calendar.csv', 'launch-state.json', 'launch-war-room.html', 'listing-pack.md', 'positioning-brief.md', 'promotion-replan.md']",
+            "missing=[]"
+          ]
+        },
+        {
+          "name": "validator_output",
+          "passed": true,
+          "score": 5,
+          "max_score": 5,
+          "details": [
+            "bundle=/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/a85e8ded-1c23-4ccb-a7f5-2c2f5c9b2a61/threads/opensku-live-batch-live-stage2-opensku-scale-002-1782541215/user-data/outputs",
+            "artifact_count=10",
+            "status=PASS"
+          ]
+        },
+        {
+          "name": "final_response",
+          "passed": false,
+          "score": 0,
+          "max_score": 5,
+          "details": [
+            "missing_requirements=[]",
+            "consistency_errors=['final response claims evidence-ledger.json has 8 entries, expected 5']"
+          ]
+        }
+      ]
+    }
+  ]
+}

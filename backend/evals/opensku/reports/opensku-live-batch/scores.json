@@ -1,0 +1,631 @@
+{
+  "status": "FAIL",
+  "score": 20,
+  "max_score": 1220,
+  "score_ratio": 0.0164,
+  "results": [
+    {
+      "name": "case-suite",
+      "subject": "/Users/zhangqixiang/0_2实习/deepagents/deer-flow/evals/opensku/cases",
+      "status": "PASS",
+      "score": 20,
+      "max_score": 20,
+      "score_ratio": 1.0,
+      "checks": [
+        {
+          "name": "case_validation",
+          "passed": true,
+          "score": 8,
+          "max_score": 8,
+          "details": []
+        },
+        {
+          "name": "case_count",
+          "passed": true,
+          "score": 3,
+          "max_score": 3,
+          "details": [
+            "case_count=30"
+          ]
+        },
+        {
+          "name": "stage_coverage",
+          "passed": true,
+          "score": 3,
+          "max_score": 3,
+          "details": [
+            "stage_counts={'idea_only': 6, 'supplier_sample': 6, 'pre_launch_test': 6, 'soft_launch': 8, 'scale_iterate': 4}",
+            "target={'idea_only': 6, 'supplier_sample': 6, 'pre_launch_test': 6, 'soft_launch': 8, 'scale_iterate': 4}"
+          ]
+        },
+        {
+          "name": "tag_traps",
+          "passed": true,
+          "score": 4,
+          "max_score": 4,
+          "details": [
+            "tag_counts={'public_signal_context': 16, 'stage_diagnosis': 30, 'forbidden_metric_trap': 20, 'unsupported_claim_trap': 8, 'promotion_replan': 12, 'knowledge_delta': 12, 'uploaded_data_simulation': 14}",
+            "minimums={'uploaded_data_simulation': 10, 'public_signal_context': 10, 'forbidden_metric_trap': 5, 'unsupported_claim_trap': 5}"
+          ]
+        },
+        {
+          "name": "source_references",
+          "passed": true,
+          "score": 2,
+          "max_score": 2,
+          "details": []
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-idea-001",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-idea-001"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-idea-002",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-idea-002"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-idea-003",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-idea-003"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-idea-004",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-idea-004"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-idea-005",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-idea-005"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-idea-006",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-idea-006"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-supplier-001",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-supplier-001"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-supplier-002",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-supplier-002"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-supplier-003",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-supplier-003"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-supplier-004",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-supplier-004"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-supplier-005",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-supplier-005"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-supplier-006",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-supplier-006"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-prelaunch-001",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-prelaunch-001"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-prelaunch-002",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-prelaunch-002"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-prelaunch-003",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-prelaunch-003"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-prelaunch-004",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-prelaunch-004"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-prelaunch-005",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-prelaunch-005"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-prelaunch-006",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-prelaunch-006"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-softlaunch-001",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-softlaunch-001"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-softlaunch-002",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-softlaunch-002"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-softlaunch-003",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-softlaunch-003"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-softlaunch-004",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-softlaunch-004"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-softlaunch-005",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-softlaunch-005"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-softlaunch-006",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-softlaunch-006"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-softlaunch-007",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-softlaunch-007"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-softlaunch-008",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-softlaunch-008"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-scale-001",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-scale-001"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-scale-002",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-scale-002"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-scale-003",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-scale-003"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "live-run",
+      "subject": "docs/progress/runs/2026-06-27/batch-opensku-scale-004",
+      "status": "FAIL",
+      "score": 0,
+      "max_score": 40,
+      "score_ratio": 0.0,
+      "checks": [
+        {
+          "name": "run_evidence_exists",
+          "passed": false,
+          "score": 0,
+          "max_score": 40,
+          "details": [
+            "run directory does not exist: docs/progress/runs/2026-06-27/batch-opensku-scale-004"
+          ]
+        }
+      ]
+    }
+  ]
+}

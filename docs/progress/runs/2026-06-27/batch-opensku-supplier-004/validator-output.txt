@@ -1,0 +1,14 @@
+bundle=/Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/2b8fcdac-0118-41bf-aa19-e596ffe5db1d/threads/opensku-live-batch-opensku-supplier-004-1782670418/user-data/outputs
+artifact_count=0
+status=FAIL
+- /Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/2b8fcdac-0118-41bf-aa19-e596ffe5db1d/threads/opensku-live-batch-opensku-supplier-004-1782670418/user-data/outputs: missing required artifact launch-war-room.html
+- /Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/2b8fcdac-0118-41bf-aa19-e596ffe5db1d/threads/opensku-live-batch-opensku-supplier-004-1782670418/user-data/outputs: missing required artifact evidence-ledger.json
+- /Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/2b8fcdac-0118-41bf-aa19-e596ffe5db1d/threads/opensku-live-batch-opensku-supplier-004-1782670418/user-data/outputs: missing required artifact competitor-table.csv
+- /Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/2b8fcdac-0118-41bf-aa19-e596ffe5db1d/threads/opensku-live-batch-opensku-supplier-004-1782670418/user-data/outputs: missing required artifact positioning-brief.md
+- /Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/2b8fcdac-0118-41bf-aa19-e596ffe5db1d/threads/opensku-live-batch-opensku-supplier-004-1782670418/user-data/outputs: missing required artifact listing-pack.md
+- /Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/2b8fcdac-0118-41bf-aa19-e596ffe5db1d/threads/opensku-live-batch-opensku-supplier-004-1782670418/user-data/outputs: missing required artifact content-pack.md
+- /Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/2b8fcdac-0118-41bf-aa19-e596ffe5db1d/threads/opensku-live-batch-opensku-supplier-004-1782670418/user-data/outputs: missing required artifact launch-calendar.csv
+- /Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/2b8fcdac-0118-41bf-aa19-e596ffe5db1d/threads/opensku-live-batch-opensku-supplier-004-1782670418/user-data/outputs: missing required artifact launch-state.json
+- /Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/2b8fcdac-0118-41bf-aa19-e596ffe5db1d/threads/opensku-live-batch-opensku-supplier-004-1782670418/user-data/outputs: missing required artifact promotion-replan.md
+- /Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/2b8fcdac-0118-41bf-aa19-e596ffe5db1d/threads/opensku-live-batch-opensku-supplier-004-1782670418/user-data/outputs: missing required artifact knowledge-deltas.json
+- /Users/zhangqixiang/0_2实习/deepagents/deer-flow/backend/.deer-flow/users/2b8fcdac-0118-41bf-aa19-e596ffe5db1d/threads/opensku-live-batch-opensku-supplier-004-1782670418/user-data/outputs/evidence-ledger.json: missing evidence-ledger.json

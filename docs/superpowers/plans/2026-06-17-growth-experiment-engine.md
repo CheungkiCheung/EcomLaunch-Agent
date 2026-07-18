@@ -1,5 +1,7 @@
 # Growth Experiment Engine — 定位扩展
 
+> Archived historical plan. This document records the earlier openGrowth / Launch Validation Pack direction and is not the current product positioning. Current public positioning is **OpenSKU: Adaptive SKU Launch Loop**. Use `README.md`, `docs/ecom-launch/README.md`, and `docs/plans/ecom-launch-agent-spec.md` as the source of truth.
+
 > **For agentic workers:** USE superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 将 EcomLaunch 从"一次性上线前验证引擎"扩展为"增长实验全生命周期引擎"，覆盖 validate-launch + calibrate-content 两个标准化 workflow，吸收 cheat-on-content 的实验校准方法论。

@@ -1,0 +1,10 @@
+{
+  "errors": [],
+  "knowledge_dir": "docs/knowledge/opensku",
+  "promoted_count": 4,
+  "reuse_evidence_count": 31,
+  "runs_root": "docs/progress/runs",
+  "scanned_run_count": 28,
+  "status": "PASS",
+  "verified_reuse_pattern_count": 4
+}

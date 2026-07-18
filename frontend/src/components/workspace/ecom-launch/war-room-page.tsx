@@ -1,6 +1,15 @@
 "use client";
 
-import { ArrowRightIcon, FileTextIcon, RadioTowerIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  ArrowRightIcon,
+  CheckCircle2Icon,
+  FileTextIcon,
+  GitBranchIcon,
+  RadioTowerIcon,
+  ShieldCheckIcon,
+  TargetIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -56,7 +65,8 @@ export function EcomLaunchWarRoomPage() {
   const selectedAgent = model.selectedAgent;
   const readyArtifacts = model.artifactStatuses
     .filter((artifact) => artifact.status === "ready")
-    .slice(0, 5);
+    .slice(0, 10);
+  const loopArtifacts = model.loopSnapshot.loopArtifacts;
   const motionQueue = useMemo(
     () => buildWarRoomMotion(model.agents, motionTick),
     [model.agents, motionTick],
@@ -74,11 +84,11 @@ export function EcomLaunchWarRoomPage() {
       aria-label="EcomLaunch full war room"
       className="flex h-screen min-h-0 flex-col overflow-hidden bg-[#f4eadb] text-slate-900"
     >
-      <header className="border-b border-amber-900/10 bg-[#fff8ed]/95 px-6 py-4">
+      <header className="border-b border-amber-900/10 bg-[#fff8ed]/95 px-4 py-3 lg:px-6 lg:py-4">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="text-xs font-black tracking-[0.22em] text-teal-700/70 uppercase">
-              EcomLaunch
+              OpenSKU
             </div>
             <h1 className="mt-1 text-2xl leading-tight font-black">
               Launch War Room
@@ -102,11 +112,59 @@ export function EcomLaunchWarRoomPage() {
             </Link>
           </Button>
         </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div
+            data-war-room-stage
+            className="min-w-0 rounded-md border border-amber-900/10 bg-white/70 px-3 py-2"
+          >
+            <div className="flex items-center gap-1.5 text-[11px] font-black tracking-wide text-slate-500 uppercase">
+              <GitBranchIcon className="size-3.5 text-teal-700" />
+              Stage
+            </div>
+            <div className="mt-1 truncate text-sm font-black text-slate-900">
+              {model.loopSnapshot.stage}
+            </div>
+          </div>
+          <div
+            data-war-room-decision
+            className="min-w-0 rounded-md border border-amber-900/10 bg-white/70 px-3 py-2"
+          >
+            <div className="flex items-center gap-1.5 text-[11px] font-black tracking-wide text-slate-500 uppercase">
+              <TargetIcon className="size-3.5 text-teal-700" />
+              Decision
+            </div>
+            <div className="mt-1 truncate text-sm font-black text-slate-900">
+              {model.loopSnapshot.decision}
+            </div>
+          </div>
+          <div className="min-w-0 rounded-md border border-amber-900/10 bg-white/70 px-3 py-2">
+            <div className="flex items-center gap-1.5 text-[11px] font-black tracking-wide text-slate-500 uppercase">
+              <CheckCircle2Icon className="size-3.5 text-teal-700" />
+              Artifacts
+            </div>
+            <div className="mt-1 truncate text-sm font-black text-slate-900">
+              {model.loopSnapshot.readyArtifactCount}/
+              {model.loopSnapshot.totalArtifactCount} ready
+            </div>
+          </div>
+          <div
+            data-war-room-private-metrics
+            className="min-w-0 rounded-md border border-amber-900/10 bg-white/70 px-3 py-2"
+          >
+            <div className="flex items-center gap-1.5 text-[11px] font-black tracking-wide text-slate-500 uppercase">
+              <ShieldCheckIcon className="size-3.5 text-teal-700" />
+              Data Boundary
+            </div>
+            <div className="mt-1 truncate text-sm font-black text-slate-900">
+              GMV/CTR/CVR/ROI unavailable
+            </div>
+          </div>
+        </div>
       </header>
 
-      <section className="grid min-h-0 flex-1 grid-rows-[minmax(360px,52vh)_minmax(0,1fr)] overflow-y-auto lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-none lg:overflow-hidden">
-        <div className="min-h-0 overflow-hidden p-4 lg:p-5">
-          <div className="relative size-full overflow-hidden rounded-lg border border-amber-900/15 bg-[#efe7d8] shadow-[0_18px_40px_rgba(121,83,43,0.16)]">
+      <section className="grid min-h-0 flex-1 grid-rows-[minmax(300px,52vh)_minmax(0,1fr)] overflow-y-auto lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-none lg:overflow-hidden">
+        <div className="flex min-h-0 items-start justify-center overflow-hidden p-3 lg:p-4">
+          <div className="relative aspect-[10/7] max-h-full w-full overflow-hidden rounded-lg border border-amber-900/15 bg-[#efe7d8] shadow-[0_18px_40px_rgba(121,83,43,0.16)]">
             <WarRoomStage
               agents={model.agents}
               artifacts={model.artifactStatuses}
@@ -153,30 +211,38 @@ export function EcomLaunchWarRoomPage() {
                 <RadioTowerIcon className="size-4 text-teal-700" />
                 Live motion rules
               </div>
-              {[
-                "Desks, screens, and conveyors are fixed room props.",
-                "Only standalone character sprites move across the room.",
-                "Idle agents roam between room hotspots.",
-                "Assigned agents return to their own station.",
-                "Launch Director stays seated at the command console.",
-              ].map((rule) => (
-                <div
-                  key={rule}
-                  className="rounded-md border border-amber-900/10 bg-white/70 px-3 py-2 text-sm text-slate-600"
-                >
-                  {rule}
-                </div>
-              ))}
+              <ul className="space-y-2 border-y border-amber-900/10 py-3 text-sm text-slate-600">
+                {[
+                  "Fixed desks, screens, conveyor, and coffee station.",
+                  "Movable agents roam, report, then return to home stations.",
+                  "Launch Director remains seated at the command console.",
+                ].map((rule) => (
+                  <li key={rule} className="flex gap-2 leading-5">
+                    <span className="mt-2 size-1.5 shrink-0 rounded-full bg-teal-600/70" />
+                    <span>{rule}</span>
+                  </li>
+                ))}
+              </ul>
 
               <div className="pt-3">
-                <div className="mb-2 text-sm font-black text-slate-800">
-                  Motion queue
+                <div className="mb-2 flex items-center justify-between text-sm font-black text-slate-800">
+                  <span>Motion queue</span>
+                  <span className="text-xs font-bold text-slate-400">
+                    {motionQueue.length} agents
+                  </span>
                 </div>
-                <div className="space-y-2">
+                <div className="overflow-hidden rounded-md border border-amber-900/10 bg-white/50">
                   {motionQueue.map((motion) => (
-                    <div
+                    <button
                       key={motion.id}
-                      className="flex items-center justify-between gap-3 rounded-md border border-amber-900/10 bg-white/70 px-3 py-2 text-xs"
+                      type="button"
+                      className={[
+                        "flex w-full items-center justify-between gap-3 border-b border-amber-900/10 px-3 py-2 text-left text-xs last:border-b-0",
+                        selectedAgentId === motion.id
+                          ? "bg-teal-50 text-teal-900"
+                          : "bg-transparent transition-colors hover:bg-white/70",
+                      ].join(" ")}
+                      onClick={() => setSelectedAgentId(motion.id)}
                     >
                       <span className="min-w-0 truncate text-slate-600">
                         {motion.id}
@@ -184,8 +250,53 @@ export function EcomLaunchWarRoomPage() {
                       <span className="shrink-0 font-black text-teal-700">
                         {motion.state}
                       </span>
-                    </div>
+                    </button>
                   ))}
+                </div>
+              </div>
+
+              <div className="pt-3">
+                <div className="mb-2 flex items-center gap-2 text-sm font-black text-slate-800">
+                  <AlertTriangleIcon className="size-4 text-teal-700" />
+                  Launch loop state
+                </div>
+                <div className="space-y-2">
+                  {loopArtifacts.map((artifact) => {
+                    const ready = artifact.status === "ready";
+                    return (
+                      <button
+                        key={artifact.name}
+                        type="button"
+                        data-war-room-loop-artifact={artifact.name}
+                        className={[
+                          "flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left text-xs transition-colors",
+                          ready
+                            ? "border-teal-700/20 bg-white/80 hover:bg-white"
+                            : "border-amber-900/10 bg-white/45 text-slate-500",
+                        ].join(" ")}
+                        onClick={() => setSelectedAgentId(artifact.role)}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate font-black text-slate-800">
+                            {artifact.label}
+                          </span>
+                          <span className="block truncate text-slate-500">
+                            {artifact.name}
+                          </span>
+                        </span>
+                        <span
+                          className={[
+                            "shrink-0 rounded border px-2 py-1 font-black",
+                            ready
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : "border-slate-200 bg-slate-50 text-slate-500",
+                          ].join(" ")}
+                        >
+                          {ready ? "ready" : "pending"}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -212,7 +323,7 @@ export function EcomLaunchWarRoomPage() {
                             {artifact.name}
                           </span>
                         </span>
-                        <span className="shrink-0 rounded border border-emerald-200/20 bg-emerald-300/10 px-2 py-1 font-black text-emerald-100">
+                        <span className="shrink-0 rounded border border-emerald-200 bg-emerald-50 px-2 py-1 font-black text-emerald-700">
                           ready
                         </span>
                       </button>

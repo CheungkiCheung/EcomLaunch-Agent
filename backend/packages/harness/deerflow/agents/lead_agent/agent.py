@@ -43,7 +43,7 @@ from deerflow.agents.thread_state import ThreadState
 from deerflow.config.agents_config import is_builtin_agent, load_agent_config, validate_agent_name
 from deerflow.config.app_config import AppConfig, get_app_config
 from deerflow.models import create_chat_model
-from deerflow.skills.tool_policy import filter_tools_by_skill_allowed_tools
+from deerflow.skills.tool_policy import filter_tools_by_runtime_constraints, filter_tools_by_skill_allowed_tools, runtime_disables_external_search
 from deerflow.skills.types import Skill
 from deerflow.tracing import build_tracing_callbacks
 
@@ -462,6 +462,8 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
             "reasoning_effort": reasoning_effort,
             "is_plan_mode": is_plan_mode,
             "subagent_enabled": subagent_enabled,
+            "disable_external_search": runtime_disables_external_search(cfg),
+            "opensku_benchmark_fixture_mode": bool(cfg.get("opensku_benchmark_fixture_mode")),
             "tool_groups": agent_config.tool_groups if agent_config else None,
             "available_skills": sorted(available_skills) if available_skills is not None else None,
         }
@@ -486,6 +488,7 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
         # Special bootstrap agent with minimal prompt for initial custom agent creation flow
         raw_tools = get_available_tools(model_name=model_name, subagent_enabled=subagent_enabled, app_config=resolved_app_config) + [setup_agent]
         filtered = filter_tools_by_skill_allowed_tools(raw_tools, skills_for_tool_policy)
+        filtered = filter_tools_by_runtime_constraints(filtered, cfg)
         final_tools, setup = assemble_deferred_tools(filtered, enabled=resolved_app_config.tool_search.enabled)
         return create_agent(
             model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, app_config=resolved_app_config, attach_tracing=False),
@@ -507,6 +510,7 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
     # Default lead agent (unchanged behavior)
     raw_tools = get_available_tools(model_name=model_name, groups=agent_config.tool_groups if agent_config else None, subagent_enabled=subagent_enabled, app_config=resolved_app_config)
     filtered = filter_tools_by_skill_allowed_tools(raw_tools + extra_tools, skills_for_tool_policy)
+    filtered = filter_tools_by_runtime_constraints(filtered, cfg)
     final_tools, setup = assemble_deferred_tools(filtered, enabled=resolved_app_config.tool_search.enabled)
     return create_agent(
         model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, reasoning_effort=reasoning_effort, app_config=resolved_app_config, attach_tracing=False),

@@ -20,6 +20,7 @@ from deerflow.subagents.executor import (
     get_background_task_result,
     request_cancel_background_task,
 )
+from deerflow.skills.tool_policy import filter_tools_by_runtime_constraints
 from deerflow.tools.types import Runtime
 
 if TYPE_CHECKING:
@@ -172,6 +173,32 @@ def _get_runtime_app_config(runtime: Any) -> "AppConfig | None":
     return None
 
 
+def _get_runtime_tool_policy_context(runtime: Any) -> dict[str, Any]:
+    policy_context: dict[str, Any] = {}
+    if runtime is None:
+        return policy_context
+
+    runtime_config = getattr(runtime, "config", None)
+    if isinstance(runtime_config, dict):
+        configurable = runtime_config.get("configurable")
+        if isinstance(configurable, dict):
+            policy_context.update(configurable)
+        metadata = runtime_config.get("metadata")
+        if isinstance(metadata, dict):
+            policy_context.update(
+                {
+                    key: metadata[key]
+                    for key in ("disable_external_search", "opensku_benchmark_fixture_mode")
+                    if key in metadata
+                }
+            )
+
+    context = getattr(runtime, "context", None)
+    if isinstance(context, dict):
+        policy_context.update(context)
+    return policy_context
+
+
 def _merge_skill_allowlists(parent: list[str] | None, child: list[str] | None) -> list[str] | None:
     """Return the effective subagent skill allowlist under the parent policy."""
     if parent is None:
@@ -296,6 +323,7 @@ async def task_tool(
     if resolved_app_config is not None:
         available_tools_kwargs["app_config"] = resolved_app_config
     tools = get_available_tools(**available_tools_kwargs)
+    tools = filter_tools_by_runtime_constraints(tools, _get_runtime_tool_policy_context(runtime))
 
     # Create executor
     executor_kwargs = {

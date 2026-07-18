@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  WAR_ROOM_ARTIFACT_ITEMS,
   WAR_ROOM_BACKGROUND,
   WAR_ROOM_PROPS,
   warRoomCharacterSprite,
@@ -25,9 +26,38 @@ describe("war room asset model", () => {
     expect(WAR_ROOM_BACKGROUND.src).toBe(
       "/images/ecom-launch/war-room/room/background.png",
     );
+    expect(WAR_ROOM_PROPS.every((prop) => prop.src.endsWith(".png"))).toBe(
+      true,
+    );
+  });
+
+  it("keeps the game scene close-framed enough to avoid an empty floor", () => {
+    expect(WAR_ROOM_BACKGROUND).toMatchObject({
+      width: 1080,
+      height: 756,
+    });
     expect(
-      WAR_ROOM_PROPS.filter((prop) => prop.id !== "coffee").every((prop) =>
-        prop.src.endsWith(".png"),
+      WAR_ROOM_PROPS.filter((prop) => prop.id.endsWith("-station")).every(
+        (prop) => prop.width >= 128 && prop.height >= 140,
+      ),
+    ).toBe(true);
+    expect(
+      WAR_ROOM_PROPS.find((prop) => prop.id === "artifact-conveyor"),
+    ).toMatchObject({
+      width: 168,
+      height: 136,
+    });
+  });
+
+  it("uses generated item sprites for artifact drops instead of drawn labels", () => {
+    expect(WAR_ROOM_ARTIFACT_ITEMS).toHaveLength(8);
+    expect(WAR_ROOM_ARTIFACT_ITEMS[0]).toMatchObject({
+      id: "package",
+      src: "/images/ecom-launch/war-room/artifacts/package.png",
+    });
+    expect(
+      WAR_ROOM_ARTIFACT_ITEMS.every((item) =>
+        item.src.startsWith("/images/ecom-launch/war-room/artifacts/"),
       ),
     ).toBe(true);
   });

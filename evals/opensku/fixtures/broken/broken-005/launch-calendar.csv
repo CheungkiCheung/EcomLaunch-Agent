@@ -1,0 +1,2 @@
+day,objective,experiment,asset,channel,validation_signal_to_collect,decision_rule,owner,expected_output
+1,Validate VOC-backed positioning,Compare claim-safe listing angle,listing-pack.md,marketplace listing,Review objection tags from EVID-001,,OpenSKU,Evidence-backed next-loop decision
