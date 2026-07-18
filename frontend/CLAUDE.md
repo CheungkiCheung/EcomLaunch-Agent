@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 DeerFlow Frontend is a Next.js 16 web interface for an AI agent system. It communicates with a LangGraph-based backend to provide thread-based AI conversations with streaming responses, artifacts, and a skills/tools system.
 
+This fork is introducing a **Case-first Commerce Workspace**. Chat remains an interaction surface, but Dataset, Capability, Case, Evidence, Hypothesis, Action, Approval, Follow-up and Domain Event are the authoritative product objects. Timeline, Graph and War Room views must consume the same structured event stream instead of inferring business state from assistant text.
+
+The Commerce entry is fail-closed behind `NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED=false`; the backend flag must also be enabled. Every formal Commerce page, including War Room, requires an approved high-fidelity generated mockup before React implementation. Mocked-backend UI tests cannot serve as Commerce Agent acceptance evidence; Agent E2E must use the real backend and an identity-verified DeepSeek V4 request.
+
 **Stack**: Next.js 16, React 19, TypeScript 5.8, Tailwind CSS 4, pnpm 10.26.2
 
 ## Commands
@@ -89,6 +93,7 @@ Backend API URLs are optional; an nginx proxy is used by default:
 ```
 NEXT_PUBLIC_BACKEND_BASE_URL=http://localhost:8001
 NEXT_PUBLIC_LANGGRAPH_BASE_URL=http://localhost:8001/api
+NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED=false
 ```
 
 Leave these unset for the standard `make dev` / Docker flow, where nginx serves

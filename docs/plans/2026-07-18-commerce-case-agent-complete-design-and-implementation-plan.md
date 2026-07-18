@@ -1,6 +1,6 @@
 # Commerce Case Agent 完整设计与实施计划
 
-> 状态：设计已收口，实施尚未开始
+> 状态：设计已收口，实施进行中（Phase 0）
 > 日期：2026-07-18
 > 当前分支：`feature/commerce-case-agent`
 > 保护快照：`archive/ecom-launch-pre-commerce-agent-20260718` / `9144237`
@@ -874,10 +874,10 @@ REVIEW：阶段评审
 
 待执行：
 
-- [ ] 记录 DeerFlow 上游 commit 和 Remote；
-- [ ] 建立新系统 Feature Flag；
-- [ ] 记录当前 Backend / Frontend 基线测试；
-- [ ] 将旧 OpenSKU 评测标记为 Legacy，不删除。
+- [x] 记录 DeerFlow 上游 Remote、本地压平导入提交和审计日上游 HEAD；原始精确上游基线 SHA 因无父导入不可恢复，已如实记录；
+- [x] 建立新系统 Backend / Frontend Feature Flag，默认关闭；
+- [x] 记录当前 Backend / Frontend 确定性、静态和类型基线；
+- [x] 将旧 OpenSKU 评测、知识和 Demo 标记为 Legacy，不删除。
 
 退出条件：
 

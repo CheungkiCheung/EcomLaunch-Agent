@@ -30,6 +30,8 @@ EXPOSE 3000
 
 # ── Builder: install + compile Next.js ───────────────────────────────────────
 FROM base AS builder
+ARG NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED=false
+ENV NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED=${NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED}
 RUN cd /app/frontend && pnpm install --frozen-lockfile
 # Skip env validation — runtime vars are injected by nginx/container
 RUN cd /app/frontend && SKIP_ENV_VALIDATION=1 pnpm build

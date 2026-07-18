@@ -1,108 +1,42 @@
-# Agents Architecture
+# Frontend Instructions
 
-## Overview
+先遵循仓库根目录 `AGENTS.md`，再遵循本文件。现有 Next.js、Thread 和 Message 架构细节见 `CLAUDE.md`。
 
-DeerFlow is built on a sophisticated agent-based architecture using the [LangGraph SDK](https://github.com/langchain-ai/langgraph) to enable intelligent, stateful AI interactions. This document outlines the agent system architecture, patterns, and best practices for working with agents in the frontend application.
+## Product Model
 
-## Architecture Overview
+- 新前端是 Case-first Commerce Workspace，Chat 只是调查与协作入口之一。
+- 核心对象包括 Dataset、Capability、Case、Evidence、Hypothesis、Action、Approval、Follow-up 和 Domain Event。
+- Timeline、Graph、War Room、Evidence、Action 和 Follow-up 必须读取同一个结构化事件与 Case 状态。
+- 不允许从消息文本、角色文案、前端计时器或随机动画推断 Case / Run 状态。
+- 没有真实事件时显示空闲、等待或阻塞，不播放假忙碌。
 
-### Core Components
+## Feature Flag
 
-```
-┌────────────────────────────────────────────────────────┐
-│                    Frontend (Next.js)                  │
-├────────────────────────────────────────────────────────┤
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────┐  │
-│  │ UI Components│───▶│ Thread Hooks │───▶│ LangGraph│  │
-│  │              │    │              │    │   SDK    │  │
-│  └──────────────┘    └──────────────┘    └──────────┘  │
-│         │                    │                  │      │
-│         │                    ▼                  │      │
-│         │            ┌──────────────┐           │      │
-│         └───────────▶│ Thread State │◀──────────┘      │
-│                      │  Management  │                  │
-│                      └──────────────┘                  │
-└────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌────────────────────────────────────────────────────────┐
-│              LangGraph Backend (lead_agent)            │
-│  ┌────────────┐  ┌──────────┐  ┌───────────────────┐   │
-│  │Main Agent  │─▶│Sub-Agents│─▶│  Tools & Skills   │   │
-│  └────────────┘  └──────────┘  └───────────────────┘   │
-└────────────────────────────────────────────────────────┘
-```
+- Commerce 入口只在 `featureFlags.commerceCaseAgent` 为 `true` 时显示。
+- 后端 `COMMERCE_CASE_AGENT_ENABLED` 也必须开启；前端 Flag 不能绕过后端边界。
+- 新旧路由、状态模型和 API Client 不混用。
 
-## Project Structure
+## Image-first Design
 
-```
-tests/
-├── e2e/                    # E2E tests (Playwright, Chromium, mocked backend)
-└── unit/                   # Unit tests (mirrors src/ layout, powered by Vitest)
-src/
-├── app/                    # Next.js App Router pages
-│   ├── api/                # API routes
-│   ├── workspace/          # Main workspace pages
-│   └── mock/               # Mock/demo pages
-├── components/             # React components
-│   ├── ui/                 # Reusable UI components
-│   ├── workspace/          # Workspace-specific components
-│   ├── landing/            # Landing page components
-│   └── ai-elements/        # AI-related UI elements
-├── core/                   # Core business logic
-│   ├── api/                # API client & data fetching
-│   ├── artifacts/          # Artifact management
-│   ├── config/              # App configuration
-│   ├── i18n/               # Internationalization
-│   ├── mcp/                # MCP integration
-│   ├── messages/           # Message handling
-│   ├── models/             # Data models & types
-│   ├── settings/           # User settings
-│   ├── skills/             # Skills system
-│   ├── threads/            # Thread management
-│   ├── todos/              # Todo system
-│   └── utils/              # Utility functions
-├── hooks/                  # Custom React hooks
-├── lib/                    # Shared libraries & utilities
-├── server/                 # Server-side code (Not available yet)
-│   └── better-auth/        # Authentication setup (Not available yet)
-└── styles/                 # Global styles
-```
+- 每一个正式页面，包括 War Room，都必须先生成高保真视觉稿，再实现 React 页面。
+- 视觉稿需要记录页面目标、数据状态、生成 Prompt、选中版本和实现差异。
+- 采用 Codex-inspired Workspace：克制、信息密度高、清晰的工作区层级、可检查的运行状态。
+- 不复制 Codex 品牌资产；形成 Commerce Case Agent 自己的信息架构。
+- 视觉选择属于关键产品节点，需要用户确认；确认前可以继续后端合同和数据层工作。
 
-### Technology Stack
+## Engineering
 
-- **LangGraph SDK** (`@langchain/langgraph-sdk@1.5.3`) - Agent orchestration and streaming
-- **LangChain Core** (`@langchain/core@1.1.15`) - Fundamental AI building blocks
-- **TanStack Query** (`@tanstack/react-query@5.90.17`) - Server state management
-- **React Hooks** - Thread lifecycle and state management
-- **Shadcn UI** - UI components
-- **MagicUI** - Magic UI components
-- **React Bits** - React bits components
+- 业务类型放在 Commerce 专属命名空间，不污染通用 Thread / Message 类型。
+- Domain Event 到 View Model 的转换保持纯函数，并为未知事件和乱序事件提供显式处理。
+- Server Component 默认；只有交互组件使用 `"use client"`。
+- 保持键盘操作、焦点、对比度、响应式和 reduced-motion 支持。
+- 不手工修改 `components/ui/` 和 `components/ai-elements/` 的生成文件。
+- 更新后同步维护根 `README.md`、本目录 `CLAUDE.md` 和视觉决策记录。
 
-### Interaction Ownership
+## Testing and QA
 
-- `src/app/workspace/chats/[thread_id]/page.tsx` owns composer busy-state wiring.
-- `src/core/threads/hooks.ts` owns pre-submit upload state and thread submission.
-- `src/hooks/usePoseStream.ts` is a passive store selector; global WebSocket lifecycle stays in `App.tsx`.
-
-## Resources
-
-- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
-- [LangChain Core Concepts](https://js.langchain.com/docs/concepts)
-- [TanStack Query Documentation](https://tanstack.com/query/latest)
-- [Next.js App Router](https://nextjs.org/docs/app)
-
-## Contributing
-
-When adding new agent features:
-
-1. Follow the established project structure
-2. Add comprehensive TypeScript types
-3. Implement proper error handling
-4. Write unit tests under `tests/unit/` (run with `pnpm test`) and E2E tests under `tests/e2e/` (run with `pnpm test:e2e`)
-5. Update this documentation
-6. Follow the code style guide (ESLint + Prettier)
-
-## License
-
-This agent architecture is part of the DeerFlow project.
+- 纯 View Model、Reducer、事件排序和格式化测试不调用模型。
+- 任何验证 Agent 输出或完整 Commerce 流程的前端 E2E，必须连接真实后端并使用真实 DeepSeek V4。
+- Mocked backend E2E 只能验证通用 UI 机械行为，不能作为 Commerce Agent 验收或 Release Gate。
+- 页面实现后运行单元测试、类型检查、Lint、真实浏览器交互和视觉截图对比。
+- War Room 验收必须证明每个可见活动都能追溯到真实 Domain Event。

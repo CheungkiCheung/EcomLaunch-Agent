@@ -9,6 +9,10 @@ class GatewayConfig(BaseModel):
     host: str = Field(default="0.0.0.0", description="Host to bind the gateway server")
     port: int = Field(default=8001, description="Port to bind the gateway server")
     enable_docs: bool = Field(default=True, description="Enable Swagger/ReDoc/OpenAPI endpoints")
+    commerce_case_agent_enabled: bool = Field(
+        default=False,
+        description="Enable Commerce Case Agent application routes",
+    )
 
 
 _gateway_config: GatewayConfig | None = None
@@ -22,5 +26,6 @@ def get_gateway_config() -> GatewayConfig:
             host=os.getenv("GATEWAY_HOST", "0.0.0.0"),
             port=int(os.getenv("GATEWAY_PORT", "8001")),
             enable_docs=os.getenv("GATEWAY_ENABLE_DOCS", "true").lower() == "true",
+            commerce_case_agent_enabled=os.getenv("COMMERCE_CASE_AGENT_ENABLED", "false").strip().lower() == "true",
         )
     return _gateway_config

@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 DeerFlow is a LangGraph-based AI super agent system with a full-stack architecture. The backend provides a "super agent" with sandbox execution, persistent memory, subagent delegation, and extensible tool integration - all operating in per-thread isolated environments.
 
+This fork is being extended with **Commerce Case Agent**, an application-layer ecommerce diagnosis and action system. Commerce business code belongs under `app/commerce/`; the reusable `deerflow.*` harness must remain business-agnostic and must never import `app.*`.
+
+The new application is fail-closed behind `COMMERCE_CASE_AGENT_ENABLED=false`. Future Commerce routers may be mounted only when `GatewayConfig.commerce_case_agent_enabled` is true. Pure domain/configuration tests remain model-free; every LLM or Agent behavior test must use a fresh, identity-verified DeepSeek V4 request and must stop when that model is unavailable or quota is exhausted.
+
 **Architecture**:
 - **Gateway API** (port 8001): REST API plus embedded LangGraph-compatible agent runtime
 - **Frontend** (port 3000): Next.js web interface
@@ -52,6 +56,7 @@ deer-flow/
 │   │           ├── utils/             # Utilities (network, readability)
 │   │           └── client.py          # Embedded Python client (DeerFlowClient)
 │   ├── app/                   # Application layer (import: app.*)
+│   │   ├── commerce/          # Commerce Case Agent domain/application layer (introduced incrementally)
 │   │   ├── gateway/           # FastAPI Gateway API
 │   │   │   ├── app.py         # FastAPI application
 │   │   │   └── routers/       # FastAPI route modules (models, mcp, memory, skills, uploads, threads, artifacts, agents, suggestions, channels)

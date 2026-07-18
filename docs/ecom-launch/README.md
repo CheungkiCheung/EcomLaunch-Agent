@@ -1,5 +1,7 @@
 # OpenSKU / EcomLaunch Manual Demo Materials
 
+> **LEGACY — READ ONLY.** These materials document the archived OpenSKU/EcomLaunch workflow. They are retained for provenance and design lessons, not as current Commerce Case Agent setup or acceptance instructions.
+
 This folder contains manual demo materials for OpenSKU's EcomLaunch agent workflow.
 For final reviewer-facing evidence, start with:
 

@@ -1,5 +1,7 @@
 # OpenSKU-Bench
 
+> **LEGACY — READ ONLY.** This benchmark belongs to the archived OpenSKU/EcomLaunch product. Its cases, reports, replayable evidence and historical PASS scores are not Commerce Case Agent tests or release gates. Preserve them for provenance; do not use them to claim the new Agent works.
+
 OpenSKU-Bench is the benchmark-case layer for OpenSKU's evidence-governed adaptive SKU launch loop.
 
 The benchmark uses public ecommerce fixtures as reproducible inputs. It does not treat those fixtures as live merchant telemetry, and it does not allow private metrics such as GMV, CTR, CVR, ROI, ad spend, margin, or verified uplift unless those fields are explicitly present in the case input.

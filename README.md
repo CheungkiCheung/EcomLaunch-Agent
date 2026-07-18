@@ -1,273 +1,285 @@
-# OpenSKU
+# Commerce Case Agent
 
-> Evidence-governed AI launch loop for ecommerce SKU decisions.
+> 工作名：面向电商运营的异构数据诊断与行动 Agent。
 
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](./backend/pyproject.toml)
 [![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white)](./Makefile)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)](./frontend/package.json)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-OpenSKU helps merchants, ecommerce operators, and indie sellers turn rough product ideas, listing URLs, competitor links, public signals, uploaded context, and post-test feedback into an evidence-backed SKU launch loop: **Go, Pivot, Hold, Kill, or Scale**.
+## 当前状态
 
-No fake GMV. No fake CVR. No fake sales volume. Every recommendation is labeled as observed, uploaded, estimated, or unavailable.
+项目正在从旧 OpenSKU / EcomLaunch 方案改造为 Commerce Case Agent。
 
-## What It Does
+当前阶段是 Phase 0：保护旧成果、建立新旧边界、Feature Flag、基线与实施合同。新 Agent 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
 
-OpenSKU is a vertical ecommerce agent workflow for adaptive SKU launch decisions before and during early launch. It supports idea-only concepts, supplier/sample review, pre-launch content tests, soft-launch feedback, and scale decisions.
+完整设计与实施计划：
 
-Instead of producing a generic competitor report or a fixed "7-day plan", OpenSKU runs an adaptive launch loop:
+- [`docs/plans/2026-07-18-commerce-case-agent-complete-design-and-implementation-plan.md`](./docs/plans/2026-07-18-commerce-case-agent-complete-design-and-implementation-plan.md)
 
-- **Stage diagnosis**: whether the SKU is idea-only, sample/supplier stage, pre-launch test, soft launch, or scale/iterate.
-- **Go / Pivot / Hold / Kill / Scale memo**: whether to continue, adjust, pause for missing data, stop, or expand.
-- **Evidence ledger**: a JSON audit trail for public evidence, uploaded context, estimates, and unavailable data.
-- **Competitor map**: visible price bands, claims, strengths, weaknesses, and source confidence.
-- **SKU thesis**: target user, job to be done, offer promise, differentiators, risks, and kill assumptions.
-- **Claim readiness matrix**: which copy claims are safe, which need product specs, test reports, or policy confirmation.
-- **Promotion replanning**: how to adjust hooks, channel, price, page claims, creator brief, or test plan when new data arrives.
-- **Adaptive experiment sprint**: a 3/7/14/30-day validation plan with decision rules for the next signal collection loop.
-- **Knowledge deltas**: reusable category, channel, claim-risk, and experiment learnings captured from each run.
+Phase 0 基线与迁移清单：
 
-## Why It Matters
+- [`docs/migration/commerce-case-agent-phase0-baseline.md`](./docs/migration/commerce-case-agent-phase0-baseline.md)
 
-| Current workflow | OpenSKU workflow |
-|---|---|
-| Product ideas start as hunches in chat, spreadsheets, or founder intuition. | Ideas are converted into a structured launch decision with evidence IDs and missing-data labels. |
-| Teams copy competitor claims without knowing whether they can safely use them. | Claims are classified as ready, draft-only, needs spec, needs test report, or do not use until verified. |
-| AI tools often invent private metrics such as GMV, CVR, ROI, or sales volume. | Private metrics are marked unavailable unless the user uploads real data. |
-| Launch plans become one-off docs that do not react to feedback. | Each run updates the launch state, promotion plan, next experiment, and reusable knowledge. |
+## 解决什么问题
 
-## Architecture
+电商运营人员通常不是来要一份泛泛的“优化方案”，而是已经感觉经营出了问题：履约变慢、评分下降、低分评价上升、某类卖家表现异常，或者不同报表之间互相矛盾。
+
+他们真正需要连续回答四个问题：
+
+```text
+哪里出了问题？
+为什么发生？
+现在最值得做什么？
+做完以后有没有改善？
+```
+
+Commerce Case Agent 把一次对话升级为一个长期存在、可审计、可跟进的 `Case`：
+
+```text
+上传 CSV / Excel / 数据目录
+→ 识别字段、实体、时间和可用能力
+→ 确定性扫描异常
+→ 创建 Case
+→ 动态调查必要证据路径
+→ 独立验证结论
+→ 生成可审批 Action
+→ 新数据到来后 Follow-up
+→ Close / Reopen / Inconclusive / Blocked
+```
+
+## 用户如何使用
+
+首要交互是上传真实数据，而不是要求用户先学会写复杂 Prompt。
+
+用户可以：
+
+- 拖入一个或多个 CSV / Excel 文件；
+- 上传一个包含多张表的数据目录或压缩包；
+- 说明“最近评分突然下降，帮我找到原因”；
+- 让系统在新数据到来时重新检查已有 Case；
+- 查看 Evidence、Hypothesis、Action、Approval 和 Follow-up；
+- 在 Timeline、Graph 与 War Room 之间切换同一个真实 Run。
+
+当上传数据缺少曝光、点击、加购、广告消耗、库存或利润时，系统不会假装拥有这些字段。它会完成当前数据允许的诊断，明确 `unknown`，并给出精确补数建议。
+
+## 首批聚焦范围
+
+首批只打穿三条证据路径：
+
+| Path Agent | 关注问题 | 典型证据 |
+|---|---|---|
+| `FulfillmentPathAgent` | 延迟来自卖家处理还是承运运输 | 下单、批准、发货、送达、预计送达时间 |
+| `SellerPeerPathAgent` | 某卖家或实体是否偏离同类基线 | 卖家、品类、区域、订单与评价聚合 |
+| `ReviewExperiencePathAgent` | 评分下降是否与商品体验问题有关 | 评分、低分率、评论文本与时间窗口 |
+
+系统按照数据 Capability 动态启动 0–3 个 Path Agent，不使用固定五 Agent Crew。
+
+本轮不做：
+
+- 万能电商经营平台；
+- 模拟市场或虚构经营效果；
+- 广告投放、库存、利润、定价、内容生成等全场景覆盖；
+- 只输出报告、文案或“7 天方案”的一次性系统；
+- 无人工门禁的高风险写操作；
+- 线上 Agent 直接修改 Active Skill。
+
+## 核心架构
 
 ```mermaid
 flowchart LR
-  User["Merchant / Operator Input"] --> State["Launch State"]
-  State --> Lead["Launch Director"]
-  Lead --> Scout["Market + VOC Researcher"]
-  Lead --> Offer["Offer Architect"]
-  Lead --> Analyst["Growth Analyst"]
-  Lead --> Studio["Asset Studio"]
-  Lead --> Checker["Evidence Checker"]
-  Scout --> Pack["Launch Decision Pack"]
-  Offer --> Pack
-  Analyst --> Pack
-  Studio --> Pack
-  Checker --> Pack
-  Pack --> Replan["Promotion + Experiment Replan"]
-  Replan --> Knowledge["Knowledge Deltas"]
-  Knowledge --> State
-  Pack --> Decision["Go / Pivot / Hold / Kill / Scale"]
+  Upload["异构数据上传"] --> Profile["Schema + Entity + Capability Profile"]
+  Profile --> Metrics["确定性 Metric 与异常扫描"]
+  Metrics --> Case["Case"]
+  Case --> Lead["Lead Agent / Goal Loop"]
+  Lead --> Router["Capability-driven Router"]
+  Router --> Fulfillment["Fulfillment Path"]
+  Router --> Peer["Seller Peer Path"]
+  Router --> Review["Review Experience Path"]
+  Fulfillment --> Evidence["Structured Evidence"]
+  Peer --> Evidence
+  Review --> Evidence
+  Evidence --> Verify["Fresh-context Verification"]
+  Verify --> Action["Action + Approval"]
+  Action --> Followup["Follow-up"]
+  Followup --> Outcome["Close / Reopen / Inconclusive / Blocked"]
 ```
 
-OpenSKU is implemented as a product layer on an agent runtime with custom skills, custom subagents, file artifacts, and a dedicated ecommerce workspace UI.
+### Harness 与业务边界
 
-## Core Modules
+项目建立在 ByteDance DeerFlow 的开源 Harness 之上。
 
-| Module | Responsibility | Evidence |
-|---|---|---|
-| `agents/ecom-launch/SOUL.md` | Lead-agent behavior, data boundary, modes, final response rules | Agent contract |
-| `skills/custom/ecom-launch/SKILL.md` | Adaptive validate-launch workflow and artifact contracts | Skill spec |
-| `skills/custom/content-calibration/` | Content scoring, prediction, retrospective, and rubric evolution | Skill directory |
-| `evals/opensku/` | Benchmark cases, artifact validation, live-run scoring, expected-decision gates, release candidates | RC2 report |
-| `scripts/opensku/` | Knowledge ingest, maturity promotion, and live evidence support scripts | Knowledge reports |
-| `docs/knowledge/opensku/` | Source-linked execution memory generated from accepted live runs | Knowledge base |
-| `docs/demo/` | Reviewer guide and final evidence matrix | Demo package |
-| `frontend/src/components/workspace/ecom-launch/` | Launch Crew / War Room workspace visualization | React components |
-| `backend/tests/test_ecom_launch_contract.py` | Contract checks for launch artifacts, stage decisions, and data boundaries | Backend test |
-| `frontend/tests/unit/components/workspace/ecom-launch/` | War Room asset, motion, and UI model tests | Frontend tests |
+保留并复用的通用能力包括：
 
-## Agent Roles
+- LangGraph Runtime 与 RunManager；
+- Streaming、Checkpoint、Sandbox 和 Tool 系统；
+- Upload、Artifact、Auth、Memory 和 Skills 基础设施；
+- Token Tracking、Loop Detection 和通用中间件。
 
-| Agent | Role | Output |
-|---|---|---|
-| `market-voc-researcher` | Finds public market signals, competitor pages, reviews, and customer language | Competitor map and VOC findings |
-| `offer-architect` | Turns evidence into audience wedge, job to be done, offer promise, and kill assumptions | SKU thesis and positioning |
-| `growth-analyst` | Designs lightweight validation signals and interprets uploaded feedback when private metrics are unavailable | Experiment plan, promotion replan, and decision rules |
-| `asset-studio` | Drafts listing copy, hooks, scripts, creator briefs, and comment replies | Listing and content packs |
-| `evidence-checker` | Audits unsupported claims, unavailable metrics, and evidence confidence | Evidence ledger and claim readiness |
+个人新增主线位于应用层：
 
-## Data Boundary
+- `backend/app/commerce/`：Commerce Domain、数据、Metric、Case、Agent、Repository 与 API；
+- Commerce Domain Event 与 Case 生命周期；
+- Capability-driven Path Routing；
+- Fresh-context Verification；
+- Action / Approval / Follow-up；
+- DeepSeek V4 真实模型评测 Harness；
+- 受控 Skill Evolution；
+- Codex-inspired Commerce Workspace。
 
-OpenSKU can use:
-
-- public search results, public product pages, public reviews, articles, Q&A, and visible ecommerce SEO pages
-- user-uploaded notes, screenshots, CSVs, exports, product specs, or policy documents
-- clearly labeled estimates and assumptions
-
-OpenSKU must not invent:
-
-- GMV, CTR, CVR, ROI, ad spend, actual sales volume, refund rate, repeat purchase rate, exact market share, or verified uplift
-- exact product specs, lab-test results, safety claims, certifications, warranty/refund policies, or testimonials without source evidence
-- private platform coverage for Xiaohongshu, Douyin, Taobao, JD, PDD, Amazon, Shopify, or TikTok Shop without uploaded data
-
-If data is unavailable, the workflow says so and proposes a test to collect it.
-
-## Demo Scenario
-
-Try OpenSKU with a rough ecommerce idea:
+依赖方向：
 
 ```text
-我想做一款适合通勤女生的防漏便携咖啡杯，主要想在小红书和抖音种草。
-我没有后台数据，也还没确定主卖点。
-请帮我判断这个 SKU 当前处在哪个上新阶段，应该 Go、Pivot、Hold 还是 Kill，并生成下一轮测试和宣传调整方案。
+app.* → deerflow.*
+deerflow.* -X→ app.*
 ```
 
-Expected output:
+## 三条 Gold Case
+
+系统首先用 Olist 公开电商数据构建三条可复现 Gold Case：
+
+1. 履约异常：延迟与评分同时恶化，但卖家处理时长没有恶化，主要异常在承运运输阶段；必须反驳“卖家出库不足”。
+2. 评价体验异常：延迟率为 0，但评分和低分率恶化，评论出现疑似非原装、错发、少发；不得确认售假或欺诈。
+3. 能力缺失：删除 Review 数据后仍完成履约诊断，但不得声称评分下降；必须跳过 Review Path 并给出精确补数建议。
+
+完整公开数据不进入 Git。仓库只保存来源、Schema、构建脚本和经过审查的小型 Fixture。
+
+## Loop、Harness 与进化
+
+每个调查 Loop 都必须具备：
+
+- 明确 Goal；
+- 可消费 Budget；
+- 最小 ContextPacket；
+- 结构化 Evidence；
+- Checkpoint；
+- Stop Condition；
+- Verification；
+- 可观察 Trace。
+
+Skill 不在线自改。进化流程：
 
 ```text
-/mnt/user-data/outputs/
-├── launch-war-room.html
-├── evidence-ledger.json
-├── competitor-table.csv
-├── positioning-brief.md
-├── listing-pack.md
-├── content-pack.md
-└── launch-calendar.csv
+Skill Candidate
+→ Offline Eval
+→ Regression
+→ Holdout
+→ Human Review
+→ Shadow
+→ Active / Rollback
 ```
 
-`launch-calendar.csv` is the default first sprint artifact. It may describe a 3, 7, 14, or 30-day loop depending on available data and launch stage; 7 days is only the demo default.
+## 真实 DeepSeek V4 测试政策
 
-## Quick Start
+纯确定性测试保持无模型，例如 Domain、Metric、State Transition、Repository、Event、Budget、Policy 和数据质量。
 
-### Requirements
+任何触达 LLM 或验证 Agent 行为的测试，都必须向真实 DeepSeek V4 发起当次新请求，包括 Lead、Path Agent、Router 模型判断、Tool Selection、Verification、Semantic Evaluator、Skill Candidate、Agent Integration、Gold Case E2E、Experiment 和 Release Gate。
+
+禁止用以下方式作为通过证据：
+
+- Mock / Fake / Stub ChatModel；
+- 录制回放或缓存响应；
+- 其他 DeepSeek 版本；
+- 其他厂商模型；
+- 历史 Trace。
+
+当前本地别名 `deepseek-reasoner` 不能单独证明服务端是 DeepSeek V4。Agent 测试前必须通过 `real_model_preflight`，确认实际模型身份并记录 Provider Request ID、Token、Latency、Retry 和配置版本。
+
+如果模型不可用、身份无法确认、鉴权失败或额度不足，测试必须停止并报告 `blocked`，不能静默 Skip 或切换模型。
+
+## Feature Flag
+
+新系统默认关闭：
+
+```bash
+COMMERCE_CASE_AGENT_ENABLED=false
+NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED=false
+```
+
+后端 Flag 控制 Commerce Router 是否挂载；前端 Flag 控制 Commerce Workspace 入口是否显示。两个 Flag 都开启后，新系统入口才完整可用。
+
+旧 OpenSKU / EcomLaunch 不会自动接入新系统。
+
+## 前端方向
+
+前端采用 Case-first、Codex-inspired Workspace：
+
+- Case Inbox；
+- Dataset 与 Capability；
+- Investigation Timeline；
+- Evidence / Hypothesis；
+- Action / Approval；
+- Follow-up；
+- Run Graph；
+- War Room。
+
+所有视图读取同一个 Domain Event Stream。War Room 不播放预设动画；没有真实事件时显示等待、空闲或阻塞。
+
+每个正式页面，包括 War Room，都必须先生成高保真视觉稿并完成选择，再实现 React 页面。
+
+## Legacy
+
+以下目录只读保留，作为旧项目成果、历史评测和失败经验：
+
+- `agents/ecom-launch/`；
+- `skills/custom/ecom-launch/`；
+- `evals/opensku/`；
+- `scripts/opensku/`；
+- `docs/ecom-launch/`；
+- `docs/knowledge/opensku/`；
+- `frontend/src/components/workspace/ecom-launch/`。
+
+它们不是 Commerce Case Agent 的当前验收或 Release Gate。保护快照位于：
+
+```text
+archive/ecom-launch-pre-commerce-agent-20260718
+9144237
+```
+
+## 开发
+
+### 环境
 
 - Python 3.12+
 - Node.js 22+
-- pnpm
+- pnpm 10.26.2+
 - uv
-- Optional: Docker for sandboxed execution
+- 可选：Docker
 
-### Install And Run
+### 启动 DeerFlow 基础设施
 
 ```bash
-git clone git@github.com:CheungkiCheung/OpenSKU.git
-cd OpenSKU
-
 make install
 make config
 make dev
-
-open http://localhost:2026
 ```
 
-If the repository is still under an older remote name, clone that remote and use the same local commands.
+默认统一入口：
 
-### Local Ecom Launch Demo
+```text
+http://localhost:2026
+```
 
-Manual demo materials live in [`docs/ecom-launch/`](./docs/ecom-launch/):
-
-- [`demo-brief.portable-coffee-tumbler.json`](./docs/ecom-launch/demo-brief.portable-coffee-tumbler.json)
-- [`manual-run-prompt.md`](./docs/ecom-launch/manual-run-prompt.md)
-- [`subagents.ecom-launch.yaml`](./docs/ecom-launch/subagents.ecom-launch.yaml)
-
-Reviewer package:
-
-- [`docs/demo/opensku-reviewer-guide.md`](./docs/demo/opensku-reviewer-guide.md)
-- [`docs/demo/opensku-final-evidence-matrix.md`](./docs/demo/opensku-final-evidence-matrix.md)
-- [`evals/opensku/reports/2026-06-28-rc2-10run-decision-gate/summary.md`](./evals/opensku/reports/2026-06-28-rc2-10run-decision-gate/summary.md)
-- [`docs/progress/2026-06-28-final-completion.md`](./docs/progress/2026-06-28-final-completion.md)
-
-## Testing
-
-Backend and eval checks:
+### 确定性验证
 
 ```bash
 cd backend
-uv run pytest \
-  tests/test_opensku_live_batch.py \
-  tests/test_opensku_scoring.py \
-  tests/test_opensku_release_candidate_gate.py \
-  tests/test_opensku_live_runner.py \
-  tests/test_opensku_cases.py \
-  tests/test_opensku_artifact_writer_tool.py \
-  tests/test_opensku_artifact_validator_tool.py \
-  tests/test_opensku_artifact_validators.py \
-  tests/test_opensku_benchmark_tool_policy.py \
-  tests/test_opensku_knowledge_ingest.py \
-  tests/test_opensku_knowledge_quality.py \
-  tests/test_opensku_knowledge_context.py \
-  tests/test_opensku_knowledge_promotion.py \
-  tests/test_ecom_launch_contract.py \
-  tests/test_tool_args_schema_no_pydantic_warning.py -q
-```
+PYTHONPATH=. uv run pytest tests/test_commerce_feature_flag.py -v
 
-Frontend War Room checks:
-
-```bash
-cd frontend
+cd ../frontend
 pnpm typecheck
-pnpm test -- tests/unit/components/workspace/ecom-launch
-pnpm test:e2e -- tests/e2e/artifact-preview.spec.ts tests/e2e/agent-chat.spec.ts
-pnpm exec playwright test --config=playwright.real-backend.config.ts
+pnpm lint
 ```
 
-Release-candidate gate:
+### 真实模型验证
+
+`real_model_preflight` 尚未实现前，不运行 Commerce Agent 测试。实现后统一入口将是：
 
 ```bash
-uv run --project backend python evals/opensku/run_release_candidate_gate.py \
-  --candidate-file evals/opensku/release_candidates/2026-06-28-rc2-10run.json \
-  --report-name 2026-06-28-rc2-10run-decision-gate
+cd backend
+PYTHONPATH=. uv run pytest -m real_model tests/commerce -v
 ```
 
-## Project Structure
+## 归属声明
 
-```text
-OpenSKU/
-├── agents/ecom-launch/                         # Lead agent contract
-├── skills/custom/ecom-launch/                  # Validate-launch skill
-├── skills/custom/content-calibration/          # Content calibration skill
-├── evals/opensku/                              # Benchmark, scoring, reports, RC gates
-├── scripts/opensku/                            # Knowledge ingest and promotion scripts
-├── docs/knowledge/opensku/                     # Generated execution memory
-├── docs/demo/                                  # Reviewer guide and evidence matrix
-├── frontend/src/components/workspace/ecom-launch/
-│   ├── war-room-page.tsx
-│   ├── war-room-canvas-stage.tsx
-│   ├── war-room-assets.ts
-│   └── launch-crew-activity-model.ts
-├── backend/tests/test_ecom_launch_contract.py
-├── docs/ecom-launch/                           # Manual demo materials
-└── docs/plans/ecom-launch-agent-spec.md        # Product and architecture spec
-```
-
-## Honest Status
-
-| Capability | Status | Evidence |
-|---|---|---|
-| Validate-launch skill contract | Built | [`skills/custom/ecom-launch/SKILL.md`](./skills/custom/ecom-launch/SKILL.md) |
-| EcomLaunch lead-agent behavior | Built | [`agents/ecom-launch/SOUL.md`](./agents/ecom-launch/SOUL.md) |
-| Evidence-aware artifact set | Built | [`backend/tests/test_ecom_launch_contract.py`](./backend/tests/test_ecom_launch_contract.py), [`evals/opensku/validators/`](./evals/opensku/validators/) |
-| 30-case OpenSKU benchmark | Built | [`evals/opensku/cases/`](./evals/opensku/cases/) |
-| 10-run semantic release-candidate gate | Built | [`evals/opensku/reports/2026-06-28-rc2-10run-decision-gate/summary.md`](./evals/opensku/reports/2026-06-28-rc2-10run-decision-gate/summary.md), `PASS 530/530` |
-| Real live agent validation evidence | Built | [`docs/progress/runs/`](./docs/progress/runs/) |
-| Knowledge sedimentation and reuse | Built | [`docs/knowledge/opensku/README.md`](./docs/knowledge/opensku/README.md) |
-| Launch Crew / War Room UI | Built | [`frontend/src/components/workspace/ecom-launch/`](./frontend/src/components/workspace/ecom-launch/) |
-| UI screenshot evidence | Built | [`docs/progress/screenshots/2026-06-28-opensku-war-room.png`](./docs/progress/screenshots/2026-06-28-opensku-war-room.png) |
-| Manual local demo path | Demo | [`docs/ecom-launch/README.md`](./docs/ecom-launch/README.md) |
-| Real-backend UI replay | Lab | [`frontend/tests/e2e-real-backend/`](./frontend/tests/e2e-real-backend/) uses replayed model output, not a fresh live model call |
-| Native JSON-driven dashboard from artifacts | Lab | Current workspace reads and displays structured artifact state; deeper dashboard analytics remain future work |
-| Production ecommerce platform integrations | Planned | Requires real merchant API/data access |
-
-## Design Decisions
-
-| Decision | Why |
-|---|---|
-| Focus on adaptive SKU launch loops, not generic growth automation | A narrow ecommerce workflow is easier to trust, test, and explain. |
-| Treat private metrics as unavailable by default | Most users do not have competitor GMV/CVR/ROI, and pretending otherwise destroys trust. |
-| Keep War Room as a visualization layer | The professional deliverable is the evidence-backed launch loop; the UI makes agent progress inspectable. |
-| Use public signals plus uploaded context | This supports realistic pre-launch work without claiming access to private platform dashboards. |
-| Treat 7 days as a sprint default, not the product boundary | Real SKU launches adjust by stage, data quality, channel feedback, and operational constraints. |
-
-## Roadmap
-
-- [ ] Rename public repository metadata from the older growth-engine naming to OpenSKU.
-- [x] Add JSON schemas and validators for core OpenSKU artifacts.
-- [x] Add evals for forbidden metrics, unsupported claims, evidence IDs, unavailable-data labeling, and expected decisions.
-- [x] Add `launch-state.json`, `promotion-replan.md`, and `knowledge-deltas.json` for adaptive launch loops.
-- [x] Add benchmark cases for idea-only, sample, pre-launch, soft-launch, and scale-stage SKU workflows.
-- [ ] Add more realistic demo cases for Amazon, TikTok Shop, Shopify, Xiaohongshu, and Douyin launch workflows.
-- [ ] Add real merchant backend connectors for users who can provide authenticated exports or API access.
-- [ ] Build richer analytics on top of the native artifact dashboard.
-
-## License
-
-MIT License. See [`LICENSE`](./LICENSE).
+ByteDance DeerFlow 提供通用 Agent Harness 与全栈基础设施。本项目的面试重点不是把 DeerFlow 现有能力包装成原创，而是展示在其上完成的电商 Case 产品定义、业务 Domain、数据工程、Agent Loop、Context、Verification、Eval、受控进化和真实前端闭环。

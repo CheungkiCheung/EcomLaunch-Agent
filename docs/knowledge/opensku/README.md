@@ -1,5 +1,7 @@
 # OpenSKU Knowledge Base
 
+> **LEGACY — FROZEN.** This knowledge snapshot was produced by the archived OpenSKU workflow. It must not be loaded as Active Commerce Skill memory or used as evidence that Commerce Case Agent self-evolution has passed its gates.
+
 This directory is generated from accepted OpenSKU live run artifacts.
 
 The records come from `knowledge-deltas.json` files produced by the agent and

@@ -51,10 +51,12 @@ services:
       args:
         PNPM_STORE_PATH: ${PNPM_STORE_PATH:-/root/.local/share/pnpm/store}
         NPM_REGISTRY: ${NPM_REGISTRY:-}
+        NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED: ${NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED:-false}
     container_name: deer-flow-frontend
     environment:
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - DEER_FLOW_INTERNAL_GATEWAY_BASE_URL=http://gateway:8001
+      - NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED=${NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED:-false}
     env_file:
       - ../frontend/.env
     networks:
@@ -103,6 +105,7 @@ services:
       - DEER_FLOW_CHANNELS_LANGGRAPH_URL=${DEER_FLOW_CHANNELS_LANGGRAPH_URL:-http://gateway:8001/api}
       - DEER_FLOW_CHANNELS_GATEWAY_URL=${DEER_FLOW_CHANNELS_GATEWAY_URL:-http://gateway:8001}
       - DEER_FLOW_INTERNAL_AUTH_TOKEN=${DEER_FLOW_INTERNAL_AUTH_TOKEN}
+      - COMMERCE_CASE_AGENT_ENABLED=${COMMERCE_CASE_AGENT_ENABLED:-false}
       # DooD path/network translation
       - DEER_FLOW_HOST_BASE_DIR=${DEER_FLOW_HOME}
       - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_REPO_ROOT}/skills
