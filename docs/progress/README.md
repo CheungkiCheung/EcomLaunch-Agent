@@ -1,4 +1,4 @@
-# OpenSKU Progress Logs
+# Project Progress Logs
 
 This directory stores execution logs for project milestones and real validation runs.
 
@@ -64,4 +64,3 @@ docs/progress/runs/<YYYY-MM-DD>/<case_id>/
 ## Quality Rule
 
 Do not write vague logs. A good log names the command, the file, the result, and the decision it caused.
-

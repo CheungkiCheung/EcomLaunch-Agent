@@ -11,7 +11,7 @@
 
 项目正在从旧 OpenSKU / EcomLaunch 方案改造为 Commerce Case Agent。
 
-Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 和“只生成候选、不自动确认”的 Semantic Candidate 层也已实现，并通过 fresh、身份核验的真实请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成 Case、Domain Event、append-only Evidence 与 versioned Hypothesis 持久化，以及 Data Intake、Profile、Capability、Semantic Candidate、Anomaly-to-Case 和 Case Event Stream API。Phase 4 已开始落地 ContextPacket、PathAgentSpec、Capability-first DynamicPathRouter 与并发安全 BudgetManager。Action/Approval/Follow-up 持久化、ModelRouter、GoalLoopController、Investigation Start、Run API 和完整 Path Agent 行为尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
+Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 和“只生成候选、不自动确认”的 Semantic Candidate 层也已实现，并通过 fresh、身份核验的真实请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成 Case、Domain Event、append-only Evidence 与 versioned Hypothesis 持久化，以及 Data Intake、Profile、Capability、Semantic Candidate、Anomaly-to-Case 和 Case Event Stream API。Phase 4 的确定性编排内核现已包括 ContextPacket、PathAgentSpec、Capability-first DynamicPathRouter、并发安全 BudgetManager、规则型 ModelRouter、结构化 PathResult、GoalLoopController、Stop Condition 与安全 Checkpoint 合同。Action/Approval/Follow-up 持久化、Investigation Start、Run API、Checkpoint 持久化/进程恢复、Lead/Path Agent、Fresh-context Verification 和完整 Agent E2E 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
 
 完整设计与实施计划：
 
@@ -31,6 +31,7 @@ Phase 0 基线与迁移清单：
 - [`docs/progress/2026-07-18-commerce-phase3-anomaly-to-case.md`](./docs/progress/2026-07-18-commerce-phase3-anomaly-to-case.md)
 - [`docs/progress/2026-07-18-commerce-semantic-candidate-real-deepseek-v4.md`](./docs/progress/2026-07-18-commerce-semantic-candidate-real-deepseek-v4.md)
 - [`docs/progress/2026-07-18-commerce-phase4-context-router-budget.md`](./docs/progress/2026-07-18-commerce-phase4-context-router-budget.md)
+- [`docs/progress/2026-07-19-commerce-phase4-model-loop-path-result.md`](./docs/progress/2026-07-19-commerce-phase4-model-loop-path-result.md)
 
 ## 解决什么问题
 

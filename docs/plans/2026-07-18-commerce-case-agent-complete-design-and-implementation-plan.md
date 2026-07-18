@@ -1170,9 +1170,9 @@ GREEN：添加：
 - [x] 三条 versioned PathAgentSpec；
 - [x] Capability-first DynamicPathRouter（0–3 Path、Reason Codes）；
 - [x] 并发安全多维 BudgetManager 与原子拒绝；
-- [ ] ModelRouter 与 Assignment Event；
-- [ ] GoalLoopController / Checkpoint / Stop Condition；
-- [ ] Structured PathResult；
+- [x] ModelRouter 与 Assignment Event；
+- [x] GoalLoopController / Checkpoint Contract / Stop Condition；
+- [x] Structured PathResult；
 - [ ] 真实 DeepSeek V4 Path Agent 与 Verification 行为测试。
 
 #### Task 4.1：ContextPacket
@@ -1204,36 +1204,37 @@ GREEN：添加：
 
 #### Task 4.4：ModelRouter
 
-- Profile Binding；
-- Effort；
-- Upgrade Policy；
-- Assignment Event；
-- Budget Integration。
+- [x] Profile Binding；
+- [x] Effort；
+- [x] Upgrade Policy；
+- [x] Assignment Event；
+- [x] Budget Integration。
 
 #### Task 4.5：BudgetManager
 
 - [x] Run / Agent / Tool / Verification 可配置预算合同；
 - [x] 原子消费；
 - [x] 并发安全；
-- [ ] Budget Exceeded Event。
+- [x] Budget Exceeded Event Contract。
 
 #### Task 4.6：GoalLoopController
 
-- Iteration；
-- Progress Signal；
-- Stop Condition；
-- Partial Goal；
-- No New Evidence；
-- Checkpoint。
+- [x] Iteration；
+- [x] Progress Signal；
+- [x] Stop Condition；
+- [x] Partial Goal；
+- [x] No New Evidence；
+- [x] Safe Checkpoint Contract；
+- [ ] Durable Checkpoint Persistence / Resume（Task 4.10）。
 
 #### Task 4.7：Structured PathResult
 
-- Observations；
-- Evidence；
-- Supported / Contradicted Hypotheses；
-- Unknowns；
-- Suggested Next Path；
-- Cost / Trace。
+- [x] Observations；
+- [x] Evidence；
+- [x] Supported / Contradicted Hypotheses；
+- [x] Unknowns；
+- [x] Suggested Next Path；
+- [x] Cost / Trace。
 
 #### Task 4.8：首批 Path Agents
 

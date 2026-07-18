@@ -91,8 +91,15 @@ _LIMIT_FIELDS = {
 class BudgetManager:
     """Check all dimensions before committing one immutable usage snapshot."""
 
-    def __init__(self, limit: AgentBudgetLimit) -> None:
-        self._snapshot = BudgetSnapshot(limit=limit, usage=BudgetUsage())
+    def __init__(
+        self,
+        limit: AgentBudgetLimit,
+        *,
+        initial_usage: BudgetUsage | None = None,
+    ) -> None:
+        usage = initial_usage or BudgetUsage()
+        self._validate_candidate(limit, usage.model_dump())
+        self._snapshot = BudgetSnapshot(limit=limit, usage=usage)
         self._lock = asyncio.Lock()
 
     @property
@@ -107,17 +114,39 @@ class BudgetManager:
                 key: usage_values[key] + delta_values[key]
                 for key in usage_values
             }
-            for dimension, limit_field in _LIMIT_FIELDS.items():
-                attempted = candidate[dimension.value]
-                allowed = getattr(self._snapshot.limit, limit_field)
-                if attempted > allowed:
-                    raise BudgetExceededError(
-                        dimension,
-                        attempted=attempted,
-                        limit=allowed,
-                    )
-            self._snapshot = BudgetSnapshot(
-                limit=self._snapshot.limit,
-                usage=BudgetUsage.model_validate(candidate),
+            return self._commit_candidate(candidate)
+
+    async def record_iteration(self, *, has_new_evidence: bool) -> BudgetSnapshot:
+        """Atomically count an iteration and maintain the consecutive no-progress streak."""
+
+        async with self._lock:
+            candidate = self._snapshot.usage.model_dump()
+            candidate[BudgetDimension.ITERATIONS.value] += 1
+            no_evidence_key = BudgetDimension.CONSECUTIVE_NO_NEW_EVIDENCE.value
+            candidate[no_evidence_key] = (
+                0 if has_new_evidence else candidate[no_evidence_key] + 1
             )
-            return self._snapshot
+            return self._commit_candidate(candidate)
+
+    def _commit_candidate(self, candidate: dict[str, int | float]) -> BudgetSnapshot:
+        self._validate_candidate(self._snapshot.limit, candidate)
+        self._snapshot = BudgetSnapshot(
+            limit=self._snapshot.limit,
+            usage=BudgetUsage.model_validate(candidate),
+        )
+        return self._snapshot
+
+    @staticmethod
+    def _validate_candidate(
+        limit: AgentBudgetLimit,
+        candidate: dict[str, int | float],
+    ) -> None:
+        for dimension, limit_field in _LIMIT_FIELDS.items():
+            attempted = candidate[dimension.value]
+            allowed = getattr(limit, limit_field)
+            if attempted > allowed:
+                raise BudgetExceededError(
+                    dimension,
+                    attempted=attempted,
+                    limit=allowed,
+                )

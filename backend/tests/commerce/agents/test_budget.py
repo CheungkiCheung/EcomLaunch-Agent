@@ -45,3 +45,22 @@ async def test_budget_rejects_multi_dimension_delta_without_partial_consumption(
     assert error.value.dimension is BudgetDimension.ITERATIONS
     assert manager.snapshot.usage.iterations == 2
     assert manager.snapshot.usage.tokens == 50
+
+
+@pytest.mark.anyio
+async def test_iteration_accounting_resets_consecutive_no_evidence_on_progress():
+    manager = BudgetManager(
+        AgentBudgetLimit(
+            max_iterations=4,
+            max_consecutive_no_new_evidence=2,
+        )
+    )
+
+    first = await manager.record_iteration(has_new_evidence=False)
+    second = await manager.record_iteration(has_new_evidence=True)
+    third = await manager.record_iteration(has_new_evidence=False)
+
+    assert first.usage.consecutive_no_new_evidence == 1
+    assert second.usage.consecutive_no_new_evidence == 0
+    assert third.usage.iterations == 3
+    assert third.usage.consecutive_no_new_evidence == 1
