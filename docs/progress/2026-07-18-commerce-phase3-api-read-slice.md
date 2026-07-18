@@ -7,7 +7,11 @@
 
 ## Outcome
 
-The first Commerce HTTP surface is now a small, read-only Case Workspace. It is mounted only when `COMMERCE_CASE_AGENT_ENABLED=true`:
+The first Commerce HTTP surface is now a deterministic Dataset intake plus a read-only Case Workspace. It is mounted only when `COMMERCE_CASE_AGENT_ENABLED=true`:
+
+- `POST /api/commerce/datasets/intake`
+- `GET /api/commerce/datasets/{dataset_id}/profile`
+- `GET /api/commerce/datasets/{dataset_id}/capabilities`
 
 - `GET /api/commerce/cases`
 - `GET /api/commerce/cases/{case_id}`
@@ -16,7 +20,7 @@ The first Commerce HTTP surface is now a small, read-only Case Workspace. It is 
 - `GET /api/commerce/cases/{case_id}/hypotheses`
 - `GET /api/commerce/cases/{case_id}/events`
 
-The API reads from the same application-owned Case, Evidence, Hypothesis and Domain Event repositories already covered by SQLite persistence tests. It does not create an alternate chat-derived state or reimplement deterministic business rules in the router.
+The Dataset endpoints call the existing safe Intake, Profiler, Semantic Mapper and Capability Registry. The Case endpoints read from the same application-owned Case, Evidence, Hypothesis and Domain Event repositories already covered by SQLite persistence tests. It does not create an alternate chat-derived state or reimplement deterministic business rules in the router.
 
 ## Boundary and safety
 
@@ -26,7 +30,7 @@ This header is an explicit stage contract, not a finished multi-tenant authoriza
 
 ## Deterministic TDD evidence
 
-The initial API contract test failed during collection because `app.commerce.api.dependencies` and the read router did not exist:
+The initial read API contract test failed during collection because `app.commerce.api.dependencies` and the read router did not exist:
 
 ```text
 ModuleNotFoundError: No module named 'app.commerce.api.dependencies'
@@ -46,10 +50,19 @@ exit code: 0
 
 The tests seed a real SQLite Commerce schema through `SqlCommerceUnitOfWork`, then exercise the HTTP adapter against that persisted Case, Evidence, Hypothesis and Domain Event stream. They make no model calls.
 
+The Dataset intake contract then used a real multipart request and a real temporary storage root. It passed the existing `DataIntakeService` safety checks and deterministically returned the Profile, Mapping and Capability objects:
+
+```text
+PYTHONPATH=. .venv/bin/pytest -q \
+  tests/commerce/api/test_data_intake_router.py \
+  tests/test_commerce_feature_flag.py
+
+7 passed
+exit code: 0
+```
+
 ## Not yet included
 
-- Data Upload / Profile;
-- Capability Report;
 - Anomaly-to-Case application service;
 - Investigation Start;
 - Run Detail / Run Event API;

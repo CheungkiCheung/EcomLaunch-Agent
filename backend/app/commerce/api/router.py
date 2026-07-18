@@ -5,9 +5,14 @@ from __future__ import annotations
 import asyncio
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, UploadFile
 
+from app.commerce.api.data_service import (
+    CommerceDataService,
+    DatasetNotFoundError,
+)
 from app.commerce.api.dependencies import (
+    get_commerce_data_service,
     get_commerce_read_service,
     get_commerce_workspace_id,
 )
@@ -15,6 +20,7 @@ from app.commerce.api.schemas import (
     CaseDetailResponse,
     CaseListResponse,
     CaseResponse,
+    DatasetIntakeResponse,
     DomainEventListResponse,
     DomainEventResponse,
     EvidenceListResponse,
@@ -23,9 +29,12 @@ from app.commerce.api.schemas import (
     HypothesisResponse,
 )
 from app.commerce.api.service import CommerceReadService
+from app.commerce.data.capabilities import CapabilityProfile
+from app.commerce.data.intake import DataIntakeError
+from app.commerce.data.profiler import DatasetProfile
 from app.commerce.domain.enums import CaseStatus
 from app.commerce.domain.events import DomainEventEnvelope
-from app.commerce.domain.ids import CaseId, EvidenceId, WorkspaceId
+from app.commerce.domain.ids import CaseId, DatasetId, EvidenceId, WorkspaceId
 from app.commerce.domain.models import Case, Evidence, Hypothesis
 
 router = APIRouter(prefix="/api/commerce", tags=["commerce"])
@@ -118,6 +127,13 @@ def _parse_evidence_id(raw_evidence_id: str) -> EvidenceId:
         raise HTTPException(status_code=400, detail="Invalid EvidenceId") from exc
 
 
+def _parse_dataset_id(raw_dataset_id: str) -> DatasetId:
+    try:
+        return DatasetId(raw_dataset_id)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid DatasetId") from exc
+
+
 async def _require_case(
     service: CommerceReadService,
     workspace_id: WorkspaceId,
@@ -148,6 +164,64 @@ async def list_cases(
         limit=limit,
         offset=offset,
     )
+
+
+@router.post(
+    "/datasets/intake",
+    response_model=DatasetIntakeResponse,
+    status_code=201,
+)
+async def intake_dataset(
+    files: Annotated[list[UploadFile], File(...)],
+    service: Annotated[CommerceDataService, Depends(get_commerce_data_service)],
+    workspace_id: Annotated[WorkspaceId, Depends(get_commerce_workspace_id)],
+) -> DatasetIntakeResponse:
+    uploads: list[tuple[str, bytes]] = []
+    try:
+        for upload in files:
+            uploads.append((upload.filename or "", await upload.read()))
+        view = service.ingest_uploads(workspace_id, tuple(uploads))
+    except DataIntakeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        for upload in files:
+            await upload.close()
+    return DatasetIntakeResponse(
+        manifest=view.manifest,
+        profile=view.profile,
+        mappings=view.mappings,
+        capabilities=view.capabilities,
+    )
+
+
+@router.get("/datasets/{raw_dataset_id}/profile", response_model=DatasetProfile)
+async def get_dataset_profile(
+    raw_dataset_id: Annotated[str, Path()],
+    service: Annotated[CommerceDataService, Depends(get_commerce_data_service)],
+    workspace_id: Annotated[WorkspaceId, Depends(get_commerce_workspace_id)],
+) -> DatasetProfile:
+    try:
+        return service.get_view(
+            workspace_id,
+            _parse_dataset_id(raw_dataset_id),
+        ).profile
+    except DatasetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Commerce Dataset not found") from exc
+
+
+@router.get("/datasets/{raw_dataset_id}/capabilities", response_model=CapabilityProfile)
+async def get_dataset_capabilities(
+    raw_dataset_id: Annotated[str, Path()],
+    service: Annotated[CommerceDataService, Depends(get_commerce_data_service)],
+    workspace_id: Annotated[WorkspaceId, Depends(get_commerce_workspace_id)],
+) -> CapabilityProfile:
+    try:
+        return service.get_view(
+            workspace_id,
+            _parse_dataset_id(raw_dataset_id),
+        ).capabilities
+    except DatasetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Commerce Dataset not found") from exc
 
 
 @router.get("/cases/{raw_case_id}", response_model=CaseDetailResponse)

@@ -305,10 +305,13 @@ PYTHONPATH=. .venv/bin/python -m app.commerce.persistence.migrations \
 
 运行时仍复用 DeerFlow 已初始化的异步 Engine / Session Factory；独立的是 Commerce ORM Metadata、表前缀和迁移分支，不是另开一套数据库连接池。
 
-### Commerce 只读 API
+### Commerce API
 
-Commerce API 默认关闭。只有设置 `COMMERCE_CASE_AGENT_ENABLED=true` 后，Gateway 才挂载 `/api/commerce` 路由。当前已实现的读取合同是：
+Commerce API 默认关闭。只有设置 `COMMERCE_CASE_AGENT_ENABLED=true` 后，Gateway 才挂载 `/api/commerce` 路由。当前已实现的确定性数据与读取合同是：
 
+- `POST /api/commerce/datasets/intake`：多文件上传、只读存储、Hash/Manifest、Profile、Semantic Mapping 和 Capability 一次返回；
+- `GET /api/commerce/datasets/{dataset_id}/profile`：从不可变 Manifest 重算 Dataset Profile；
+- `GET /api/commerce/datasets/{dataset_id}/capabilities`：从 Profile 和当前 Workspace confirmations 重算 Capability；
 - `GET /api/commerce/cases`：Workspace-scoped Case 列表和状态过滤；
 - `GET /api/commerce/cases/{case_id}`：Case、最新 Evidence 和 Hypothesis；
 - `GET /api/commerce/cases/{case_id}/evidence` 与 `/evidence/{evidence_id}`；

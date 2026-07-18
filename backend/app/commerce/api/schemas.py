@@ -7,6 +7,11 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.commerce.data.capabilities import CapabilityProfile
+from app.commerce.data.intake import DataBundleManifest
+from app.commerce.data.profiler import DatasetProfile
+from app.commerce.data.semantic_mapper import SemanticMappingProfile
+
 
 class CommerceResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -91,3 +96,10 @@ class HypothesisListResponse(CommerceResponse):
 
 class DomainEventListResponse(CommerceResponse):
     items: list[DomainEventResponse]
+
+
+class DatasetIntakeResponse(CommerceResponse):
+    manifest: DataBundleManifest
+    profile: DatasetProfile
+    mappings: SemanticMappingProfile
+    capabilities: CapabilityProfile

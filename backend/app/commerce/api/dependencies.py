@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Header, HTTPException
 
+from app.commerce.api.data_service import CommerceDataService
 from app.commerce.api.service import CommerceReadService
 from app.commerce.domain.ids import WorkspaceId
 from deerflow.persistence.engine import get_session_factory
@@ -19,6 +22,13 @@ def get_commerce_read_service() -> CommerceReadService:
             detail="Commerce persistence is not initialized",
         )
     return CommerceReadService(session_factory)
+
+
+def get_commerce_data_service() -> CommerceDataService:
+    storage_root = Path(
+        os.getenv("COMMERCE_STORAGE_ROOT", ".deer-flow/commerce/data")
+    )
+    return CommerceDataService(storage_root=storage_root)
 
 
 def get_commerce_workspace_id(
