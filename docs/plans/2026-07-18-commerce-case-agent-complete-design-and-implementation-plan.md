@@ -1,10 +1,10 @@
 # Commerce Case Agent 完整设计与实施计划
 
-> 状态：设计已收口，实施尚未开始  
-> 日期：2026-07-18  
-> 当前分支：`feature/commerce-case-agent`  
-> 保护快照：`archive/ecom-launch-pre-commerce-agent-20260718` / `9144237`  
-> 上游基础：DeerFlow  
+> 状态：设计已收口，实施尚未开始
+> 日期：2026-07-18
+> 当前分支：`feature/commerce-case-agent`
+> 保护快照：`archive/ecom-launch-pre-commerce-agent-20260718` / `9144237`
+> 上游基础：DeerFlow
 > 内部代号：Commerce Case Agent
 
 ## 1. 目标
