@@ -11,7 +11,7 @@
 
 项目正在从旧 OpenSKU / EcomLaunch 方案改造为 Commerce Case Agent。
 
-Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 也已实现，并在官方端点通过当次新请求验证，服务端返回身份为 `deepseek-v4-flash`。DeepSeek V4 语义候选层和持久化仍在实施。新 Agent 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
+Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 也已实现，并在官方端点通过当次新请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成第一批 Case Repository 与 Domain Event 基础：SQLite 实际运行、PostgreSQL DDL 兼容、独立迁移、乐观并发和同事务 Case/Event 写入。DeepSeek V4 语义候选层、Evidence/Action 持久化、API 和新 Agent 尚未完成，旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
 
 完整设计与实施计划：
 
@@ -25,6 +25,7 @@ Phase 0 基线与迁移清单：
 
 - [`docs/progress/2026-07-18-commerce-real-deepseek-v4-preflight.md`](./docs/progress/2026-07-18-commerce-real-deepseek-v4-preflight.md)
 - [`docs/progress/2026-07-18-commerce-phase2-peer-geographic-metrics.md`](./docs/progress/2026-07-18-commerce-phase2-peer-geographic-metrics.md)
+- [`docs/progress/2026-07-18-commerce-phase3-case-event-persistence.md`](./docs/progress/2026-07-18-commerce-phase3-case-event-persistence.md)
 
 ## 解决什么问题
 
@@ -290,6 +291,18 @@ PYTHONPATH=. uv run pytest -m real_model tests/commerce -v
 ```
 
 截至 2026-07-18，最终加固版预检已通过带唯一 nonce 的新鲜官方请求，返回 `deepseek-v4-flash`、72 Tokens、单次请求、零重试；此前两次独立官方请求也分别返回相同 V4 身份。该结果只证明真实模型门禁可用，不代表尚未实现的 Commerce Agent 行为已经通过。
+
+### Commerce 数据库迁移
+
+Commerce 使用独立 Alembic 入口和独立版本表 `commerce_alembic_version`，不会把应用迁移混入 DeerFlow Harness 的迁移历史：
+
+```bash
+cd backend
+PYTHONPATH=. .venv/bin/python -m app.commerce.persistence.migrations \
+  upgrade --url "sqlite+aiosqlite:////absolute/path/to/deerflow.db"
+```
+
+运行时仍复用 DeerFlow 已初始化的异步 Engine / Session Factory；独立的是 Commerce ORM Metadata、表前缀和迁移分支，不是另开一套数据库连接池。
 
 ## 归属声明
 

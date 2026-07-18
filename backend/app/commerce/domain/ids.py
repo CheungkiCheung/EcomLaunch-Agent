@@ -110,6 +110,14 @@ class EventId(TypedId):
     PREFIX = "evt"
 
 
+class TraceId(TypedId):
+    PREFIX = "trace"
+
+
+class CorrelationId(TypedId):
+    PREFIX = "corr"
+
+
 class AgentTaskId(TypedId):
     PREFIX = "task"
 

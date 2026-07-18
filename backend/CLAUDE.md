@@ -16,6 +16,8 @@ Commerce Phase 2 deterministic data modules live under `app/commerce/data/` and 
 
 Commerce deterministic tests must exclude `tests/commerce/evaluation/test_real_model_preflight_live.py` explicitly when no provider call is intended. The live test is marked `real_model`, always makes a fresh request, and fails rather than skips on missing credentials, quota, availability, identity or telemetry. Run it with `PYTHONPATH=. uv run pytest -m real_model tests/commerce -v`; never add a fake provider, replay fixture, cached response, fallback model or global skip around this gate.
 
+Commerce Phase 3 persistence starts under `app/commerce/persistence/`. It reuses the Harness async Engine / Session Factory but owns `CommerceBase`, `commerce_*` tables, an independent Alembic environment and the separate `commerce_alembic_version` table; Harness code must not import these application models. `SqlCaseRepository` provides Workspace-scoped reads and optimistic-concurrency writes. Production state mutations should use `SqlCommerceUnitOfWork`, which writes the Case row and authoritative Domain Event in one transaction. `SqlDomainEventStore` is append-only, allocates independent Case and Run sequences, retries sequence collisions and supports ordered replay. SQLite is covered by real repository/migration tests; PostgreSQL is currently covered by SQLAlchemy DDL compilation only, not a live database integration test.
+
 **Architecture**:
 - **Gateway API** (port 8001): REST API plus embedded LangGraph-compatible agent runtime
 - **Frontend** (port 3000): Next.js web interface

@@ -1085,6 +1085,20 @@ GREEN：添加：
 
 ### Phase 3：Case Persistence、API 与 Domain Events
 
+2026-07-18 第一子阶段实施状态：
+
+- [x] 应用层 `CommerceBase`、`commerce_*` ORM 表与共享异步 Session Factory 合同；
+- [x] 独立 Alembic 入口与独立 `commerce_alembic_version`；
+- [x] SQLite 实际迁移 / Repository 测试与 PostgreSQL DDL 编译；
+- [x] Workspace-scoped Case Create / Get / List / Save；
+- [x] Optimistic Concurrency 与失败事务回滚；
+- [x] Case / Run 双 Sequence、Schema Version、Trace / Correlation / Causation；
+- [x] Case 状态写入与 Domain Event 同事务 Unit of Work；
+- [x] Event Replay 重建 Case Projection；
+- [ ] Evidence / Hypothesis / Action / Approval / Follow-up Repository；
+- [ ] PostgreSQL 真实实例集成测试；
+- [ ] Commerce API 与 Feature Flag Router。
+
 #### Task 3.1：Commerce Persistence
 
 - 共享异步 Engine；

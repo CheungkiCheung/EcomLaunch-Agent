@@ -141,4 +141,4 @@ This stage does not implement `SellerPeerPathAgent`. It only makes the underlyin
 
 ## Next
 
-Phase 2's major deterministic metric gaps are now closed. The next independent work is Phase 3 persistence and Domain Events: repositories, optimistic concurrency, event sequencing, API contracts and the feature-flagged Commerce router.
+Phase 2's major deterministic metric gaps are now closed. Phase 3 Case/Event persistence started in [`2026-07-18-commerce-phase3-case-event-persistence.md`](./2026-07-18-commerce-phase3-case-event-persistence.md); Evidence/Action repositories, API contracts and the feature-flagged Commerce router remain.
