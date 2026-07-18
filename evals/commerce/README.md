@@ -11,6 +11,7 @@ They are public benchmark fixtures, not live merchant telemetry. They cannot pro
 | `GC-FULFILLMENT-001` | Separate seller handling from carrier transit degradation and preserve an inconclusive causal follow-up | 554 delivered, single-seller orders for one real anonymized seller |
 | `GC-REVIEW-002` | Diagnose review experience degradation while late-delivery rate remains zero | 35 delivered, single-seller orders for one real anonymized seller |
 | `GC-CAPABILITY-003` | Prove capability-aware degradation after review data is removed | Same non-review rows as `GC-FULFILLMENT-001`, without `order_reviews.csv` |
+| `GC-PEER-004` | Compare one delivery outlier against an outcome-agnostic matched seller cohort | 316 delivered orders across 6 real anonymized sellers in one pure category, seller state and time window |
 
 ## On-disk isolation
 
@@ -45,6 +46,16 @@ The builder:
 5. normalizes only CSV cell line endings and trailing cell whitespace for Git-safe deterministic fixtures;
 6. recomputes frozen metrics and fails on drift;
 7. writes deterministic manifests and evaluator-only contracts.
+
+For `GC-PEER-004`, cohort eligibility is frozen before looking at the late-delivery value:
+
+- purchase time from 2018-01-01 inclusive to 2018-07-01 exclusive;
+- product category exactly `fashion_bolsas_e_acessorios` for every item in the order;
+- seller state `SP`;
+- delivered, single-seller orders with eligible delivery timestamps;
+- at least 20 eligible orders per seller.
+
+The target has 59 eligible orders and 16 late deliveries. The five peers have 257 eligible orders and 19 late deliveries in total. The peer metric is the pooled order-level rate (`19 / 257`), not an unweighted average of seller percentages. This comparison controls several visible dimensions but still cannot establish causal seller responsibility.
 
 ## Deterministic verification
 

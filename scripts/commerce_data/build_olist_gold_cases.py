@@ -51,6 +51,19 @@ class CaseSpec:
     prompt: str
 
 
+@dataclass(frozen=True)
+class PeerCaseSpec:
+    case_key: str
+    title: str
+    seller_id: str
+    start: datetime
+    end: datetime
+    product_category: str
+    seller_state: str
+    min_orders_per_seller: int
+    prompt: str
+
+
 CASE_SPECS = (
     CaseSpec(
         case_key="GC-FULFILLMENT-001",
@@ -78,6 +91,17 @@ CASE_SPECS = (
         end=datetime(2018, 6, 1),
         include_reviews=False,
         prompt="请在当前已上传数据的能力范围内调查履约异常；缺失信息必须明确说明，并给出精确补数建议。",
+    ),
+    PeerCaseSpec(
+        case_key="GC-PEER-004",
+        title="Same-category same-state seller delivery outlier",
+        seller_id="e5a3438891c0bfdb9394643f95273d8e",
+        start=datetime(2018, 1, 1),
+        end=datetime(2018, 7, 1),
+        product_category="fashion_bolsas_e_acessorios",
+        seller_state="SP",
+        min_orders_per_seller=20,
+        prompt="该卖家的延迟率看起来偏高。请与同时间、同品类、同卖家州且样本充足的真实卖家进行对标，说明差距、地域分布和证据边界。",
     ),
 )
 
@@ -291,6 +315,55 @@ def expected_behavior(case_key: str) -> dict:
             },
         }
 
+    if case_key == "GC-PEER-004":
+        return {
+            "required_facts": (
+                fact("peer.target_order_count", 59),
+                fact("peer.target_late_delivery_rate", 16 / 59, tolerance=1e-12),
+                fact("peer.peer_seller_count", 5),
+                fact("peer.peer_order_count", 257),
+                fact("peer.peer_late_delivery_rate", 19 / 257, tolerance=1e-12),
+                fact("peer.late_delivery_rate_gap", (16 / 59) - (19 / 257), tolerance=1e-12),
+                fact("geography.SP.order_count", 26),
+                fact("geography.MG.order_count", 8),
+                fact("geography.RJ.order_count", 7),
+            ),
+            "forbidden_claims": (
+                {
+                    "code": "no-peer-gap-causal-blame",
+                    "kind": "unsupported_causal",
+                    "description": "A matched peer gap is diagnostic evidence, not proof that seller-controlled behavior caused lateness.",
+                    "match_mode": "any_term",
+                    "terms": (
+                        "peer gap proves the seller caused delays",
+                        "seller operations definitively caused the gap",
+                        "对标差距证明卖家导致延迟",
+                        "可以确认是卖家自身造成",
+                    ),
+                },
+                {
+                    "code": "no-peer-causal-action-effect",
+                    "kind": "unsupported_causal",
+                    "description": "The frozen peer comparison has no controlled Action follow-up.",
+                    "match_mode": "any_term",
+                    "terms": (
+                        "action closed the peer gap",
+                        "intervention improved the seller",
+                        "行动已缩小对标差距",
+                        "措施已经改善卖家表现",
+                    ),
+                },
+                private_metric_forbidden_claim(),
+            ),
+            "expected_capabilities": (
+                "fulfillment_diagnosis",
+                "review_experience",
+                "seller_peer_comparison",
+            ),
+            "expected_path_agents": ("FulfillmentPathAgent", "SellerPeerPathAgent"),
+            "skipped_path_agents": ("ReviewExperiencePathAgent",),
+        }
+
     raise ValueError(f"Unknown Gold Case: {case_key}")
 
 
@@ -358,6 +431,48 @@ def verify_frozen_metrics(case_key: str, tables: dict[str, RawTable]) -> None:
             assert_close(baseline["average_review_score"], 4.228571428571429)
             assert_close(anomaly["average_review_score"], 3.5979899497487438)
             assert_close(recovery["average_review_score"], 4.280952380952381)
+        return
+
+    if case_key == "GC-PEER-004":
+        items_by_order: dict[str, list[dict[str, str]]] = defaultdict(list)
+        for item in tables["order_items"].rows:
+            items_by_order[item["order_id"]].append(item)
+        orders_by_seller: dict[str, list[dict[str, str]]] = defaultdict(list)
+        customers_by_id = {row["customer_id"]: row for row in tables["customers"].rows}
+        target_states: dict[str, int] = defaultdict(int)
+        target_seller_id = "e5a3438891c0bfdb9394643f95273d8e"
+        for order in tables["orders"].rows:
+            seller_ids = {item["seller_id"] for item in items_by_order[order["order_id"]]}
+            if len(seller_ids) != 1:
+                raise ValueError("Peer fixture contains a multi-seller order")
+            seller_id = next(iter(seller_ids))
+            orders_by_seller[seller_id].append(order)
+            if seller_id == target_seller_id:
+                target_states[customers_by_id[order["customer_id"]]["customer_state"]] += 1
+
+        target_orders = orders_by_seller[target_seller_id]
+        peer_orders = [
+            order
+            for seller_id, orders_for_seller in orders_by_seller.items()
+            if seller_id != target_seller_id
+            for order in orders_for_seller
+        ]
+
+        def late_count(selected_orders: list[dict[str, str]]) -> int:
+            return sum(
+                parse_dt(order["order_delivered_customer_date"])
+                > parse_dt(order["order_estimated_delivery_date"])
+                for order in selected_orders
+            )
+
+        assert_close(len(target_orders), 59)
+        assert_close(late_count(target_orders), 16)
+        assert_close(len(orders_by_seller) - 1, 5)
+        assert_close(len(peer_orders), 257)
+        assert_close(late_count(peer_orders), 19)
+        assert_close(target_states["SP"], 26)
+        assert_close(target_states["MG"], 8)
+        assert_close(target_states["RJ"], 7)
         return
 
     baseline = metrics_for_window(orders, reviews, datetime(2018, 3, 1), datetime(2018, 4, 1))
@@ -484,6 +599,149 @@ def build_case(spec: CaseSpec, raw: dict[str, RawTable], output_root: Path) -> N
     )
 
 
+def build_peer_case(spec: PeerCaseSpec, raw: dict[str, RawTable], output_root: Path) -> None:
+    items = raw["olist_order_items_dataset.csv"]
+    orders = raw["olist_orders_dataset.csv"]
+    product_categories = {
+        row["product_id"]: row["product_category_name"]
+        for row in raw["olist_products_dataset.csv"].rows
+    }
+    seller_states = {
+        row["seller_id"]: row["seller_state"]
+        for row in raw["olist_sellers_dataset.csv"].rows
+    }
+    items_by_order: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for item in items.rows:
+        items_by_order[item["order_id"]].append(item)
+
+    candidate_orders_by_seller: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for order in orders.rows:
+        order_items = items_by_order[order["order_id"]]
+        seller_ids = {item["seller_id"] for item in order_items}
+        categories = {product_categories.get(item["product_id"], "") for item in order_items}
+        if order["order_status"] != "delivered" or len(seller_ids) != 1:
+            continue
+        if not order["order_delivered_customer_date"] or not order["order_estimated_delivery_date"]:
+            continue
+        if not spec.start <= parse_dt(order["order_purchase_timestamp"]) < spec.end:
+            continue
+        if categories != {spec.product_category}:
+            continue
+        seller_id = next(iter(seller_ids))
+        if seller_states.get(seller_id) != spec.seller_state:
+            continue
+        candidate_orders_by_seller[seller_id].append(order)
+
+    eligible_seller_ids = {
+        seller_id
+        for seller_id, seller_orders in candidate_orders_by_seller.items()
+        if len(seller_orders) >= spec.min_orders_per_seller
+    }
+    if spec.seller_id not in eligible_seller_ids:
+        raise ValueError("Frozen peer target no longer satisfies cohort eligibility")
+    if len(eligible_seller_ids) < 2:
+        raise ValueError("Frozen peer cohort no longer has an eligible peer")
+
+    selected_order_ids = {
+        order["order_id"]
+        for seller_id in eligible_seller_ids
+        for order in candidate_orders_by_seller[seller_id]
+    }
+    selected_orders = filter_table(orders, lambda row: row["order_id"] in selected_order_ids)
+    selected_items = filter_table(items, lambda row: row["order_id"] in selected_order_ids)
+    product_ids = {row["product_id"] for row in selected_items.rows}
+    customer_ids = {row["customer_id"] for row in selected_orders.rows}
+
+    tables = {
+        "orders": selected_orders,
+        "order_items": selected_items,
+        "order_reviews": filter_table(
+            raw["olist_order_reviews_dataset.csv"],
+            lambda row: row["order_id"] in selected_order_ids,
+        ),
+        "products": filter_table(
+            raw["olist_products_dataset.csv"],
+            lambda row: row["product_id"] in product_ids,
+        ),
+        "customers": filter_table(
+            raw["olist_customers_dataset.csv"],
+            lambda row: row["customer_id"] in customer_ids,
+        ),
+        "sellers": filter_table(
+            raw["olist_sellers_dataset.csv"],
+            lambda row: row["seller_id"] in eligible_seller_ids,
+        ),
+    }
+    verify_frozen_metrics(spec.case_key, tables)
+
+    case_dir = output_root / spec.case_key
+    if case_dir.exists():
+        shutil.rmtree(case_dir)
+    input_dir = case_dir / "input"
+    input_dir.mkdir(parents=True)
+
+    input_files = []
+    for table_name in ("orders", "order_items", "order_reviews", "products", "customers", "sellers"):
+        path = input_dir / f"{table_name}.csv"
+        write_table(path, tables[table_name])
+        input_files.append(
+            {
+                "name": table_name,
+                "relative_path": f"input/{table_name}.csv",
+                "table_name": table_name,
+                "sha256": sha256(path),
+                "row_count": len(tables[table_name].rows),
+                "columns": tables[table_name].fieldnames,
+            }
+        )
+
+    write_json(
+        case_dir / "case-metadata.json",
+        {
+            "id": f"evalcase_{uuid5(NAMESPACE_URL, f'commerce:{spec.case_key}').hex}",
+            "case_key": spec.case_key,
+            "version": "1.0.0",
+            "title": spec.title,
+        },
+    )
+    write_json(
+        case_dir / "input-bundle.json",
+        {
+            "schema_version": "1.0",
+            "source_type": "public_benchmark_fixture",
+            "not_a_live_merchant_integration": True,
+            "files": input_files,
+            "user_prompt": spec.prompt,
+            "declared_missing_fields": list(MISSING_PRIVATE_FIELDS),
+        },
+    )
+    write_json(case_dir / "expected-behavior.json", expected_behavior(spec.case_key))
+    write_json(
+        case_dir / "provenance.json",
+        {
+            "dataset": "Olist Brazilian E-Commerce Public Dataset",
+            "source_url": "https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce",
+            "license_note": "Kaggle metadata reports CC BY-NC-SA 4.0; research/portfolio fixture only.",
+            "raw_sha256": RAW_SHA256,
+            "selection": {
+                "target_seller_id": spec.seller_id,
+                "purchase_start_inclusive": spec.start.isoformat(),
+                "purchase_end_exclusive": spec.end.isoformat(),
+                "product_category": spec.product_category,
+                "seller_state": spec.seller_state,
+                "min_orders_per_seller": spec.min_orders_per_seller,
+                "order_status": "delivered",
+                "single_seller_orders_only": True,
+                "pure_category_orders_only": True,
+                "eligibility_uses_late_delivery_result": False,
+                "eligible_seller_ids": sorted(eligible_seller_ids),
+            },
+            "fixture_normalization": "CSV cells normalize CRLF/CR to LF and remove per-line trailing whitespace.",
+            "generated_row_counts": {name: len(table.rows) for name, table in tables.items()},
+        },
+    )
+
+
 def parse_args() -> argparse.Namespace:
     repo_root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser(description=__doc__)
@@ -505,7 +763,10 @@ def main() -> None:
     raw = {filename: read_table(args.source_dir / filename) for filename in RAW_SHA256}
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for spec in CASE_SPECS:
-        build_case(spec, raw, args.output_dir)
+        if isinstance(spec, PeerCaseSpec):
+            build_peer_case(spec, raw, args.output_dir)
+        else:
+            build_case(spec, raw, args.output_dir)
         print(f"built {spec.case_key}")
 
 

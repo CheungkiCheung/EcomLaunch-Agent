@@ -84,3 +84,13 @@ def test_review_capability_is_partial_when_text_is_missing(tmp_path: Path):
     assert assessment.status is CapabilityStatus.PARTIAL
     assert CapabilityReasonCode.MISSING_OPTIONAL_SEMANTICS in assessment.reason_codes
     assert {field.value for field in assessment.missing_optional_fields} == {"review.comment", "review.title"}
+
+
+def test_peer_gold_case_makes_seller_peer_path_available(tmp_path: Path):
+    capabilities = _assess_gold_case(tmp_path, "GC-PEER-004")
+
+    peer = capabilities.capability(CapabilityName.SELLER_PEER_COMPARISON)
+
+    assert peer.status is CapabilityStatus.AVAILABLE
+    assert peer.reason_codes == frozenset({CapabilityReasonCode.AVAILABLE})
+    assert "SellerPeerPathAgent" in capabilities.routable_path_agents

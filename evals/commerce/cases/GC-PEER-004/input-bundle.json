@@ -1,0 +1,110 @@
+{
+  "declared_missing_fields": [
+    "exposure",
+    "click",
+    "add_to_cart",
+    "ad_spend",
+    "inventory",
+    "profit"
+  ],
+  "files": [
+    {
+      "columns": [
+        "order_id",
+        "customer_id",
+        "order_status",
+        "order_purchase_timestamp",
+        "order_approved_at",
+        "order_delivered_carrier_date",
+        "order_delivered_customer_date",
+        "order_estimated_delivery_date"
+      ],
+      "name": "orders",
+      "relative_path": "input/orders.csv",
+      "row_count": 316,
+      "sha256": "5de155df179186eb370ee7f6f9c6b25037459556be4c05e596488527b8bc394b",
+      "table_name": "orders"
+    },
+    {
+      "columns": [
+        "order_id",
+        "order_item_id",
+        "product_id",
+        "seller_id",
+        "shipping_limit_date",
+        "price",
+        "freight_value"
+      ],
+      "name": "order_items",
+      "relative_path": "input/order_items.csv",
+      "row_count": 331,
+      "sha256": "28cce25322dd57f3b3dfe7923fa99711d761301614e79dfec4b6aaa8ac3e2ccf",
+      "table_name": "order_items"
+    },
+    {
+      "columns": [
+        "review_id",
+        "order_id",
+        "review_score",
+        "review_comment_title",
+        "review_comment_message",
+        "review_creation_date",
+        "review_answer_timestamp"
+      ],
+      "name": "order_reviews",
+      "relative_path": "input/order_reviews.csv",
+      "row_count": 317,
+      "sha256": "799242398a8d91f4efc1afe5d02b07946e1d1713d8a4412f0819208966c40136",
+      "table_name": "order_reviews"
+    },
+    {
+      "columns": [
+        "product_id",
+        "product_category_name",
+        "product_name_lenght",
+        "product_description_lenght",
+        "product_photos_qty",
+        "product_weight_g",
+        "product_length_cm",
+        "product_height_cm",
+        "product_width_cm"
+      ],
+      "name": "products",
+      "relative_path": "input/products.csv",
+      "row_count": 135,
+      "sha256": "9c7bc7780838c468099cc4cbd817c7d080667c518ddbe70e229f344c2713e75d",
+      "table_name": "products"
+    },
+    {
+      "columns": [
+        "customer_id",
+        "customer_unique_id",
+        "customer_zip_code_prefix",
+        "customer_city",
+        "customer_state"
+      ],
+      "name": "customers",
+      "relative_path": "input/customers.csv",
+      "row_count": 316,
+      "sha256": "910482362bcdd0cf969bfdc21dba337d74a06ce8f604478c2bdd33552cde05a7",
+      "table_name": "customers"
+    },
+    {
+      "columns": [
+        "seller_id",
+        "seller_zip_code_prefix",
+        "seller_city",
+        "seller_state"
+      ],
+      "name": "sellers",
+      "relative_path": "input/sellers.csv",
+      "row_count": 6,
+      "sha256": "0873d47e95033b85a88ec33c2c3c5acd62c708622e9f3693baf1a1bf4ce979a2",
+      "table_name": "sellers"
+    }
+  ],
+  "not_a_live_merchant_integration": true,
+  "schema_version": "1.0",
+  "source_type": "public_benchmark_fixture",
+  "user_prompt": "该卖家的延迟率看起来偏高。请与同时间、同品类、同卖家州且样本充足的真实卖家进行对标，说明差距、地域分布和证据边界。"
+}

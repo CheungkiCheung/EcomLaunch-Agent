@@ -137,6 +137,7 @@ class CapabilityRegistry:
                 {
                     SemanticField.REVIEW_SCORE,
                     SemanticField.CUSTOMER_STATE,
+                    SemanticField.SELLER_STATE,
                 }
             ),
             dependencies=frozenset({CapabilityName.FULFILLMENT_DIAGNOSIS}),

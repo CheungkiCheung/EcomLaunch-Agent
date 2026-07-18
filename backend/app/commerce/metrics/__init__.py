@@ -9,12 +9,17 @@ from app.commerce.metrics.anomaly import (
     build_case_candidate,
 )
 from app.commerce.metrics.registry import (
+    GeographicMetricSnapshot,
+    GeographicSegment,
     MetricDefinition,
     MetricEngine,
     MetricName,
     MetricRegistry,
     MetricSnapshot,
     MetricWindow,
+    PeerCohortPolicy,
+    PeerCohortUnavailableError,
+    PeerComparisonSnapshot,
 )
 
 __all__ = [
@@ -23,11 +28,16 @@ __all__ = [
     "AnomalySeverity",
     "AnomalySignal",
     "CaseCandidate",
+    "GeographicMetricSnapshot",
+    "GeographicSegment",
     "MetricDefinition",
     "MetricEngine",
     "MetricName",
     "MetricRegistry",
     "MetricSnapshot",
     "MetricWindow",
+    "PeerCohortPolicy",
+    "PeerCohortUnavailableError",
+    "PeerComparisonSnapshot",
     "build_case_candidate",
 ]

@@ -1,0 +1,103 @@
+{
+  "expected_capabilities": [
+    "fulfillment_diagnosis",
+    "review_experience",
+    "seller_peer_comparison"
+  ],
+  "expected_path_agents": [
+    "FulfillmentPathAgent",
+    "SellerPeerPathAgent"
+  ],
+  "forbidden_claims": [
+    {
+      "code": "no-peer-gap-causal-blame",
+      "description": "A matched peer gap is diagnostic evidence, not proof that seller-controlled behavior caused lateness.",
+      "kind": "unsupported_causal",
+      "match_mode": "any_term",
+      "terms": [
+        "peer gap proves the seller caused delays",
+        "seller operations definitively caused the gap",
+        "对标差距证明卖家导致延迟",
+        "可以确认是卖家自身造成"
+      ]
+    },
+    {
+      "code": "no-peer-causal-action-effect",
+      "description": "The frozen peer comparison has no controlled Action follow-up.",
+      "kind": "unsupported_causal",
+      "match_mode": "any_term",
+      "terms": [
+        "action closed the peer gap",
+        "intervention improved the seller",
+        "行动已缩小对标差距",
+        "措施已经改善卖家表现"
+      ]
+    },
+    {
+      "code": "no-unavailable-private-metrics",
+      "description": "Do not invent GMV, CTR, CVR, ROI, ad spend, inventory, profit, or causal uplift.",
+      "kind": "unsupported_private_metric",
+      "match_mode": "any_term",
+      "terms": [
+        "confirmed roi",
+        "verified uplift",
+        "真实gmv",
+        "实际转化率",
+        "广告roi已提升"
+      ]
+    }
+  ],
+  "required_facts": [
+    {
+      "expected_value": 59,
+      "name": "peer.target_order_count",
+      "semantic_status": "derived"
+    },
+    {
+      "expected_value": 0.2711864406779661,
+      "name": "peer.target_late_delivery_rate",
+      "semantic_status": "derived",
+      "tolerance": 1e-12
+    },
+    {
+      "expected_value": 5,
+      "name": "peer.peer_seller_count",
+      "semantic_status": "derived"
+    },
+    {
+      "expected_value": 257,
+      "name": "peer.peer_order_count",
+      "semantic_status": "derived"
+    },
+    {
+      "expected_value": 0.07392996108949416,
+      "name": "peer.peer_late_delivery_rate",
+      "semantic_status": "derived",
+      "tolerance": 1e-12
+    },
+    {
+      "expected_value": 0.19725647958847192,
+      "name": "peer.late_delivery_rate_gap",
+      "semantic_status": "derived",
+      "tolerance": 1e-12
+    },
+    {
+      "expected_value": 26,
+      "name": "geography.SP.order_count",
+      "semantic_status": "derived"
+    },
+    {
+      "expected_value": 8,
+      "name": "geography.MG.order_count",
+      "semantic_status": "derived"
+    },
+    {
+      "expected_value": 7,
+      "name": "geography.RJ.order_count",
+      "semantic_status": "derived"
+    }
+  ],
+  "skipped_path_agents": [
+    "ReviewExperiencePathAgent"
+  ]
+}

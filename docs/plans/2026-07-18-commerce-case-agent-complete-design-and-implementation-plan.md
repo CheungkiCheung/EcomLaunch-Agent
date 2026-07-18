@@ -903,7 +903,8 @@ REVIEW：阶段评审
 - [x] Fact / MetricObservation / Evidence；
 - [x] Case / Hypothesis / Action / Approval / Rollback；
 - [x] Gold Case Input / ExpectedBehavior 隔离合同；
-- [x] 三条真实 Olist Gold Case Fixture；
+- [x] 三条基础 Olist Gold Case Fixture；
+- [x] 一条独立多卖家 Peer Cohort Gold Case Fixture；
 - [x] SHA、行数、列、Join、时间窗口和精确指标回归。
 
 #### Task 1.1：Commerce 包骨架
@@ -973,7 +974,7 @@ RED：
 
 GREEN：实现 EvaluationCase / InputBundle / ExpectedBehavior。
 
-#### Task 1.6：三条 Gold Case Fixture
+#### Task 1.6：三条基础 Gold Case Fixture
 
 RED：验证 Fixture 可连接、时间窗口正确、样本数正确。
 
@@ -985,7 +986,7 @@ GREEN：添加：
 
 退出条件：
 
-- 三条 Case 的确定性事实能够在无 LLM 条件下复算；
+- 三条基础 Case 的确定性事实能够在无 LLM 条件下复算；
 - Contract 和 Input 完全隔离；
 - 所有 Domain Contract 测试通过。
 
@@ -1001,7 +1002,7 @@ GREEN：添加：
 - [x] Capability Registry 与 GC-CAPABILITY-003 Ablation；
 - [x] Olist Adapter 与 Entity-scoped Normalized Facts；
 - [x] 首批 Metric Registry 与 Gold Case 时间窗复算；
-- [ ] 多卖家 Peer Baseline 和 Geographic Metric 执行；
+- [x] 多卖家 Peer Baseline 和 Geographic Metric 执行；
 - [x] Anomaly Detector、最小样本、严重度、置信度、去重和 Case Candidate Merge。
 
 #### Task 2.1：Input Bundle
@@ -1079,7 +1080,7 @@ GREEN：添加：
 退出条件：
 
 - 完整 Olist 可通过下载脚本复现；
-- 三条 Gold Case 的 Capability 和 Metric 全部确定性通过；
+- 四条 Gold Case 的 Capability 和 Metric 全部确定性通过；
 - 小样本不会产生高置信度严重异常。
 
 ### Phase 3：Case Persistence、API 与 Domain Events
@@ -1225,7 +1226,7 @@ GREEN：添加：
 
 退出条件：
 
-- 三条 Gold Case 可以通过 Goal Loop 完成；
+- 四条 Gold Case 可以通过 Goal Loop 完成；
 - Agent 路由与 Capability 一致；
 - Verification 能拒绝故意注入的错误结论；
 - Run 可以从 Checkpoint 恢复；
@@ -1529,7 +1530,7 @@ git status --short
 - 用户可上传真实异构电商数据；
 - 系统能生成可信 Capability Report；
 - 确定性指标和异常可复算；
-- 三条 Gold Case 端到端通过；
+- 四条 Gold Case 端到端通过；
 - Agent 按 Capability 动态路由；
 - Goal Loop 有明确停止条件；
 - Verification 能拒绝无依据结论；

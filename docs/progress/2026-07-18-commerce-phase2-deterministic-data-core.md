@@ -2,7 +2,7 @@
 
 > Date: 2026-07-18
 > Branch: `feature/commerce-case-agent`
-> Status: deterministic core complete; real-model semantic candidate layer pending
+> Status: deterministic core and peer/geographic follow-up complete; real-model semantic candidate layer pending
 > Model requests: `0`
 
 ## Outcome
@@ -126,11 +126,9 @@ exit code: 0
 
 - wire a DeepSeek V4 semantic-candidate adapter only after `real_model_preflight` exists;
 - run its tests with fresh real requests, never mocks or replay;
-- add a reproducible multi-seller peer cohort and execute peer-baseline metrics;
-- execute geographic-segment metrics rather than only registering their formulas;
 - persist Dataset Profile, Semantic Mapping, Capability Profile and Normalized Facts through the Phase 3 repositories;
 - expose data-quality and capability reports through the future API and Domain Event stream.
 
 ## Next
 
-The next deterministic work can start Phase 3 persistence and Domain Events while the real-model preflight is designed in parallel. Formal Agent routing remains blocked until the DeepSeek V4 gate is verifiable.
+The multi-seller peer cohort, peer-baseline metric and geographic-segment metric were completed in [`2026-07-18-commerce-phase2-peer-geographic-metrics.md`](./2026-07-18-commerce-phase2-peer-geographic-metrics.md). The real DeepSeek V4 gate is also verifiable. The next deterministic work is Phase 3 persistence and Domain Events; formal Agent routing still waits for its own implementation and fresh real-model tests.

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import json
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -38,6 +39,14 @@ EXPECTED_COUNTS = {
         "products": 47,
         "customers": 554,
         "sellers": 1,
+    },
+    "GC-PEER-004": {
+        "orders": 316,
+        "order_items": 331,
+        "order_reviews": 317,
+        "products": 135,
+        "customers": 316,
+        "sellers": 6,
     },
 }
 
@@ -183,3 +192,38 @@ def test_capability_ablation_removes_review_table_only():
     assert "order_reviews" in full_tables
     assert "order_reviews" not in ablated_tables
     assert {name: rows for name, rows in full_tables.items() if name != "order_reviews"} == ablated_tables
+
+
+def test_peer_case_freezes_target_and_outcome_agnostic_peer_membership():
+    tables = _read_tables("GC-PEER-004")
+    target_seller_id = "e5a3438891c0bfdb9394643f95273d8e"
+    items_by_order: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for item in tables["order_items"]:
+        items_by_order[item["order_id"]].append(item)
+
+    orders_by_seller: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for order in tables["orders"]:
+        seller_ids = {item["seller_id"] for item in items_by_order[order["order_id"]]}
+        assert len(seller_ids) == 1
+        orders_by_seller[next(iter(seller_ids))].append(order)
+
+    counts = {seller_id: len(orders) for seller_id, orders in orders_by_seller.items()}
+    late = {seller_id: sum(datetime.fromisoformat(order["order_delivered_customer_date"]) > datetime.fromisoformat(order["order_estimated_delivery_date"]) for order in orders) for seller_id, orders in orders_by_seller.items()}
+
+    assert counts[target_seller_id] == 59
+    assert late[target_seller_id] == 16
+    assert sum(count for seller_id, count in counts.items() if seller_id != target_seller_id) == 257
+    assert sum(count for seller_id, count in late.items() if seller_id != target_seller_id) == 19
+    assert all(count >= 20 for count in counts.values())
+    assert {row["product_category_name"] for row in tables["products"]} == {
+        "fashion_bolsas_e_acessorios"
+    }
+    assert {row["seller_state"] for row in tables["sellers"]} == {"SP"}
+
+    provenance = json.loads(
+        (CASES_ROOT / "GC-PEER-004" / "provenance.json").read_text(encoding="utf-8")
+    )
+    selection = provenance["selection"]
+    assert selection["eligibility_uses_late_delivery_result"] is False
+    assert selection["single_seller_orders_only"] is True
+    assert selection["pure_category_orders_only"] is True
