@@ -676,6 +676,91 @@ Soft Metrics：
 
 模型选择使用 Hard Gate + Pareto Frontier，不使用单一总分。
 
+### 15.1 真实模型测试红线
+
+所有触达 LLM 或 Agent 行为的测试必须使用真实 DeepSeek V4，不允许使用 Mock、Fake、Stub、录制回放或其他模型作为通过依据。
+
+适用范围：
+
+- Lead Agent；
+- Path Agent；
+- Dynamic Path Routing 中的模型判断；
+- Model / Effort Escalation；
+- Tool Selection；
+- Structured Output Repair；
+- Verification；
+- Semantic Evaluator；
+- Skill Candidate Generation；
+- Agent Integration Test；
+- Gold Case End-to-End；
+- Experiment Run；
+- Release Gate。
+
+纯确定性测试保持无模型：
+
+- Domain Model；
+- State Transition；
+- Metric 计算；
+- Capability 依赖；
+- Repository；
+- Event Serialization；
+- Budget 原子消费；
+- Policy 规则；
+- 数据质量和 Join。
+
+纯确定性测试不得为了形式要求无意义地调用模型，但也不得使用假模型代替真实 Agent 调用。只要被测路径会调用模型，该测试就必须发起新鲜的真实 DeepSeek V4 请求。
+
+当前本地配置别名为：
+
+```text
+deepseek-reasoner
+```
+
+Provider：
+
+```text
+deerflow.models.patched_deepseek:PatchedChatDeepSeek
+```
+
+Endpoint：
+
+```text
+https://api.deepseek.com/v1
+```
+
+执行前必须增加 `real_model_preflight`：
+
+1. 检查 `$DEEPSEEK_API_KEY` 是否可用，但不打印或记录密钥；
+2. 发起最小真实请求；
+3. 记录服务端返回的模型身份、请求 ID、时间、Token 和响应状态；
+4. 确认实际服务模型为 DeepSeek V4；
+5. 禁止自动回退到其他 DeepSeek 版本或其他厂商模型；
+6. 无法确认模型版本时停止；
+7. 额度不足、认证失败、限额不可恢复或服务不可用时停止。
+
+阻塞状态：
+
+- `blocked_real_model_unavailable`
+- `blocked_real_model_identity_unverified`
+- `blocked_real_model_quota_exhausted`
+- `blocked_real_model_auth_failed`
+
+相关测试不得被标记为 PASS、不得静默 Skip、不得用历史响应替代。历史 Trace 可以用于 Debug 和离线分析，但不能作为当前版本 Release Gate 的通过证据。
+
+每个真实模型测试结果必须保存：
+
+- 配置的模型别名；
+- 服务端返回的实际模型标识；
+- Provider Request ID；
+- Prompt / Skill / Context / Router 版本；
+- Input / Output Token；
+- Latency；
+- Retry；
+- Stop Reason；
+- Evaluation Result。
+
+为控制费用，可以缩小测试集合、分层运行和设置预算，但不能把真实模型替换成 Mock。测试预算耗尽时停止执行并报告，不降低评测标准。
+
 ## 16. Skill Evolution
 
 禁止 Active Agent 直接修改 Active Skill。
@@ -1171,7 +1256,11 @@ GREEN：添加：
 
 - Frozen Input；
 - Frozen Config；
+- Real DeepSeek V4 Preflight；
+- Actual Model Identity；
+- Provider Request ID；
 - Multiple Repetitions；
+- Fresh Real-model Request；
 - Raw Output；
 - Trace；
 - Token；
@@ -1310,6 +1399,15 @@ Backend 聚焦测试：
 cd backend
 PYTHONPATH=. uv run pytest tests/commerce -v
 ```
+
+真实模型预检与 Agent 测试：
+
+```bash
+cd backend
+PYTHONPATH=. uv run pytest -m real_model tests/commerce -v
+```
+
+`real_model` 测试必须通过 DeepSeek V4 身份预检。模型不可用、身份不可确认或额度不足时，执行状态必须为 Blocked 并停止后续 Agent / Eval / Release Gate，不能回退到 Mock、Replay 或其他模型。
 
 Backend 全量：
 

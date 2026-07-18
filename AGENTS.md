@@ -1,5 +1,15 @@
 # OpenSKU Agent Instructions
 
+## Critical Real-Model Test Policy
+
+- Any test path that invokes an LLM or validates Agent behavior must use a fresh request to the real DeepSeek V4 model.
+- Mock, fake, stub, replayed, cached, or alternate-model responses cannot be used as passing evidence for Agent, Verification, Skill, Eval, end-to-end, or release-gate tests.
+- Pure deterministic tests for data, metrics, state transitions, repositories, events, budgets, and policies remain model-free; they must not use a fake model to stand in for an Agent call.
+- The configured local alias is currently `deepseek-reasoner`, but a preflight must verify the actual server-side model identity is DeepSeek V4 before Agent tests run.
+- Do not silently fall back to another model or DeepSeek version.
+- If DeepSeek V4 is unavailable, its identity cannot be verified, authentication fails, or quota/funds are exhausted, stop Agent testing and report a blocked status instead of skipping or passing the test.
+- Record actual model identity, provider request ID, token usage, latency, retry count, and configuration versions for every real-model evaluation run.
+
 ## Project Identity
 
 OpenSKU is an open-source AI launch loop for ecommerce SKU decisions. It helps merchants, ecommerce operators, and indie sellers turn rough product ideas, listing URLs, competitor links, public signals, uploaded context, and post-test feedback into an evidence-backed Go/Pivot/Hold/Kill/Scale decision loop.
