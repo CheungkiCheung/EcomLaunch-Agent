@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.commerce.data.capabilities import CapabilityProfile
 from app.commerce.data.intake import DataBundleManifest
@@ -14,6 +14,8 @@ from app.commerce.data.semantic_mapper import (
     SemanticField,
     SemanticMappingProfile,
 )
+from app.commerce.metrics.anomaly import AnomalySignal
+from app.commerce.metrics.registry import MetricWindow
 
 
 class CommerceResponse(BaseModel):
@@ -112,3 +114,30 @@ class SemanticConfirmationRequest(CommerceResponse):
     table_name: str = Field(min_length=1)
     column_name: str = Field(min_length=1)
     semantic_field: SemanticField
+
+
+class AnalysisRequest(CommerceResponse):
+    baseline_window: MetricWindow
+    current_window: MetricWindow
+    seller_id: str | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def require_ordered_windows(self):
+        if self.baseline_window.end > self.current_window.start:
+            raise ValueError("Baseline window must end no later than current window start")
+        return self
+
+
+class AnalysisSkipResponse(CommerceResponse):
+    seller_id: str
+    reason: str
+
+
+class AnalysisResponse(CommerceResponse):
+    dataset_id: str
+    workspace_id: str
+    baseline_window: MetricWindow
+    current_window: MetricWindow
+    signals: list[AnomalySignal]
+    cases: list[CaseResponse]
+    skipped_sellers: list[AnalysisSkipResponse]

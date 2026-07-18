@@ -26,6 +26,7 @@ Endpoints:
 - `GET /api/commerce/datasets/{dataset_id}/mappings`
 - `POST /api/commerce/datasets/{dataset_id}/semantic-confirmations`
 - `POST /api/commerce/datasets/{dataset_id}/semantic-candidates`（真实 DeepSeek V4 门禁后调用）
+- `POST /api/commerce/datasets/{dataset_id}/analyze`（确定性 Metric → Anomaly → Case）
 
 The upload endpoint returns the Manifest, Profile, current Semantic Mapping and Capability Profile together. Later reads reconstruct these views from the saved Manifest, so the API does not maintain a second mutable copy of data facts. An explicit confirmation is validated against an existing Dataset table/column and stored in the Workspace semantic store; the next Mapping or Capability read incorporates that confirmation.
 
@@ -81,7 +82,6 @@ No model request was made. Upload/Profile/Capability behavior is deterministic a
 
 ## Remaining Phase 3 boundary
 
-- Anomaly-to-Case application service;
 - Investigation Start;
 - Run Detail / Run Events;
 - authenticated Workspace membership;

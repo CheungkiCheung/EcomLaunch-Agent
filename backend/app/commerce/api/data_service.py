@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import json
+import stat
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
 from app.commerce.data.capabilities import CapabilityProfile, CapabilityRegistry
 from app.commerce.data.intake import DataBundleManifest, DataIntakeError, DataIntakeService
+from app.commerce.data.normalized import NormalizedDataset, OlistAdapter
 from app.commerce.data.profiler import DataProfiler, DatasetProfile
 from app.commerce.data.semantic_mapper import (
     SemanticConfirmation,
@@ -43,6 +46,10 @@ class CommerceDataService:
         self._semantic_store = WorkspaceSemanticStore(storage_root=storage_root)
         self._mapper = SemanticMapper(semantic_store=self._semantic_store)
         self._capabilities = CapabilityRegistry()
+
+    @property
+    def storage_root(self) -> Path:
+        return self._storage_root
 
     def ingest_uploads(
         self,
@@ -83,6 +90,34 @@ class CommerceDataService:
         except Exception as exc:
             raise DataIntakeError(f"Stored Dataset manifest is invalid: {dataset_id}") from exc
         return self._build_view(manifest)
+
+    def normalize(self, workspace_id: WorkspaceId, dataset_id: DatasetId) -> NormalizedDataset:
+        view = self.get_view(workspace_id, dataset_id)
+        return OlistAdapter(storage_root=self._storage_root).normalize(
+            view.manifest,
+            view.mappings,
+        )
+
+    def write_derived_artifact(
+        self,
+        workspace_id: WorkspaceId,
+        dataset_id: DatasetId,
+        *,
+        filename: str,
+        payload: dict,
+    ) -> Path:
+        if Path(filename).name != filename or filename in {".", ".."}:
+            raise ValueError("Derived artifact filename must be a plain file name")
+        root = self._storage_root / str(workspace_id) / str(dataset_id) / "derived"
+        root.mkdir(parents=True, exist_ok=True)
+        path = root / filename
+        if not path.exists():
+            path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            path.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+        return path
 
     def confirm_mapping(
         self,

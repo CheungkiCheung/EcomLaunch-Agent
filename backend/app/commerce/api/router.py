@@ -8,17 +8,21 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, UploadFile
 from starlette.concurrency import run_in_threadpool
 
+from app.commerce.api.analysis_service import CommerceAnalysisService
 from app.commerce.api.data_service import (
     CommerceDataService,
     DatasetNotFoundError,
 )
 from app.commerce.api.dependencies import (
+    get_commerce_analysis_service,
     get_commerce_data_service,
     get_commerce_read_service,
     get_commerce_semantic_candidate_service,
     get_commerce_workspace_id,
 )
 from app.commerce.api.schemas import (
+    AnalysisRequest,
+    AnalysisResponse,
     CaseDetailResponse,
     CaseListResponse,
     CaseResponse,
@@ -297,6 +301,40 @@ async def generate_semantic_candidates(
         ) from exc
 
 
+@router.post(
+    "/datasets/{raw_dataset_id}/analyze",
+    response_model=AnalysisResponse,
+)
+async def analyze_dataset(
+    raw_dataset_id: Annotated[str, Path()],
+    request: AnalysisRequest,
+    service: Annotated[CommerceAnalysisService, Depends(get_commerce_analysis_service)],
+    workspace_id: Annotated[WorkspaceId, Depends(get_commerce_workspace_id)],
+) -> AnalysisResponse:
+    try:
+        outcome = await service.analyze(
+            workspace_id,
+            _parse_dataset_id(raw_dataset_id),
+            baseline_window=request.baseline_window,
+            current_window=request.current_window,
+            seller_id=request.seller_id,
+        )
+    except DatasetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Commerce Dataset not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return AnalysisResponse(
+        dataset_id=outcome.dataset_id,
+        workspace_id=str(outcome.workspace_id),
+        baseline_window=outcome.baseline_window,
+        current_window=outcome.current_window,
+        signals=list(outcome.signals),
+        cases=[_case_response(case) for case in outcome.cases],
+        skipped_sellers=[
+            {"seller_id": item.seller_id, "reason": item.reason}
+            for item in outcome.skipped_sellers
+        ],
+    )
 @router.get("/datasets/{raw_dataset_id}/capabilities", response_model=CapabilityProfile)
 async def get_dataset_capabilities(
     raw_dataset_id: Annotated[str, Path()],

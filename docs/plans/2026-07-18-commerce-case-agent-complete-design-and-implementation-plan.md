@@ -1098,7 +1098,7 @@ GREEN：添加：
 - [x] Append-only Evidence 与 versioned Hypothesis Repository（Supporting / Contradicting Evidence、Fact / MetricObservation 来源追踪）；
 - [ ] Action / Approval / Follow-up Repository；
 - [ ] PostgreSQL 真实实例集成测试；
-- [ ] Commerce API 与 Feature Flag Router（Data Intake / Profile / Capability 与只读 Case / Evidence / Hypothesis / Event slice 已实现；Anomaly-to-Case、Investigation Start、Run API 待后续）。
+- [ ] Commerce API 与 Feature Flag Router（Data Intake / Profile / Capability、Semantic Candidate、Anomaly-to-Case 与只读 Case / Evidence / Hypothesis / Event slice 已实现；Investigation Start、Run API 待后续）。
 
 #### Task 3.1：Commerce Persistence
 
@@ -1143,15 +1143,17 @@ GREEN：添加：
 - [x] Capability Report；
 - [x] Semantic Mapping read / explicit Workspace confirmation API；
 - [x] Real DeepSeek V4 semantic-candidate API with telemetry and fail-closed identity gate；
+- [x] Deterministic Anomaly-to-Case analysis API with immutable derived snapshot and Case/Event Replay；
 - [x] Case List；
 - [x] Case Detail；
 - [x] Evidence List / Detail；
 - [x] Latest Hypothesis List；
 - [x] Case Domain Event Stream；
+- [x] Anomaly-to-Case analysis；
 - [ ] Investigation Start；
 - [ ] Run Detail / Events。
 
-当前 API slice 通过 `COMMERCE_CASE_AGENT_ENABLED` fail-closed 挂载，并要求 `X-Commerce-Workspace-Id`。在 Workspace membership 合同完成前，不满足多租户生产发布退出条件；Anomaly-to-Case、Investigation Start 和 Run API 仍未实现。
+当前 API slice 通过 `COMMERCE_CASE_AGENT_ENABLED` fail-closed 挂载，并要求 `X-Commerce-Workspace-Id`。在 Workspace membership 合同完成前，不满足多租户生产发布退出条件；Investigation Start 和 Run API 仍未实现。
 
 退出条件：
 

@@ -8,6 +8,7 @@ from typing import Annotated
 
 from fastapi import Header, HTTPException
 
+from app.commerce.api.analysis_service import CommerceAnalysisService
 from app.commerce.api.data_service import CommerceDataService
 from app.commerce.api.service import CommerceReadService
 from app.commerce.data.semantic_candidate_service import SemanticCandidateService
@@ -34,6 +35,19 @@ def get_commerce_data_service() -> CommerceDataService:
 
 def get_commerce_semantic_candidate_service() -> SemanticCandidateService:
     return SemanticCandidateService()
+
+
+def get_commerce_analysis_service() -> CommerceAnalysisService:
+    session_factory = get_session_factory()
+    if session_factory is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Commerce persistence is not initialized",
+        )
+    return CommerceAnalysisService(
+        data_service=get_commerce_data_service(),
+        session_factory=session_factory,
+    )
 
 
 def get_commerce_workspace_id(
