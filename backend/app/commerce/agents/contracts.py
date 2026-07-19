@@ -415,7 +415,12 @@ def default_path_agent_specs() -> tuple[PathAgentSpec, ...]:
             ),
             supported_case_types=frozenset({"seller_peer", "delivery"}),
             allowed_tools=frozenset(
-                {"metric_query", "peer_cohort_query", "source_fact_lookup"}
+                {
+                    "metric_query",
+                    "peer_cohort_query",
+                    "geographic_order_count_query",
+                    "source_fact_lookup",
+                }
             ),
             skill_id="commerce.seller-peer-investigation",
             skill_version="1.0.0",

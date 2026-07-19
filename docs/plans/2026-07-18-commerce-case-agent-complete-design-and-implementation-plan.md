@@ -1184,7 +1184,8 @@ GREEN：添加：
 - [x] 真实 DeepSeek V4 LeadSynthesis：Path Evidence → traceable diagnostic claims；
 - [x] Fresh-context Verification：supported claim pass + causal overclaim reject；
 - [x] Worker Lead → Hypothesis → Verification persistence / GoalLoop terminal integration；
-- [ ] SellerPeer / ReviewExperience Path Agent 行为测试。
+- [x] SellerPeer Path Agent 真实 Tool + DeepSeek V4 行为测试；
+- [ ] ReviewExperience Path Agent 行为测试。
 
 #### Task 4.1：ContextPacket
 
@@ -1260,7 +1261,7 @@ GREEN：添加：
 按照 TDD 分别实现：
 
 - [x] FulfillmentPathAgent：verified minimal Path Context、real V4 structured output、traceable Evidence、model/config audit；
-- [ ] SellerPeerPathAgent；
+- [x] SellerPeerPathAgent：outcome-agnostic peer cohort、geography Tool traces、real V4 structured output；
 - [ ] ReviewExperiencePathAgent；
 
 #### Task 4.9：VerificationEngine
