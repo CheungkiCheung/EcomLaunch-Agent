@@ -639,6 +639,120 @@ class SqlCommerceUnitOfWork:
             "Atomic Hypothesis/Case/Event mutation exceeded sequence retry budget"
         ) from last_error
 
+    async def append_hypothesis_versions_with_events(
+        self,
+        case: Case,
+        hypotheses: tuple[Hypothesis, ...],
+        *,
+        expected_version: int,
+        prior_events: tuple[NewDomainEvent, ...],
+        trace_id: TraceId,
+        correlation_id: CorrelationId,
+        actor: DomainEventActor,
+        causation_event_id: EventId | None = None,
+        run_id: RunId | None = None,
+        lease: RunLeaseCredentials | None = None,
+        lease_checked_at: datetime | None = None,
+    ) -> tuple[DomainEventEnvelope, ...]:
+        """Atomically persist one Lead/Verification result as Hypothesis versions."""
+
+        if not hypotheses:
+            raise ValueError("Hypothesis batch cannot be empty")
+        references = tuple((item.id, item.version) for item in hypotheses)
+        if len(references) != len(set(references)):
+            raise ValueError("Hypothesis batch references must be unique")
+        for hypothesis in hypotheses:
+            self._validate_hypothesis_membership(case, hypothesis)
+        for event in prior_events:
+            if (
+                event.workspace_id != case.workspace_id
+                or event.case_id != case.id
+                or event.run_id != run_id
+            ):
+                raise ValueError(
+                    "Prior Hypothesis events must match Workspace, Case and Run"
+                )
+
+        last_error: IntegrityError | None = None
+        for attempt in range(self.MAX_SEQUENCE_RETRIES):
+            try:
+                async with self._session_factory() as session, session.begin():
+                    if run_id is not None:
+                        if lease is None:
+                            raise RunLeaseLostError(
+                                "Agent Hypothesis write for a running Run requires a lease"
+                            )
+                        lease_row = (
+                            await SqlRunLeaseRepository.require_valid_in_session(
+                                session,
+                                case.workspace_id,
+                                run_id,
+                                lease,
+                                checked_at=lease_checked_at or datetime.now(UTC),
+                            )
+                        )
+                        if lease_row.case_id != str(case.id):
+                            raise ValueError(
+                                "Hypothesis Run lease must belong to the Case"
+                            )
+                    elif lease is not None:
+                        raise ValueError("Hypothesis lease requires a Run ID")
+
+                    envelopes = [
+                        await SqlDomainEventStore.append_in_session(session, event)
+                        for event in prior_events
+                    ]
+                    for hypothesis in hypotheses:
+                        await SqlHypothesisRepository.append_version_in_session(
+                            session,
+                            hypothesis,
+                        )
+                    await SqlCaseRepository.save_in_session(
+                        session,
+                        case,
+                        expected_version=expected_version,
+                    )
+                    result_causation_id = (
+                        envelopes[-1].id if envelopes else causation_event_id
+                    )
+                    for hypothesis in hypotheses:
+                        event = NewDomainEvent(
+                            workspace_id=case.workspace_id,
+                            case_id=case.id,
+                            run_id=run_id,
+                            event_type="hypothesis.version_appended",
+                            occurred_at=case.updated_at,
+                            trace_id=trace_id,
+                            correlation_id=correlation_id,
+                            causation_event_id=result_causation_id,
+                            actor=actor,
+                            payload={
+                                "hypothesis_id": str(hypothesis.id),
+                                "hypothesis_version": hypothesis.version,
+                                "status": hypothesis.status.value,
+                                "confidence": hypothesis.confidence,
+                                "supporting_evidence_ids": [
+                                    str(value)
+                                    for value in hypothesis.supporting_evidence_ids
+                                ],
+                                "contradicting_evidence_ids": [
+                                    str(value)
+                                    for value in hypothesis.contradicting_evidence_ids
+                                ],
+                                "case_version": case.version,
+                            },
+                        )
+                        envelopes.append(
+                            await SqlDomainEventStore.append_in_session(session, event)
+                        )
+                    return tuple(envelopes)
+            except IntegrityError as exc:
+                last_error = exc
+                await asyncio.sleep(0.001 * (attempt + 1))
+        raise EventSequenceConflictError(
+            "Atomic Hypothesis batch/Case/Event mutation exceeded sequence retry budget"
+        ) from last_error
+
     @staticmethod
     def _validate_evidence_membership(case: Case, evidence: Evidence) -> None:
         if evidence.workspace_id != case.workspace_id:

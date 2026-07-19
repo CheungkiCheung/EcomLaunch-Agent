@@ -63,15 +63,18 @@ from app.commerce.agents.goal_loop import (
     build_goal_loop_decision_event,
 )
 from app.commerce.agents.lead import (
+    LEAD_PATH_CONTEXT_VERSION,
     LEAD_PROMPT_VERSION,
     LeadAuditRecord,
     LeadAuditStore,
     LeadClaim,
     LeadSynthesisAgent,
+    LeadSynthesisPlan,
     LeadSynthesisResult,
     LeadSynthesisRun,
     LeadSynthesisStatus,
     LeadUnknown,
+    build_path_scoped_lead_context,
 )
 from app.commerce.agents.model_router import (
     ModelAssignment,
@@ -110,6 +113,11 @@ from app.commerce.agents.router import (
     PathRouteDecision,
     RouteReasonCode,
 )
+from app.commerce.agents.synthesis import (
+    project_proposed_hypotheses,
+    project_verified_hypotheses,
+    verification_goal_progress,
+)
 from app.commerce.agents.verification import (
     ClaimVerdict,
     ClaimVerification,
@@ -117,6 +125,7 @@ from app.commerce.agents.verification import (
     VerificationAuditStore,
     VerificationEngine,
     VerificationIssueCode,
+    VerificationPlan,
     VerificationResult,
     VerificationRun,
     VerificationRunStatus,
@@ -130,6 +139,7 @@ from app.commerce.agents.verified_call import (
 )
 from app.commerce.agents.worker import (
     CommerceInvestigationWorker,
+    FulfillmentCaseLoopResult,
     FulfillmentWorkerStepResult,
 )
 
@@ -161,6 +171,7 @@ __all__ = [
     "FulfillmentPathAgent",
     "FulfillmentPathPlan",
     "FulfillmentPathRun",
+    "FulfillmentCaseLoopResult",
     "FulfillmentWorkerStepResult",
     "GoalLoopAction",
     "GoalLoopCheckpoint",
@@ -172,11 +183,13 @@ __all__ = [
     "GoalLoopState",
     "GoalStopReason",
     "LeadContextPacket",
+    "LEAD_PATH_CONTEXT_VERSION",
     "LEAD_PROMPT_VERSION",
     "LeadAuditRecord",
     "LeadAuditStore",
     "LeadClaim",
     "LeadSynthesisAgent",
+    "LeadSynthesisPlan",
     "LeadSynthesisResult",
     "LeadSynthesisRun",
     "LeadSynthesisStatus",
@@ -224,6 +237,7 @@ __all__ = [
     "VerificationAuditStore",
     "VerificationEngine",
     "VerificationIssueCode",
+    "VerificationPlan",
     "VerificationResult",
     "VerificationRun",
     "VerificationRunStatus",
@@ -235,9 +249,13 @@ __all__ = [
     "canonical_context_bytes",
     "canonical_context_sha256",
     "build_goal_loop_decision_event",
+    "build_path_scoped_lead_context",
     "build_model_assignment_event",
     "default_model_bindings",
     "default_path_agent_specs",
     "estimate_context_tokens",
     "hidden_evaluation_label_paths",
+    "project_proposed_hypotheses",
+    "project_verified_hypotheses",
+    "verification_goal_progress",
 ]

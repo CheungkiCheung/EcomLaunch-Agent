@@ -51,6 +51,7 @@ class GoalStopReason(StrEnum):
     CAPABILITY_BLOCKED = "capability_blocked"
     BUDGET_EXCEEDED = "budget_exceeded"
     NO_NEW_EVIDENCE = "no_new_evidence"
+    VERIFICATION_REPLAN_REQUIRED = "verification_replan_required"
     POLICY_BLOCKED = "policy_blocked"
     TOOL_FAILURE = "tool_failure"
     CANCELLED = "cancelled"
@@ -65,6 +66,7 @@ class GoalLoopReasonCode(StrEnum):
     TERMINAL_BLOCK = "terminal_block"
     BUDGET_LIMIT_REACHED = "budget_limit_reached"
     NO_PROGRESS_THRESHOLD_REACHED = "no_progress_threshold_reached"
+    VERIFICATION_NOT_ACCEPTED = "verification_not_accepted"
     TERMINAL_TOOL_FAILURE = "terminal_tool_failure"
     USER_CANCELLED = "user_cancelled"
 
@@ -127,6 +129,7 @@ class GoalLoopProgress(CommerceModel):
     awaiting_user_input: bool = False
     awaiting_approval: bool = False
     capability_blocked: bool = False
+    verification_replan_required: bool = False
     policy_blocked: bool = False
     tool_failure: bool = False
     cancelled: bool = False
@@ -138,6 +141,7 @@ class GoalLoopProgress(CommerceModel):
             self.awaiting_user_input,
             self.awaiting_approval,
             self.capability_blocked,
+            self.verification_replan_required,
             self.policy_blocked,
             self.tool_failure,
             self.cancelled,
@@ -148,6 +152,8 @@ class GoalLoopProgress(CommerceModel):
             raise ValueError("Achieved Goal cannot retain evidence gaps")
         if self.no_viable_next_step and not self.partial_goal_achieved:
             raise ValueError("No viable next step requires a partial Goal result")
+        if self.verification_replan_required and not self.partial_goal_achieved:
+            raise ValueError("Verification replan requires a partial Goal result")
         _require_unique("new Evidence", self.new_evidence_ids)
         _require_unique("updated Hypothesis", self.updated_hypothesis_ids)
         return self
@@ -300,6 +306,37 @@ class GoalLoopController:
             checkpoint=self._checkpoint(updated_state, snapshot),
         )
 
+    def stop_for_budget(
+        self,
+        state: GoalLoopState,
+        error: BudgetExceededError,
+        *,
+        partial_goal_achieved: bool,
+    ) -> GoalLoopDecision:
+        """Persist an explicit stop when post-call accounting exceeds a budget."""
+
+        return self._stop(
+            state,
+            self._budget.snapshot,
+            reason=GoalStopReason.BUDGET_EXCEEDED,
+            outcome=(
+                GoalLoopOutcome.PARTIAL
+                if partial_goal_achieved
+                else GoalLoopOutcome.BLOCKED
+            ),
+            reason_codes=frozenset(
+                {
+                    GoalLoopReasonCode.BUDGET_LIMIT_REACHED,
+                    *(
+                        {GoalLoopReasonCode.PARTIAL_RESULT_PRESERVED}
+                        if partial_goal_achieved
+                        else set()
+                    ),
+                }
+            ),
+            budget_dimension=error.dimension,
+        )
+
     def _terminal_decision(
         self,
         state: GoalLoopState,
@@ -348,6 +385,19 @@ class GoalLoopController:
                             if progress.partial_goal_achieved
                             else set()
                         ),
+                    }
+                ),
+            )
+        if progress.verification_replan_required:
+            return self._stop(
+                state,
+                snapshot,
+                reason=GoalStopReason.VERIFICATION_REPLAN_REQUIRED,
+                outcome=GoalLoopOutcome.PARTIAL,
+                reason_codes=frozenset(
+                    {
+                        GoalLoopReasonCode.VERIFICATION_NOT_ACCEPTED,
+                        GoalLoopReasonCode.PARTIAL_RESULT_PRESERVED,
                     }
                 ),
             )

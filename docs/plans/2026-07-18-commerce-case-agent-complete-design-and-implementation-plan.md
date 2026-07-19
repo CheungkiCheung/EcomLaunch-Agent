@@ -1,6 +1,6 @@
 # Commerce Case Agent 完整设计与实施计划
 
-> 状态：设计已收口，确定性 Case/Run/Context 主干与首条真实 Fulfillment Path 已完成，其余闭环持续实施
+> 状态：设计已收口，确定性 Case/Run/Context 主干与首条真实 Fulfillment Path→Lead→Verification 诊断闭环已完成，其余闭环持续实施
 > 日期：2026-07-18
 > 当前分支：`feature/commerce-case-agent`
 > 保护快照：`archive/ecom-launch-pre-commerce-agent-20260718` / `9144237`
@@ -1156,7 +1156,7 @@ GREEN：添加：
 - [x] Idempotent Investigation Start；
 - [x] Case Run List / Run Detail / Checkpoints / Events。
 
-当前 API slice 通过 `COMMERCE_CASE_AGENT_ENABLED` fail-closed 挂载，并要求 `X-Commerce-Workspace-Id`。在 Workspace membership 合同完成前，不满足多租户生产发布退出条件。Investigation Start 只创建诚实的 `queued` Run；Worker 获取、Agent 执行与进程恢复仍未实现。
+当前 API slice 通过 `COMMERCE_CASE_AGENT_ENABLED` fail-closed 挂载，并要求 `X-Commerce-Workspace-Id`。在 Workspace membership 合同完成前，不满足多租户生产发布退出条件。Investigation Start 只创建诚实的 `queued` Run；首条 fenced Fulfillment→Lead→Verification Worker Loop 已实现，但 API 调度入口、跨进程 continuation 和自动 reconciliation 仍未实现。
 
 退出条件：
 
@@ -1183,7 +1183,7 @@ GREEN：添加：
 - [x] Fenced Worker Fulfillment step：pre/post Checkpoint、Event、Budget、Evidence；
 - [x] 真实 DeepSeek V4 LeadSynthesis：Path Evidence → traceable diagnostic claims；
 - [x] Fresh-context Verification：supported claim pass + causal overclaim reject；
-- [ ] Worker Lead → Hypothesis → Verification persistence / GoalLoop integration；
+- [x] Worker Lead → Hypothesis → Verification persistence / GoalLoop terminal integration；
 - [ ] SellerPeer / ReviewExperience Path Agent 行为测试。
 
 #### Task 4.1：ContextPacket
@@ -1273,7 +1273,7 @@ GREEN：添加：
 - [x] Policy constraints；
 - [x] Reject / Repair / Pass contract；
 - [x] Fresh real DeepSeek V4 behavior gate；
-- [ ] Worker persistence and replan integration。
+- [x] Worker persistence and explicit reject/repair → replan-required integration。
 
 #### Task 4.9A：LeadSynthesisAgent
 
@@ -1283,9 +1283,9 @@ GREEN：添加：
 - [x] System-derived stable Hypothesis IDs；
 - [x] Critical Case `strong_synthesizer / high` escalation；
 - [x] Fresh real DeepSeek V4 behavior gate；
-- [ ] Worker Hypothesis version persistence；
-- [ ] Fresh Verification hand-off without Lead reasoning；
-- [ ] Reject / repair / replan GoalLoop integration。
+- [x] Worker Hypothesis version persistence；
+- [x] Fresh Verification hand-off without Lead reasoning；
+- [x] Reject / repair / replan GoalLoop integration。
 
 #### Task 4.10：Checkpoint / Resume
 

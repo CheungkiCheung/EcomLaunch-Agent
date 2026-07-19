@@ -20,10 +20,23 @@ from app.commerce.agents.model_router import (
     ModelRouteReasonCode,
     build_model_assignment_event,
 )
-from app.commerce.domain.enums import CaseSeverity, RunPhase, RunType, SemanticStatus
-from app.commerce.domain.events import DomainEventActor
-from app.commerce.domain.ids import CorrelationId, EvidenceId, MetricObservationId, TraceId, WorkspaceId
-from app.commerce.domain.models import Case, Evidence, EvidenceRelation
+from app.commerce.domain.enums import (
+    CaseSeverity,
+    HypothesisStatus,
+    RunPhase,
+    RunType,
+    SemanticStatus,
+)
+from app.commerce.domain.events import DomainEventActor, NewDomainEvent
+from app.commerce.domain.ids import (
+    CorrelationId,
+    EvidenceId,
+    HypothesisId,
+    MetricObservationId,
+    TraceId,
+    WorkspaceId,
+)
+from app.commerce.domain.models import Case, Evidence, EvidenceRelation, Hypothesis
 from app.commerce.domain.runs import CommerceRun
 from app.commerce.persistence.events import SqlDomainEventStore
 from app.commerce.persistence.models import RunLeaseRow
@@ -37,6 +50,7 @@ from app.commerce.persistence.runs import (
 )
 from app.commerce.persistence.schema import create_commerce_schema
 from app.commerce.persistence.unit_of_work import SqlCommerceUnitOfWork
+from app.commerce.persistence.work_records import SqlHypothesisRepository
 
 
 async def _storage(tmp_path):
@@ -392,4 +406,127 @@ async def test_path_evidence_write_requires_current_fenced_lease(tmp_path):
 
     assert event.event_type == "evidence.appended"
     assert event.run_id == queued.id
+    await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_lead_hypothesis_batch_and_completion_event_require_current_lease(
+    tmp_path,
+):
+    engine, factory = await _storage(tmp_path)
+    now = datetime(2026, 7, 19, 12, 0, tzinfo=UTC)
+    queued = await _seed(factory, now)
+    leases = SqlRunLeaseRepository(factory)
+    first = await leases.acquire(
+        queued.workspace_id,
+        queued.id,
+        worker_id="worker-lead-old",
+        ttl=timedelta(seconds=30),
+        acquired_at=now + timedelta(seconds=1),
+        trace_id=TraceId.new(),
+        correlation_id=CorrelationId.new(),
+    )
+    case = await SqlCaseRepository(factory).get(queued.workspace_id, queued.case_id)
+    assert case is not None
+    hypotheses = tuple(
+        Hypothesis(
+            id=HypothesisId.new(),
+            workspace_id=queued.workspace_id,
+            case_id=queued.case_id,
+            statement=statement,
+            status=HypothesisStatus.PROPOSED,
+            confidence=confidence,
+        )
+        for statement, confidence in (
+            ("Seller handling did not worsen", 0.9),
+            ("Carrier transit time worsened", 0.94),
+        )
+    )
+    updated_case = case.model_copy(
+        update={
+            "hypothesis_ids": tuple(item.id for item in hypotheses),
+            "updated_at": now + timedelta(seconds=32),
+            "version": case.version + 1,
+        }
+    )
+    trace_id = TraceId.new()
+    correlation_id = CorrelationId.new()
+    lead_completed = NewDomainEvent(
+        workspace_id=queued.workspace_id,
+        case_id=queued.case_id,
+        run_id=queued.id,
+        event_type="lead.completed",
+        trace_id=trace_id,
+        correlation_id=correlation_id,
+        actor=DomainEventActor.AGENT,
+        payload={"result_sha256": "d" * 64, "claim_count": 2},
+    )
+    uow = SqlCommerceUnitOfWork(factory)
+
+    with pytest.raises(RunLeaseLostError, match="requires a lease"):
+        await uow.append_hypothesis_versions_with_events(
+            updated_case,
+            hypotheses,
+            expected_version=case.version,
+            prior_events=(lead_completed,),
+            trace_id=trace_id,
+            correlation_id=correlation_id,
+            actor=DomainEventActor.AGENT,
+            run_id=queued.id,
+        )
+
+    second = await leases.acquire(
+        queued.workspace_id,
+        queued.id,
+        worker_id="worker-lead-new",
+        ttl=timedelta(seconds=30),
+        acquired_at=now + timedelta(seconds=31),
+        trace_id=TraceId.new(),
+        correlation_id=CorrelationId.new(),
+    )
+    with pytest.raises(RunLeaseLostError):
+        await uow.append_hypothesis_versions_with_events(
+            updated_case,
+            hypotheses,
+            expected_version=case.version,
+            prior_events=(lead_completed,),
+            trace_id=trace_id,
+            correlation_id=correlation_id,
+            actor=DomainEventActor.AGENT,
+            run_id=queued.id,
+            lease=first.credentials,
+            lease_checked_at=now + timedelta(seconds=32),
+        )
+
+    events = await uow.append_hypothesis_versions_with_events(
+        updated_case,
+        hypotheses,
+        expected_version=case.version,
+        prior_events=(lead_completed,),
+        trace_id=trace_id,
+        correlation_id=correlation_id,
+        actor=DomainEventActor.AGENT,
+        run_id=queued.id,
+        lease=second.credentials,
+        lease_checked_at=now + timedelta(seconds=32),
+    )
+
+    assert [event.event_type for event in events] == [
+        "lead.completed",
+        "hypothesis.version_appended",
+        "hypothesis.version_appended",
+    ]
+    assert all(event.run_id == queued.id for event in events)
+    assert await SqlCaseRepository(factory).get(
+        queued.workspace_id, queued.case_id
+    ) == updated_case
+    repository = SqlHypothesisRepository(factory)
+    assert tuple(
+        await asyncio.gather(
+            *(
+                repository.get_latest(queued.workspace_id, item.id)
+                for item in hypotheses
+            )
+        )
+    ) == hypotheses
     await engine.dispose()

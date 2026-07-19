@@ -11,6 +11,7 @@ from typing import Any, Self
 from pydantic import Field, ValidationError, model_validator
 
 from app.commerce.agents.budget import BudgetManager
+from app.commerce.agents.claim_policy import unsupported_causal_phrases
 from app.commerce.agents.contracts import (
     AgentBudgetLimit,
     ContextManifest,
@@ -21,6 +22,7 @@ from app.commerce.agents.contracts import (
     estimate_context_tokens,
 )
 from app.commerce.agents.model_router import (
+    ModelAssignment,
     ModelRole,
     ModelRouter,
     ModelRouteRequest,
@@ -35,7 +37,7 @@ from app.commerce.domain.ids import MetricObservationId
 from app.commerce.domain.models import CommerceModel
 from app.commerce.evaluation.real_model_preflight import RealModelVersionSet
 
-VERIFICATION_PROMPT_VERSION = "commerce.verification@1.0.0"
+VERIFICATION_PROMPT_VERSION = "commerce.verification@1.1.0"
 VERIFICATION_CONTEXT_VERSION = "commerce-verification-context@1.0.0"
 VERIFICATION_MAX_OUTPUT_TOKENS = 1_600
 _REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -123,10 +125,17 @@ class VerificationAuditStore:
 
 
 class VerificationRun(CommerceModel):
+    assignment: ModelAssignment
     context: VerificationPacket
     result: VerificationResult
     telemetry: VerifiedCallTelemetry
+    result_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     audit_path: str = Field(min_length=1)
+
+
+class VerificationPlan(CommerceModel):
+    context: VerificationPacket
+    assignment: ModelAssignment
 
 
 class _ClaimCandidate(CommerceModel):
@@ -149,12 +158,13 @@ class VerificationEngine:
     ) -> None:
         self._audit = audit_store or VerificationAuditStore()
 
-    async def verify(
+    async def prepare(
         self,
         lead: LeadContextPacket,
         *,
         claims: tuple[str, ...],
-    ) -> VerificationRun:
+        budget: BudgetManager | None = None,
+    ) -> VerificationPlan:
         context = self._build_context(lead, claims)
         assignment = await ModelRouter().assign(
             ModelRouteRequest(
@@ -166,8 +176,21 @@ class VerificationEngine:
                 schema_complexity=OutputSchemaComplexity.HIGH,
                 minimum_output_tokens=512,
             ),
-            BudgetManager(context.budget),
+            budget or BudgetManager(context.budget),
         )
+        return VerificationPlan(context=context, assignment=assignment)
+
+    async def verify(
+        self,
+        lead: LeadContextPacket,
+        *,
+        claims: tuple[str, ...],
+    ) -> VerificationRun:
+        return await self.run_prepared(await self.prepare(lead, claims=claims))
+
+    async def run_prepared(self, plan: VerificationPlan) -> VerificationRun:
+        context = plan.context
+        assignment = plan.assignment
         versions = RealModelVersionSet(
             prompt_version=VERIFICATION_PROMPT_VERSION,
             context_version=context.manifest.context_version,
@@ -224,9 +247,11 @@ class VerificationEngine:
         )
         audit_path = self._audit.persist(record)
         return VerificationRun(
+            assignment=assignment,
             context=context,
             result=result,
             telemetry=response.telemetry,
+            result_sha256=result_hash,
             audit_path=str(audit_path),
         )
 
@@ -280,6 +305,7 @@ class VerificationEngine:
             capability_boundaries=boundaries,
             policy_constraints=(
                 "Correlation is diagnostic and does not prove causality.",
+                "Reject caused-by, driven-by, due-to, attributable-to, responsible-for, or resulted-from language when only diagnostic metrics are supplied.",
                 "Do not invent GMV, CTR, CVR, ROI, ad spend, inventory, profit, or uplift.",
             ),
         )
@@ -305,7 +331,9 @@ class VerificationEngine:
             "digests, Evidence IDs, capability boundaries and policy constraints. "
             "Return JSON only with no Markdown or extra keys. A claim contradicted "
             "by metrics must be reject/metric_contradiction. A causal claim supported "
-            "only by correlation must be reject/unsupported_causal_language. Every "
+            "only by correlation—including caused by, driven by, due to, attributable "
+            "to, responsible for, or resulted from—must be "
+            "reject/unsupported_causal_language. Every "
             "claim verdict must cite supplied metric_observation_ids. Use exactly: "
             '{"claims":[{"claim_index":integer,"verdict":"pass"|"reject"|"repair",'
             '"issue_codes":["metric_contradiction"|"unsupported_causal_language"|'
@@ -334,6 +362,19 @@ class VerificationEngine:
             for item in output.claims
         ):
             raise ValueError("Verification cited a Metric outside fresh context")
+        incorrectly_passed_causal_claims = tuple(
+            item.claim_index
+            for item in output.claims
+            if item.verdict is ClaimVerdict.PASS
+            and unsupported_causal_phrases(context.claims[item.claim_index])
+        )
+        if incorrectly_passed_causal_claims:
+            raise ValueError(
+                "Verifier passed unsupported causal language for claims: "
+                + ", ".join(
+                    str(index) for index in incorrectly_passed_causal_claims
+                )
+            )
         return tuple(sorted(output.claims, key=lambda item: item.claim_index))
 
     @staticmethod

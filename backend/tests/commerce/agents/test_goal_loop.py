@@ -5,7 +5,12 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from app.commerce.agents.budget import BudgetDimension, BudgetManager
+from app.commerce.agents.budget import (
+    BudgetDelta,
+    BudgetDimension,
+    BudgetExceededError,
+    BudgetManager,
+)
 from app.commerce.agents.contracts import AgentBudgetLimit
 from app.commerce.agents.goal_loop import (
     GoalLoopAction,
@@ -245,3 +250,41 @@ async def test_partial_goal_without_viable_next_step_has_explicit_stop_reason():
     assert decision.action is GoalLoopAction.STOP
     assert decision.stop_reason is GoalStopReason.GOAL_PARTIALLY_ACHIEVED
     assert decision.outcome is GoalLoopOutcome.PARTIAL
+
+
+@pytest.mark.anyio
+async def test_verification_rejection_stops_partial_result_for_explicit_replan():
+    decision = await GoalLoopController(
+        BudgetManager(AgentBudgetLimit())
+    ).advance(
+        _state(),
+        GoalLoopProgress(
+            partial_goal_achieved=True,
+            verification_replan_required=True,
+            remaining_evidence_gaps=("Rejected claim requires a new evidence plan",),
+        ),
+    )
+
+    assert decision.action is GoalLoopAction.STOP
+    assert decision.stop_reason is GoalStopReason.VERIFICATION_REPLAN_REQUIRED
+    assert decision.outcome is GoalLoopOutcome.PARTIAL
+
+
+@pytest.mark.anyio
+async def test_exhausted_verification_repair_budget_preserves_partial_result():
+    manager = BudgetManager(AgentBudgetLimit(max_verification_repairs=0))
+    controller = GoalLoopController(manager)
+    with pytest.raises(BudgetExceededError) as raised:
+        await manager.consume(BudgetDelta(verification_repairs=1))
+
+    decision = controller.stop_for_budget(
+        _state(),
+        raised.value,
+        partial_goal_achieved=True,
+    )
+
+    assert decision.action is GoalLoopAction.STOP
+    assert decision.outcome is GoalLoopOutcome.PARTIAL
+    assert decision.stop_reason is GoalStopReason.BUDGET_EXCEEDED
+    assert decision.budget_dimension is BudgetDimension.VERIFICATION_REPAIRS
+    assert decision.checkpoint.budget_snapshot.usage.verification_repairs == 0
