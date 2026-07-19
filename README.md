@@ -11,7 +11,7 @@
 
 项目正在从旧 OpenSKU / EcomLaunch 方案改造为 Commerce Case Agent。
 
-Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 和“只生成候选、不自动确认”的 Semantic Candidate 层也已实现，并通过 fresh、身份核验的真实请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成 Case、显式 Case→Dataset/Analysis Lineage、Domain Event、append-only Evidence、versioned Hypothesis、bounded Investigation Run 与 append-only Goal Loop Checkpoint 持久化，以及 Data Intake、Profile、Capability、Semantic Candidate、Anomaly-to-Case、Investigation Start、Case Lineage、Run Detail/Checkpoint/Event Stream API。Phase 4 的确定性编排内核现已包括 ContextPacket、可信初始 Context Loader、PathAgentSpec、Capability-first DynamicPathRouter、并发安全 BudgetManager、规则型 ModelRouter、结构化 PathResult、GoalLoopController、Stop Condition、安全 Checkpoint，以及带 heartbeat 和 fencing token 的 Worker Lease。Loader 从持久化 Case/Lineage 出发校验 Dataset Manifest、只读分析 Artifact SHA-256、Workspace/Case/Dataset/Seller 身份、Capability 一致性、Evidence/Hypothesis 归属、隐藏评测字段和上下文预算；它只输出压缩的指标摘要、引用 ID 和初始零消耗 Checkpoint，不把原始 CSV 或完整 source Fact 列表塞进模型上下文。首个 `FulfillmentPathAgent` 已连接这条可信上下文链，并在 `GC-FULFILLMENT-001` 上通过 fresh、身份核验的真实 DeepSeek V4 行为测试：系统确认处理时长未恶化、运输时长显著恶化，输出全部引用真实 MetricObservation ID，未虚构私有经营指标或因果结论。首个 fenced Worker step 也已通过真实 E2E：它持久化 phase、`model.assigned`、`path.started`、前后 Checkpoint、Path Evidence、预算和 `path.completed`；Agent Evidence 写入必须携带当前 lease。重启判定器把 exactly-once 风险显式化，阻止已有 Checkpoint 的盲目外部重试。Fresh-context `VerificationEngine` 也已通过真实 V4 验证：它不继承 Lead reasoning，在同一请求中通过有指标支持的“处理未恶化、运输恶化”诊断，同时拒绝“卖家处理恶化并导致延迟”的指标矛盾与因果过度陈述。模型逻辑选型、实际调用上限、Provider Request ID、Token、Latency、Retry、Stop Reason、Prompt/Context/Router/Skill 版本和内容哈希均进入本地不可覆盖审计。Action/Approval/Follow-up 持久化、真正的用户决策/自动 reconciliation、Lead synthesis、完整多 Path/Verification Worker Goal Loop、SellerPeer/ReviewExperience Path Agent 和完整 Agent E2E 尚未完成；新建调查在 Worker 获取 lease 前仍诚实保持 `queued`。旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
+Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 和“只生成候选、不自动确认”的 Semantic Candidate 层也已实现，并通过 fresh、身份核验的真实请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成 Case、显式 Case→Dataset/Analysis Lineage、Domain Event、append-only Evidence、versioned Hypothesis、bounded Investigation Run 与 append-only Goal Loop Checkpoint 持久化，以及 Data Intake、Profile、Capability、Semantic Candidate、Anomaly-to-Case、Investigation Start、Case Lineage、Run Detail/Checkpoint/Event Stream API。Phase 4 的确定性编排内核现已包括 ContextPacket、可信初始 Context Loader、PathAgentSpec、Capability-first DynamicPathRouter、并发安全 BudgetManager、规则型 ModelRouter、结构化 PathResult、GoalLoopController、Stop Condition、安全 Checkpoint，以及带 heartbeat 和 fencing token 的 Worker Lease。Loader 从持久化 Case/Lineage 出发校验 Dataset Manifest、只读分析 Artifact SHA-256、Workspace/Case/Dataset/Seller 身份、Capability 一致性、Evidence/Hypothesis 归属、隐藏评测字段和上下文预算；它只输出压缩的指标摘要、引用 ID 和初始零消耗 Checkpoint，不把原始 CSV 或完整 source Fact 列表塞进模型上下文。首个 `FulfillmentPathAgent` 已连接这条可信上下文链，并在 `GC-FULFILLMENT-001` 上通过 fresh、身份核验的真实 DeepSeek V4 行为测试：系统确认处理时长未恶化、运输时长显著恶化，输出全部引用真实 MetricObservation ID，未虚构私有经营指标或因果结论。首个 fenced Worker step 也已通过真实 E2E：它持久化 phase、`model.assigned`、`path.started`、前后 Checkpoint、Path Evidence、预算和 `path.completed`；Agent Evidence 写入必须携带当前 lease。重启判定器把 exactly-once 风险显式化，阻止已有 Checkpoint 的盲目外部重试。`LeadSynthesisAgent` 现在可从新鲜加载的 Path Evidence 生成结构化诊断 claims、unknowns 与建议后续路径；claim 只能引用当前 Case Evidence，Hypothesis ID 由系统确定性生成，Critical Case 会从 `balanced_tool_user` 升级为 `strong_synthesizer / high`。真实 V4 验收正确区分处理时长未恶化与运输时长恶化，并保持为待独立验证的诊断假设而非因果真相。Fresh-context `VerificationEngine` 也已通过真实 V4 验证：它不继承 Lead reasoning，在同一请求中通过有指标支持的“处理未恶化、运输恶化”诊断，同时拒绝“卖家处理恶化并导致延迟”的指标矛盾与因果过度陈述。模型逻辑选型、实际调用上限、Provider Request ID、Token、Latency、Retry、Stop Reason、Prompt/Context/Router/Skill 版本和内容哈希均进入本地不可覆盖审计。Action/Approval/Follow-up 持久化、真正的用户决策/自动 reconciliation、Lead→Hypothesis→Verification 的 Worker 集成、完整多 Path Goal Loop、SellerPeer/ReviewExperience Path Agent 和完整 Agent E2E 尚未完成；新建调查在 Worker 获取 lease 前仍诚实保持 `queued`。旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
 
 完整设计与实施计划：
 
@@ -40,6 +40,7 @@ Phase 0 基线与迁移清单：
 - [`docs/progress/2026-07-19-commerce-fenced-worker-real-path-step.md`](./docs/progress/2026-07-19-commerce-fenced-worker-real-path-step.md)
 - [`docs/progress/2026-07-19-commerce-restart-resume-classifier.md`](./docs/progress/2026-07-19-commerce-restart-resume-classifier.md)
 - [`docs/progress/2026-07-19-commerce-fresh-context-verification.md`](./docs/progress/2026-07-19-commerce-fresh-context-verification.md)
+- [`docs/progress/2026-07-19-commerce-lead-synthesis-real-deepseek-v4.md`](./docs/progress/2026-07-19-commerce-lead-synthesis-real-deepseek-v4.md)
 
 ## 解决什么问题
 
@@ -292,7 +293,8 @@ PYTHONPATH=. uv run pytest tests/commerce \
   --ignore=tests/commerce/data/test_semantic_candidate_service_live.py \
   --ignore=tests/commerce/agents/test_fulfillment_path_agent_live.py \
   --ignore=tests/commerce/agents/test_worker_fulfillment_step_live.py \
-  --ignore=tests/commerce/agents/test_verification_live.py -v
+  --ignore=tests/commerce/agents/test_verification_live.py \
+  --ignore=tests/commerce/agents/test_lead_synthesis_live.py -v
 
 cd ../frontend
 pnpm typecheck
@@ -308,7 +310,7 @@ cd backend
 PYTHONPATH=. uv run pytest -m real_model tests/commerce -v
 ```
 
-截至 2026-07-19，最终加固版预检持续返回 `deepseek-v4-flash`。首个 `FulfillmentPathAgent` 独立验收和 fenced Worker E2E 均使用新鲜 preflight + 新鲜 Agent 请求。Fresh-context Verifier 也用一条新鲜 preflight 和一条新鲜 Verifier 请求完成验收：Verifier 请求使用 `5,535` Input Tokens、`598` Output Tokens、单次请求、零重试，约 `4.38s`，正确区分受支持诊断与错误因果结论。这证明首条 Fulfillment Path、Worker 持久化切片和独立 Verification，但不代表 SellerPeer、ReviewExperience、Lead、Action/Follow-up 或完整 Gold Case E2E 已经通过。
+截至 2026-07-19，最终加固版预检持续返回 `deepseek-v4-flash`。首个 `FulfillmentPathAgent` 独立验收和 fenced Worker E2E 均使用新鲜 preflight + 新鲜 Agent 请求。Fresh-context Verifier 也用一条新鲜 preflight 和一条新鲜 Verifier 请求完成验收：Verifier 请求使用 `5,535` Input Tokens、`598` Output Tokens、单次请求、零重试，约 `4.38s`，正确区分受支持诊断与错误因果结论。`LeadSynthesisAgent` 的最终验收重新执行了新鲜 Fulfillment Path 与新鲜 Lead 请求；Lead 请求使用 `5,744` Input Tokens、`711` Output Tokens、单次请求、零重试，约 `5.03s`，输出只引用真实 Path Evidence，并把 Critical Case 的逻辑配置升级为 `strong_synthesizer / high`。这证明首条 Fulfillment Path、Worker 持久化切片、独立 Lead synthesis 和独立 Verification，但不代表 Lead→Verification Worker 集成、SellerPeer、ReviewExperience、Action/Follow-up 或完整 Gold Case E2E 已经通过。
 
 ### Commerce 数据库迁移
 

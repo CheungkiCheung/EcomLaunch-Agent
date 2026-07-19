@@ -1181,7 +1181,9 @@ GREEN：添加：
 - [x] Structured PathResult；
 - [x] 真实 DeepSeek V4 FulfillmentPathAgent 行为测试；
 - [x] Fenced Worker Fulfillment step：pre/post Checkpoint、Event、Budget、Evidence；
+- [x] 真实 DeepSeek V4 LeadSynthesis：Path Evidence → traceable diagnostic claims；
 - [x] Fresh-context Verification：supported claim pass + causal overclaim reject；
+- [ ] Worker Lead → Hypothesis → Verification persistence / GoalLoop integration；
 - [ ] SellerPeer / ReviewExperience Path Agent 行为测试。
 
 #### Task 4.1：ContextPacket
@@ -1272,6 +1274,18 @@ GREEN：添加：
 - [x] Reject / Repair / Pass contract；
 - [x] Fresh real DeepSeek V4 behavior gate；
 - [ ] Worker persistence and replan integration。
+
+#### Task 4.9A：LeadSynthesisAgent
+
+- [x] Fresh persisted Path Evidence context；
+- [x] Structured claims / unknowns / suggested next Paths；
+- [x] Claim Evidence membership validation；
+- [x] System-derived stable Hypothesis IDs；
+- [x] Critical Case `strong_synthesizer / high` escalation；
+- [x] Fresh real DeepSeek V4 behavior gate；
+- [ ] Worker Hypothesis version persistence；
+- [ ] Fresh Verification hand-off without Lead reasoning；
+- [ ] Reject / repair / replan GoalLoop integration。
 
 #### Task 4.10：Checkpoint / Resume
 

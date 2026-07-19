@@ -62,6 +62,17 @@ from app.commerce.agents.goal_loop import (
     ToolStateStatus,
     build_goal_loop_decision_event,
 )
+from app.commerce.agents.lead import (
+    LEAD_PROMPT_VERSION,
+    LeadAuditRecord,
+    LeadAuditStore,
+    LeadClaim,
+    LeadSynthesisAgent,
+    LeadSynthesisResult,
+    LeadSynthesisRun,
+    LeadSynthesisStatus,
+    LeadUnknown,
+)
 from app.commerce.agents.model_router import (
     ModelAssignment,
     ModelBinding,
@@ -161,6 +172,15 @@ __all__ = [
     "GoalLoopState",
     "GoalStopReason",
     "LeadContextPacket",
+    "LEAD_PROMPT_VERSION",
+    "LeadAuditRecord",
+    "LeadAuditStore",
+    "LeadClaim",
+    "LeadSynthesisAgent",
+    "LeadSynthesisResult",
+    "LeadSynthesisRun",
+    "LeadSynthesisStatus",
+    "LeadUnknown",
     "InitialContextLoad",
     "MetricObservationDigest",
     "ModelAssignment",
