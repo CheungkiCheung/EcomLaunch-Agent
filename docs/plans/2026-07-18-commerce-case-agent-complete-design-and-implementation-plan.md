@@ -1,6 +1,6 @@
 # Commerce Case Agent 完整设计与实施计划
 
-> 状态：设计已收口，确定性 Case/Run/Context 主干与首条真实 Fulfillment Path→Lead→Verification 诊断闭环已完成，其余闭环持续实施
+> 状态：设计已收口；确定性 Case/Run/Context 主干与首条真实诊断闭环已完成；运行时路线已优化为 DeerFlow Subagent Harness + Commerce Domain
 > 日期：2026-07-18
 > 当前分支：`feature/commerce-case-agent`
 > 保护快照：`archive/ecom-launch-pre-commerce-agent-20260718` / `9144237`
@@ -195,6 +195,59 @@ Improvement Plane
 ├── Shadow
 └── Promotion / Rollback
 ```
+
+### 6.1 运行时选型决定（2026-07-19）
+
+主架构固定为：
+
+```text
+DeerFlow Agent Harness
+├── Commerce Lead Agent Loop
+├── DeerFlow Subagent Executor
+│   ├── Fulfillment Subagent
+│   ├── SellerPeer Subagent
+│   ├── ReviewExperience Subagent
+│   └── Fresh Verification Subagent
+├── Tool / Skill / Model / Streaming / Checkpointer
+└── CommerceSubagentAdapter
+    └── Commerce Case / Run / Event / Evidence / Policy
+```
+
+选型原则：
+
+- DeerFlow 是主 Harness，复用现有 Subagent、Tool、Skill、Streaming、Sandbox、Model 和 LangGraph Runtime；
+- LangGraph 作为 DeerFlow 底层执行引擎，不直接成为 Commerce 业务数据库或 Case 状态来源；
+- Subagent 是 Path 的执行形态，不拥有 Case 状态写权限；
+- Commerce Lead 是持续 Agent Loop，不是只调用一次的文本综合函数；
+- Commerce Domain Event、Run、Checkpoint、Lease/Fencing 仍是业务权威状态；
+- deterministic Metric/Capability/Policy 不交给模型计算；
+- Verification 使用独立 fresh-context Subagent，不继承 Lead reasoning；
+- Multica 是编码 Agent 管理平台，不作为 Commerce 内部推理运行时；
+- 不迁移到 DeepAgents 或 Pi Agent，避免在已有 DeerFlow 基础上重复建设 Harness。
+
+Agent 执行拓扑：
+
+```text
+用户消息 / Case Event
+→ Commerce Lead Loop
+→ Capability-first Router
+→ 0–3 Path Subagent fan-out
+→ 每条 Path 独立 ContextPacket / Tool / Budget / Checkpoint
+→ Evidence Barrier（只接收已持久化 Evidence）
+→ Lead 更新 Hypothesis
+→ Fresh Verification Subagent
+→ GoalLoop：answer / continue / replan / wait / action / stop
+```
+
+持续问答与完整调查分离：
+
+- 读取已有 Evidence、解释结论和展示来源不启动完整多 Agent Loop；
+- 请求新调查角度时只补跑缺失 Path；
+- 新数据进入时创建新的 analysis/follow-up Run；
+- 质疑结论时可以启动 fresh Verification；
+- Action、Approval 和 Follow-up 使用独立 RunType 和状态门禁。
+
+详细理由见 `docs/adr/0005-commerce-uses-deerflow-subagent-runtime.md`。
 
 ## 7. 代码边界
 
@@ -1147,6 +1200,7 @@ GREEN：添加：
 - [x] Semantic Mapping read / explicit Workspace confirmation API；
 - [x] Real DeepSeek V4 semantic-candidate API with telemetry and fail-closed identity gate；
 - [x] Deterministic Anomaly-to-Case analysis API with immutable derived snapshot and Case/Event Replay；
+- [x] Explicit user Case API：无 temporal anomaly 时仍可用 requested Paths 创建真实 Case，不伪造异常；
 - [x] Case List；
 - [x] Case Detail；
 - [x] Case Lineage Detail；
@@ -1187,6 +1241,13 @@ GREEN：添加：
 - [x] Worker Lead → Hypothesis → Verification persistence / GoalLoop terminal integration；
 - [x] SellerPeer Path Agent 真实 Tool + DeepSeek V4 行为测试；
 - [x] ReviewExperience Path Agent 真实 Tool + DeepSeek V4 行为测试。
+- [x] Explicit Case Trigger / requested Paths / outcome-agnostic Peer Policy 合同与 API；
+- [x] 247 个非 live Commerce 确定性回归通过；
+- [ ] DeerFlow CommerceSubagentAdapter；
+- [ ] 三条 Path 的 Subagent Runtime 迁移；
+- [ ] 多 Path fan-out / Evidence Barrier；
+- [ ] 持续 Commerce Lead Agent Loop；
+- [ ] Fresh Verification Subagent 接入新 Loop。
 
 #### Task 4.1：ContextPacket
 
@@ -1221,6 +1282,8 @@ GREEN：添加：
 - [x] 记录 Reason Codes；
 - [x] GC-REVIEW-002 不启动 Fulfillment；
 - [x] GC-CAPABILITY-003 不启动 Review。
+- [x] 从持久化 explicit Case trigger 恢复 requested Paths；
+- [x] SellerPeer 显式请求必须携带 outcome-agnostic PeerCohortPolicy。
 
 #### Task 4.4：ModelRouter
 
@@ -1307,6 +1370,56 @@ GREEN：添加：
 - [ ] Tool Failure Resume；
 - [x] Process Restart state reconstruction and retry-risk classification；
 - [ ] Process Restart continuation / reconciliation execution。
+
+#### Task 4.11：CommerceSubagentAdapter
+
+- [ ] 定义 `CommerceAgentTask`：Run/Case/Path/Context/Budget/Skill/Model/Lease 引用；
+- [ ] 将 Commerce Run 映射到 DeerFlow Thread/Run，但不改变 Domain Source of Truth；
+- [ ] 将 DeerFlow Agent/Tool/Task stream 映射为 Commerce Domain Event；
+- [ ] Provider middleware 接入现有 fresh DeepSeek V4 identity gate；
+- [ ] Subagent 只能返回 `PathResult`，不得直接写 Case/Evidence；
+- [ ] Adapter cancellation、timeout、heartbeat 和 stale fencing 测试；
+- [ ] Harness boundary：`deerflow.*` 不导入 `app.commerce.*`。
+
+#### Task 4.12：Path Subagent Fan-out
+
+- [ ] 将三条已验收 Path 行为包装为 versioned DeerFlow SubagentSpec；
+- [ ] 每个 Path 使用独立最小 ContextPacket、Tool allowlist、Skill 和 Budget；
+- [ ] Router 只启动 Capability 可用或用户显式请求且合同完整的 Path；
+- [ ] 同一 Run 下 0–3 Path 并行执行；
+- [ ] 每条 Path 独立 pre/post Checkpoint 与 AgentTaskId；
+- [ ] 一个 Path blocked/failed 不抹除其他 Path 已完成 Evidence；
+- [ ] Evidence 持久化通过 lease/fencing 和 optimistic concurrency；
+- [ ] Evidence Barrier 等待所有 selected Path 进入 completed/blocked/failed；
+- [ ] 记录 fan-out wall time、单 Path latency、tokens 和 critical path。
+
+#### Task 4.13：持续 Commerce Lead Agent Loop
+
+- [ ] Lead observe：只读取持久化 Case/Event/Evidence/Hypothesis；
+- [ ] Lead act：调用 deterministic Tool 或创建受约束 Subagent Task；
+- [ ] Lead 不直接生成或修改 Metric；
+- [ ] 读取已有结论的追问走 read-only answer，不重跑全部 Path；
+- [ ] 新调查角度创建 Replan Run，只补跑缺失 Path；
+- [ ] 用户澄清进入 WAITING/Resume，不丢失已完成 Evidence；
+- [ ] 每轮必须有 Goal、Budget、Progress Signal、Checkpoint 和 Stop Condition；
+- [ ] 连续无新 Evidence、预算耗尽、能力不足或用户取消时停止。
+
+#### Task 4.14：Fresh Verification Subagent
+
+- [ ] 从持久化 Evidence 和 deterministic Metric 重建 fresh packet；
+- [ ] 不包含 Lead reasoning、隐藏 label 或未持久化中间消息；
+- [ ] 验证 Claim-Evidence、Metric membership、Capability 和 Policy；
+- [ ] pass/reject/repair 显式更新 Hypothesis 新版本；
+- [ ] reject/repair 进入 Replan，不允许静默转成 pass。
+
+#### Task 4.15：渐进迁移与等价门禁
+
+- [ ] 现有 Fulfillment Worker Loop 保留为迁移基准；
+- [ ] 新 Subagent Loop 必须通过相同 Gold Case 和真实模型门禁；
+- [ ] 对比旧/新 Evidence coverage、tokens、latency、failure semantics；
+- [ ] 新链路通过前不删除旧链路；
+- [ ] 新链路通过后移除角色专用 Worker 编排，保留通用 Adapter；
+- [ ] README/ADR 明确 DeerFlow 上游与 Commerce 新增能力。
 
 退出条件：
 
@@ -1630,13 +1743,17 @@ git status --short
 - DeerFlow 上游与个人贡献边界清晰；
 - 所有公开演示结论均不虚构业务效果。
 
-## 23. 实施启动点
+## 23. 当前实施启动点（2026-07-19）
 
-正式实现从 Phase 0 的剩余任务开始：
+按以下顺序继续，不进行推倒式重写：
 
-1. 记录上游版本和当前基线测试；
-2. 创建 Commerce Feature Flag；
-3. 创建 `app.commerce` 包边界失败测试；
-4. 进入 RED → GREEN → REFACTOR。
+1. 提交已通过 247 个确定性测试的 Explicit Case Trigger/API 切片；
+2. 为 CommerceSubagentAdapter 写 RED 合同测试和 Harness boundary 测试；
+3. 先把一个 Fulfillment Path 包装为 DeerFlow Subagent，验证事件/预算/证据等价；
+4. 使用 fresh DeepSeek V4 运行 Subagent Fulfillment→Lead→Verification E2E；
+5. 接入 SellerPeer/ReviewExperience，并实现 0–3 Path fan-out 和 Evidence Barrier；
+6. 将一次性 LeadSynthesis 升级为持续 Lead Agent Loop；
+7. 完成 Replan、Action/Approval/Follow-up；
+8. 完成 Eval/Skill Evolution 后，再进入每页先生成视觉稿的前端实施。
 
-在完成 Phase 1–6 的后端合同和真实事件协议前，不开始重做正式前端页面；前端视觉母版可以并行探索，但代码实现必须等待事件和数据合同稳定。
+迁移期间旧 Worker 是行为基准，不是长期双轨架构。只有新 Subagent Loop 在真实 DeepSeek V4、Gold Case、失败路径、Token/Latency 和审计门禁上等价或更优，才移除旧角色专用编排。
