@@ -193,3 +193,84 @@ class HypothesisRow(CommerceBase):
             "status",
         ),
     )
+
+
+class RunRow(CommerceBase):
+    """Mutable projection for one bounded Commerce execution."""
+
+    __tablename__ = "commerce_runs"
+
+    run_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    case_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    run_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    phase: Mapped[str] = mapped_column(String(32), nullable=False)
+    goal: Mapped[str] = mapped_column(Text, nullable=False)
+    idempotency_key_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    wait_reason: Mapped[str | None] = mapped_column(Text)
+    stop_reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id",
+            "case_id",
+            "idempotency_key_sha256",
+            name="uq_commerce_runs_workspace_case_idempotency",
+        ),
+        CheckConstraint("version >= 1", name="ck_commerce_runs_version_positive"),
+        Index(
+            "ix_commerce_runs_workspace_case_updated",
+            "workspace_id",
+            "case_id",
+            "updated_at",
+        ),
+        Index(
+            "ix_commerce_runs_workspace_status_updated",
+            "workspace_id",
+            "status",
+            "updated_at",
+        ),
+    )
+
+
+class RunCheckpointRow(CommerceBase):
+    """Append-only serialized Goal Loop checkpoint."""
+
+    __tablename__ = "commerce_run_checkpoints"
+
+    checkpoint_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    case_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    run_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    checkpoint_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id",
+            "sequence",
+            name="uq_commerce_run_checkpoint_sequence",
+        ),
+        CheckConstraint(
+            "sequence >= 1",
+            name="ck_commerce_run_checkpoint_sequence_positive",
+        ),
+        Index(
+            "ix_commerce_run_checkpoints_workspace_run_sequence",
+            "workspace_id",
+            "run_id",
+            "sequence",
+        ),
+    )

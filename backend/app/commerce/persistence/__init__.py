@@ -14,6 +14,12 @@ from app.commerce.persistence.repositories import (
     OptimisticConcurrencyError,
     SqlCaseRepository,
 )
+from app.commerce.persistence.runs import (
+    RunCheckpointRecord,
+    RunRepository,
+    SqlRunCheckpointRepository,
+    SqlRunRepository,
+)
 from app.commerce.persistence.schema import create_commerce_schema
 from app.commerce.persistence.unit_of_work import SqlCommerceUnitOfWork
 
@@ -26,8 +32,12 @@ __all__ = [
     "EventSequenceConflictError",
     "EventStreamInvariantError",
     "OptimisticConcurrencyError",
+    "RunCheckpointRecord",
+    "RunRepository",
     "SqlCaseRepository",
     "SqlCommerceUnitOfWork",
     "SqlDomainEventStore",
+    "SqlRunCheckpointRepository",
+    "SqlRunRepository",
     "create_commerce_schema",
 ]

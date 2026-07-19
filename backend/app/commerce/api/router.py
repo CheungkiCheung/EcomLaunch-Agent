@@ -1,4 +1,4 @@
-"""Feature-flagged, read-only Commerce Case API."""
+"""Feature-flagged Commerce Case data, investigation, and read API."""
 
 from __future__ import annotations
 
@@ -17,8 +17,14 @@ from app.commerce.api.dependencies import (
     get_commerce_analysis_service,
     get_commerce_data_service,
     get_commerce_read_service,
+    get_commerce_run_service,
     get_commerce_semantic_candidate_service,
     get_commerce_workspace_id,
+)
+from app.commerce.api.run_service import (
+    CommerceRunService,
+    InvestigationCaseNotFoundError,
+    InvestigationIdempotencyConflictError,
 )
 from app.commerce.api.schemas import (
     AnalysisRequest,
@@ -33,6 +39,13 @@ from app.commerce.api.schemas import (
     EvidenceResponse,
     HypothesisListResponse,
     HypothesisResponse,
+    InvestigationStartRequest,
+    InvestigationStartResponse,
+    RunCheckpointListResponse,
+    RunCheckpointResponse,
+    RunDetailResponse,
+    RunListResponse,
+    RunResponse,
     SemanticConfirmationRequest,
 )
 from app.commerce.api.service import CommerceReadService
@@ -48,8 +61,16 @@ from app.commerce.data.semantic_candidate_service import (
 from app.commerce.data.semantic_mapper import SemanticConfirmation, SemanticMappingProfile
 from app.commerce.domain.enums import CaseStatus
 from app.commerce.domain.events import DomainEventEnvelope
-from app.commerce.domain.ids import CaseId, DatasetId, EvidenceId, WorkspaceId
+from app.commerce.domain.ids import (
+    CaseId,
+    DatasetId,
+    EvidenceId,
+    RunId,
+    WorkspaceId,
+)
 from app.commerce.domain.models import Case, Evidence, Hypothesis
+from app.commerce.domain.runs import CommerceRun
+from app.commerce.persistence.runs import RunCheckpointRecord
 
 router = APIRouter(prefix="/api/commerce", tags=["commerce"])
 
@@ -127,6 +148,34 @@ def _event_response(event: DomainEventEnvelope) -> DomainEventResponse:
     )
 
 
+def _run_response(run: CommerceRun) -> RunResponse:
+    return RunResponse(
+        id=str(run.id),
+        workspace_id=str(run.workspace_id),
+        case_id=str(run.case_id),
+        run_type=run.run_type.value,
+        status=run.status.value,
+        phase=run.phase.value,
+        goal=run.goal,
+        wait_reason=run.wait_reason,
+        stop_reason=run.stop_reason,
+        created_at=run.created_at,
+        started_at=run.started_at,
+        ended_at=run.ended_at,
+        updated_at=run.updated_at,
+        version=run.version,
+    )
+
+
+def _checkpoint_response(record: RunCheckpointRecord) -> RunCheckpointResponse:
+    return RunCheckpointResponse(
+        id=str(record.id),
+        sequence=record.sequence,
+        checkpoint=record.checkpoint,
+        created_at=record.created_at,
+    )
+
+
 def _parse_case_id(raw_case_id: str) -> CaseId:
     try:
         return CaseId(raw_case_id)
@@ -148,6 +197,13 @@ def _parse_dataset_id(raw_dataset_id: str) -> DatasetId:
         raise HTTPException(status_code=400, detail="Invalid DatasetId") from exc
 
 
+def _parse_run_id(raw_run_id: str) -> RunId:
+    try:
+        return RunId(raw_run_id)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid RunId") from exc
+
+
 async def _require_case(
     service: CommerceReadService,
     workspace_id: WorkspaceId,
@@ -157,6 +213,17 @@ async def _require_case(
     if case is None:
         raise HTTPException(status_code=404, detail="Commerce Case not found")
     return case
+
+
+async def _require_run(
+    service: CommerceRunService,
+    workspace_id: WorkspaceId,
+    run_id: RunId,
+) -> CommerceRun:
+    run = await service.get_run(workspace_id, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Commerce Run not found")
+    return run
 
 
 @router.get("/cases", response_model=CaseListResponse)
@@ -177,6 +244,36 @@ async def list_cases(
         items=[_case_response(case) for case in cases],
         limit=limit,
         offset=offset,
+    )
+
+
+@router.post(
+    "/cases/{raw_case_id}/investigations",
+    response_model=InvestigationStartResponse,
+    status_code=201,
+)
+async def start_case_investigation(
+    raw_case_id: Annotated[str, Path()],
+    request: InvestigationStartRequest,
+    service: Annotated[CommerceRunService, Depends(get_commerce_run_service)],
+    workspace_id: Annotated[WorkspaceId, Depends(get_commerce_workspace_id)],
+) -> InvestigationStartResponse:
+    try:
+        outcome = await service.start_investigation(
+            workspace_id,
+            _parse_case_id(raw_case_id),
+            goal=request.goal,
+            idempotency_key=request.idempotency_key,
+        )
+    except InvestigationCaseNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Commerce Case not found") from exc
+    except InvestigationIdempotencyConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    latest = await service.get_latest_checkpoint(workspace_id, outcome.run.id)
+    return InvestigationStartResponse(
+        run=_run_response(outcome.run),
+        created=outcome.created,
+        latest_checkpoint=_checkpoint_response(latest) if latest else None,
     )
 
 
@@ -421,3 +518,68 @@ async def list_case_events(
     case = await _require_case(service, workspace_id, _parse_case_id(raw_case_id))
     events = await service.list_case_events(workspace_id, case.id)
     return DomainEventListResponse(items=[_event_response(item) for item in events])
+
+
+@router.get("/cases/{raw_case_id}/runs", response_model=RunListResponse)
+async def list_case_runs(
+    raw_case_id: Annotated[str, Path()],
+    service: Annotated[CommerceRunService, Depends(get_commerce_run_service)],
+    workspace_id: Annotated[WorkspaceId, Depends(get_commerce_workspace_id)],
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> RunListResponse:
+    try:
+        runs = await service.list_case_runs(
+            workspace_id,
+            _parse_case_id(raw_case_id),
+            limit=limit,
+            offset=offset,
+        )
+    except InvestigationCaseNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Commerce Case not found") from exc
+    return RunListResponse(
+        items=[_run_response(run) for run in runs],
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/runs/{raw_run_id}", response_model=RunDetailResponse)
+async def get_run_detail(
+    raw_run_id: Annotated[str, Path()],
+    service: Annotated[CommerceRunService, Depends(get_commerce_run_service)],
+    workspace_id: Annotated[WorkspaceId, Depends(get_commerce_workspace_id)],
+) -> RunDetailResponse:
+    run = await _require_run(service, workspace_id, _parse_run_id(raw_run_id))
+    latest = await service.get_latest_checkpoint(workspace_id, run.id)
+    return RunDetailResponse(
+        run=_run_response(run),
+        latest_checkpoint=_checkpoint_response(latest) if latest else None,
+    )
+
+
+@router.get("/runs/{raw_run_id}/events", response_model=DomainEventListResponse)
+async def list_run_events(
+    raw_run_id: Annotated[str, Path()],
+    service: Annotated[CommerceRunService, Depends(get_commerce_run_service)],
+    workspace_id: Annotated[WorkspaceId, Depends(get_commerce_workspace_id)],
+) -> DomainEventListResponse:
+    run = await _require_run(service, workspace_id, _parse_run_id(raw_run_id))
+    events = await service.list_run_events(workspace_id, run.id)
+    return DomainEventListResponse(items=[_event_response(item) for item in events])
+
+
+@router.get(
+    "/runs/{raw_run_id}/checkpoints",
+    response_model=RunCheckpointListResponse,
+)
+async def list_run_checkpoints(
+    raw_run_id: Annotated[str, Path()],
+    service: Annotated[CommerceRunService, Depends(get_commerce_run_service)],
+    workspace_id: Annotated[WorkspaceId, Depends(get_commerce_workspace_id)],
+) -> RunCheckpointListResponse:
+    run = await _require_run(service, workspace_id, _parse_run_id(raw_run_id))
+    checkpoints = await service.list_run_checkpoints(workspace_id, run.id)
+    return RunCheckpointListResponse(
+        items=[_checkpoint_response(item) for item in checkpoints]
+    )

@@ -9,6 +9,7 @@ from app.commerce.domain.enums import (
     FollowUpOutcome,
     HypothesisStatus,
     RunPhase,
+    RunStatus,
     RunType,
     SemanticStatus,
 )
@@ -37,6 +38,7 @@ from app.commerce.domain.ids import (
     ApprovalId,
     CapabilityId,
     CaseId,
+    CheckpointId,
     CohortId,
     CorrelationId,
     DatasetId,
@@ -70,6 +72,7 @@ from app.commerce.domain.models import (
     RollbackPlan,
     SourceRef,
 )
+from app.commerce.domain.runs import CommerceRun, InvalidRunTransitionError
 
 __all__ = [
     "ActionId",
@@ -88,8 +91,10 @@ __all__ = [
     "CaseSeverity",
     "CaseStatus",
     "CaseProjection",
+    "CheckpointId",
     "CohortId",
     "CorrelationId",
+    "CommerceRun",
     "DataSourceId",
     "DatasetId",
     "EntityId",
@@ -122,6 +127,7 @@ __all__ = [
     "NewDomainEvent",
     "RunId",
     "RunPhase",
+    "RunStatus",
     "RunType",
     "RollbackPlan",
     "SemanticStatus",
@@ -131,5 +137,6 @@ __all__ = [
     "WorkspaceId",
     "SourceRef",
     "ExpectedBehavior",
+    "InvalidRunTransitionError",
     "replay_case_projection",
 ]

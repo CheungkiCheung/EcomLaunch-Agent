@@ -7,14 +7,21 @@ import asyncio
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.commerce.domain.enums import CaseStatus
+from app.commerce.agents.goal_loop import GoalLoopCheckpoint
+from app.commerce.domain.enums import CaseStatus, RunPhase, RunStatus
 from app.commerce.domain.events import (
     DomainEventActor,
     DomainEventEnvelope,
     NewDomainEvent,
 )
-from app.commerce.domain.ids import CorrelationId, EventId, TraceId
+from app.commerce.domain.ids import (
+    CheckpointId,
+    CorrelationId,
+    EventId,
+    TraceId,
+)
 from app.commerce.domain.models import Case, Evidence, Hypothesis
+from app.commerce.domain.runs import CommerceRun
 from app.commerce.persistence.events import (
     EventSequenceConflictError,
     SqlDomainEventStore,
@@ -22,6 +29,11 @@ from app.commerce.persistence.events import (
 from app.commerce.persistence.repositories import (
     DuplicateEntityError,
     SqlCaseRepository,
+)
+from app.commerce.persistence.runs import (
+    RunCheckpointRecord,
+    SqlRunCheckpointRepository,
+    SqlRunRepository,
 )
 from app.commerce.persistence.work_records import (
     SqlEvidenceRepository,
@@ -121,6 +133,159 @@ class SqlCommerceUnitOfWork:
         if previous is not current:
             return "case.status_changed"
         return "case.updated"
+
+    async def create_run(
+        self,
+        run: CommerceRun,
+        *,
+        trace_id: TraceId,
+        correlation_id: CorrelationId,
+        actor: DomainEventActor,
+        causation_event_id: EventId | None = None,
+    ) -> DomainEventEnvelope:
+        event = NewDomainEvent(
+            workspace_id=run.workspace_id,
+            case_id=run.case_id,
+            run_id=run.id,
+            event_type="run.created",
+            occurred_at=run.created_at,
+            trace_id=trace_id,
+            correlation_id=correlation_id,
+            causation_event_id=causation_event_id,
+            actor=actor,
+            payload={
+                "run_type": run.run_type.value,
+                "status": run.status.value,
+                "phase": run.phase.value,
+                "goal": run.goal,
+                "version": run.version,
+            },
+        )
+        try:
+            async with self._session_factory() as session, session.begin():
+                await SqlRunRepository.create_in_session(session, run)
+                return await SqlDomainEventStore.append_in_session(session, event)
+        except IntegrityError as exc:
+            raise DuplicateEntityError(
+                f"Run or idempotency key already exists: {run.id}"
+            ) from exc
+
+    async def save_run(
+        self,
+        run: CommerceRun,
+        *,
+        expected_version: int,
+        trace_id: TraceId,
+        correlation_id: CorrelationId,
+        actor: DomainEventActor,
+        causation_event_id: EventId | None = None,
+    ) -> DomainEventEnvelope:
+        last_error: IntegrityError | None = None
+        for attempt in range(self.MAX_SEQUENCE_RETRIES):
+            try:
+                async with self._session_factory() as session, session.begin():
+                    previous_status, previous_phase = (
+                        await SqlRunRepository.save_in_session(
+                            session,
+                            run,
+                            expected_version=expected_version,
+                        )
+                    )
+                    event_type = self._run_event_type(
+                        previous_status,
+                        run.status,
+                        previous_phase,
+                        run.phase,
+                    )
+                    event = NewDomainEvent(
+                        workspace_id=run.workspace_id,
+                        case_id=run.case_id,
+                        run_id=run.id,
+                        event_type=event_type,
+                        occurred_at=run.updated_at,
+                        trace_id=trace_id,
+                        correlation_id=correlation_id,
+                        causation_event_id=causation_event_id,
+                        actor=actor,
+                        payload={
+                            "from_status": previous_status.value,
+                            "to_status": run.status.value,
+                            "from_phase": previous_phase.value,
+                            "to_phase": run.phase.value,
+                            "wait_reason": run.wait_reason,
+                            "stop_reason": run.stop_reason,
+                            "version": run.version,
+                        },
+                    )
+                    return await SqlDomainEventStore.append_in_session(session, event)
+            except IntegrityError as exc:
+                last_error = exc
+                await asyncio.sleep(0.001 * (attempt + 1))
+        raise EventSequenceConflictError(
+            "Atomic Run/Event mutation exceeded sequence retry budget"
+        ) from last_error
+
+    @staticmethod
+    def _run_event_type(
+        previous_status: RunStatus,
+        current_status: RunStatus,
+        previous_phase: RunPhase,
+        current_phase: RunPhase,
+    ) -> str:
+        if previous_status is not current_status:
+            return "run.status_changed"
+        if previous_phase is not current_phase:
+            return "run.phase_changed"
+        return "run.updated"
+
+    async def append_run_checkpoint(
+        self,
+        checkpoint: GoalLoopCheckpoint,
+        *,
+        trace_id: TraceId,
+        correlation_id: CorrelationId,
+        actor: DomainEventActor,
+        causation_event_id: EventId | None = None,
+        checkpoint_id: CheckpointId | None = None,
+    ) -> tuple[RunCheckpointRecord, DomainEventEnvelope]:
+        selected_id = checkpoint_id or CheckpointId.new()
+        last_error: IntegrityError | None = None
+        for attempt in range(self.MAX_SEQUENCE_RETRIES):
+            try:
+                async with self._session_factory() as session, session.begin():
+                    record = await SqlRunCheckpointRepository.append_in_session(
+                        session,
+                        checkpoint,
+                        checkpoint_id=selected_id,
+                    )
+                    event = NewDomainEvent(
+                        workspace_id=checkpoint.workspace_id,
+                        case_id=checkpoint.case_id,
+                        run_id=checkpoint.run_id,
+                        event_type="run.checkpoint_saved",
+                        occurred_at=record.created_at,
+                        trace_id=trace_id,
+                        correlation_id=correlation_id,
+                        causation_event_id=causation_event_id,
+                        actor=actor,
+                        payload={
+                            "checkpoint_id": str(record.id),
+                            "checkpoint_sequence": record.sequence,
+                            "checkpoint_schema_version": checkpoint.schema_version,
+                            "loop_iteration": checkpoint.loop_iteration,
+                        },
+                    )
+                    envelope = await SqlDomainEventStore.append_in_session(
+                        session,
+                        event,
+                    )
+                    return record, envelope
+            except IntegrityError as exc:
+                last_error = exc
+                await asyncio.sleep(0.001 * (attempt + 1))
+        raise EventSequenceConflictError(
+            "Atomic Checkpoint/Event append exceeded sequence retry budget"
+        ) from last_error
 
     async def append_evidence(
         self,

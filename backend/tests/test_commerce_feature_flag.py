@@ -63,3 +63,11 @@ def test_commerce_router_is_mounted_only_when_enabled(monkeypatch):
     assert any(route.path == "/api/commerce/datasets/intake" for route in app.routes)
     assert any(route.path == "/api/commerce/datasets/{raw_dataset_id}/semantic-candidates" for route in app.routes)
     assert any(route.path == "/api/commerce/datasets/{raw_dataset_id}/analyze" for route in app.routes)
+    assert any(
+        route.path == "/api/commerce/cases/{raw_case_id}/investigations"
+        for route in app.routes
+    )
+    assert any(
+        route.path == "/api/commerce/runs/{raw_run_id}/events"
+        for route in app.routes
+    )

@@ -7,6 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.commerce.agents.goal_loop import GoalLoopCheckpoint
 from app.commerce.data.capabilities import CapabilityProfile
 from app.commerce.data.intake import DataBundleManifest
 from app.commerce.data.profiler import DatasetProfile
@@ -101,6 +102,56 @@ class HypothesisListResponse(CommerceResponse):
 
 class DomainEventListResponse(CommerceResponse):
     items: list[DomainEventResponse]
+
+
+class InvestigationStartRequest(CommerceResponse):
+    goal: str = Field(min_length=1, max_length=2_000)
+    idempotency_key: str = Field(min_length=8, max_length=128)
+
+
+class RunResponse(CommerceResponse):
+    id: str
+    workspace_id: str
+    case_id: str
+    run_type: str
+    status: str
+    phase: str
+    goal: str
+    wait_reason: str | None
+    stop_reason: str | None
+    created_at: datetime
+    started_at: datetime | None
+    ended_at: datetime | None
+    updated_at: datetime
+    version: int = Field(ge=1)
+
+
+class RunCheckpointResponse(CommerceResponse):
+    id: str
+    sequence: int = Field(ge=1)
+    checkpoint: GoalLoopCheckpoint
+    created_at: datetime
+
+
+class InvestigationStartResponse(CommerceResponse):
+    run: RunResponse
+    created: bool
+    latest_checkpoint: RunCheckpointResponse | None
+
+
+class RunDetailResponse(CommerceResponse):
+    run: RunResponse
+    latest_checkpoint: RunCheckpointResponse | None
+
+
+class RunListResponse(CommerceResponse):
+    items: list[RunResponse]
+    limit: int = Field(ge=1)
+    offset: int = Field(ge=0)
+
+
+class RunCheckpointListResponse(CommerceResponse):
+    items: list[RunCheckpointResponse]
 
 
 class DatasetIntakeResponse(CommerceResponse):

@@ -1128,12 +1128,12 @@ GREEN：添加：
 
 #### Task 3.4：Domain Event Store
 
-- Event Envelope；
-- Case Sequence；
-- Run Sequence；
-- Schema Version；
-- Trace Correlation；
-- Replay Projection。
+- [x] Event Envelope；
+- [x] Case Sequence；
+- [x] Run Sequence；
+- [x] Schema Version；
+- [x] Trace Correlation；
+- [x] Replay Projection。
 
 #### Task 3.5：Commerce API
 
@@ -1150,10 +1150,10 @@ GREEN：添加：
 - [x] Latest Hypothesis List；
 - [x] Case Domain Event Stream；
 - [x] Anomaly-to-Case analysis；
-- [ ] Investigation Start；
-- [ ] Run Detail / Events。
+- [x] Idempotent Investigation Start；
+- [x] Case Run List / Run Detail / Checkpoints / Events。
 
-当前 API slice 通过 `COMMERCE_CASE_AGENT_ENABLED` fail-closed 挂载，并要求 `X-Commerce-Workspace-Id`。在 Workspace membership 合同完成前，不满足多租户生产发布退出条件；Investigation Start 和 Run API 仍未实现。
+当前 API slice 通过 `COMMERCE_CASE_AGENT_ENABLED` fail-closed 挂载，并要求 `X-Commerce-Workspace-Id`。在 Workspace membership 合同完成前，不满足多租户生产发布退出条件。Investigation Start 只创建诚实的 `queued` Run；Worker 获取、Agent 执行与进程恢复仍未实现。
 
 退出条件：
 
@@ -1256,11 +1256,12 @@ GREEN：添加：
 
 #### Task 4.10：Checkpoint / Resume
 
-- User Clarification；
-- Mapping Confirmation；
-- Approval Wait；
-- Tool Failure Resume；
-- Process Restart Resume。
+- [x] Append-only safe Checkpoint persistence and read API；
+- [ ] User Clarification Resume；
+- [ ] Mapping Confirmation Resume；
+- [ ] Approval Wait Resume；
+- [ ] Tool Failure Resume；
+- [ ] Process Restart Resume。
 
 退出条件：
 

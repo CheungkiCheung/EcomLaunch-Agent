@@ -10,6 +10,7 @@ from fastapi import Header, HTTPException
 
 from app.commerce.api.analysis_service import CommerceAnalysisService
 from app.commerce.api.data_service import CommerceDataService
+from app.commerce.api.run_service import CommerceRunService
 from app.commerce.api.service import CommerceReadService
 from app.commerce.data.semantic_candidate_service import SemanticCandidateService
 from app.commerce.domain.ids import WorkspaceId
@@ -24,6 +25,16 @@ def get_commerce_read_service() -> CommerceReadService:
             detail="Commerce persistence is not initialized",
         )
     return CommerceReadService(session_factory)
+
+
+def get_commerce_run_service() -> CommerceRunService:
+    session_factory = get_session_factory()
+    if session_factory is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Commerce persistence is not initialized",
+        )
+    return CommerceRunService(session_factory)
 
 
 def get_commerce_data_service() -> CommerceDataService:

@@ -106,6 +106,10 @@ class RunId(TypedId):
     PREFIX = "run"
 
 
+class CheckpointId(TypedId):
+    PREFIX = "chkpt"
+
+
 class EventId(TypedId):
     PREFIX = "evt"
 

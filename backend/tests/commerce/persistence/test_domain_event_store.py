@@ -70,7 +70,14 @@ async def test_event_store_allocates_independent_case_and_run_sequences(tmp_path
             payload={"title": "Case", "severity": "high", "status": "new", "version": 1},
         )
     )
-    both = await store.append(_new_event(workspace_id, case_id=case_id, run_id=run_id))
+    both = await store.append(
+        _new_event(
+            workspace_id,
+            case_id=case_id,
+            run_id=run_id,
+            event_type="run.created",
+        )
+    )
     run_second = await store.append(_new_event(workspace_id, run_id=run_id, event_type="run.progressed"))
 
     assert case_first.case_sequence == 1
@@ -145,6 +152,23 @@ async def test_case_stream_cannot_start_without_case_created(tmp_path):
 
     with pytest.raises(EventStreamInvariantError, match="first event"):
         await store.append(_new_event(WorkspaceId.new(), case_id=CaseId.new()))
+
+    await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_run_stream_cannot_start_without_run_created(tmp_path):
+    engine, factory = await _storage(tmp_path)
+    store = SqlDomainEventStore(factory)
+
+    with pytest.raises(EventStreamInvariantError, match="Run stream"):
+        await store.append(
+            _new_event(
+                WorkspaceId.new(),
+                run_id=RunId.new(),
+                event_type="run.progressed",
+            )
+        )
 
     await engine.dispose()
 

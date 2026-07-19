@@ -183,6 +183,14 @@ class SqlDomainEventStore:
             raise EventStreamInvariantError(
                 "case.created can appear only once at the start of a Case stream"
             )
+        if run_sequence == 1 and event.event_type != "run.created":
+            raise EventStreamInvariantError(
+                "The first event in a Run stream must be run.created"
+            )
+        if run_sequence is not None and run_sequence > 1 and event.event_type == "run.created":
+            raise EventStreamInvariantError(
+                "run.created can appear only once at the start of a Run stream"
+            )
 
         recorded_at = datetime.now(UTC)
         payload = event.model_dump(mode="json")["payload"]

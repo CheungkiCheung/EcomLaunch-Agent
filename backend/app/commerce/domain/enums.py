@@ -53,6 +53,17 @@ class RunType(StrEnum):
     EVALUATION = "evaluation"
 
 
+class RunStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    WAITING = "waiting"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    TIMEOUT = "timeout"
+    CANCELLED = "cancelled"
+    BLOCKED = "blocked"
+
+
 class RunPhase(StrEnum):
     PROFILING = "profiling"
     MAPPING = "mapping"

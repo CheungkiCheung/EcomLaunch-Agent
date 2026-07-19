@@ -14,17 +14,23 @@ from app.commerce.persistence.models import (
     DomainEventRow,
     EvidenceRow,
     HypothesisRow,
+    RunCheckpointRow,
+    RunRow,
 )
 
 
 def test_commerce_tables_use_an_application_owned_metadata_registry():
     assert CaseRow.metadata is CommerceBase.metadata
     assert DomainEventRow.metadata is CommerceBase.metadata
+    assert RunRow.metadata is CommerceBase.metadata
+    assert RunCheckpointRow.metadata is CommerceBase.metadata
     assert set(CommerceBase.metadata.tables) == {
         "commerce_cases",
         "commerce_domain_events",
         "commerce_evidence",
         "commerce_hypotheses",
+        "commerce_runs",
+        "commerce_run_checkpoints",
     }
 
 
@@ -34,6 +40,10 @@ def test_commerce_tables_compile_for_sqlite_and_postgresql():
         event_ddl = str(CreateTable(DomainEventRow.__table__).compile(dialect=dialect))
         evidence_ddl = str(CreateTable(EvidenceRow.__table__).compile(dialect=dialect))
         hypothesis_ddl = str(CreateTable(HypothesisRow.__table__).compile(dialect=dialect))
+        run_ddl = str(CreateTable(RunRow.__table__).compile(dialect=dialect))
+        checkpoint_ddl = str(
+            CreateTable(RunCheckpointRow.__table__).compile(dialect=dialect)
+        )
 
         assert "commerce_cases" in case_ddl
         assert "commerce_domain_events" in event_ddl
@@ -43,6 +53,10 @@ def test_commerce_tables_compile_for_sqlite_and_postgresql():
         assert "commerce_evidence" in evidence_ddl
         assert "commerce_hypotheses" in hypothesis_ddl
         assert "PRIMARY KEY" in hypothesis_ddl
+        assert "commerce_runs" in run_ddl
+        assert "idempotency_key_sha256" in run_ddl
+        assert "commerce_run_checkpoints" in checkpoint_ddl
+        assert "checkpoint_json" in checkpoint_ddl
 
 
 def test_independent_commerce_migration_entry_creates_only_commerce_tables(tmp_path):
@@ -63,4 +77,6 @@ def test_independent_commerce_migration_entry_creates_only_commerce_tables(tmp_p
         "commerce_domain_events",
         "commerce_evidence",
         "commerce_hypotheses",
+        "commerce_runs",
+        "commerce_run_checkpoints",
     }
