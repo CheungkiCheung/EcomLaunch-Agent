@@ -2,15 +2,27 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+import math
+from datetime import date, datetime
+from decimal import Decimal
 from enum import StrEnum
-from typing import Self
+from typing import Any, Self
 
 from pydantic import Field, model_validator
 
-from app.commerce.data.capabilities import CapabilityName
+from app.commerce.data.capabilities import (
+    CapabilityName,
+    CapabilityProfile,
+    CapabilityStatus,
+)
 from app.commerce.domain.enums import CaseSeverity, CaseStatus, SemanticStatus
 from app.commerce.domain.ids import (
+    AnomalyId,
     CaseId,
+    DatasetId,
+    EntityId,
     EvidenceId,
     FactId,
     HypothesisId,
@@ -18,6 +30,8 @@ from app.commerce.domain.ids import (
     WorkspaceId,
 )
 from app.commerce.domain.models import CommerceModel
+from app.commerce.metrics.anomaly import AnomalyDirection, AnomalySeverity
+from app.commerce.metrics.registry import MetricName, MetricWindow
 
 
 class PathType(StrEnum):
@@ -78,15 +92,99 @@ class HypothesisDigest(CommerceModel):
     evidence_ids: tuple[EvidenceId, ...] = ()
 
 
+class MetricObservationDigest(CommerceModel):
+    """Compact metric context; source rows stay queryable by Tool instead of in prompts."""
+
+    metric_observation_id: MetricObservationId
+    metric_name: str = Field(min_length=1)
+    semantic_status: SemanticStatus
+    value: int | float | Decimal | None = None
+    unit: str | None = Field(default=None, min_length=1)
+    formula_version: str | None = Field(default=None, min_length=1)
+    window_start: datetime | None = None
+    window_end: datetime | None = None
+    sample_size: int | None = Field(default=None, ge=0)
+    numerator: int | Decimal | None = None
+    denominator: int | Decimal | None = None
+    source_fact_count: int = Field(ge=0)
+    unknown_reason: str | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def keep_metric_window_complete(self) -> Self:
+        if (self.window_start is None) != (self.window_end is None):
+            raise ValueError("Metric digest window requires both start and end")
+        return self
+
+
+class AnomalyDigest(CommerceModel):
+    anomaly_id: AnomalyId
+    metric_name: MetricName
+    baseline_observation_id: MetricObservationId
+    current_observation_id: MetricObservationId
+    baseline_value: Decimal
+    current_value: Decimal
+    absolute_change: Decimal
+    relative_change: Decimal | None
+    direction: AnomalyDirection
+    severity: AnomalySeverity
+    confidence: float = Field(ge=0.0, le=1.0)
+    baseline_sample_size: int = Field(ge=0)
+    current_sample_size: int = Field(ge=0)
+    sample_adequate: bool
+    reason: str = Field(min_length=1)
+
+
+class CaseAnalysisDigest(CommerceModel):
+    """Reproducible deterministic analysis slice supplied to the Lead Agent."""
+
+    dataset_id: DatasetId
+    seller_entity_id: EntityId
+    seller_external_key: str = Field(min_length=1)
+    baseline_window: MetricWindow
+    current_window: MetricWindow
+    baseline_metrics: tuple[MetricObservationDigest, ...] = Field(min_length=1)
+    current_metrics: tuple[MetricObservationDigest, ...] = Field(min_length=1)
+    anomalies: tuple[AnomalyDigest, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def keep_analysis_references_unique(self) -> Self:
+        metric_ids = tuple(
+            item.metric_observation_id
+            for item in (*self.baseline_metrics, *self.current_metrics)
+        )
+        if len(metric_ids) != len(set(metric_ids)):
+            raise ValueError("Analysis metric observation IDs must be unique")
+        anomaly_ids = tuple(item.anomaly_id for item in self.anomalies)
+        if len(anomaly_ids) != len(set(anomaly_ids)):
+            raise ValueError("Analysis Anomaly IDs must be unique")
+        return self
+
+
 class ContextManifest(CommerceModel):
     context_version: str = Field(min_length=1)
+    workspace_id: WorkspaceId
     case_id: CaseId
+    dataset_id: DatasetId
+    source_artifact_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     context_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     estimated_tokens: int = Field(ge=0)
     included_evidence_ids: tuple[EvidenceId, ...] = ()
     included_fact_ids: tuple[FactId, ...] = ()
     included_metric_observation_ids: tuple[MetricObservationId, ...] = ()
+    included_anomaly_ids: tuple[AnomalyId, ...] = ()
     redactions: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def keep_manifest_references_unique(self) -> Self:
+        for label, values in (
+            ("Evidence", self.included_evidence_ids),
+            ("Fact", self.included_fact_ids),
+            ("MetricObservation", self.included_metric_observation_ids),
+            ("Anomaly", self.included_anomaly_ids),
+        ):
+            if len(values) != len(set(values)):
+                raise ValueError(f"ContextManifest {label} IDs must be unique")
+        return self
 
 
 _HIDDEN_LABEL_KEYS = frozenset(
@@ -101,6 +199,24 @@ _HIDDEN_LABEL_KEYS = frozenset(
 )
 
 
+def hidden_evaluation_label_paths(value: Any, *, path: str = "$") -> tuple[str, ...]:
+    """Return nested JSON paths whose keys would leak hidden evaluation answers."""
+
+    found: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            child_path = f"{path}.{key}"
+            if str(key).casefold() in _HIDDEN_LABEL_KEYS:
+                found.append(child_path)
+            found.extend(hidden_evaluation_label_paths(child, path=child_path))
+    elif isinstance(value, (list, tuple)):
+        for index, child in enumerate(value):
+            found.extend(
+                hidden_evaluation_label_paths(child, path=f"{path}[{index}]")
+            )
+    return tuple(found)
+
+
 class ContextPacket(CommerceModel):
     schema_version: str = "1.0"
     case: CaseHeader
@@ -113,18 +229,41 @@ class ContextPacket(CommerceModel):
     def guard_context_boundary(self) -> Self:
         if self.case.case_id != self.manifest.case_id:
             raise ValueError("ContextManifest Case must match packet Case")
-        leaked = sorted(key for key in self.metadata if key.casefold() in _HIDDEN_LABEL_KEYS)
+        if self.case.workspace_id != self.manifest.workspace_id:
+            raise ValueError("ContextManifest Workspace must match packet Case")
+        leaked = hidden_evaluation_label_paths(self.metadata, path="$.metadata")
         if leaked:
             raise ValueError(
-                f"Context metadata contains hidden evaluation label keys: {', '.join(leaked)}"
+                "Context metadata contains hidden evaluation label keys: "
+                f"{', '.join(leaked)}"
             )
         return self
 
 
 class LeadContextPacket(ContextPacket):
     capabilities: frozenset[CapabilityName] = frozenset()
+    capability_profile: CapabilityProfile
+    analysis: CaseAnalysisDigest
     evidence: tuple[EvidenceDigest, ...] = ()
     hypotheses: tuple[HypothesisDigest, ...] = ()
+
+    @model_validator(mode="after")
+    def match_analysis_identity_and_capabilities(self) -> Self:
+        if self.capability_profile.workspace_id != self.case.workspace_id:
+            raise ValueError("Capability Profile Workspace must match packet Case")
+        if self.capability_profile.dataset_id != self.manifest.dataset_id:
+            raise ValueError("Capability Profile Dataset must match ContextManifest")
+        if self.analysis.dataset_id != self.manifest.dataset_id:
+            raise ValueError("Analysis Dataset must match ContextManifest")
+        routable = frozenset(
+            assessment.name
+            for assessment in self.capability_profile.capabilities
+            if assessment.status
+            in {CapabilityStatus.AVAILABLE, CapabilityStatus.PARTIAL}
+        )
+        if self.capabilities != routable:
+            raise ValueError("Lead capabilities must match routable Capability Profile")
+        return self
 
 
 class PathContextPacket(ContextPacket):
@@ -141,6 +280,60 @@ class VerificationPacket(ContextPacket):
     evidence: tuple[EvidenceDigest, ...] = ()
     capability_boundaries: tuple[str, ...] = ()
     policy_constraints: tuple[str, ...] = ()
+
+
+def canonical_context_bytes(packet: ContextPacket) -> bytes:
+    """Canonical packet content excluding self-referential hash/size fields."""
+
+    payload = packet.model_dump(mode="python")
+    manifest = payload["manifest"]
+    manifest.pop("context_sha256", None)
+    manifest.pop("estimated_tokens", None)
+    return json.dumps(
+        _canonical_json_value(payload),
+        allow_nan=False,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+
+
+def _canonical_json_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): _canonical_json_value(child) for key, child in value.items()}
+    if isinstance(value, (set, frozenset)):
+        children = [_canonical_json_value(child) for child in value]
+        return sorted(
+            children,
+            key=lambda child: json.dumps(
+                child,
+                allow_nan=False,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ),
+        )
+    if isinstance(value, (list, tuple)):
+        return [_canonical_json_value(child) for child in value]
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, StrEnum):
+        return value.value
+    return value
+
+
+def canonical_context_sha256(packet: ContextPacket) -> str:
+    return hashlib.sha256(canonical_context_bytes(packet)).hexdigest()
+
+
+def estimate_context_tokens(packet: ContextPacket) -> int:
+    """Conservative deterministic estimate used before provider tokenization."""
+
+    return math.ceil(len(canonical_context_bytes(packet)) / 4)
 
 
 class PathAgentSpec(CommerceModel):

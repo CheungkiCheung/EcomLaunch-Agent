@@ -1168,6 +1168,9 @@ GREEN：添加：
 当前完成状态：
 
 - [x] Lead / Path / Verification ContextPacket 与 ContextManifest；
+- [x] Persisted Case → verified initial Lead ContextPacket Loader；
+- [x] Canonical Context hash、token estimate 与初始零消耗 Checkpoint；
+- [x] Dataset/Artifact/Capability/Case-reference fail-closed guards；
 - [x] Hidden evaluation label leakage guard；
 - [x] 三条 versioned PathAgentSpec；
 - [x] Capability-first DynamicPathRouter（0–3 Path、Reason Codes）；
@@ -1185,6 +1188,13 @@ GREEN：添加：
 - [x] ContextManifest；
 - [x] Token Budget；
 - [x] Hidden Label Leakage Test。
+- [x] CaseLineage / Artifact SHA-256 / Dataset Manifest Loader；
+- [x] Workspace / Case / Dataset / Seller / Window identity validation；
+- [x] Capability reload and exact consistency validation；
+- [x] Evidence / Hypothesis / Fact / Metric membership validation；
+- [x] Compact metric/anomaly digests without raw Dataset rows；
+- [x] Canonical JSON context hash and deterministic token estimate；
+- [x] Initial GoalLoopState and safe zero-usage Checkpoint。
 
 #### Task 4.2：PathAgentSpec
 
@@ -1261,6 +1271,7 @@ GREEN：添加：
 - [x] Append-only safe Checkpoint persistence and read API；
 - [x] Fenced Worker lease / heartbeat / expired-lease takeover；
 - [x] Latest Checkpoint returned on lease reacquisition；
+- [x] Initial Checkpoint construction and fenced persistence contract；
 - [ ] User Clarification Resume；
 - [ ] Mapping Confirmation Resume；
 - [ ] Approval Wait Resume；
