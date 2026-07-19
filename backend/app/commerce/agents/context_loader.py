@@ -19,6 +19,8 @@ from app.commerce.agents.contracts import (
     AnomalyDigest,
     CaseAnalysisDigest,
     CaseHeader,
+    CaseTriggerDigest,
+    CaseTriggerType,
     ContextManifest,
     EvidenceDigest,
     HypothesisDigest,
@@ -109,8 +111,13 @@ class CaseAnalysisArtifact(CommerceModel):
     seller_entity_id: EntityId
     baseline: MetricSnapshot
     current: MetricSnapshot
-    signals: tuple[AnomalySignal, ...] = Field(min_length=1)
+    signals: tuple[AnomalySignal, ...] = ()
     capabilities: CapabilityProfile
+    trigger: CaseTriggerDigest = Field(
+        default_factory=lambda: CaseTriggerDigest(
+            trigger_type=CaseTriggerType.DETECTED_ANOMALY
+        )
+    )
 
 
 class InitialContextLoad(CommerceModel):
@@ -432,6 +439,14 @@ class ContextPacketLoader:
                 ContextLoadReason.ARTIFACT_IDENTITY_MISMATCH,
                 "Case analysis Anomaly IDs do not match lineage",
             )
+        if (
+            artifact.trigger.trigger_type is CaseTriggerType.DETECTED_ANOMALY
+            and not artifact.signals
+        ):
+            raise ContextLoadError(
+                ContextLoadReason.ARTIFACT_INVALID,
+                "Detected anomaly Case analysis must contain at least one signal",
+            )
         cls._validate_metric_and_signal_references(lineage, artifact)
 
     @staticmethod
@@ -616,6 +631,7 @@ class ContextPacketLoader:
                 )
                 for item in artifact.signals
             ),
+            trigger=artifact.trigger,
         )
         capabilities = frozenset(
             assessment.name

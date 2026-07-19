@@ -29,6 +29,19 @@ class CaseSignalSummary(CommerceModel):
     requested_paths: frozenset[PathType] = frozenset()
 
 
+def summarize_case_signals(analysis: object) -> CaseSignalSummary:
+    """Convert persisted deterministic analysis and trigger intent into route input."""
+
+    metric_names = {
+        anomaly.metric_name for anomaly in getattr(analysis, "anomalies", ())
+    }
+    trigger = getattr(analysis, "trigger", None)
+    return CaseSignalSummary(
+        metric_names=frozenset(metric_names),
+        requested_paths=frozenset(getattr(trigger, "requested_paths", ())),
+    )
+
+
 class PathRouteDecision(CommerceModel):
     path_type: PathType
     selected: bool

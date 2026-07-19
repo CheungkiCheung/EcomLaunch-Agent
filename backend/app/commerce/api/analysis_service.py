@@ -9,6 +9,11 @@ from uuid import NAMESPACE_URL, uuid5
 from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.commerce.agents.contracts import (
+    CaseTriggerDigest,
+    CaseTriggerType,
+    PathType,
+)
 from app.commerce.api.data_service import CommerceDataService
 from app.commerce.data.capabilities import CapabilityProfile
 from app.commerce.domain.enums import CaseSeverity, CaseStatus, SemanticStatus
@@ -34,6 +39,7 @@ from app.commerce.metrics.registry import (
     MetricEngine,
     MetricSnapshot,
     MetricWindow,
+    PeerCohortPolicy,
 )
 from app.commerce.persistence.lineage import SqlCaseLineageRepository
 from app.commerce.persistence.repositories import DuplicateEntityError, SqlCaseRepository
@@ -167,6 +173,187 @@ class CommerceAnalysisService:
             skipped_sellers=tuple(skipped),
         )
 
+    async def open_explicit_case(
+        self,
+        workspace_id: WorkspaceId,
+        dataset_id: DatasetId,
+        *,
+        seller_id: str,
+        baseline_window: MetricWindow,
+        current_window: MetricWindow,
+        requested_paths: tuple[PathType, ...],
+        peer_policy: PeerCohortPolicy | None,
+    ) -> AnalysisOutcome:
+        """Open a user-requested Case without fabricating a temporal anomaly."""
+
+        view = self._data.get_view(workspace_id, dataset_id)
+        normalized = self._data.normalize(workspace_id, dataset_id)
+        seller_ids = {
+            entity.external_key
+            for entity in normalized.entities
+            if entity.entity_type.value == "seller"
+        }
+        if seller_id not in seller_ids:
+            raise ValueError(f"Unknown seller in Dataset: {seller_id}")
+        if baseline_window.end > current_window.start:
+            raise ValueError(
+                "Baseline window must end no later than current window start"
+            )
+        trigger = CaseTriggerDigest(
+            trigger_type=CaseTriggerType.EXPLICIT_USER,
+            requested_paths=requested_paths,
+            peer_policy=peer_policy,
+        )
+        baseline = self._engine.compute_seller_window(
+            normalized,
+            seller_id=seller_id,
+            window=baseline_window,
+        )
+        current = self._engine.compute_seller_window(
+            normalized,
+            seller_id=seller_id,
+            window=current_window,
+        )
+        case = await self._persist_explicit_case(
+            workspace_id,
+            dataset_id,
+            baseline,
+            current,
+            view.capabilities,
+            trigger,
+        )
+        artifact_payload = {
+            "schema_version": "1.0",
+            "dataset_id": str(dataset_id),
+            "workspace_id": str(workspace_id),
+            "baseline_window": baseline_window.model_dump(mode="json"),
+            "current_window": current_window.model_dump(mode="json"),
+            "sellers": [{
+                "seller_id": seller_id,
+                "signal_ids": [],
+            }],
+            "case_ids": [str(case.id)],
+        }
+        artifact_key = hashlib.sha256(
+            json.dumps(artifact_payload, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+        self._data.write_derived_artifact(
+            workspace_id,
+            dataset_id,
+            filename=f"analysis-{artifact_key}.json",
+            payload=artifact_payload,
+        )
+        return AnalysisOutcome(
+            dataset_id=str(dataset_id),
+            workspace_id=workspace_id,
+            baseline_window=baseline_window,
+            current_window=current_window,
+            signals=(),
+            cases=(case,),
+        )
+
+    async def _persist_explicit_case(
+        self,
+        workspace_id: WorkspaceId,
+        dataset_id: DatasetId,
+        baseline: MetricSnapshot,
+        current: MetricSnapshot,
+        capabilities: CapabilityProfile,
+        trigger: CaseTriggerDigest,
+    ) -> Case:
+        persisted_case_id = CaseId(
+            "case_"
+            + uuid5(
+                NAMESPACE_URL,
+                "explicit-commerce-case:" + _canonical_json({
+                    "dataset_id": str(dataset_id),
+                    "seller_id": current.seller_id,
+                    "baseline": baseline.window.model_dump(mode="json"),
+                    "current": current.window.model_dump(mode="json"),
+                    "trigger": trigger.model_dump(mode="json"),
+                }),
+            ).hex
+        )
+        context_payload = {
+            "schema_version": "commerce.case-analysis-context@1.0.0",
+            "workspace_id": str(workspace_id),
+            "dataset_id": str(dataset_id),
+            "case_id": str(persisted_case_id),
+            "seller_external_key": current.seller_id,
+            "seller_entity_id": str(current.seller_entity_id),
+            "baseline": baseline.model_dump(mode="json"),
+            "current": current.model_dump(mode="json"),
+            "signals": [],
+            "capabilities": capabilities.model_dump(mode="json"),
+            "trigger": trigger.model_dump(mode="json"),
+        }
+        context_bytes = _canonical_json(context_payload).encode("utf-8")
+        context_key = hashlib.sha256(context_bytes).hexdigest()
+        context_filename = f"case-context-{context_key}.json"
+        context_path = self._data.write_derived_artifact(
+            workspace_id,
+            dataset_id,
+            filename=context_filename,
+            payload=context_payload,
+        )
+        lineage = CaseLineage(
+            schema_version="commerce.case-lineage@1.1.0",
+            workspace_id=workspace_id,
+            case_id=persisted_case_id,
+            dataset_id=dataset_id,
+            seller_entity_id=current.seller_entity_id,
+            seller_external_key=current.seller_id,
+            baseline_start=baseline.window.start,
+            baseline_end=baseline.window.end,
+            current_start=current.window.start,
+            current_end=current.window.end,
+            analysis_artifact_relative_path=f"derived/{context_filename}",
+            analysis_artifact_sha256=hashlib.sha256(
+                context_path.read_bytes()
+            ).hexdigest(),
+            created_at=current.window.end,
+        )
+        repository = SqlCaseRepository(self._session_factory)
+        lineage_repository = SqlCaseLineageRepository(self._session_factory)
+        existing = await repository.get(workspace_id, persisted_case_id)
+        if existing is not None:
+            if await lineage_repository.get(workspace_id, persisted_case_id) is None:
+                await SqlCommerceUnitOfWork(self._session_factory).attach_case_lineage(
+                    lineage,
+                    trace_id=TraceId.new(),
+                    correlation_id=CorrelationId.new(),
+                    actor=DomainEventActor.SYSTEM,
+                )
+            return existing
+        case = Case(
+            id=persisted_case_id,
+            workspace_id=workspace_id,
+            title=f"User-requested investigation for seller {current.seller_id}",
+            severity=CaseSeverity.MEDIUM,
+            status=CaseStatus.NEW,
+            summary=(
+                "Explicit user investigation request; deterministic metrics are "
+                "context, not a fabricated anomaly or causal finding."
+            ),
+            opened_at=current.window.end,
+            updated_at=current.window.end,
+        )
+        try:
+            await SqlCommerceUnitOfWork(self._session_factory).create_case_with_lineage(
+                case,
+                lineage,
+                trace_id=TraceId.new(),
+                correlation_id=CorrelationId.new(),
+                actor=DomainEventActor.USER,
+                trigger_payload=trigger.model_dump(mode="json"),
+            )
+        except DuplicateEntityError:
+            persisted = await repository.get(workspace_id, persisted_case_id)
+            if persisted is None:
+                raise
+            return persisted
+        return case
+
     async def _persist_candidate(
         self,
         workspace_id: WorkspaceId,
@@ -193,6 +380,9 @@ class CommerceAnalysisService:
             "current": current.model_dump(mode="json"),
             "signals": [signal.model_dump(mode="json") for signal in signals],
             "capabilities": capabilities.model_dump(mode="json"),
+            "trigger": CaseTriggerDigest(
+                trigger_type=CaseTriggerType.DETECTED_ANOMALY
+            ).model_dump(mode="json"),
         }
         context_key = hashlib.sha256(
             json.dumps(context_payload, sort_keys=True).encode("utf-8")
@@ -327,3 +517,12 @@ class CommerceAnalysisService:
             AnomalySeverity.HIGH: CaseSeverity.HIGH,
             AnomalySeverity.CRITICAL: CaseSeverity.CRITICAL,
         }[severity]
+
+
+def _canonical_json(payload: dict) -> str:
+    return json.dumps(
+        payload,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )

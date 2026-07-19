@@ -97,6 +97,7 @@ class SqlCommerceUnitOfWork:
         correlation_id: CorrelationId,
         actor: DomainEventActor,
         causation_event_id: EventId | None = None,
+        trigger_payload: dict[str, object] | None = None,
     ) -> DomainEventEnvelope:
         self._validate_lineage_membership(case, lineage)
         event = NewDomainEvent(
@@ -118,6 +119,7 @@ class SqlCommerceUnitOfWork:
                     lineage.analysis_artifact_relative_path
                 ),
                 "analysis_artifact_sha256": lineage.analysis_artifact_sha256,
+                **({"trigger": trigger_payload} if trigger_payload is not None else {}),
             },
         )
         try:

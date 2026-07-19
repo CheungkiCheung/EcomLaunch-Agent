@@ -7,6 +7,11 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.commerce.agents.contracts import (
+    CaseTriggerDigest,
+    CaseTriggerType,
+    PathType,
+)
 from app.commerce.agents.goal_loop import GoalLoopCheckpoint
 from app.commerce.data.capabilities import CapabilityProfile
 from app.commerce.data.intake import DataBundleManifest
@@ -16,7 +21,7 @@ from app.commerce.data.semantic_mapper import (
     SemanticMappingProfile,
 )
 from app.commerce.metrics.anomaly import AnomalySignal
-from app.commerce.metrics.registry import MetricWindow
+from app.commerce.metrics.registry import MetricWindow, PeerCohortPolicy
 
 
 class CommerceResponse(BaseModel):
@@ -211,3 +216,31 @@ class AnalysisResponse(CommerceResponse):
     signals: list[AnomalySignal]
     cases: list[CaseResponse]
     skipped_sellers: list[AnalysisSkipResponse]
+
+
+class ExplicitCaseRequest(CommerceResponse):
+    seller_id: str = Field(min_length=1)
+    baseline_window: MetricWindow
+    current_window: MetricWindow
+    requested_paths: list[PathType] = Field(min_length=1, max_length=3)
+    peer_policy: PeerCohortPolicy | None = None
+
+    @model_validator(mode="after")
+    def validate_explicit_trigger(self):
+        if self.baseline_window.end > self.current_window.start:
+            raise ValueError(
+                "Baseline window must end no later than current window start"
+            )
+        CaseTriggerDigest(
+            trigger_type=CaseTriggerType.EXPLICIT_USER,
+            requested_paths=tuple(self.requested_paths),
+            peer_policy=self.peer_policy,
+        )
+        return self
+
+
+class ExplicitCaseResponse(CommerceResponse):
+    case: CaseResponse
+    trigger: CaseTriggerDigest
+    baseline_window: MetricWindow
+    current_window: MetricWindow

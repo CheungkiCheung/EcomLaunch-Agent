@@ -30,8 +30,8 @@ class CaseLineage(CommerceModel):
     baseline_end: datetime
     current_start: datetime
     current_end: datetime
-    anomaly_ids: tuple[AnomalyId, ...] = Field(min_length=1)
-    metric_observation_ids: tuple[MetricObservationId, ...] = Field(min_length=1)
+    anomaly_ids: tuple[AnomalyId, ...] = ()
+    metric_observation_ids: tuple[MetricObservationId, ...] = ()
     analysis_artifact_relative_path: str = Field(min_length=1)
     analysis_artifact_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -58,4 +58,9 @@ class CaseLineage(CommerceModel):
             self.metric_observation_ids
         ):
             raise ValueError("Case lineage MetricObservation IDs must be unique")
+        if bool(self.anomaly_ids) != bool(self.metric_observation_ids):
+            raise ValueError(
+                "Case lineage Anomaly and MetricObservation references must both be "
+                "empty for explicit Cases or both be populated for anomaly Cases"
+            )
         return self

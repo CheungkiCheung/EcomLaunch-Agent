@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, UploadFile
 from starlette.concurrency import run_in_threadpool
 
+from app.commerce.agents.contracts import CaseTriggerDigest, CaseTriggerType
 from app.commerce.api.analysis_service import CommerceAnalysisService
 from app.commerce.api.data_service import (
     CommerceDataService,
@@ -38,6 +39,8 @@ from app.commerce.api.schemas import (
     DomainEventResponse,
     EvidenceListResponse,
     EvidenceResponse,
+    ExplicitCaseRequest,
+    ExplicitCaseResponse,
     HypothesisListResponse,
     HypothesisResponse,
     InvestigationStartRequest,
@@ -456,6 +459,47 @@ async def analyze_dataset(
             for item in outcome.skipped_sellers
         ],
     )
+
+
+@router.post(
+    "/datasets/{raw_dataset_id}/cases",
+    response_model=ExplicitCaseResponse,
+    status_code=201,
+)
+async def create_explicit_case(
+    raw_dataset_id: Annotated[str, Path()],
+    request: ExplicitCaseRequest,
+    service: Annotated[CommerceAnalysisService, Depends(get_commerce_analysis_service)],
+    workspace_id: Annotated[WorkspaceId, Depends(get_commerce_workspace_id)],
+) -> ExplicitCaseResponse:
+    dataset_id = _parse_dataset_id(raw_dataset_id)
+    trigger = CaseTriggerDigest(
+        trigger_type=CaseTriggerType.EXPLICIT_USER,
+        requested_paths=tuple(request.requested_paths),
+        peer_policy=request.peer_policy,
+    )
+    try:
+        outcome = await service.open_explicit_case(
+            workspace_id,
+            dataset_id,
+            seller_id=request.seller_id,
+            baseline_window=request.baseline_window,
+            current_window=request.current_window,
+            requested_paths=trigger.requested_paths,
+            peer_policy=trigger.peer_policy,
+        )
+    except DatasetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Commerce Dataset not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return ExplicitCaseResponse(
+        case=_case_response(outcome.cases[0]),
+        trigger=trigger,
+        baseline_window=outcome.baseline_window,
+        current_window=outcome.current_window,
+    )
+
+
 @router.get("/datasets/{raw_dataset_id}/capabilities", response_model=CapabilityProfile)
 async def get_dataset_capabilities(
     raw_dataset_id: Annotated[str, Path()],

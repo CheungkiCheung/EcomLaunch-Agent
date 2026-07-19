@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 from app.commerce.agents.contracts import PathType
 from app.commerce.agents.router import (
     CaseSignalSummary,
     DynamicPathRouter,
     RouteReasonCode,
+    summarize_case_signals,
 )
 from app.commerce.data.capabilities import CapabilityRegistry
 from app.commerce.data.gold_cases import load_evaluation_case
@@ -86,3 +88,22 @@ def test_router_selects_zero_to_three_paths_and_peer_only_when_supported(tmp_pat
     assert PathType.SELLER_PEER in {
         assignment.path_type for assignment in peer.assignments
     }
+
+
+def test_router_preserves_explicit_trigger_paths_without_metric_anomaly():
+    analysis = SimpleNamespace(
+        baseline_metrics=(
+            SimpleNamespace(metric_name=MetricName.LATE_DELIVERY_RATE.value),
+        ),
+        current_metrics=(
+            SimpleNamespace(metric_name=MetricName.LATE_DELIVERY_RATE.value),
+        ),
+        supplemental_metrics=(),
+        anomalies=(),
+        trigger=SimpleNamespace(requested_paths=(PathType.REVIEW_EXPERIENCE,)),
+    )
+
+    signals = summarize_case_signals(analysis)
+
+    assert signals.metric_names == frozenset()
+    assert signals.requested_paths == frozenset({PathType.REVIEW_EXPERIENCE})

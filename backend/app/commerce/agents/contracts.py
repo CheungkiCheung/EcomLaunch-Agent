@@ -31,13 +31,50 @@ from app.commerce.domain.ids import (
 )
 from app.commerce.domain.models import CommerceModel
 from app.commerce.metrics.anomaly import AnomalyDirection, AnomalySeverity
-from app.commerce.metrics.registry import MetricName, MetricWindow
+from app.commerce.metrics.registry import MetricName, MetricWindow, PeerCohortPolicy
 
 
 class PathType(StrEnum):
     FULFILLMENT = "fulfillment"
     SELLER_PEER = "seller_peer"
     REVIEW_EXPERIENCE = "review_experience"
+
+
+class CaseTriggerType(StrEnum):
+    DETECTED_ANOMALY = "detected_anomaly"
+    EXPLICIT_USER = "explicit_user_request"
+
+
+class CaseTriggerDigest(CommerceModel):
+    """Persisted routing intent without storing the user's raw prompt."""
+
+    trigger_type: CaseTriggerType
+    requested_paths: tuple[PathType, ...] = ()
+    peer_policy: PeerCohortPolicy | None = None
+
+    @model_validator(mode="after")
+    def validate_trigger(self) -> Self:
+        if len(self.requested_paths) != len(set(self.requested_paths)):
+            raise ValueError("Case trigger requested Paths must be unique")
+        if self.trigger_type is CaseTriggerType.EXPLICIT_USER:
+            if not self.requested_paths:
+                raise ValueError(
+                    "Explicit user Case trigger requires at least one requested Path"
+                )
+        elif self.requested_paths or self.peer_policy is not None:
+            raise ValueError(
+                "Detected anomaly Case trigger cannot carry explicit Path settings"
+            )
+        if PathType.SELLER_PEER in self.requested_paths and self.peer_policy is None:
+            raise ValueError(
+                "seller_peer requested Path requires an outcome-agnostic peer_policy"
+            )
+        if (
+            self.peer_policy is not None
+            and PathType.SELLER_PEER not in self.requested_paths
+        ):
+            raise ValueError("peer_policy is only valid for the seller_peer Path")
+        return self
 
 
 class ModelProfile(StrEnum):
@@ -144,8 +181,12 @@ class CaseAnalysisDigest(CommerceModel):
     current_window: MetricWindow
     baseline_metrics: tuple[MetricObservationDigest, ...] = Field(min_length=1)
     current_metrics: tuple[MetricObservationDigest, ...] = Field(min_length=1)
-    anomalies: tuple[AnomalyDigest, ...] = Field(min_length=1)
-
+    anomalies: tuple[AnomalyDigest, ...] = ()
+    trigger: CaseTriggerDigest = Field(
+        default_factory=lambda: CaseTriggerDigest(
+            trigger_type=CaseTriggerType.DETECTED_ANOMALY
+        )
+    )
     @model_validator(mode="after")
     def keep_analysis_references_unique(self) -> Self:
         metric_ids = tuple(
