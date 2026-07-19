@@ -39,6 +39,7 @@ from app.commerce.agents.fulfillment import (
     FULFILLMENT_PATH_CONTEXT_VERSION,
     FULFILLMENT_PROMPT_VERSION,
     FulfillmentPathAgent,
+    FulfillmentPathPlan,
     FulfillmentPathRun,
     PathAgentAuditStore,
     PathAgentParseError,
@@ -92,6 +93,10 @@ from app.commerce.agents.router import (
     PathRouteDecision,
     RouteReasonCode,
 )
+from app.commerce.agents.worker import (
+    CommerceInvestigationWorker,
+    FulfillmentWorkerStepResult,
+)
 
 __all__ = [
     "AgentBudgetLimit",
@@ -110,13 +115,16 @@ __all__ = [
     "ContextLoadError",
     "ContextLoadReason",
     "ContextPacketLoader",
+    "CommerceInvestigationWorker",
     "DynamicPathPlan",
     "DynamicPathRouter",
     "EvidenceDigest",
     "FULFILLMENT_PATH_CONTEXT_VERSION",
     "FULFILLMENT_PROMPT_VERSION",
     "FulfillmentPathAgent",
+    "FulfillmentPathPlan",
     "FulfillmentPathRun",
+    "FulfillmentWorkerStepResult",
     "GoalLoopAction",
     "GoalLoopCheckpoint",
     "GoalLoopController",

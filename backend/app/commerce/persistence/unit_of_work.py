@@ -19,6 +19,7 @@ from app.commerce.domain.ids import (
     CheckpointId,
     CorrelationId,
     EventId,
+    RunId,
     TraceId,
 )
 from app.commerce.domain.lineage import CaseLineage
@@ -261,11 +262,21 @@ class SqlCommerceUnitOfWork:
         correlation_id: CorrelationId,
         actor: DomainEventActor,
         causation_event_id: EventId | None = None,
+        lease: RunLeaseCredentials | None = None,
+        lease_checked_at: datetime | None = None,
     ) -> DomainEventEnvelope:
         last_error: IntegrityError | None = None
         for attempt in range(self.MAX_SEQUENCE_RETRIES):
             try:
                 async with self._session_factory() as session, session.begin():
+                    if lease is not None:
+                        await SqlRunLeaseRepository.require_valid_in_session(
+                            session,
+                            run.workspace_id,
+                            run.id,
+                            lease,
+                            checked_at=lease_checked_at or datetime.now(UTC),
+                        )
                     previous_status, previous_phase = (
                         await SqlRunRepository.save_in_session(
                             session,
@@ -398,6 +409,103 @@ class SqlCommerceUnitOfWork:
             "Atomic Checkpoint/Event append exceeded sequence retry budget"
         ) from last_error
 
+    async def append_run_checkpoint_with_events(
+        self,
+        checkpoint: GoalLoopCheckpoint,
+        *,
+        prior_events: tuple[NewDomainEvent, ...],
+        trace_id: TraceId,
+        correlation_id: CorrelationId,
+        actor: DomainEventActor,
+        causation_event_id: EventId | None = None,
+        checkpoint_id: CheckpointId | None = None,
+        lease: RunLeaseCredentials | None = None,
+        lease_checked_at: datetime | None = None,
+    ) -> tuple[RunCheckpointRecord, tuple[DomainEventEnvelope, ...]]:
+        """Atomically append run events followed by one fenced Checkpoint."""
+
+        for event in prior_events:
+            if (
+                event.workspace_id != checkpoint.workspace_id
+                or event.case_id != checkpoint.case_id
+                or event.run_id != checkpoint.run_id
+            ):
+                raise ValueError(
+                    "Prior Checkpoint events must match Workspace, Case and Run"
+                )
+        selected_id = checkpoint_id or CheckpointId.new()
+        last_error: IntegrityError | None = None
+        for attempt in range(self.MAX_SEQUENCE_RETRIES):
+            try:
+                async with self._session_factory() as session, session.begin():
+                    run = await SqlRunRepository.get_in_session(
+                        session,
+                        checkpoint.workspace_id,
+                        checkpoint.run_id,
+                    )
+                    if run is None:
+                        raise ValueError(f"Run not found: {checkpoint.run_id}")
+                    if run.status is RunStatus.RUNNING:
+                        if lease is None:
+                            raise RunLeaseLostError(
+                                "Running Run Checkpoint write requires a lease"
+                            )
+                        await SqlRunLeaseRepository.require_valid_in_session(
+                            session,
+                            checkpoint.workspace_id,
+                            checkpoint.run_id,
+                            lease,
+                            checked_at=lease_checked_at or datetime.now(UTC),
+                        )
+                    elif lease is not None:
+                        await SqlRunLeaseRepository.require_valid_in_session(
+                            session,
+                            checkpoint.workspace_id,
+                            checkpoint.run_id,
+                            lease,
+                            checked_at=lease_checked_at or datetime.now(UTC),
+                        )
+
+                    envelopes = [
+                        await SqlDomainEventStore.append_in_session(session, event)
+                        for event in prior_events
+                    ]
+                    record = await SqlRunCheckpointRepository.append_in_session(
+                        session,
+                        checkpoint,
+                        checkpoint_id=selected_id,
+                    )
+                    checkpoint_event = NewDomainEvent(
+                        workspace_id=checkpoint.workspace_id,
+                        case_id=checkpoint.case_id,
+                        run_id=checkpoint.run_id,
+                        event_type="run.checkpoint_saved",
+                        occurred_at=record.created_at,
+                        trace_id=trace_id,
+                        correlation_id=correlation_id,
+                        causation_event_id=causation_event_id,
+                        actor=actor,
+                        payload={
+                            "checkpoint_id": str(record.id),
+                            "checkpoint_sequence": record.sequence,
+                            "checkpoint_schema_version": checkpoint.schema_version,
+                            "loop_iteration": checkpoint.loop_iteration,
+                        },
+                    )
+                    envelopes.append(
+                        await SqlDomainEventStore.append_in_session(
+                            session,
+                            checkpoint_event,
+                        )
+                    )
+                    return record, tuple(envelopes)
+            except IntegrityError as exc:
+                last_error = exc
+                await asyncio.sleep(0.001 * (attempt + 1))
+        raise EventSequenceConflictError(
+            "Atomic prior Events/Checkpoint append exceeded sequence retry budget"
+        ) from last_error
+
     async def append_evidence(
         self,
         case: Case,
@@ -408,6 +516,9 @@ class SqlCommerceUnitOfWork:
         correlation_id: CorrelationId,
         actor: DomainEventActor,
         causation_event_id: EventId | None = None,
+        run_id: RunId | None = None,
+        lease: RunLeaseCredentials | None = None,
+        lease_checked_at: datetime | None = None,
     ) -> DomainEventEnvelope:
         """Append Evidence and its Case membership/event atomically."""
 
@@ -416,6 +527,22 @@ class SqlCommerceUnitOfWork:
         for attempt in range(self.MAX_SEQUENCE_RETRIES):
             try:
                 async with self._session_factory() as session, session.begin():
+                    if run_id is not None:
+                        if lease is None:
+                            raise RunLeaseLostError(
+                                "Agent Evidence write for a running Run requires a lease"
+                            )
+                        lease_row = (
+                            await SqlRunLeaseRepository.require_valid_in_session(
+                                session,
+                                case.workspace_id,
+                                run_id,
+                                lease,
+                                checked_at=lease_checked_at or datetime.now(UTC),
+                            )
+                        )
+                        if lease_row.case_id != str(case.id):
+                            raise ValueError("Evidence Run lease must belong to the Case")
                     await SqlEvidenceRepository.append_in_session(session, evidence)
                     await SqlCaseRepository.save_in_session(
                         session,
@@ -425,6 +552,7 @@ class SqlCommerceUnitOfWork:
                     event = NewDomainEvent(
                         workspace_id=case.workspace_id,
                         case_id=case.id,
+                        run_id=run_id,
                         event_type="evidence.appended",
                         occurred_at=case.updated_at,
                         trace_id=trace_id,

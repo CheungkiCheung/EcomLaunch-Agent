@@ -11,15 +11,23 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.commerce.agents.budget import BudgetSnapshot, BudgetUsage
-from app.commerce.agents.contracts import AgentBudgetLimit
+from app.commerce.agents.contracts import AgentBudgetLimit, ModelProfile
 from app.commerce.agents.goal_loop import GoalLoopCheckpoint
-from app.commerce.domain.enums import CaseSeverity, RunPhase, RunType
+from app.commerce.agents.model_router import (
+    ModelAssignment,
+    ModelEffort,
+    ModelRole,
+    ModelRouteReasonCode,
+    build_model_assignment_event,
+)
+from app.commerce.domain.enums import CaseSeverity, RunPhase, RunType, SemanticStatus
 from app.commerce.domain.events import DomainEventActor
-from app.commerce.domain.ids import CorrelationId, TraceId, WorkspaceId
-from app.commerce.domain.models import Case
+from app.commerce.domain.ids import CorrelationId, EvidenceId, MetricObservationId, TraceId, WorkspaceId
+from app.commerce.domain.models import Case, Evidence, EvidenceRelation
 from app.commerce.domain.runs import CommerceRun
 from app.commerce.persistence.events import SqlDomainEventStore
 from app.commerce.persistence.models import RunLeaseRow
+from app.commerce.persistence.repositories import SqlCaseRepository
 from app.commerce.persistence.runs import (
     RunLeaseConflictError,
     RunLeaseLostError,
@@ -233,4 +241,155 @@ async def test_expired_lease_reacquires_with_fencing_and_restores_latest_checkpo
         heartbeat_at=now + timedelta(seconds=32),
     )
     assert heartbeat.expires_at == now + timedelta(seconds=62)
+    await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_model_assignment_and_pre_call_checkpoint_commit_atomically_under_lease(
+    tmp_path,
+):
+    engine, factory = await _storage(tmp_path)
+    now = datetime(2026, 7, 19, 12, 0, tzinfo=UTC)
+    queued = await _seed(factory, now)
+    grant = await SqlRunLeaseRepository(factory).acquire(
+        queued.workspace_id,
+        queued.id,
+        worker_id="worker-planner",
+        ttl=timedelta(seconds=30),
+        acquired_at=now + timedelta(seconds=1),
+        trace_id=TraceId.new(),
+        correlation_id=CorrelationId.new(),
+    )
+    trace_id = TraceId.new()
+    correlation_id = CorrelationId.new()
+    assignment = ModelAssignment(
+        role=ModelRole.PATH,
+        base_profile=ModelProfile.BALANCED_TOOL_USER,
+        profile=ModelProfile.BALANCED_TOOL_USER,
+        model_alias="deepseek-reasoner",
+        effort=ModelEffort.MEDIUM,
+        max_output_tokens=1_600,
+        timeout_seconds=120,
+        reason_codes=frozenset({ModelRouteReasonCode.PROFILE_BINDING}),
+        escalation_count=0,
+    )
+    assigned = build_model_assignment_event(
+        assignment,
+        workspace_id=queued.workspace_id,
+        case_id=queued.case_id,
+        run_id=queued.id,
+        trace_id=trace_id,
+        correlation_id=correlation_id,
+    )
+
+    record, events = await SqlCommerceUnitOfWork(
+        factory
+    ).append_run_checkpoint_with_events(
+        _checkpoint(grant.run, 0),
+        prior_events=(assigned,),
+        trace_id=trace_id,
+        correlation_id=correlation_id,
+        actor=DomainEventActor.AGENT,
+        lease=grant.credentials,
+        lease_checked_at=now + timedelta(seconds=2),
+    )
+
+    assert record.sequence == 1
+    assert [event.event_type for event in events] == [
+        "model.assigned",
+        "run.checkpoint_saved",
+    ]
+    assert [
+        event.event_type
+        for event in await SqlDomainEventStore(factory).list_run(
+            queued.workspace_id,
+            queued.id,
+        )
+    ] == [
+        "run.created",
+        "run.status_changed",
+        "model.assigned",
+        "run.checkpoint_saved",
+    ]
+    await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_path_evidence_write_requires_current_fenced_lease(tmp_path):
+    engine, factory = await _storage(tmp_path)
+    now = datetime(2026, 7, 19, 12, 0, tzinfo=UTC)
+    queued = await _seed(factory, now)
+    first = await SqlRunLeaseRepository(factory).acquire(
+        queued.workspace_id,
+        queued.id,
+        worker_id="worker-evidence",
+        ttl=timedelta(seconds=30),
+        acquired_at=now + timedelta(seconds=1),
+        trace_id=TraceId.new(),
+        correlation_id=CorrelationId.new(),
+    )
+    evidence = Evidence(
+        id=EvidenceId.new(),
+        workspace_id=queued.workspace_id,
+        case_id=queued.case_id,
+        summary="Transit time increased in the current window",
+        relation=EvidenceRelation.CONTEXT,
+        semantic_status=SemanticStatus.DERIVED,
+        confidence=0.9,
+        metric_observation_ids=(MetricObservationId.new(),),
+    )
+    case = await SqlCaseRepository(factory).get(queued.workspace_id, queued.case_id)
+    assert case is not None
+    updated_case = case.model_copy(
+        update={"evidence_ids": (evidence.id,), "version": case.version + 1}
+    )
+    uow = SqlCommerceUnitOfWork(factory)
+
+    with pytest.raises(RunLeaseLostError, match="requires a lease"):
+        await uow.append_evidence(
+            updated_case,
+            evidence,
+            expected_version=case.version,
+            trace_id=TraceId.new(),
+            correlation_id=CorrelationId.new(),
+            actor=DomainEventActor.AGENT,
+            run_id=queued.id,
+        )
+
+    second = await SqlRunLeaseRepository(factory).acquire(
+        queued.workspace_id,
+        queued.id,
+        worker_id="worker-evidence-takeover",
+        ttl=timedelta(seconds=30),
+        acquired_at=now + timedelta(seconds=31),
+        trace_id=TraceId.new(),
+        correlation_id=CorrelationId.new(),
+    )
+    with pytest.raises(RunLeaseLostError):
+        await uow.append_evidence(
+            updated_case,
+            evidence,
+            expected_version=case.version,
+            trace_id=TraceId.new(),
+            correlation_id=CorrelationId.new(),
+            actor=DomainEventActor.AGENT,
+            run_id=queued.id,
+            lease=first.credentials,
+            lease_checked_at=now + timedelta(seconds=32),
+        )
+
+    event = await uow.append_evidence(
+        updated_case,
+        evidence,
+        expected_version=case.version,
+        trace_id=TraceId.new(),
+        correlation_id=CorrelationId.new(),
+        actor=DomainEventActor.AGENT,
+        run_id=queued.id,
+        lease=second.credentials,
+        lease_checked_at=now + timedelta(seconds=32),
+    )
+
+    assert event.event_type == "evidence.appended"
+    assert event.run_id == queued.id
     await engine.dispose()

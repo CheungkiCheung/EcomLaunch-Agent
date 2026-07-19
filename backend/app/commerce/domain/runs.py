@@ -55,6 +55,24 @@ _ALLOWED_RUN_TRANSITIONS = {
     RunStatus.BLOCKED: frozenset(),
 }
 
+_RUN_PHASE_ORDER = {
+    phase: index
+    for index, phase in enumerate(
+        (
+            RunPhase.PROFILING,
+            RunPhase.MAPPING,
+            RunPhase.PLANNING,
+            RunPhase.INVESTIGATING,
+            RunPhase.SYNTHESIZING,
+            RunPhase.VERIFYING,
+            RunPhase.VALIDATING_ACTION,
+            RunPhase.AWAITING_APPROVAL,
+            RunPhase.EXECUTING,
+            RunPhase.EVALUATING_FOLLOW_UP,
+        )
+    )
+}
+
 
 class CommerceRun(CommerceModel):
     """A bounded, auditable execution attached to a long-lived Case."""
@@ -143,6 +161,33 @@ class CommerceRun(CommerceModel):
                 ),
                 "started_at": started_at,
                 "ended_at": ended_at,
+                "updated_at": occurred,
+                "version": self.version + 1,
+            }
+        )
+
+    def advance_phase(
+        self,
+        target: RunPhase,
+        *,
+        occurred_at: datetime | None = None,
+    ) -> Self:
+        """Advance one active Run without inventing a same-status transition."""
+
+        if self.status is not RunStatus.RUNNING:
+            raise InvalidRunTransitionError(
+                f"Run phase can advance only while running, found {self.status.value}"
+            )
+        if _RUN_PHASE_ORDER[target] <= _RUN_PHASE_ORDER[self.phase]:
+            raise InvalidRunTransitionError(
+                f"Run phase cannot move from {self.phase.value} to {target.value}"
+            )
+        occurred = occurred_at or datetime.now(UTC)
+        if occurred < self.updated_at:
+            raise ValueError("Run phase time cannot precede updated_at")
+        return self.model_copy(
+            update={
+                "phase": target,
                 "updated_at": occurred,
                 "version": self.version + 1,
             }

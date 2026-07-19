@@ -68,6 +68,29 @@ def test_run_transitions_start_wait_resume_and_complete_with_timestamps():
     assert completed.version == 5
 
 
+def test_running_run_can_advance_phase_without_faking_a_status_transition():
+    now = datetime(2026, 7, 19, 10, 0, tzinfo=UTC)
+    running = _run(now).transition_to(
+        RunStatus.RUNNING,
+        occurred_at=now + timedelta(minutes=1),
+    )
+
+    investigating = running.advance_phase(
+        RunPhase.INVESTIGATING,
+        occurred_at=now + timedelta(minutes=2),
+    )
+
+    assert investigating.status is RunStatus.RUNNING
+    assert investigating.phase is RunPhase.INVESTIGATING
+    assert investigating.version == running.version + 1
+    assert investigating.started_at == running.started_at
+    with pytest.raises(InvalidRunTransitionError, match="phase"):
+        investigating.advance_phase(
+            RunPhase.PLANNING,
+            occurred_at=now + timedelta(minutes=3),
+        )
+
+
 def test_run_rejects_invalid_transition_and_inconsistent_terminal_fields():
     now = datetime(2026, 7, 19, 10, 0, tzinfo=UTC)
     queued = _run(now)

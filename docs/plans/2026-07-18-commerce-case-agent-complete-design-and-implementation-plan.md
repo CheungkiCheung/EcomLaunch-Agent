@@ -1180,6 +1180,7 @@ GREEN：添加：
 - [x] GoalLoopController / Checkpoint Contract / Stop Condition；
 - [x] Structured PathResult；
 - [x] 真实 DeepSeek V4 FulfillmentPathAgent 行为测试；
+- [x] Fenced Worker Fulfillment step：pre/post Checkpoint、Event、Budget、Evidence；
 - [ ] SellerPeer / ReviewExperience Path Agent 与 Verification 行为测试。
 
 #### Task 4.1：ContextPacket
@@ -1239,7 +1240,8 @@ GREEN：添加：
 - [x] Partial Goal；
 - [x] No New Evidence；
 - [x] Safe Checkpoint Contract；
-- [ ] Durable Checkpoint Persistence / Resume（Task 4.10）。
+- [x] Durable Checkpoint Persistence；
+- [ ] Resume（Task 4.10）。
 
 #### Task 4.7：Structured PathResult
 
@@ -1274,6 +1276,10 @@ GREEN：添加：
 - [x] Fenced Worker lease / heartbeat / expired-lease takeover；
 - [x] Latest Checkpoint returned on lease reacquisition；
 - [x] Initial Checkpoint construction and fenced persistence contract；
+- [x] Atomic model.assignment / path.started / pre-call Checkpoint；
+- [x] Lease-guarded Agent Evidence persistence into Case and Run streams；
+- [x] Actual token / wall-time / Path / iteration budget accounting；
+- [x] Atomic path.completed / post-call Checkpoint；
 - [ ] User Clarification Resume；
 - [ ] Mapping Confirmation Resume；
 - [ ] Approval Wait Resume；

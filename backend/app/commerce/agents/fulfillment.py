@@ -257,6 +257,11 @@ class FulfillmentPathRun(CommerceModel):
     audit_path: str = Field(min_length=1)
 
 
+class FulfillmentPathPlan(CommerceModel):
+    context: PathContextPacket
+    assignment: ModelAssignment
+
+
 @dataclass(frozen=True)
 class _Invocation:
     response: AIMessage | None
@@ -285,6 +290,9 @@ class FulfillmentPathAgent:
         )
 
     async def run(self, lead: LeadContextPacket) -> FulfillmentPathRun:
+        return await self.run_prepared(await self.prepare(lead))
+
+    async def prepare(self, lead: LeadContextPacket) -> FulfillmentPathPlan:
         context = self._build_context(lead)
         budget = BudgetManager(context.budget)
         assignment = await ModelRouter().assign(
@@ -300,6 +308,14 @@ class FulfillmentPathAgent:
             ),
             budget,
         )
+        return FulfillmentPathPlan(context=context, assignment=assignment)
+
+    async def run_prepared(
+        self,
+        plan: FulfillmentPathPlan,
+    ) -> FulfillmentPathRun:
+        context = plan.context
+        assignment = plan.assignment
         preflight = await asyncio.to_thread(
             run_real_model_preflight,
             model_alias=assignment.model_alias,
