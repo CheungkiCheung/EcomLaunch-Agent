@@ -746,7 +746,8 @@ https://api.deepseek.com/v1
 - [x] 每次请求注入唯一 nonce，LangChain 响应缓存与 SDK 自动重试显式关闭，只保存 nonce / 响应 SHA-256；
 - [x] 缺密钥、鉴权、额度、服务、身份或遥测时失败关闭，真实模型测试不 Skip、不回退；
 - [x] 门禁已接入 Semantic LLM Candidate 与首个 FulfillmentPathAgent；
-- [ ] SellerPeer / ReviewExperience / Lead / Verification 与 Gold Case E2E 仍待接入。
+- [x] SellerPeer / ReviewExperience / Lead / Verification 独立真实门禁已接入；
+- [ ] 多 Path Worker 与四条 Gold Case E2E 仍待接入。
 
 阻塞状态：
 
@@ -1185,7 +1186,7 @@ GREEN：添加：
 - [x] Fresh-context Verification：supported claim pass + causal overclaim reject；
 - [x] Worker Lead → Hypothesis → Verification persistence / GoalLoop terminal integration；
 - [x] SellerPeer Path Agent 真实 Tool + DeepSeek V4 行为测试；
-- [ ] ReviewExperience Path Agent 行为测试。
+- [x] ReviewExperience Path Agent 真实 Tool + DeepSeek V4 行为测试。
 
 #### Task 4.1：ContextPacket
 
@@ -1262,7 +1263,7 @@ GREEN：添加：
 
 - [x] FulfillmentPathAgent：verified minimal Path Context、real V4 structured output、traceable Evidence、model/config audit；
 - [x] SellerPeerPathAgent：outcome-agnostic peer cohort、geography Tool traces、real V4 structured output；
-- [ ] ReviewExperiencePathAgent；
+- [x] ReviewExperiencePathAgent：review/low-rating/late-rate metrics、脱敏 VOC Tool traces、real V4 structured output 与非因果/非法结论门禁；
 
 #### Task 4.9：VerificationEngine
 

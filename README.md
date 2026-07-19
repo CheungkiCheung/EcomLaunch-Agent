@@ -298,7 +298,8 @@ PYTHONPATH=. uv run pytest tests/commerce \
   --ignore=tests/commerce/agents/test_verification_live.py \
   --ignore=tests/commerce/agents/test_lead_synthesis_live.py \
   --ignore=tests/commerce/agents/test_worker_lead_verification_loop_live.py \
-  --ignore=tests/commerce/agents/test_seller_peer_path_agent_live.py -v
+  --ignore=tests/commerce/agents/test_seller_peer_path_agent_live.py \
+  --ignore=tests/commerce/agents/test_review_experience_path_agent_live.py -v
 
 cd ../frontend
 pnpm typecheck
@@ -314,7 +315,7 @@ cd backend
 PYTHONPATH=. uv run pytest -m real_model tests/commerce -v
 ```
 
-截至 2026-07-19，最终加固版预检持续返回 `deepseek-v4-flash`。首个 `FulfillmentPathAgent`、fenced Worker、独立 Lead 和 fresh-context Verifier 均已使用新鲜请求验收。最终完整 Worker Loop 重新发起了三条 preflight 和 Path/Lead/Verifier 三条 Agent 请求：Agent 侧分别消耗 `4,314`、`4,456`、`4,708` Tokens，共 `13,478` Tokens；preflight 另消耗 `212` Tokens。三条 Agent 请求均为单次请求、零重试，约 `3.73s / 3.83s / 4.86s`，服务端身份均为 `deepseek-v4-flash`。Run Event Stream 共 32 个事件、5 个 Checkpoint、4 个 Hypothesis 各两版；最终预算为两次 Loop iteration、一次 Path、一次模型升级、零 repair，Run 以 `goal_achieved` 完成。SellerPeer 最终门禁另使用一条 71-token preflight 和一条 `3,206`-token Agent 请求，约 `4.03s`、单次请求、零重试，并保留两条真实 deterministic Tool trace。这证明首条真实 `Path→Lead→Verification` 诊断闭环和独立 SellerPeer Path，但不代表 SellerPeer Worker 集成、ReviewExperience、Action/Follow-up、跨进程 continuation 或四条 Gold Case Release Gate 已经通过。
+截至 2026-07-19，最终加固版预检持续返回 `deepseek-v4-flash`。首个 `FulfillmentPathAgent`、fenced Worker、独立 Lead 和 fresh-context Verifier 均已使用新鲜请求验收。最终完整 Worker Loop 重新发起了三条 preflight 和 Path/Lead/Verifier 三条 Agent 请求：Agent 侧分别消耗 `4,314`、`4,456`、`4,708` Tokens，共 `13,478` Tokens；preflight 另消耗 `212` Tokens。三条 Agent 请求均为单次请求、零重试，约 `3.73s / 3.83s / 4.86s`，服务端身份均为 `deepseek-v4-flash`。Run Event Stream 共 32 个事件、5 个 Checkpoint、4 个 Hypothesis 各两版；最终预算为两次 Loop iteration、一次 Path、一次模型升级、零 repair，Run 以 `goal_achieved` 完成。SellerPeer 最终门禁另使用一条 71-token preflight 和一条 `3,206`-token Agent 请求，约 `4.03s`、单次请求、零重试，并保留两条真实 deterministic Tool trace。ReviewExperience 最终门禁使用一条 71-token preflight 和一条 `4,370`-token Agent 请求，约 `9.98s`、单次请求、零重试，并保留 `metric_query` 与 `review_signal_query` 两条真实 Tool trace。它把 8 条低分评价中的 7 条脱敏文本作为 VOC 信号，明确区分未核验的商品真实性/少发/未收到投诉与两窗口均为 0 的延迟交付率。这证明首条真实 `Path→Lead→Verification` 诊断闭环以及独立 SellerPeer、ReviewExperience Path，但不代表两条新 Path 的 Worker 集成、Action/Follow-up、跨进程 continuation 或四条 Gold Case Release Gate 已经通过。
 
 ### Commerce 数据库迁移
 
