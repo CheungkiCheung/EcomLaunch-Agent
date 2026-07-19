@@ -24,7 +24,13 @@ from app.commerce.agents.contracts import (
     canonical_context_bytes,
     default_path_agent_specs,
 )
-from app.commerce.data.capabilities import CapabilityName, CapabilityProfile
+from app.commerce.data.capabilities import (
+    CapabilityAssessment,
+    CapabilityName,
+    CapabilityProfile,
+    CapabilityReasonCode,
+    CapabilityStatus,
+)
 from app.commerce.domain.enums import CaseSeverity, CaseStatus, SemanticStatus
 from app.commerce.domain.ids import (
     AnomalyId,
@@ -135,6 +141,27 @@ def _analysis(dataset_id: DatasetId) -> CaseAnalysisDigest:
     )
 
 
+def _fulfillment_capabilities(
+    workspace_id: WorkspaceId,
+    dataset_id: DatasetId,
+) -> CapabilityProfile:
+    return CapabilityProfile(
+        dataset_id=dataset_id,
+        workspace_id=workspace_id,
+        capabilities=(
+            CapabilityAssessment(
+                name=CapabilityName.FULFILLMENT_DIAGNOSIS,
+                path_agent="FulfillmentPathAgent",
+                status=CapabilityStatus.AVAILABLE,
+                reason_codes=frozenset({CapabilityReasonCode.AVAILABLE}),
+                available_fields=frozenset(),
+                missing_required_fields=frozenset(),
+                missing_optional_fields=frozenset(),
+            ),
+        ),
+    )
+
+
 def test_context_packets_reject_hidden_label_metadata_and_reasoning_history():
     workspace_id = WorkspaceId.new()
     case_id = CaseId.new()
@@ -177,6 +204,8 @@ def test_path_packet_keeps_minimum_evidence_tools_and_forbidden_claims():
         goal="Determine whether transit or handling worsened",
         path_type=PathType.FULFILLMENT,
         required_capabilities=frozenset({CapabilityName.FULFILLMENT_DIAGNOSIS}),
+        capability_profile=_fulfillment_capabilities(workspace_id, dataset_id),
+        analysis=_analysis(dataset_id),
         evidence=(
             EvidenceDigest(
                 evidence_id=evidence_id,

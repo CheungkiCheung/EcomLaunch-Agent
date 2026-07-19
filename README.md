@@ -11,7 +11,7 @@
 
 项目正在从旧 OpenSKU / EcomLaunch 方案改造为 Commerce Case Agent。
 
-Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 和“只生成候选、不自动确认”的 Semantic Candidate 层也已实现，并通过 fresh、身份核验的真实请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成 Case、显式 Case→Dataset/Analysis Lineage、Domain Event、append-only Evidence、versioned Hypothesis、bounded Investigation Run 与 append-only Goal Loop Checkpoint 持久化，以及 Data Intake、Profile、Capability、Semantic Candidate、Anomaly-to-Case、Investigation Start、Case Lineage、Run Detail/Checkpoint/Event Stream API。Phase 4 的确定性编排内核现已包括 ContextPacket、可信初始 Context Loader、PathAgentSpec、Capability-first DynamicPathRouter、并发安全 BudgetManager、规则型 ModelRouter、结构化 PathResult、GoalLoopController、Stop Condition、安全 Checkpoint，以及带 heartbeat 和 fencing token 的 Worker Lease。Loader 从持久化 Case/Lineage 出发校验 Dataset Manifest、只读分析 Artifact SHA-256、Workspace/Case/Dataset/Seller 身份、Capability 一致性、Evidence/Hypothesis 归属、隐藏评测字段和上下文预算；它只输出压缩的指标摘要、引用 ID 和初始零消耗 Checkpoint，不把原始 CSV 或完整 source Fact 列表塞进模型上下文。租约过期后新 Worker 可以读取最新 Checkpoint，旧 Worker 的 heartbeat/Checkpoint 写入会被拒绝。Action/Approval/Follow-up 持久化、真正的 Worker 执行循环、Lead/Path Agent、Fresh-context Verification 和完整 Agent E2E 尚未完成；新建调查会诚实保持 `queued`，不会伪装成 Agent 已经执行。旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
+Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 和“只生成候选、不自动确认”的 Semantic Candidate 层也已实现，并通过 fresh、身份核验的真实请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成 Case、显式 Case→Dataset/Analysis Lineage、Domain Event、append-only Evidence、versioned Hypothesis、bounded Investigation Run 与 append-only Goal Loop Checkpoint 持久化，以及 Data Intake、Profile、Capability、Semantic Candidate、Anomaly-to-Case、Investigation Start、Case Lineage、Run Detail/Checkpoint/Event Stream API。Phase 4 的确定性编排内核现已包括 ContextPacket、可信初始 Context Loader、PathAgentSpec、Capability-first DynamicPathRouter、并发安全 BudgetManager、规则型 ModelRouter、结构化 PathResult、GoalLoopController、Stop Condition、安全 Checkpoint，以及带 heartbeat 和 fencing token 的 Worker Lease。Loader 从持久化 Case/Lineage 出发校验 Dataset Manifest、只读分析 Artifact SHA-256、Workspace/Case/Dataset/Seller 身份、Capability 一致性、Evidence/Hypothesis 归属、隐藏评测字段和上下文预算；它只输出压缩的指标摘要、引用 ID 和初始零消耗 Checkpoint，不把原始 CSV 或完整 source Fact 列表塞进模型上下文。首个 `FulfillmentPathAgent` 已连接这条可信上下文链，并在 `GC-FULFILLMENT-001` 上通过 fresh、身份核验的真实 DeepSeek V4 行为测试：系统确认处理时长未恶化、运输时长显著恶化，输出全部引用真实 MetricObservation ID，未虚构私有经营指标或因果结论。模型逻辑选型、实际调用上限、Provider Request ID、Token、Latency、Retry、Stop Reason、Prompt/Context/Router/Skill 版本和内容哈希均进入本地不可覆盖审计。租约过期后新 Worker 可以读取最新 Checkpoint，旧 Worker 的 heartbeat/Checkpoint 写入会被拒绝。Action/Approval/Follow-up 持久化、真正的 Worker 执行循环、SellerPeer/ReviewExperience Path Agent、Lead Agent、Fresh-context Verification 和完整 Agent E2E 尚未完成；新建调查会诚实保持 `queued`，不会伪装成 Agent 已经执行。旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
 
 完整设计与实施计划：
 
@@ -36,6 +36,7 @@ Phase 0 基线与迁移清单：
 - [`docs/progress/2026-07-19-commerce-run-lease-harness-boundary.md`](./docs/progress/2026-07-19-commerce-run-lease-harness-boundary.md)
 - [`docs/progress/2026-07-19-commerce-case-data-lineage.md`](./docs/progress/2026-07-19-commerce-case-data-lineage.md)
 - [`docs/progress/2026-07-19-commerce-initial-context-loader.md`](./docs/progress/2026-07-19-commerce-initial-context-loader.md)
+- [`docs/progress/2026-07-19-commerce-fulfillment-path-real-deepseek-v4.md`](./docs/progress/2026-07-19-commerce-fulfillment-path-real-deepseek-v4.md)
 
 ## 解决什么问题
 
@@ -284,7 +285,9 @@ http://localhost:2026
 ```bash
 cd backend
 PYTHONPATH=. uv run pytest tests/commerce \
-  --ignore=tests/commerce/evaluation/test_real_model_preflight_live.py -v
+  --ignore=tests/commerce/evaluation/test_real_model_preflight_live.py \
+  --ignore=tests/commerce/data/test_semantic_candidate_service_live.py \
+  --ignore=tests/commerce/agents/test_fulfillment_path_agent_live.py -v
 
 cd ../frontend
 pnpm typecheck
@@ -300,7 +303,7 @@ cd backend
 PYTHONPATH=. uv run pytest -m real_model tests/commerce -v
 ```
 
-截至 2026-07-18，最终加固版预检已通过带唯一 nonce 的新鲜官方请求，返回 `deepseek-v4-flash`、72 Tokens、单次请求、零重试；此前两次独立官方请求也分别返回相同 V4 身份。该结果只证明真实模型门禁可用，不代表尚未实现的 Commerce Agent 行为已经通过。
+截至 2026-07-19，最终加固版预检持续返回 `deepseek-v4-flash`。首个 `FulfillmentPathAgent` 最终验收运行包含一条新鲜 preflight 和一条新鲜 Agent 请求；Agent 请求使用 `3,878` Input Tokens、`415` Output Tokens、单次请求、零重试，约 `4.29s`，并通过结构化证据与禁止结论断言。这只证明首条 Fulfillment Path 行为，不代表 SellerPeer、ReviewExperience、Lead、Verification、Action/Follow-up 或完整 Gold Case E2E 已经通过。
 
 ### Commerce 数据库迁移
 

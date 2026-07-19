@@ -1,6 +1,6 @@
 # Commerce Case Agent 完整设计与实施计划
 
-> 状态：设计已收口，Phase 2 确定性数据主干已完成，真实模型候选层与 Peer 执行待完成
+> 状态：设计已收口，确定性 Case/Run/Context 主干与首条真实 Fulfillment Path 已完成，其余闭环持续实施
 > 日期：2026-07-18
 > 当前分支：`feature/commerce-case-agent`
 > 保护快照：`archive/ecom-launch-pre-commerce-agent-20260718` / `9144237`
@@ -745,7 +745,8 @@ https://api.deepseek.com/v1
 - [x] Provider Request / Response ID、Token、Latency、Retry、Stop Reason、Fingerprint 与版本元数据已进入不可覆盖审计；
 - [x] 每次请求注入唯一 nonce，LangChain 响应缓存与 SDK 自动重试显式关闭，只保存 nonce / 响应 SHA-256；
 - [x] 缺密钥、鉴权、额度、服务、身份或遥测时失败关闭，真实模型测试不 Skip、不回退；
-- [ ] 该门禁尚未接入未实现的 Semantic LLM Candidate、Lead / Path Agent 与后续 Gold Case E2E。
+- [x] 门禁已接入 Semantic LLM Candidate 与首个 FulfillmentPathAgent；
+- [ ] SellerPeer / ReviewExperience / Lead / Verification 与 Gold Case E2E 仍待接入。
 
 阻塞状态：
 
@@ -1178,7 +1179,8 @@ GREEN：添加：
 - [x] ModelRouter 与 Assignment Event；
 - [x] GoalLoopController / Checkpoint Contract / Stop Condition；
 - [x] Structured PathResult；
-- [ ] 真实 DeepSeek V4 Path Agent 与 Verification 行为测试。
+- [x] 真实 DeepSeek V4 FulfillmentPathAgent 行为测试；
+- [ ] SellerPeer / ReviewExperience Path Agent 与 Verification 行为测试。
 
 #### Task 4.1：ContextPacket
 
@@ -1252,9 +1254,9 @@ GREEN：添加：
 
 按照 TDD 分别实现：
 
-- FulfillmentPathAgent；
-- SellerPeerPathAgent；
-- ReviewExperiencePathAgent。
+- [x] FulfillmentPathAgent：verified minimal Path Context、real V4 structured output、traceable Evidence、model/config audit；
+- [ ] SellerPeerPathAgent；
+- [ ] ReviewExperiencePathAgent；
 
 #### Task 4.9：VerificationEngine
 

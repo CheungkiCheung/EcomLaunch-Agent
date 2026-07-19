@@ -269,10 +269,31 @@ class LeadContextPacket(ContextPacket):
 class PathContextPacket(ContextPacket):
     path_type: PathType
     required_capabilities: frozenset[CapabilityName] = Field(min_length=1)
+    capability_profile: CapabilityProfile
+    analysis: CaseAnalysisDigest
     evidence: tuple[EvidenceDigest, ...] = ()
     allowed_tools: frozenset[str] = Field(min_length=1)
     forbidden_claims: tuple[str, ...] = ()
     output_schema: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def require_available_path_capabilities(self) -> Self:
+        if self.capability_profile.workspace_id != self.case.workspace_id:
+            raise ValueError("Path Capability Profile Workspace must match packet Case")
+        if self.capability_profile.dataset_id != self.manifest.dataset_id:
+            raise ValueError("Path Capability Profile Dataset must match ContextManifest")
+        if self.analysis.dataset_id != self.manifest.dataset_id:
+            raise ValueError("Path Analysis Dataset must match ContextManifest")
+        unavailable = tuple(
+            name
+            for name in self.required_capabilities
+            if self.capability_profile.capability(name).status
+            is CapabilityStatus.UNAVAILABLE
+        )
+        if unavailable:
+            names = ", ".join(name.value for name in unavailable)
+            raise ValueError(f"Path required capabilities are unavailable: {names}")
+        return self
 
 
 class VerificationPacket(ContextPacket):
