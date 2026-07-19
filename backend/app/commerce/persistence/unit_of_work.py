@@ -21,12 +21,14 @@ from app.commerce.domain.ids import (
     EventId,
     TraceId,
 )
+from app.commerce.domain.lineage import CaseLineage
 from app.commerce.domain.models import Case, Evidence, Hypothesis
 from app.commerce.domain.runs import CommerceRun
 from app.commerce.persistence.events import (
     EventSequenceConflictError,
     SqlDomainEventStore,
 )
+from app.commerce.persistence.lineage import SqlCaseLineageRepository
 from app.commerce.persistence.repositories import (
     DuplicateEntityError,
     SqlCaseRepository,
@@ -84,6 +86,82 @@ class SqlCommerceUnitOfWork:
                 return await SqlDomainEventStore.append_in_session(session, event)
         except IntegrityError as exc:
             raise DuplicateEntityError(f"Case already exists: {case.id}") from exc
+
+    async def create_case_with_lineage(
+        self,
+        case: Case,
+        lineage: CaseLineage,
+        *,
+        trace_id: TraceId,
+        correlation_id: CorrelationId,
+        actor: DomainEventActor,
+        causation_event_id: EventId | None = None,
+    ) -> DomainEventEnvelope:
+        self._validate_lineage_membership(case, lineage)
+        event = NewDomainEvent(
+            workspace_id=case.workspace_id,
+            case_id=case.id,
+            event_type="case.created",
+            occurred_at=case.opened_at,
+            trace_id=trace_id,
+            correlation_id=correlation_id,
+            causation_event_id=causation_event_id,
+            actor=actor,
+            payload={
+                "title": case.title,
+                "severity": case.severity.value,
+                "status": case.status.value,
+                "version": case.version,
+                "dataset_id": str(lineage.dataset_id),
+                "analysis_artifact_relative_path": (
+                    lineage.analysis_artifact_relative_path
+                ),
+                "analysis_artifact_sha256": lineage.analysis_artifact_sha256,
+            },
+        )
+        try:
+            async with self._session_factory() as session, session.begin():
+                await SqlCaseRepository.create_in_session(session, case)
+                await SqlCaseLineageRepository.create_in_session(session, lineage)
+                return await SqlDomainEventStore.append_in_session(session, event)
+        except IntegrityError as exc:
+            raise DuplicateEntityError(f"Case already exists: {case.id}") from exc
+
+    async def attach_case_lineage(
+        self,
+        lineage: CaseLineage,
+        *,
+        trace_id: TraceId,
+        correlation_id: CorrelationId,
+        actor: DomainEventActor,
+        causation_event_id: EventId | None = None,
+    ) -> DomainEventEnvelope:
+        event = NewDomainEvent(
+            workspace_id=lineage.workspace_id,
+            case_id=lineage.case_id,
+            event_type="case.lineage_attached",
+            occurred_at=lineage.created_at,
+            trace_id=trace_id,
+            correlation_id=correlation_id,
+            causation_event_id=causation_event_id,
+            actor=actor,
+            payload={
+                "dataset_id": str(lineage.dataset_id),
+                "seller_entity_id": str(lineage.seller_entity_id),
+                "analysis_artifact_relative_path": (
+                    lineage.analysis_artifact_relative_path
+                ),
+                "analysis_artifact_sha256": lineage.analysis_artifact_sha256,
+            },
+        )
+        try:
+            async with self._session_factory() as session, session.begin():
+                await SqlCaseLineageRepository.create_in_session(session, lineage)
+                return await SqlDomainEventStore.append_in_session(session, event)
+        except IntegrityError as exc:
+            raise DuplicateEntityError(
+                f"Case lineage already exists: {lineage.case_id}"
+            ) from exc
 
     async def save_case(
         self,
@@ -450,3 +528,10 @@ class SqlCommerceUnitOfWork:
             raise ValueError("Hypothesis Case must match the target Case")
         if hypothesis.id not in case.hypothesis_ids:
             raise ValueError("Case must include the appended Hypothesis ID")
+
+    @staticmethod
+    def _validate_lineage_membership(case: Case, lineage: CaseLineage) -> None:
+        if lineage.workspace_id != case.workspace_id:
+            raise ValueError("Case lineage workspace must match Case workspace")
+        if lineage.case_id != case.id:
+            raise ValueError("Case lineage Case must match target Case")

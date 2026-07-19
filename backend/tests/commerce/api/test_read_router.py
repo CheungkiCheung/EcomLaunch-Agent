@@ -15,13 +15,17 @@ from app.commerce.api.service import CommerceReadService
 from app.commerce.domain.enums import CaseSeverity, HypothesisStatus, SemanticStatus
 from app.commerce.domain.events import DomainEventActor
 from app.commerce.domain.ids import (
+    AnomalyId,
     CaseId,
     CorrelationId,
+    DatasetId,
+    EntityId,
     FactId,
     MetricObservationId,
     TraceId,
     WorkspaceId,
 )
+from app.commerce.domain.lineage import CaseLineage
 from app.commerce.domain.models import Case, Evidence, EvidenceRelation, Hypothesis
 from app.commerce.persistence.schema import create_commerce_schema
 from app.commerce.persistence.unit_of_work import SqlCommerceUnitOfWork
@@ -73,6 +77,27 @@ async def _seed(factory, workspace_id: WorkspaceId) -> tuple[Case, Evidence, Hyp
         correlation_id=correlation_id,
         actor=DomainEventActor.SYSTEM,
     )
+    await uow.attach_case_lineage(
+        CaseLineage(
+            workspace_id=workspace_id,
+            case_id=case.id,
+            dataset_id=DatasetId.new(),
+            seller_entity_id=EntityId.new(),
+            seller_external_key="seller-1",
+            baseline_start=now,
+            baseline_end=datetime(2026, 7, 18, 13, 0, tzinfo=UTC),
+            current_start=datetime(2026, 7, 18, 13, 0, tzinfo=UTC),
+            current_end=datetime(2026, 7, 18, 14, 0, tzinfo=UTC),
+            anomaly_ids=(AnomalyId.new(),),
+            metric_observation_ids=(MetricObservationId.new(),),
+            analysis_artifact_relative_path="derived/case-context-a.json",
+            analysis_artifact_sha256="a" * 64,
+            created_at=now,
+        ),
+        trace_id=trace_id,
+        correlation_id=correlation_id,
+        actor=DomainEventActor.SYSTEM,
+    )
     case_with_evidence = case.model_copy(
         update={"evidence_ids": (evidence.id,), "version": 2}
     )
@@ -111,6 +136,10 @@ async def test_read_workspace_returns_case_evidence_hypothesis_and_events(tmp_pa
     ) as client:
         cases = await client.get("/api/commerce/cases", headers=headers)
         detail = await client.get(f"/api/commerce/cases/{case.id}", headers=headers)
+        lineage_response = await client.get(
+            f"/api/commerce/cases/{case.id}/lineage",
+            headers=headers,
+        )
         evidence_response = await client.get(
             f"/api/commerce/cases/{case.id}/evidence/{evidence.id}",
             headers=headers,
@@ -130,6 +159,9 @@ async def test_read_workspace_returns_case_evidence_hypothesis_and_events(tmp_pa
     assert detail.json()["case"]["version"] == 3
     assert detail.json()["evidence"][0]["id"] == str(evidence.id)
     assert detail.json()["hypotheses"][0]["id"] == str(hypothesis.id)
+    assert detail.json()["lineage"]["seller_external_key"] == "seller-1"
+    assert lineage_response.status_code == 200
+    assert lineage_response.json()["case_id"] == str(case.id)
     assert evidence_response.status_code == 200
     assert evidence_response.json()["fact_ids"] == [str(evidence.fact_ids[0])]
     assert hypotheses.status_code == 200
@@ -137,6 +169,7 @@ async def test_read_workspace_returns_case_evidence_hypothesis_and_events(tmp_pa
     assert events.status_code == 200
     assert [item["event_type"] for item in events.json()["items"]] == [
         "case.created",
+        "case.lineage_attached",
         "evidence.appended",
         "hypothesis.version_appended",
     ]
@@ -162,6 +195,10 @@ async def test_read_workspace_enforces_workspace_and_case_boundaries(tmp_path):
             f"/api/commerce/cases/{case.id}",
             headers={"X-Commerce-Workspace-Id": str(other_workspace)},
         )
+        hidden_lineage = await client.get(
+            f"/api/commerce/cases/{case.id}/lineage",
+            headers={"X-Commerce-Workspace-Id": str(other_workspace)},
+        )
         missing_evidence = await client.get(
             f"/api/commerce/cases/{CaseId.new()}/evidence/{evidence.id}",
             headers={"X-Commerce-Workspace-Id": str(workspace_id)},
@@ -170,5 +207,6 @@ async def test_read_workspace_enforces_workspace_and_case_boundaries(tmp_path):
     assert hidden_list.status_code == 200
     assert hidden_list.json()["items"] == []
     assert hidden_detail.status_code == 404
+    assert hidden_lineage.status_code == 404
     assert missing_evidence.status_code == 404
     await engine.dispose()

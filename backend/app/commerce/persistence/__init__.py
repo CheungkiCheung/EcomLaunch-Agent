@@ -7,6 +7,7 @@ from app.commerce.persistence.events import (
     EventStreamInvariantError,
     SqlDomainEventStore,
 )
+from app.commerce.persistence.lineage import SqlCaseLineageRepository
 from app.commerce.persistence.repositories import (
     CaseRepository,
     DuplicateEntityError,
@@ -46,6 +47,7 @@ __all__ = [
     "RunLeaseSnapshot",
     "RunRepository",
     "SqlCaseRepository",
+    "SqlCaseLineageRepository",
     "SqlCommerceUnitOfWork",
     "SqlDomainEventStore",
     "SqlRunCheckpointRepository",

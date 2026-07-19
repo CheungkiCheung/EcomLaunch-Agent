@@ -30,6 +30,7 @@ from app.commerce.api.schemas import (
     AnalysisRequest,
     AnalysisResponse,
     CaseDetailResponse,
+    CaseLineageResponse,
     CaseListResponse,
     CaseResponse,
     DatasetIntakeResponse,
@@ -68,6 +69,7 @@ from app.commerce.domain.ids import (
     RunId,
     WorkspaceId,
 )
+from app.commerce.domain.lineage import CaseLineage
 from app.commerce.domain.models import Case, Evidence, Hypothesis
 from app.commerce.domain.runs import CommerceRun
 from app.commerce.persistence.runs import RunCheckpointRecord
@@ -89,6 +91,28 @@ def _case_response(case: Case) -> CaseResponse:
         opened_at=case.opened_at,
         updated_at=case.updated_at,
         version=case.version,
+    )
+
+
+def _lineage_response(lineage: CaseLineage) -> CaseLineageResponse:
+    return CaseLineageResponse(
+        schema_version=lineage.schema_version,
+        workspace_id=str(lineage.workspace_id),
+        case_id=str(lineage.case_id),
+        dataset_id=str(lineage.dataset_id),
+        seller_entity_id=str(lineage.seller_entity_id),
+        seller_external_key=lineage.seller_external_key,
+        baseline_start=lineage.baseline_start,
+        baseline_end=lineage.baseline_end,
+        current_start=lineage.current_start,
+        current_end=lineage.current_end,
+        anomaly_ids=[str(value) for value in lineage.anomaly_ids],
+        metric_observation_ids=[
+            str(value) for value in lineage.metric_observation_ids
+        ],
+        analysis_artifact_relative_path=lineage.analysis_artifact_relative_path,
+        analysis_artifact_sha256=lineage.analysis_artifact_sha256,
+        created_at=lineage.created_at,
     )
 
 
@@ -454,12 +478,14 @@ async def get_case_detail(
     workspace_id: Annotated[WorkspaceId, Depends(get_commerce_workspace_id)],
 ) -> CaseDetailResponse:
     case = await _require_case(service, workspace_id, _parse_case_id(raw_case_id))
-    evidence, hypotheses = await asyncio.gather(
+    lineage, evidence, hypotheses = await asyncio.gather(
+        service.get_case_lineage(workspace_id, case.id),
         service.list_case_evidence(workspace_id, case.id),
         service.list_case_hypotheses(workspace_id, case),
     )
     return CaseDetailResponse(
         case=_case_response(case),
+        lineage=_lineage_response(lineage) if lineage else None,
         evidence=[_evidence_response(item) for item in evidence],
         hypotheses=[_hypothesis_response(item) for item in hypotheses],
     )
@@ -474,6 +500,19 @@ async def list_case_evidence(
     case = await _require_case(service, workspace_id, _parse_case_id(raw_case_id))
     evidence = await service.list_case_evidence(workspace_id, case.id)
     return EvidenceListResponse(items=[_evidence_response(item) for item in evidence])
+
+
+@router.get("/cases/{raw_case_id}/lineage", response_model=CaseLineageResponse)
+async def get_case_lineage(
+    raw_case_id: Annotated[str, Path()],
+    service: Annotated[CommerceReadService, Depends(get_commerce_read_service)],
+    workspace_id: Annotated[WorkspaceId, Depends(get_commerce_workspace_id)],
+) -> CaseLineageResponse:
+    case = await _require_case(service, workspace_id, _parse_case_id(raw_case_id))
+    lineage = await service.get_case_lineage(workspace_id, case.id)
+    if lineage is None:
+        raise HTTPException(status_code=404, detail="Commerce Case lineage not found")
+    return _lineage_response(lineage)
 
 
 @router.get(

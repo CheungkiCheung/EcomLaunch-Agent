@@ -10,15 +10,18 @@ from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.commerce.api.data_service import CommerceDataService
+from app.commerce.data.capabilities import CapabilityProfile
 from app.commerce.domain.enums import CaseSeverity, CaseStatus, SemanticStatus
 from app.commerce.domain.events import DomainEventActor
 from app.commerce.domain.ids import (
     CaseId,
     CorrelationId,
+    DatasetId,
     EvidenceId,
     TraceId,
     WorkspaceId,
 )
+from app.commerce.domain.lineage import CaseLineage
 from app.commerce.domain.models import Case, CommerceModel, Evidence, EvidenceRelation
 from app.commerce.metrics.anomaly import (
     AnomalyDetector,
@@ -27,7 +30,12 @@ from app.commerce.metrics.anomaly import (
     CaseCandidate,
     build_case_candidate,
 )
-from app.commerce.metrics.registry import MetricEngine, MetricWindow
+from app.commerce.metrics.registry import (
+    MetricEngine,
+    MetricSnapshot,
+    MetricWindow,
+)
+from app.commerce.persistence.lineage import SqlCaseLineageRepository
 from app.commerce.persistence.repositories import DuplicateEntityError, SqlCaseRepository
 from app.commerce.persistence.unit_of_work import SqlCommerceUnitOfWork
 
@@ -70,6 +78,7 @@ class CommerceAnalysisService:
         current_window: MetricWindow,
         seller_id: str | None = None,
     ) -> AnalysisOutcome:
+        view = self._data.get_view(workspace_id, dataset_id)
         normalized = self._data.normalize(workspace_id, dataset_id)
         seller_ids = tuple(
             sorted(
@@ -123,6 +132,9 @@ class CommerceAnalysisService:
                 dataset_id,
                 candidate,
                 signals,
+                baseline,
+                current,
+                view.capabilities,
             )
             all_signals.extend(signals)
             cases.append(case)
@@ -158,16 +170,81 @@ class CommerceAnalysisService:
     async def _persist_candidate(
         self,
         workspace_id: WorkspaceId,
-        dataset_id,
+        dataset_id: DatasetId,
         candidate: CaseCandidate,
         signals: tuple[AnomalySignal, ...],
+        baseline: MetricSnapshot,
+        current: MetricSnapshot,
+        capabilities: CapabilityProfile,
     ) -> Case:
         repository = SqlCaseRepository(self._session_factory)
+        lineage_repository = SqlCaseLineageRepository(self._session_factory)
         persisted_case_id = CaseId(
             f"case_{uuid5(NAMESPACE_URL, f'{dataset_id}:{candidate.fingerprint}').hex}"
         )
+        context_payload = {
+            "schema_version": "commerce.case-analysis-context@1.0.0",
+            "workspace_id": str(workspace_id),
+            "dataset_id": str(dataset_id),
+            "case_id": str(persisted_case_id),
+            "seller_external_key": current.seller_id,
+            "seller_entity_id": str(current.seller_entity_id),
+            "baseline": baseline.model_dump(mode="json"),
+            "current": current.model_dump(mode="json"),
+            "signals": [signal.model_dump(mode="json") for signal in signals],
+            "capabilities": capabilities.model_dump(mode="json"),
+        }
+        context_key = hashlib.sha256(
+            json.dumps(context_payload, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+        context_filename = f"case-context-{context_key}.json"
+        context_path = self._data.write_derived_artifact(
+            workspace_id,
+            dataset_id,
+            filename=context_filename,
+            payload=context_payload,
+        )
+        lineage = CaseLineage(
+            workspace_id=workspace_id,
+            case_id=persisted_case_id,
+            dataset_id=dataset_id,
+            seller_entity_id=current.seller_entity_id,
+            seller_external_key=current.seller_id,
+            baseline_start=baseline.window.start,
+            baseline_end=baseline.window.end,
+            current_start=current.window.start,
+            current_end=current.window.end,
+            anomaly_ids=tuple(signal.id for signal in signals),
+            metric_observation_ids=tuple(
+                dict.fromkeys(
+                    observation_id
+                    for signal in signals
+                    for observation_id in (
+                        signal.baseline_observation_id,
+                        signal.current_observation_id,
+                    )
+                )
+            ),
+            analysis_artifact_relative_path=f"derived/{context_filename}",
+            analysis_artifact_sha256=hashlib.sha256(
+                context_path.read_bytes()
+            ).hexdigest(),
+            created_at=candidate.window.end,
+        )
         existing = await repository.get(workspace_id, persisted_case_id)
         if existing is not None:
+            if await lineage_repository.get(workspace_id, persisted_case_id) is None:
+                try:
+                    await SqlCommerceUnitOfWork(
+                        self._session_factory
+                    ).attach_case_lineage(
+                        lineage,
+                        trace_id=TraceId.new(),
+                        correlation_id=CorrelationId.new(),
+                        actor=DomainEventActor.SYSTEM,
+                    )
+                except DuplicateEntityError:
+                    pass
             return existing
 
         case = Case(
@@ -190,8 +267,9 @@ class CommerceAnalysisService:
         correlation_id = CorrelationId.new()
         uow = SqlCommerceUnitOfWork(self._session_factory)
         try:
-            created_event = await uow.create_case(
+            created_event = await uow.create_case_with_lineage(
                 case,
+                lineage,
                 trace_id=trace_id,
                 correlation_id=correlation_id,
                 actor=DomainEventActor.SYSTEM,

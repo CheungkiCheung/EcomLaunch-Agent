@@ -19,6 +19,7 @@ from app.commerce.domain.events import replay_case_projection
 from app.commerce.domain.ids import WorkspaceId
 from app.commerce.metrics.registry import MetricName, MetricWindow
 from app.commerce.persistence.events import SqlDomainEventStore
+from app.commerce.persistence.lineage import SqlCaseLineageRepository
 from app.commerce.persistence.repositories import SqlCaseRepository
 from app.commerce.persistence.schema import create_commerce_schema
 
@@ -86,6 +87,18 @@ async def test_analysis_persists_deterministic_case_evidence_and_artifact(tmp_pa
     assert persisted_case is not None
     assert persisted_case.id == case.id
     assert len(case.evidence_ids) == len(outcome.signals)
+    lineage = await SqlCaseLineageRepository(factory).get(workspace_id, case.id)
+    assert lineage is not None
+    assert lineage.dataset_id == dataset_id
+    assert lineage.seller_external_key == SELLER_ID
+    assert lineage.analysis_artifact_relative_path.startswith("derived/case-context-")
+    context_path = (
+        data_service.storage_root
+        / str(workspace_id)
+        / str(dataset_id)
+        / lineage.analysis_artifact_relative_path
+    )
+    assert context_path.is_file()
     assert list((data_service.storage_root / str(workspace_id) / str(dataset_id) / "derived").glob("analysis-*.json"))
 
     repeated = await service.analyze(

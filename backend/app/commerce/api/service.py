@@ -9,8 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.commerce.domain.enums import CaseStatus
 from app.commerce.domain.events import DomainEventEnvelope
 from app.commerce.domain.ids import CaseId, EvidenceId, WorkspaceId
+from app.commerce.domain.lineage import CaseLineage
 from app.commerce.domain.models import Case, Evidence, Hypothesis
 from app.commerce.persistence.events import SqlDomainEventStore
+from app.commerce.persistence.lineage import SqlCaseLineageRepository
 from app.commerce.persistence.repositories import SqlCaseRepository
 from app.commerce.persistence.work_records import (
     SqlEvidenceRepository,
@@ -26,6 +28,7 @@ class CommerceReadService:
         self._evidence = SqlEvidenceRepository(session_factory)
         self._hypotheses = SqlHypothesisRepository(session_factory)
         self._events = SqlDomainEventStore(session_factory)
+        self._lineage = SqlCaseLineageRepository(session_factory)
 
     async def list_cases(
         self,
@@ -44,6 +47,13 @@ class CommerceReadService:
 
     async def get_case(self, workspace_id: WorkspaceId, case_id: CaseId) -> Case | None:
         return await self._cases.get(workspace_id, case_id)
+
+    async def get_case_lineage(
+        self,
+        workspace_id: WorkspaceId,
+        case_id: CaseId,
+    ) -> CaseLineage | None:
+        return await self._lineage.get(workspace_id, case_id)
 
     async def get_evidence(
         self,

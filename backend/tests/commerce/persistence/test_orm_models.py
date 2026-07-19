@@ -10,6 +10,7 @@ from sqlalchemy.schema import CreateTable
 from app.commerce.persistence.base import CommerceBase
 from app.commerce.persistence.migrations import upgrade_commerce_schema
 from app.commerce.persistence.models import (
+    CaseLineageRow,
     CaseRow,
     DomainEventRow,
     EvidenceRow,
@@ -22,12 +23,14 @@ from app.commerce.persistence.models import (
 
 def test_commerce_tables_use_an_application_owned_metadata_registry():
     assert CaseRow.metadata is CommerceBase.metadata
+    assert CaseLineageRow.metadata is CommerceBase.metadata
     assert DomainEventRow.metadata is CommerceBase.metadata
     assert RunRow.metadata is CommerceBase.metadata
     assert RunCheckpointRow.metadata is CommerceBase.metadata
     assert RunLeaseRow.metadata is CommerceBase.metadata
     assert set(CommerceBase.metadata.tables) == {
         "commerce_cases",
+        "commerce_case_lineage",
         "commerce_domain_events",
         "commerce_evidence",
         "commerce_hypotheses",
@@ -40,6 +43,9 @@ def test_commerce_tables_use_an_application_owned_metadata_registry():
 def test_commerce_tables_compile_for_sqlite_and_postgresql():
     for dialect in (sqlite.dialect(), postgresql.dialect()):
         case_ddl = str(CreateTable(CaseRow.__table__).compile(dialect=dialect))
+        lineage_ddl = str(
+            CreateTable(CaseLineageRow.__table__).compile(dialect=dialect)
+        )
         event_ddl = str(CreateTable(DomainEventRow.__table__).compile(dialect=dialect))
         evidence_ddl = str(CreateTable(EvidenceRow.__table__).compile(dialect=dialect))
         hypothesis_ddl = str(CreateTable(HypothesisRow.__table__).compile(dialect=dialect))
@@ -50,6 +56,7 @@ def test_commerce_tables_compile_for_sqlite_and_postgresql():
         lease_ddl = str(CreateTable(RunLeaseRow.__table__).compile(dialect=dialect))
 
         assert "commerce_cases" in case_ddl
+        assert "commerce_case_lineage" in lineage_ddl
         assert "commerce_domain_events" in event_ddl
         assert "case_sequence" in event_ddl
         assert "run_sequence" in event_ddl
@@ -80,6 +87,7 @@ def test_independent_commerce_migration_entry_creates_only_commerce_tables(tmp_p
     assert tables == {
         "commerce_alembic_version",
         "commerce_cases",
+        "commerce_case_lineage",
         "commerce_domain_events",
         "commerce_evidence",
         "commerce_hypotheses",

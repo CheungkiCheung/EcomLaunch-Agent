@@ -38,6 +38,24 @@ class CaseResponse(CommerceResponse):
     version: int = Field(ge=1)
 
 
+class CaseLineageResponse(CommerceResponse):
+    schema_version: str
+    workspace_id: str
+    case_id: str
+    dataset_id: str
+    seller_entity_id: str
+    seller_external_key: str
+    baseline_start: datetime
+    baseline_end: datetime
+    current_start: datetime
+    current_end: datetime
+    anomaly_ids: list[str]
+    metric_observation_ids: list[str]
+    analysis_artifact_relative_path: str
+    analysis_artifact_sha256: str
+    created_at: datetime
+
+
 class EvidenceResponse(CommerceResponse):
     id: str
     workspace_id: str
@@ -88,6 +106,7 @@ class CaseListResponse(CommerceResponse):
 
 class CaseDetailResponse(CommerceResponse):
     case: CaseResponse
+    lineage: CaseLineageResponse | None
     evidence: list[EvidenceResponse]
     hypotheses: list[HypothesisResponse]
 

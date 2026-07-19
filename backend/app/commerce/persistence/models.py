@@ -303,3 +303,33 @@ class RunLeaseRow(CommerceBase):
             "expires_at",
         ),
     )
+
+
+class CaseLineageRow(CommerceBase):
+    """One immutable deterministic data lineage record per Case."""
+
+    __tablename__ = "commerce_case_lineage"
+
+    case_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    dataset_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    seller_entity_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    seller_external_key: Mapped[str] = mapped_column(String(256), nullable=False)
+    baseline_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    baseline_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    current_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    current_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    anomaly_ids_json: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    metric_observation_ids_json: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    analysis_artifact_relative_path: Mapped[str] = mapped_column(Text, nullable=False)
+    analysis_artifact_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        Index(
+            "ix_commerce_case_lineage_workspace_dataset",
+            "workspace_id",
+            "dataset_id",
+        ),
+    )

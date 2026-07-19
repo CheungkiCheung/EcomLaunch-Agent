@@ -11,7 +11,7 @@
 
 项目正在从旧 OpenSKU / EcomLaunch 方案改造为 Commerce Case Agent。
 
-Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 和“只生成候选、不自动确认”的 Semantic Candidate 层也已实现，并通过 fresh、身份核验的真实请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成 Case、Domain Event、append-only Evidence、versioned Hypothesis、bounded Investigation Run 与 append-only Goal Loop Checkpoint 持久化，以及 Data Intake、Profile、Capability、Semantic Candidate、Anomaly-to-Case、Investigation Start、Run Detail/Checkpoint/Event Stream API。Phase 4 的确定性编排内核现已包括 ContextPacket、PathAgentSpec、Capability-first DynamicPathRouter、并发安全 BudgetManager、规则型 ModelRouter、结构化 PathResult、GoalLoopController、Stop Condition、安全 Checkpoint，以及带 heartbeat 和 fencing token 的 Worker Lease；租约过期后新 Worker 可以读取最新 Checkpoint，旧 Worker 的 heartbeat/Checkpoint 写入会被拒绝。Action/Approval/Follow-up 持久化、真正的 Worker 执行循环、Case→Dataset/Analysis 数据血缘补强、Lead/Path Agent、Fresh-context Verification 和完整 Agent E2E 尚未完成；新建调查会诚实保持 `queued`，不会伪装成 Agent 已经执行。旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
+Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 和“只生成候选、不自动确认”的 Semantic Candidate 层也已实现，并通过 fresh、身份核验的真实请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成 Case、显式 Case→Dataset/Analysis Lineage、Domain Event、append-only Evidence、versioned Hypothesis、bounded Investigation Run 与 append-only Goal Loop Checkpoint 持久化，以及 Data Intake、Profile、Capability、Semantic Candidate、Anomaly-to-Case、Investigation Start、Case Lineage、Run Detail/Checkpoint/Event Stream API。Phase 4 的确定性编排内核现已包括 ContextPacket、PathAgentSpec、Capability-first DynamicPathRouter、并发安全 BudgetManager、规则型 ModelRouter、结构化 PathResult、GoalLoopController、Stop Condition、安全 Checkpoint，以及带 heartbeat 和 fencing token 的 Worker Lease；租约过期后新 Worker 可以读取最新 Checkpoint，旧 Worker 的 heartbeat/Checkpoint 写入会被拒绝。Action/Approval/Follow-up 持久化、真正的 Worker 执行循环、初始 ContextPacket Builder、Lead/Path Agent、Fresh-context Verification 和完整 Agent E2E 尚未完成；新建调查会诚实保持 `queued`，不会伪装成 Agent 已经执行。旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
 
 完整设计与实施计划：
 
@@ -34,6 +34,7 @@ Phase 0 基线与迁移清单：
 - [`docs/progress/2026-07-19-commerce-phase4-model-loop-path-result.md`](./docs/progress/2026-07-19-commerce-phase4-model-loop-path-result.md)
 - [`docs/progress/2026-07-19-commerce-investigation-run-persistence-api.md`](./docs/progress/2026-07-19-commerce-investigation-run-persistence-api.md)
 - [`docs/progress/2026-07-19-commerce-run-lease-harness-boundary.md`](./docs/progress/2026-07-19-commerce-run-lease-harness-boundary.md)
+- [`docs/progress/2026-07-19-commerce-case-data-lineage.md`](./docs/progress/2026-07-19-commerce-case-data-lineage.md)
 
 ## 解决什么问题
 

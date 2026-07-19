@@ -60,6 +60,7 @@ from app.commerce.domain.ids import (
     TypedId,
     WorkspaceId,
 )
+from app.commerce.domain.lineage import CaseLineage
 from app.commerce.domain.models import (
     Action,
     ApprovalRequirement,
@@ -88,6 +89,7 @@ __all__ = [
     "CapabilityAblation",
     "CaseId",
     "Case",
+    "CaseLineage",
     "CaseSeverity",
     "CaseStatus",
     "CaseProjection",

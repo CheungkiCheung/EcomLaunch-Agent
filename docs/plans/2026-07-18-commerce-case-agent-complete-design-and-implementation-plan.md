@@ -1125,6 +1125,7 @@ GREEN：添加：
 - [x] Source Traceability；
 - [x] Evidence / Hypothesis 与 Case、Domain Event 的同事务 Unit of Work；
 - [x] Case Projection Replay 对记录事件的 `case_version` 支持。
+- [x] Case → Dataset / Entity / Window / Analysis Artifact Lineage；
 
 #### Task 3.4：Domain Event Store
 
@@ -1146,6 +1147,7 @@ GREEN：添加：
 - [x] Deterministic Anomaly-to-Case analysis API with immutable derived snapshot and Case/Event Replay；
 - [x] Case List；
 - [x] Case Detail；
+- [x] Case Lineage Detail；
 - [x] Evidence List / Detail；
 - [x] Latest Hypothesis List；
 - [x] Case Domain Event Stream；
