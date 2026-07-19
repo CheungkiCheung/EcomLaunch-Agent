@@ -85,6 +85,12 @@ from app.commerce.agents.path_result import (
     ToolCallStatus,
     ToolCallTrace,
 )
+from app.commerce.agents.resume import (
+    ResumeDisposition,
+    ResumePlan,
+    ResumeReasonCode,
+    RunResumeClassifier,
+)
 from app.commerce.agents.router import (
     CaseSignalSummary,
     DynamicPathPlan,
@@ -163,7 +169,11 @@ __all__ = [
     "PathType",
     "PathUnknown",
     "RouteReasonCode",
+    "ResumeDisposition",
+    "ResumePlan",
+    "ResumeReasonCode",
     "RealPathAgentBlockedError",
+    "RunResumeClassifier",
     "SkillVersionRef",
     "ToolCallStatus",
     "ToolCallTrace",

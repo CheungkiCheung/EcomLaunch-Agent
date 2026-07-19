@@ -1280,11 +1280,14 @@ GREEN：添加：
 - [x] Lease-guarded Agent Evidence persistence into Case and Run streams；
 - [x] Actual token / wall-time / Path / iteration budget accounting；
 - [x] Atomic path.completed / post-call Checkpoint；
+- [x] Restart Resume classification：initial / unknown external outcome / partial Evidence / completed / invalid；
+- [x] Existing Checkpoint blocks automatic external model retry；
 - [ ] User Clarification Resume；
 - [ ] Mapping Confirmation Resume；
 - [ ] Approval Wait Resume；
 - [ ] Tool Failure Resume；
-- [ ] Process Restart Resume。
+- [x] Process Restart state reconstruction and retry-risk classification；
+- [ ] Process Restart continuation / reconciliation execution。
 
 退出条件：
 

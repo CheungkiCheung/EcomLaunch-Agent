@@ -21,6 +21,7 @@ from app.commerce.agents.goal_loop import (
     SkillVersionRef,
 )
 from app.commerce.agents.model_router import build_model_assignment_event
+from app.commerce.agents.resume import ResumePlan, RunResumeClassifier
 from app.commerce.api.data_service import CommerceDataService
 from app.commerce.domain.enums import RunPhase, RunStatus
 from app.commerce.domain.events import (
@@ -39,10 +40,12 @@ from app.commerce.domain.ids import (
 )
 from app.commerce.domain.models import Case, CommerceModel, Evidence
 from app.commerce.domain.runs import CommerceRun
+from app.commerce.persistence.events import SqlDomainEventStore
 from app.commerce.persistence.repositories import SqlCaseRepository
 from app.commerce.persistence.runs import (
     RunCheckpointRecord,
     RunLeaseCredentials,
+    SqlRunCheckpointRepository,
     SqlRunLeaseRepository,
     SqlRunRepository,
 )
@@ -78,6 +81,8 @@ class CommerceInvestigationWorker:
         self._session_factory = session_factory
         self._agent = fulfillment_agent or FulfillmentPathAgent()
         self._leases = SqlRunLeaseRepository(session_factory)
+        self._checkpoints = SqlRunCheckpointRepository(session_factory)
+        self._events = SqlDomainEventStore(session_factory)
         self._runs = SqlRunRepository(session_factory)
         self._cases = SqlCaseRepository(session_factory)
         self._uow = SqlCommerceUnitOfWork(session_factory)
@@ -105,8 +110,10 @@ class CommerceInvestigationWorker:
             correlation_id=correlation_id,
         )
         if grant.latest_checkpoint is not None:
+            resume = await self.plan_resume(workspace_id, run_id)
             raise RuntimeError(
-                "Fulfillment Worker resume is not implemented for an existing Checkpoint"
+                "Fulfillment Worker automatic retry is blocked for existing "
+                f"Checkpoint: {resume.disposition.value}"
             )
 
         investigating = grant.run.advance_phase(
@@ -301,6 +308,18 @@ class CommerceInvestigationWorker:
                 *evidence_events,
                 *post_events,
             ),
+        )
+
+    async def plan_resume(
+        self,
+        workspace_id: WorkspaceId,
+        run_id: RunId,
+    ) -> ResumePlan:
+        latest = await self._checkpoints.get_latest(workspace_id, run_id)
+        events = await self._events.list_run(workspace_id, run_id)
+        return RunResumeClassifier().classify(
+            latest_checkpoint=latest,
+            run_events=events,
         )
 
     async def _persist_evidence(
