@@ -1181,7 +1181,8 @@ GREEN：添加：
 - [x] Structured PathResult；
 - [x] 真实 DeepSeek V4 FulfillmentPathAgent 行为测试；
 - [x] Fenced Worker Fulfillment step：pre/post Checkpoint、Event、Budget、Evidence；
-- [ ] SellerPeer / ReviewExperience Path Agent 与 Verification 行为测试。
+- [x] Fresh-context Verification：supported claim pass + causal overclaim reject；
+- [ ] SellerPeer / ReviewExperience Path Agent 行为测试。
 
 #### Task 4.1：ContextPacket
 
@@ -1262,13 +1263,15 @@ GREEN：添加：
 
 #### Task 4.9：VerificationEngine
 
-- Fresh Context；
-- Metric Recalculation；
-- Claim-Evidence；
-- Causal Language；
-- Capability Boundary；
-- Action Policy；
-- Reject / Repair / Pass。
+- [x] Fresh Context without Lead reasoning；
+- [x] Deterministic Metric digest context；
+- [x] Claim-Evidence and MetricObservation membership；
+- [x] Causal Language rejection；
+- [x] Capability Boundary；
+- [x] Policy constraints；
+- [x] Reject / Repair / Pass contract；
+- [x] Fresh real DeepSeek V4 behavior gate；
+- [ ] Worker persistence and replan integration。
 
 #### Task 4.10：Checkpoint / Resume
 

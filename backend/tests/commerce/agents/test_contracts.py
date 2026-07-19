@@ -188,6 +188,12 @@ def test_context_packets_reject_hidden_label_metadata_and_reasoning_history():
         VerificationPacket(
             **common,
             claims=("Transit time worsened",),
+            capability_profile=CapabilityProfile(
+                dataset_id=dataset_id,
+                workspace_id=workspace_id,
+                capabilities=(),
+            ),
+            analysis=_analysis(dataset_id),
             capability_boundaries=("profit not observed",),
             lead_reasoning="private chain of thought",
         )

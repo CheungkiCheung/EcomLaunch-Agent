@@ -298,9 +298,21 @@ class PathContextPacket(ContextPacket):
 
 class VerificationPacket(ContextPacket):
     claims: tuple[str, ...] = Field(min_length=1)
+    capability_profile: CapabilityProfile
+    analysis: CaseAnalysisDigest
     evidence: tuple[EvidenceDigest, ...] = ()
     capability_boundaries: tuple[str, ...] = ()
     policy_constraints: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def match_verification_context_identity(self) -> Self:
+        if self.capability_profile.workspace_id != self.case.workspace_id:
+            raise ValueError("Verification Capability Workspace must match Case")
+        if self.capability_profile.dataset_id != self.manifest.dataset_id:
+            raise ValueError("Verification Capability Dataset must match Manifest")
+        if self.analysis.dataset_id != self.manifest.dataset_id:
+            raise ValueError("Verification Analysis Dataset must match Manifest")
+        return self
 
 
 def canonical_context_bytes(packet: ContextPacket) -> bytes:
