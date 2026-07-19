@@ -3,25 +3,31 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime
+import hashlib
+import secrets
+from datetime import UTC, datetime, timedelta
 from typing import Protocol, runtime_checkable
 
-from pydantic import Field
+from pydantic import Field, SecretStr, model_validator
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.commerce.agents.goal_loop import GoalLoopCheckpoint
 from app.commerce.domain.enums import RunPhase, RunStatus
+from app.commerce.domain.events import DomainEventActor, NewDomainEvent
 from app.commerce.domain.ids import (
     CaseId,
     CheckpointId,
+    CorrelationId,
     RunId,
+    TraceId,
     WorkspaceId,
 )
 from app.commerce.domain.models import CommerceModel
 from app.commerce.domain.runs import CommerceRun
-from app.commerce.persistence.models import RunCheckpointRow, RunRow
+from app.commerce.persistence.events import SqlDomainEventStore
+from app.commerce.persistence.models import RunCheckpointRow, RunLeaseRow, RunRow
 from app.commerce.persistence.repositories import (
     DuplicateEntityError,
     EntityNotFoundError,
@@ -111,6 +117,20 @@ class SqlRunRepository:
                 )
             )
             return _row_to_run(row) if row is not None else None
+
+    @staticmethod
+    async def get_in_session(
+        session: AsyncSession,
+        workspace_id: WorkspaceId,
+        run_id: RunId,
+    ) -> CommerceRun | None:
+        row = await session.scalar(
+            select(RunRow).where(
+                RunRow.workspace_id == str(workspace_id),
+                RunRow.run_id == str(run_id),
+            )
+        )
+        return _row_to_run(row) if row is not None else None
 
     async def get_by_idempotency_key(
         self,
@@ -213,6 +233,16 @@ class RunCheckpointRecord(CommerceModel):
     checkpoint: GoalLoopCheckpoint
     created_at: datetime
 
+    @model_validator(mode="after")
+    def match_checkpoint_identity(self):
+        if self.workspace_id != self.checkpoint.workspace_id:
+            raise ValueError("Checkpoint Record workspace must match payload")
+        if self.case_id != self.checkpoint.case_id:
+            raise ValueError("Checkpoint Record Case must match payload")
+        if self.run_id != self.checkpoint.run_id:
+            raise ValueError("Checkpoint Record Run must match payload")
+        return self
+
 
 def _row_to_checkpoint(row: RunCheckpointRow) -> RunCheckpointRecord:
     return RunCheckpointRecord(
@@ -260,6 +290,15 @@ class SqlRunCheckpointRepository:
         workspace_id: WorkspaceId,
         run_id: RunId,
     ) -> RunCheckpointRecord | None:
+        async with self._session_factory() as session:
+            return await self.get_latest_in_session(session, workspace_id, run_id)
+
+    @staticmethod
+    async def get_latest_in_session(
+        session: AsyncSession,
+        workspace_id: WorkspaceId,
+        run_id: RunId,
+    ) -> RunCheckpointRecord | None:
         statement = (
             select(RunCheckpointRow)
             .where(
@@ -269,9 +308,8 @@ class SqlRunCheckpointRepository:
             .order_by(RunCheckpointRow.sequence.desc())
             .limit(1)
         )
-        async with self._session_factory() as session:
-            row = await session.scalar(statement)
-            return _row_to_checkpoint(row) if row is not None else None
+        row = await session.scalar(statement)
+        return _row_to_checkpoint(row) if row is not None else None
 
     async def list_run(
         self,
@@ -339,3 +377,272 @@ class SqlRunCheckpointRepository:
         session.add(row)
         await session.flush()
         return _row_to_checkpoint(row)
+
+
+class RunLeaseConflictError(RuntimeError):
+    """A live Worker already owns the Run or the Run cannot be acquired."""
+
+
+class RunLeaseLostError(RuntimeError):
+    """The Worker credential is stale, expired, or fenced by a newer owner."""
+
+
+class RunLeaseCredentials(CommerceModel):
+    worker_id: str = Field(min_length=1, max_length=128)
+    lease_token: SecretStr
+    fencing_token: int = Field(ge=1)
+
+
+class RunLeaseSnapshot(CommerceModel):
+    workspace_id: WorkspaceId
+    case_id: CaseId
+    run_id: RunId
+    worker_id: str = Field(min_length=1, max_length=128)
+    fencing_token: int = Field(ge=1)
+    acquired_at: datetime
+    heartbeat_at: datetime
+    expires_at: datetime
+
+
+class RunLeaseGrant(CommerceModel):
+    run: CommerceRun
+    credentials: RunLeaseCredentials
+    acquired_at: datetime
+    expires_at: datetime
+    reacquired: bool
+    latest_checkpoint: RunCheckpointRecord | None = None
+
+
+def _row_to_lease(row: RunLeaseRow) -> RunLeaseSnapshot:
+    return RunLeaseSnapshot(
+        workspace_id=WorkspaceId(row.workspace_id),
+        case_id=CaseId(row.case_id),
+        run_id=RunId(row.run_id),
+        worker_id=row.worker_id,
+        fencing_token=row.fencing_token,
+        acquired_at=_utc(row.acquired_at),
+        heartbeat_at=_utc(row.heartbeat_at),
+        expires_at=_utc(row.expires_at),
+    )
+
+
+def _token_sha256(credentials: RunLeaseCredentials) -> str:
+    raw = credentials.lease_token.get_secret_value()
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+class SqlRunLeaseRepository:
+    """Acquire and heartbeat one fenced execution owner per Commerce Run."""
+
+    def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
+        self._session_factory = session_factory
+
+    async def acquire(
+        self,
+        workspace_id: WorkspaceId,
+        run_id: RunId,
+        *,
+        worker_id: str,
+        ttl: timedelta,
+        acquired_at: datetime,
+        trace_id: TraceId,
+        correlation_id: CorrelationId,
+    ) -> RunLeaseGrant:
+        if ttl.total_seconds() <= 0:
+            raise ValueError("Run lease TTL must be positive")
+        if not worker_id.strip():
+            raise ValueError("Run lease worker_id cannot be blank")
+        raw_token = secrets.token_urlsafe(32)
+        last_error: IntegrityError | None = None
+        for attempt in range(20):
+            try:
+                async with self._session_factory() as session, session.begin():
+                    return await self._acquire_in_session(
+                        session,
+                        workspace_id,
+                        run_id,
+                        worker_id=worker_id,
+                        raw_token=raw_token,
+                        ttl=ttl,
+                        acquired_at=acquired_at,
+                        trace_id=trace_id,
+                        correlation_id=correlation_id,
+                    )
+            except OptimisticConcurrencyError as exc:
+                raise RunLeaseConflictError(f"Run is already acquired: {run_id}") from exc
+            except IntegrityError as exc:
+                last_error = exc
+                await asyncio.sleep(0.001 * (attempt + 1))
+        raise RunLeaseConflictError(
+            f"Run lease acquisition exceeded retry budget: {run_id}"
+        ) from last_error
+
+    async def _acquire_in_session(
+        self,
+        session: AsyncSession,
+        workspace_id: WorkspaceId,
+        run_id: RunId,
+        *,
+        worker_id: str,
+        raw_token: str,
+        ttl: timedelta,
+        acquired_at: datetime,
+        trace_id: TraceId,
+        correlation_id: CorrelationId,
+    ) -> RunLeaseGrant:
+        run = await SqlRunRepository.get_in_session(session, workspace_id, run_id)
+        if run is None:
+            raise EntityNotFoundError(f"Run not found: {run_id}")
+        row = await session.get(RunLeaseRow, str(run_id))
+        expires_at = acquired_at + ttl
+        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+        reacquired = False
+
+        if run.status is RunStatus.QUEUED:
+            running = run.transition_to(
+                RunStatus.RUNNING,
+                occurred_at=acquired_at,
+            )
+            await SqlRunRepository.save_in_session(
+                session,
+                running,
+                expected_version=run.version,
+            )
+            run = running
+            fencing_token = (row.fencing_token + 1) if row is not None else 1
+            event_type = "run.status_changed"
+            payload = {
+                "from_status": RunStatus.QUEUED.value,
+                "to_status": RunStatus.RUNNING.value,
+                "from_phase": run.phase.value,
+                "to_phase": run.phase.value,
+                "worker_id": worker_id,
+                "fencing_token": fencing_token,
+                "version": run.version,
+            }
+        elif run.status is RunStatus.RUNNING:
+            if row is None or row.released_at is not None:
+                raise RunLeaseConflictError(
+                    f"Running Run has no recoverable lease: {run_id}"
+                )
+            if _utc(row.expires_at) > acquired_at:
+                raise RunLeaseConflictError(f"Run lease is still active: {run_id}")
+            fencing_token = row.fencing_token + 1
+            reacquired = True
+            event_type = "run.lease_reacquired"
+            payload = {
+                "previous_worker_id": row.worker_id,
+                "worker_id": worker_id,
+                "fencing_token": fencing_token,
+                "resumed_from_expired_lease": True,
+                "version": run.version,
+            }
+        else:
+            raise RunLeaseConflictError(
+                f"Run status {run.status.value} cannot be acquired"
+            )
+
+        if row is None:
+            row = RunLeaseRow(
+                run_id=str(run_id),
+                workspace_id=str(workspace_id),
+                case_id=str(run.case_id),
+                worker_id=worker_id,
+                lease_token_sha256=token_hash,
+                fencing_token=fencing_token,
+                acquired_at=acquired_at,
+                heartbeat_at=acquired_at,
+                expires_at=expires_at,
+                released_at=None,
+            )
+            session.add(row)
+        else:
+            row.worker_id = worker_id
+            row.lease_token_sha256 = token_hash
+            row.fencing_token = fencing_token
+            row.acquired_at = acquired_at
+            row.heartbeat_at = acquired_at
+            row.expires_at = expires_at
+            row.released_at = None
+        await session.flush()
+
+        event = NewDomainEvent(
+            workspace_id=workspace_id,
+            case_id=run.case_id,
+            run_id=run.id,
+            event_type=event_type,
+            occurred_at=acquired_at,
+            trace_id=trace_id,
+            correlation_id=correlation_id,
+            actor=DomainEventActor.SYSTEM,
+            payload=payload,
+        )
+        await SqlDomainEventStore.append_in_session(session, event)
+        latest = await SqlRunCheckpointRepository.get_latest_in_session(
+            session,
+            workspace_id,
+            run_id,
+        )
+        return RunLeaseGrant(
+            run=run,
+            credentials=RunLeaseCredentials(
+                worker_id=worker_id,
+                lease_token=SecretStr(raw_token),
+                fencing_token=fencing_token,
+            ),
+            acquired_at=acquired_at,
+            expires_at=expires_at,
+            reacquired=reacquired,
+            latest_checkpoint=latest,
+        )
+
+    async def heartbeat(
+        self,
+        workspace_id: WorkspaceId,
+        run_id: RunId,
+        credentials: RunLeaseCredentials,
+        *,
+        ttl: timedelta,
+        heartbeat_at: datetime,
+    ) -> RunLeaseSnapshot:
+        if ttl.total_seconds() <= 0:
+            raise ValueError("Run lease TTL must be positive")
+        async with self._session_factory() as session, session.begin():
+            row = await self.require_valid_in_session(
+                session,
+                workspace_id,
+                run_id,
+                credentials,
+                checked_at=heartbeat_at,
+            )
+            row.heartbeat_at = heartbeat_at
+            row.expires_at = heartbeat_at + ttl
+            await session.flush()
+            return _row_to_lease(row)
+
+    @staticmethod
+    async def require_valid_in_session(
+        session: AsyncSession,
+        workspace_id: WorkspaceId,
+        run_id: RunId,
+        credentials: RunLeaseCredentials,
+        *,
+        checked_at: datetime,
+    ) -> RunLeaseRow:
+        row = await session.scalar(
+            select(RunLeaseRow).where(
+                RunLeaseRow.workspace_id == str(workspace_id),
+                RunLeaseRow.run_id == str(run_id),
+            )
+        )
+        valid = (
+            row is not None
+            and row.released_at is None
+            and row.worker_id == credentials.worker_id
+            and row.fencing_token == credentials.fencing_token
+            and row.lease_token_sha256 == _token_sha256(credentials)
+            and _utc(row.expires_at) > checked_at
+        )
+        if not valid:
+            raise RunLeaseLostError(f"Run lease is stale or expired: {run_id}")
+        return row

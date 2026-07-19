@@ -274,3 +274,32 @@ class RunCheckpointRow(CommerceBase):
             "sequence",
         ),
     )
+
+
+class RunLeaseRow(CommerceBase):
+    """Current fenced execution ownership for one Commerce Run."""
+
+    __tablename__ = "commerce_run_leases"
+
+    run_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    case_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    worker_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    lease_token_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    fencing_token: Mapped[int] = mapped_column(Integer, nullable=False)
+    acquired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    heartbeat_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        CheckConstraint(
+            "fencing_token >= 1",
+            name="ck_commerce_run_lease_fencing_positive",
+        ),
+        Index(
+            "ix_commerce_run_leases_workspace_expiry",
+            "workspace_id",
+            "expires_at",
+        ),
+    )

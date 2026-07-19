@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -32,7 +33,10 @@ from app.commerce.persistence.repositories import (
 )
 from app.commerce.persistence.runs import (
     RunCheckpointRecord,
+    RunLeaseCredentials,
+    RunLeaseLostError,
     SqlRunCheckpointRepository,
+    SqlRunLeaseRepository,
     SqlRunRepository,
 )
 from app.commerce.persistence.work_records import (
@@ -247,12 +251,41 @@ class SqlCommerceUnitOfWork:
         actor: DomainEventActor,
         causation_event_id: EventId | None = None,
         checkpoint_id: CheckpointId | None = None,
+        lease: RunLeaseCredentials | None = None,
+        lease_checked_at: datetime | None = None,
     ) -> tuple[RunCheckpointRecord, DomainEventEnvelope]:
         selected_id = checkpoint_id or CheckpointId.new()
         last_error: IntegrityError | None = None
         for attempt in range(self.MAX_SEQUENCE_RETRIES):
             try:
                 async with self._session_factory() as session, session.begin():
+                    run = await SqlRunRepository.get_in_session(
+                        session,
+                        checkpoint.workspace_id,
+                        checkpoint.run_id,
+                    )
+                    if run is None:
+                        raise ValueError(f"Run not found: {checkpoint.run_id}")
+                    if run.status is RunStatus.RUNNING:
+                        if lease is None:
+                            raise RunLeaseLostError(
+                                "Running Run Checkpoint write requires a lease"
+                            )
+                        await SqlRunLeaseRepository.require_valid_in_session(
+                            session,
+                            checkpoint.workspace_id,
+                            checkpoint.run_id,
+                            lease,
+                            checked_at=lease_checked_at or datetime.now(UTC),
+                        )
+                    elif lease is not None:
+                        await SqlRunLeaseRepository.require_valid_in_session(
+                            session,
+                            checkpoint.workspace_id,
+                            checkpoint.run_id,
+                            lease,
+                            checked_at=lease_checked_at or datetime.now(UTC),
+                        )
                     record = await SqlRunCheckpointRepository.append_in_session(
                         session,
                         checkpoint,

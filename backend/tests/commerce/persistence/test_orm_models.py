@@ -15,6 +15,7 @@ from app.commerce.persistence.models import (
     EvidenceRow,
     HypothesisRow,
     RunCheckpointRow,
+    RunLeaseRow,
     RunRow,
 )
 
@@ -24,6 +25,7 @@ def test_commerce_tables_use_an_application_owned_metadata_registry():
     assert DomainEventRow.metadata is CommerceBase.metadata
     assert RunRow.metadata is CommerceBase.metadata
     assert RunCheckpointRow.metadata is CommerceBase.metadata
+    assert RunLeaseRow.metadata is CommerceBase.metadata
     assert set(CommerceBase.metadata.tables) == {
         "commerce_cases",
         "commerce_domain_events",
@@ -31,6 +33,7 @@ def test_commerce_tables_use_an_application_owned_metadata_registry():
         "commerce_hypotheses",
         "commerce_runs",
         "commerce_run_checkpoints",
+        "commerce_run_leases",
     }
 
 
@@ -44,6 +47,7 @@ def test_commerce_tables_compile_for_sqlite_and_postgresql():
         checkpoint_ddl = str(
             CreateTable(RunCheckpointRow.__table__).compile(dialect=dialect)
         )
+        lease_ddl = str(CreateTable(RunLeaseRow.__table__).compile(dialect=dialect))
 
         assert "commerce_cases" in case_ddl
         assert "commerce_domain_events" in event_ddl
@@ -57,6 +61,8 @@ def test_commerce_tables_compile_for_sqlite_and_postgresql():
         assert "idempotency_key_sha256" in run_ddl
         assert "commerce_run_checkpoints" in checkpoint_ddl
         assert "checkpoint_json" in checkpoint_ddl
+        assert "commerce_run_leases" in lease_ddl
+        assert "fencing_token" in lease_ddl
 
 
 def test_independent_commerce_migration_entry_creates_only_commerce_tables(tmp_path):
@@ -79,4 +85,5 @@ def test_independent_commerce_migration_entry_creates_only_commerce_tables(tmp_p
         "commerce_hypotheses",
         "commerce_runs",
         "commerce_run_checkpoints",
+        "commerce_run_leases",
     }

@@ -16,8 +16,14 @@ from app.commerce.persistence.repositories import (
 )
 from app.commerce.persistence.runs import (
     RunCheckpointRecord,
+    RunLeaseConflictError,
+    RunLeaseCredentials,
+    RunLeaseGrant,
+    RunLeaseLostError,
+    RunLeaseSnapshot,
     RunRepository,
     SqlRunCheckpointRepository,
+    SqlRunLeaseRepository,
     SqlRunRepository,
 )
 from app.commerce.persistence.schema import create_commerce_schema
@@ -33,11 +39,17 @@ __all__ = [
     "EventStreamInvariantError",
     "OptimisticConcurrencyError",
     "RunCheckpointRecord",
+    "RunLeaseConflictError",
+    "RunLeaseCredentials",
+    "RunLeaseGrant",
+    "RunLeaseLostError",
+    "RunLeaseSnapshot",
     "RunRepository",
     "SqlCaseRepository",
     "SqlCommerceUnitOfWork",
     "SqlDomainEventStore",
     "SqlRunCheckpointRepository",
+    "SqlRunLeaseRepository",
     "SqlRunRepository",
     "create_commerce_schema",
 ]

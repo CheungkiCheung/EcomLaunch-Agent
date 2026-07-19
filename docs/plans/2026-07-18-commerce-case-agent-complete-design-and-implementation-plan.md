@@ -1257,6 +1257,8 @@ GREEN：添加：
 #### Task 4.10：Checkpoint / Resume
 
 - [x] Append-only safe Checkpoint persistence and read API；
+- [x] Fenced Worker lease / heartbeat / expired-lease takeover；
+- [x] Latest Checkpoint returned on lease reacquisition；
 - [ ] User Clarification Resume；
 - [ ] Mapping Confirmation Resume；
 - [ ] Approval Wait Resume；
