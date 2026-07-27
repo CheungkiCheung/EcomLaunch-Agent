@@ -15,6 +15,12 @@ logger = logging.getLogger(__name__)
 # Valid range for max_concurrent_subagents
 MIN_SUBAGENT_LIMIT = 2
 MAX_SUBAGENT_LIMIT = 4
+SUBAGENT_DISPATCH_TOOL_NAMES = {
+    "task",
+    "spawn_task",
+    "follow_up_task",
+    "resume_task",
+}
 
 
 def _clamp_subagent_limit(value: int) -> int:
@@ -51,8 +57,12 @@ class SubagentLimitMiddleware(AgentMiddleware[AgentState]):
         if not tool_calls:
             return None
 
-        # Count task tool calls
-        task_indices = [i for i, tc in enumerate(tool_calls) if tc.get("name") == "task"]
+        # Count both the legacy blocking tool and durable dispatch controls.
+        task_indices = [
+            i
+            for i, tc in enumerate(tool_calls)
+            if tc.get("name") in SUBAGENT_DISPATCH_TOOL_NAMES
+        ]
         if len(task_indices) <= self.max_concurrent:
             return None
 
@@ -61,7 +71,12 @@ class SubagentLimitMiddleware(AgentMiddleware[AgentState]):
         truncated_tool_calls = [tc for i, tc in enumerate(tool_calls) if i not in indices_to_drop]
 
         dropped_count = len(indices_to_drop)
-        logger.warning(f"Truncated {dropped_count} excess task tool call(s) from model response (limit: {self.max_concurrent})")
+        logger.warning(
+            "Truncated %s excess subagent dispatch tool call(s) from model "
+            "response (limit: %s)",
+            dropped_count,
+            self.max_concurrent,
+        )
 
         # Replace the AIMessage with truncated tool_calls (same id triggers replacement)
         updated_msg = clone_ai_message_with_tool_calls(last_msg, truncated_tool_calls)

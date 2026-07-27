@@ -26,9 +26,11 @@ export default function ChatsPage() {
 
   const filteredThreads = useMemo(() => {
     return threads?.filter((thread) => {
-      return titleOfThread(thread).toLowerCase().includes(search.toLowerCase());
+      return titleOfThread(thread, t.pages.untitled)
+        .toLowerCase()
+        .includes(search.toLowerCase());
     });
-  }, [threads, search]);
+  }, [threads, search, t.pages.untitled]);
   return (
     <WorkspaceContainer>
       <WorkspaceHeader></WorkspaceHeader>
@@ -51,7 +53,7 @@ export default function ChatsPage() {
                   <Link key={thread.thread_id} href={pathOfThread(thread)}>
                     <div className="flex flex-col gap-2 border-b p-4">
                       <div>
-                        <div>{titleOfThread(thread)}</div>
+                        <div>{titleOfThread(thread, t.pages.untitled)}</div>
                       </div>
                       {thread.updated_at && (
                         <div className="text-muted-foreground text-sm">

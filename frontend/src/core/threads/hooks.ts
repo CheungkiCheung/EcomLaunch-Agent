@@ -31,6 +31,7 @@ import type {
   RunMessage,
   ThreadTokenUsageResponse,
 } from "./types";
+import { assistantIdForThreadContext } from "./utils";
 
 export type ToolEndEvent = {
   name: string;
@@ -397,7 +398,7 @@ export function useThreadStream({
 
   const thread = useStream<AgentThreadState>({
     client: getAPIClient(isMock),
-    assistantId: "lead_agent",
+    assistantId: assistantIdForThreadContext(context),
     threadId: onStreamThreadId,
     reconnectOnMount: true,
     fetchStateHistory: { limit: 1 },
@@ -530,6 +531,10 @@ export function useThreadStream({
       );
       if (threadIdRef.current && !isMock) {
         void queryClient.invalidateQueries({
+          queryKey: ["thread", threadIdRef.current],
+          exact: true,
+        });
+        void queryClient.invalidateQueries({
           queryKey: threadTokenUsageQueryKey(threadIdRef.current),
         });
       }
@@ -543,6 +548,10 @@ export function useThreadStream({
       );
       void queryClient.invalidateQueries({ queryKey: ["threads", "search"] });
       if (threadIdRef.current && !isMock) {
+        void queryClient.invalidateQueries({
+          queryKey: ["thread", threadIdRef.current],
+          exact: true,
+        });
         void queryClient.invalidateQueries({
           queryKey: threadTokenUsageQueryKey(threadIdRef.current),
         });
@@ -1077,7 +1086,16 @@ export function useThreads(
   });
 }
 
-export function useThreadRuns(threadId?: string) {
+export function useThreadRuns(
+  threadId?: string,
+  {
+    pollWhileActive = false,
+    pollIntervalMs = 1_500,
+  }: {
+    pollWhileActive?: boolean;
+    pollIntervalMs?: number;
+  } = {},
+) {
   const apiClient = getAPIClient();
   return useQuery<Run[]>({
     queryKey: ["thread", threadId],
@@ -1089,6 +1107,14 @@ export function useThreadRuns(threadId?: string) {
       return response;
     },
     refetchOnWindowFocus: false,
+    refetchInterval: (query) => {
+      if (!pollWhileActive) return false;
+      const runs = query.state.data;
+      const hasActiveRun = runs?.some(
+        (run) => run.status === "pending" || run.status === "running",
+      );
+      return hasActiveRun ? Math.max(250, pollIntervalMs) : false;
+    },
   });
 }
 

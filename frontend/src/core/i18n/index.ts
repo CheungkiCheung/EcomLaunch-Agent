@@ -7,5 +7,6 @@ export {
   detectLocale,
   isLocale,
   normalizeLocale,
+  resolvePreferredLocale,
 } from "./locale";
 export type { Locale } from "./locale";

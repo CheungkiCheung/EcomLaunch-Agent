@@ -86,15 +86,7 @@ class CommerceAnalysisService:
     ) -> AnalysisOutcome:
         view = self._data.get_view(workspace_id, dataset_id)
         normalized = self._data.normalize(workspace_id, dataset_id)
-        seller_ids = tuple(
-            sorted(
-                {
-                    entity.external_key
-                    for entity in normalized.entities
-                    if entity.entity_type.value == "seller"
-                }
-            )
-        )
+        seller_ids = tuple(sorted({entity.external_key for entity in normalized.entities if entity.entity_type.value == "seller"}))
         if seller_id is not None:
             if seller_id not in seller_ids:
                 raise ValueError(f"Unknown seller in Dataset: {seller_id}")
@@ -118,9 +110,7 @@ class CommerceAnalysisService:
                 )
                 signals = self._detector.detect(baseline, current)
             except (KeyError, ValueError) as exc:
-                skipped.append(
-                    AnalysisSkip(seller_id=current_seller_id, reason=str(exc))
-                )
+                skipped.append(AnalysisSkip(seller_id=current_seller_id, reason=str(exc)))
                 continue
             artifact_sellers.append(
                 {
@@ -154,9 +144,7 @@ class CommerceAnalysisService:
             "sellers": artifact_sellers,
             "case_ids": [str(case.id) for case in cases],
         }
-        artifact_key = hashlib.sha256(
-            json.dumps(artifact_payload, sort_keys=True).encode("utf-8")
-        ).hexdigest()
+        artifact_key = hashlib.sha256(json.dumps(artifact_payload, sort_keys=True).encode("utf-8")).hexdigest()
         self._data.write_derived_artifact(
             workspace_id,
             dataset_id,
@@ -188,17 +176,11 @@ class CommerceAnalysisService:
 
         view = self._data.get_view(workspace_id, dataset_id)
         normalized = self._data.normalize(workspace_id, dataset_id)
-        seller_ids = {
-            entity.external_key
-            for entity in normalized.entities
-            if entity.entity_type.value == "seller"
-        }
+        seller_ids = {entity.external_key for entity in normalized.entities if entity.entity_type.value == "seller"}
         if seller_id not in seller_ids:
             raise ValueError(f"Unknown seller in Dataset: {seller_id}")
         if baseline_window.end > current_window.start:
-            raise ValueError(
-                "Baseline window must end no later than current window start"
-            )
+            raise ValueError("Baseline window must end no later than current window start")
         trigger = CaseTriggerDigest(
             trigger_type=CaseTriggerType.EXPLICIT_USER,
             requested_paths=requested_paths,
@@ -228,15 +210,15 @@ class CommerceAnalysisService:
             "workspace_id": str(workspace_id),
             "baseline_window": baseline_window.model_dump(mode="json"),
             "current_window": current_window.model_dump(mode="json"),
-            "sellers": [{
-                "seller_id": seller_id,
-                "signal_ids": [],
-            }],
+            "sellers": [
+                {
+                    "seller_id": seller_id,
+                    "signal_ids": [],
+                }
+            ],
             "case_ids": [str(case.id)],
         }
-        artifact_key = hashlib.sha256(
-            json.dumps(artifact_payload, sort_keys=True).encode("utf-8")
-        ).hexdigest()
+        artifact_key = hashlib.sha256(json.dumps(artifact_payload, sort_keys=True).encode("utf-8")).hexdigest()
         self._data.write_derived_artifact(
             workspace_id,
             dataset_id,
@@ -265,13 +247,16 @@ class CommerceAnalysisService:
             "case_"
             + uuid5(
                 NAMESPACE_URL,
-                "explicit-commerce-case:" + _canonical_json({
-                    "dataset_id": str(dataset_id),
-                    "seller_id": current.seller_id,
-                    "baseline": baseline.window.model_dump(mode="json"),
-                    "current": current.window.model_dump(mode="json"),
-                    "trigger": trigger.model_dump(mode="json"),
-                }),
+                "explicit-commerce-case:"
+                + _canonical_json(
+                    {
+                        "dataset_id": str(dataset_id),
+                        "seller_id": current.seller_id,
+                        "baseline": baseline.window.model_dump(mode="json"),
+                        "current": current.window.model_dump(mode="json"),
+                        "trigger": trigger.model_dump(mode="json"),
+                    }
+                ),
             ).hex
         )
         context_payload = {
@@ -308,9 +293,7 @@ class CommerceAnalysisService:
             current_start=current.window.start,
             current_end=current.window.end,
             analysis_artifact_relative_path=f"derived/{context_filename}",
-            analysis_artifact_sha256=hashlib.sha256(
-                context_path.read_bytes()
-            ).hexdigest(),
+            analysis_artifact_sha256=hashlib.sha256(context_path.read_bytes()).hexdigest(),
             created_at=current.window.end,
         )
         repository = SqlCaseRepository(self._session_factory)
@@ -331,10 +314,7 @@ class CommerceAnalysisService:
             title=f"User-requested investigation for seller {current.seller_id}",
             severity=CaseSeverity.MEDIUM,
             status=CaseStatus.NEW,
-            summary=(
-                "Explicit user investigation request; deterministic metrics are "
-                "context, not a fabricated anomaly or causal finding."
-            ),
+            summary=("Explicit user investigation request; deterministic metrics are context, not a fabricated anomaly or causal finding."),
             opened_at=current.window.end,
             updated_at=current.window.end,
         )
@@ -366,9 +346,7 @@ class CommerceAnalysisService:
     ) -> Case:
         repository = SqlCaseRepository(self._session_factory)
         lineage_repository = SqlCaseLineageRepository(self._session_factory)
-        persisted_case_id = CaseId(
-            f"case_{uuid5(NAMESPACE_URL, f'{dataset_id}:{candidate.fingerprint}').hex}"
-        )
+        persisted_case_id = CaseId(f"case_{uuid5(NAMESPACE_URL, f'{dataset_id}:{candidate.fingerprint}').hex}")
         context_payload = {
             "schema_version": "commerce.case-analysis-context@1.0.0",
             "workspace_id": str(workspace_id),
@@ -380,13 +358,9 @@ class CommerceAnalysisService:
             "current": current.model_dump(mode="json"),
             "signals": [signal.model_dump(mode="json") for signal in signals],
             "capabilities": capabilities.model_dump(mode="json"),
-            "trigger": CaseTriggerDigest(
-                trigger_type=CaseTriggerType.DETECTED_ANOMALY
-            ).model_dump(mode="json"),
+            "trigger": CaseTriggerDigest(trigger_type=CaseTriggerType.DETECTED_ANOMALY).model_dump(mode="json"),
         }
-        context_key = hashlib.sha256(
-            json.dumps(context_payload, sort_keys=True).encode("utf-8")
-        ).hexdigest()
+        context_key = hashlib.sha256(json.dumps(context_payload, sort_keys=True).encode("utf-8")).hexdigest()
         context_filename = f"case-context-{context_key}.json"
         context_path = self._data.write_derived_artifact(
             workspace_id,
@@ -416,18 +390,14 @@ class CommerceAnalysisService:
                 )
             ),
             analysis_artifact_relative_path=f"derived/{context_filename}",
-            analysis_artifact_sha256=hashlib.sha256(
-                context_path.read_bytes()
-            ).hexdigest(),
+            analysis_artifact_sha256=hashlib.sha256(context_path.read_bytes()).hexdigest(),
             created_at=candidate.window.end,
         )
         existing = await repository.get(workspace_id, persisted_case_id)
         if existing is not None:
             if await lineage_repository.get(workspace_id, persisted_case_id) is None:
                 try:
-                    await SqlCommerceUnitOfWork(
-                        self._session_factory
-                    ).attach_case_lineage(
+                    await SqlCommerceUnitOfWork(self._session_factory).attach_case_lineage(
                         lineage,
                         trace_id=TraceId.new(),
                         correlation_id=CorrelationId.new(),
@@ -440,16 +410,10 @@ class CommerceAnalysisService:
         case = Case(
             id=persisted_case_id,
             workspace_id=workspace_id,
-            title=(
-                f"Deterministic anomaly for seller {candidate.seller_entity_id}"
-            ),
+            title=(f"Deterministic anomaly for seller {candidate.seller_entity_id}"),
             severity=self._case_severity(candidate.severity),
             status=CaseStatus.NEW,
-            summary=(
-                f"Dataset {dataset_id} produced {len(signals)} anomaly signal(s) "
-                f"for metrics: {', '.join(sorted(candidate.metric_names))}. "
-                "This is a diagnostic signal, not a causal claim."
-            ),
+            summary=(f"Dataset {dataset_id} produced {len(signals)} anomaly signal(s) for metrics: {', '.join(sorted(candidate.metric_names))}. This is a diagnostic signal, not a causal claim."),
             opened_at=candidate.window.end,
             updated_at=candidate.window.end,
         )
@@ -473,15 +437,10 @@ class CommerceAnalysisService:
         current_case = case
         for signal in signals:
             evidence = Evidence(
-                id=EvidenceId(
-                    f"evd_{uuid5(NAMESPACE_URL, f'{case.id}:{signal.id}').hex}"
-                ),
+                id=EvidenceId(f"evd_{uuid5(NAMESPACE_URL, f'{case.id}:{signal.id}').hex}"),
                 workspace_id=workspace_id,
                 case_id=case.id,
-                summary=(
-                    f"{signal.metric_name} changed from {signal.baseline_value} "
-                    f"to {signal.current_value}: {signal.reason}"
-                ),
+                summary=(f"{signal.metric_name} changed from {signal.baseline_value} to {signal.current_value}: {signal.reason}"),
                 relation=EvidenceRelation.SUPPORTS,
                 semantic_status=SemanticStatus.DERIVED,
                 confidence=signal.confidence,

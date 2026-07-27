@@ -135,17 +135,28 @@ def test_run_context_app_config_reflects_yaml_edit(tmp_path, monkeypatch):
     app.state.run_event_store = MagicMock()
     app.state.run_events_config = {"frozen": "startup"}
     app.state.thread_store = MagicMock()
+    subagent_task_manager = MagicMock()
+    app.state.subagent_task_manager = subagent_task_manager
+    subagent_task_runtime = MagicMock()
+    app.state.subagent_task_runtime = subagent_task_runtime
 
     @app.get("/run-ctx-log-level")
     def probe(ctx=Depends(get_run_context)):
         return {
             "log_level": ctx.app_config.log_level,
             "run_events_config": ctx.run_events_config,
+            "has_subagent_task_manager": ctx.subagent_task_manager is subagent_task_manager,
+            "has_subagent_task_runtime": ctx.subagent_task_runtime is subagent_task_runtime,
         }
 
     client = TestClient(app)
     first = client.get("/run-ctx-log-level").json()
-    assert first == {"log_level": "info", "run_events_config": {"frozen": "startup"}}
+    assert first == {
+        "log_level": "info",
+        "run_events_config": {"frozen": "startup"},
+        "has_subagent_task_manager": True,
+        "has_subagent_task_runtime": True,
+    }
 
     _write_config_yaml(config_file, log_level="debug")
     future_mtime = config_file.stat().st_mtime + 5
@@ -154,7 +165,12 @@ def test_run_context_app_config_reflects_yaml_edit(tmp_path, monkeypatch):
     second = client.get("/run-ctx-log-level").json()
     # app_config follows the edit; run_events_config stays frozen to the
     # startup snapshot we wrote onto app.state above.
-    assert second == {"log_level": "debug", "run_events_config": {"frozen": "startup"}}
+    assert second == {
+        "log_level": "debug",
+        "run_events_config": {"frozen": "startup"},
+        "has_subagent_task_manager": True,
+        "has_subagent_task_runtime": True,
+    }
 
 
 @pytest.mark.parametrize(

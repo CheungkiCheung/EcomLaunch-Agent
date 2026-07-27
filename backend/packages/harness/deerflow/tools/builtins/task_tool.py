@@ -11,7 +11,9 @@ from langchain_core.callbacks import BaseCallbackManager
 from langgraph.config import get_stream_writer
 
 from deerflow.config import get_app_config
+from deerflow.runtime.user_context import resolve_runtime_user_id
 from deerflow.sandbox.security import LOCAL_BASH_SUBAGENT_DISABLED_MESSAGE, is_host_bash_allowed
+from deerflow.skills.tool_policy import filter_tools_by_runtime_constraints
 from deerflow.subagents import SubagentExecutor, get_available_subagent_names, get_subagent_config
 from deerflow.subagents.config import resolve_subagent_model_name
 from deerflow.subagents.executor import (
@@ -20,7 +22,6 @@ from deerflow.subagents.executor import (
     get_background_task_result,
     request_cancel_background_task,
 )
-from deerflow.skills.tool_policy import filter_tools_by_runtime_constraints
 from deerflow.tools.types import Runtime
 
 if TYPE_CHECKING:
@@ -185,13 +186,7 @@ def _get_runtime_tool_policy_context(runtime: Any) -> dict[str, Any]:
             policy_context.update(configurable)
         metadata = runtime_config.get("metadata")
         if isinstance(metadata, dict):
-            policy_context.update(
-                {
-                    key: metadata[key]
-                    for key in ("disable_external_search", "opensku_benchmark_fixture_mode")
-                    if key in metadata
-                }
-            )
+            policy_context.update({key: metadata[key] for key in ("disable_external_search", "opensku_benchmark_fixture_mode") if key in metadata})
 
     context = getattr(runtime, "context", None)
     if isinstance(context, dict):
@@ -278,6 +273,7 @@ async def task_tool(
     sandbox_state = None
     thread_data = None
     thread_id = None
+    user_id = None
     parent_model = None
     trace_id = None
     metadata: dict = {}
@@ -288,6 +284,7 @@ async def task_tool(
         thread_id = runtime.context.get("thread_id") if runtime.context else None
         if thread_id is None:
             thread_id = runtime.config.get("configurable", {}).get("thread_id")
+        user_id = resolve_runtime_user_id(runtime)
 
         # Try to get parent model from configurable
         metadata = runtime.config.get("metadata", {})
@@ -333,6 +330,7 @@ async def task_tool(
         "sandbox_state": sandbox_state,
         "thread_data": thread_data,
         "thread_id": thread_id,
+        "user_id": user_id,
         "trace_id": trace_id,
     }
     if resolved_app_config is not None:

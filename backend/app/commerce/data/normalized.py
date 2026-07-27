@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
@@ -118,9 +118,7 @@ class OlistAdapter:
                     table_mappings,
                     row_index,
                 )
-                entity_id = EntityId(
-                    f"ent_{uuid5(NAMESPACE_URL, f'{manifest.dataset_id}:{table.table_name}:{external_key}').hex}"
-                )
+                entity_id = EntityId(f"ent_{uuid5(NAMESPACE_URL, f'{manifest.dataset_id}:{table.table_name}:{external_key}').hex}")
                 entity = NormalizedEntity(
                     id=entity_id,
                     workspace_id=manifest.workspace_id,
@@ -141,9 +139,7 @@ class OlistAdapter:
                         record_locator=locator,
                         column_name=mapping.column_name,
                     )
-                    fact_id = FactId(
-                        f"fact_{uuid5(NAMESPACE_URL, f'{entity_id}:{mapping.semantic_field.value}:{mapping.column_name}').hex}"
-                    )
+                    fact_id = FactId(f"fact_{uuid5(NAMESPACE_URL, f'{entity_id}:{mapping.semantic_field.value}:{mapping.column_name}').hex}")
                     if self._is_missing(raw_value):
                         facts.append(
                             Fact(
@@ -241,9 +237,10 @@ class OlistAdapter:
     @classmethod
     def _convert(cls, semantic_field: SemanticField, value: Any):
         if semantic_field in cls._DATETIME_FIELDS:
-            if isinstance(value, datetime):
-                return value
-            return datetime.fromisoformat(str(value).strip().replace("Z", "+00:00"))
+            parsed = value if isinstance(value, datetime) else datetime.fromisoformat(str(value).strip().replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                return parsed.replace(tzinfo=UTC)
+            return parsed.astimezone(UTC)
         if semantic_field in cls._INTEGER_FIELDS:
             return int(value)
         if semantic_field in cls._DECIMAL_FIELDS:

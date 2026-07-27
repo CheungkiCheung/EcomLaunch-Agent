@@ -4,14 +4,15 @@ token_usage:
   enabled: true
 models:
 - name: deepseek-reasoner
-  display_name: DeepSeek Reasoner
+  display_name: 深度求索 V4 极速版
   use: deerflow.models.patched_deepseek:PatchedChatDeepSeek
-  model: deepseek-reasoner
+  model: deepseek-v4-flash
   api_base: https://api.deepseek.com/v1
   api_key: $DEEPSEEK_API_KEY
   timeout: 600.0
-  max_retries: 2
+  max_retries: 0
   max_tokens: 8192
+  temperature: 0
   supports_thinking: true
   supports_vision: false
   when_thinking_enabled:
@@ -27,6 +28,7 @@ tool_groups:
 - name: file:read
 - name: file:write
 - name: bash
+- name: commerce
 tools:
 - name: web_search
   group: web
@@ -74,6 +76,66 @@ tools:
   group: web
   use: deerflow.community.last30days.tools:last30days_tool
   timeout: 150
+- name: commerce_ingest_uploads
+  group: commerce
+  use: app.commerce.tools.data_tools:commerce_ingest_uploads_tool
+  default_enabled: false
+  enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+- name: commerce_list_datasets
+  group: commerce
+  use: app.commerce.tools.data_tools:commerce_list_datasets_tool
+  default_enabled: false
+  enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+- name: commerce_select_dataset
+  group: commerce
+  use: app.commerce.tools.data_tools:commerce_select_dataset_tool
+  default_enabled: false
+  enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+- name: commerce_dataset_profile
+  group: commerce
+  use: app.commerce.tools.data_tools:commerce_dataset_profile_tool
+  default_enabled: false
+  enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+- name: commerce_capabilities
+  group: commerce
+  use: app.commerce.tools.data_tools:commerce_capabilities_tool
+  default_enabled: false
+  enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+- name: commerce_list_entities
+  group: commerce
+  use: app.commerce.tools.data_tools:commerce_list_entities_tool
+  default_enabled: false
+  enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+- name: commerce_seller_coverage
+  group: commerce
+  use: app.commerce.tools.data_tools:commerce_seller_coverage_tool
+  default_enabled: false
+  enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+- name: commerce_metric_snapshot
+  group: commerce
+  use: app.commerce.tools.data_tools:commerce_metric_snapshot_tool
+  default_enabled: false
+  enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+- name: commerce_compare_windows
+  group: commerce
+  use: app.commerce.tools.data_tools:commerce_compare_windows_tool
+  default_enabled: false
+  enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+- name: commerce_peer_comparison
+  group: commerce
+  use: app.commerce.tools.data_tools:commerce_peer_comparison_tool
+  default_enabled: false
+  enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+- name: commerce_geographic_segments
+  group: commerce
+  use: app.commerce.tools.data_tools:commerce_geographic_segments_tool
+  default_enabled: false
+  enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+- name: commerce_evidence_query
+  group: commerce
+  use: app.commerce.tools.data_tools:commerce_evidence_query_tool
+  default_enabled: false
+  enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
 tool_search:
   enabled: false
 tool_output:
@@ -117,6 +179,13 @@ title:
   max_words: 6
   max_chars: 60
   model_name: null
+  prompt_template: |
+    请根据下面第一轮对话生成一个简洁、自然的中文标题，最多 {max_words} 个短语。
+    标题必须以中文为主；CSV、GMV、SKU 等必要缩写可以保留，但不要使用英文句子。
+    用户：{user_msg}
+    助手：{assistant_msg}
+
+    只返回标题，不要引号，不要解释。
 summarization:
   enabled: true
   model_name: null
@@ -153,8 +222,12 @@ skill_evolution:
 database:
   backend: sqlite
   sqlite_dir: .deer-flow/data
+
+checkpointer:
+  type: sqlite
+  connection_string: data/deerflow.db
 run_events:
-  backend: memory
+  backend: db
   max_trace_content: 10240
   track_token_usage: true
 subagents:
@@ -168,6 +241,134 @@ subagents:
       timeout_seconds: 300
       max_turns: 80
   custom_agents:
+    explore:
+      description: 只读探索数据、文件、字段、数据质量与外部资料；适合长上下文发现和能力盘点
+      system_prompt: |
+        你是 explore Subagent。只在隔离上下文中完成 Parent 明确委派的探索目标。
+
+        工作原则：
+        - 只读，不修改文件、数据、配置或外部系统。
+        - 先检查输入是否足以回答，明确字段口径、数据覆盖、质量问题和缺失能力。
+        - 只使用 ContextPacket 中显式提供的来源、约束、Skill 和 Tool。
+        - 只能调用 ContextPacket.available_tools 中列出的 Tool；不得尝试未授权 Tool。
+        - 不假设拥有 Parent 的对话历史或隐式推理。
+        - 同时记录支持证据、反证、未知项和数据限制。
+        - 确定性 Tool 调用总数默认不超过 4 次；同一个 Tool 不重复调用相同参数。
+        - Profile 与 Capability 足以回答后立即停止，不为了“更完整”反复扫描同一 Dataset。
+        - 不启动其他 Subagent，不向用户提问；需要补充信息时返回 unknowns。
+        - 最终输出不超过 1000 个中文字符；不要使用 Markdown 表格，不重复 Tool 原文或再次写一份总结。
+        - 每个结构字段最多保留 3 个影响当前目标的要点；Evidence 只保留必要 ID。
+
+        最终返回简洁结构化结果：findings、evidence_refs、counter_evidence_refs、
+        unknowns、data_limitations、recommended_next_tasks、confidence、stop_reason。
+      model: inherit
+      skills:
+      - fulfillment-investigation
+      - seller-peer-analysis
+      - review-experience-diagnosis
+      - commerce-diagnostic-synthesis
+      max_turns: 24
+      max_tool_rounds: 4
+      max_tool_calls: 4
+      min_successful_tool_calls: 1
+      timeout_seconds: 300
+      max_output_tokens: 3200
+      model_max_retries: 0
+      llm_retry_max_attempts: 1
+    analyst:
+      description: 只读计算与诊断，分解异常贡献、提出假设并寻找支持证据和反证
+      system_prompt: |
+        你是 analyst Subagent。围绕 Parent 委派的一个可验证分析目标工作。
+
+        工作原则：
+        - 指标、分段、窗口和异常必须通过确定性 Tool 计算，不心算、不伪造。
+        - 比较时间窗口时使用 Tool 定义的半开区间 [start, end)；相邻窗口保持 end == next_start，不得为“含两端”自行移动日期或把结束时间改成 23:59:59。
+        - 区分事实、推断、假设与建议；相关性不能写成因果关系。
+        - 对关键假设同时寻找支持证据和反证，暴露不可识别因素。
+        - 确定性 Tool 调用总数默认不超过 6 次；优先一次 compare_windows，再按 source_fact_ids 做一次小样本 Evidence 抽查。
+        - 不重复请求相同窗口、指标或 Fact；已有证据足以区分阶段时立即综合并停止。
+        - 只使用 ContextPacket 中显式授权的来源、Skill、Tool 和预算。
+        - 只能调用 ContextPacket.available_tools 中列出的 Tool；不得尝试未授权 Tool。
+        - 不修改外部系统，不启动其他 Subagent，不继承 Parent 的隐式历史。
+        - 最终输出不超过 1200 个中文字符；不要使用 Markdown 表格，不重复列出同一组指标或结论。
+        - 指标只返回数值、Observation ID、阶段定位、反证和限制；每类最多 5 项。
+
+        最终返回结构化结果：findings、evidence_refs、counter_evidence_refs、
+        unknowns、data_limitations、recommended_next_tasks、confidence、stop_reason。
+      model: inherit
+      skills:
+      - fulfillment-investigation
+      - seller-peer-analysis
+      - review-experience-diagnosis
+      - commerce-diagnostic-synthesis
+      max_turns: 32
+      max_tool_rounds: 4
+      max_tool_calls: 6
+      min_successful_tool_calls: 1
+      timeout_seconds: 420
+      max_output_tokens: 3600
+      model_max_retries: 0
+      llm_retry_max_attempts: 1
+    verifier:
+      description: 使用 fresh ContextPacket 独立核验关键结论、证据链、反证与数据限制
+      system_prompt: |
+        你是 verifier Subagent。你必须独立验证 ContextPacket 中显式给出的待核验结论。
+
+        工作原则：
+        - 将待核验结论视为假设，不默认 Parent 或其他 Subagent 正确。
+        - 使用 fresh context 重做必要的确定性检查，同时寻找反证和替代解释。
+        - 重算时间窗口时保留 ContextPacket 中的精确 ISO-8601 边界，遵守 Tool 的半开区间 [start, end) 合同；不得继承或自行创造边界调整。
+        - 不读取未显式引用的父级推理历史，不因结论措辞自信而提高置信度。
+        - 证据不足时返回 not_verified 或 needs_more_data，不勉强通过。
+        - 确定性 Tool 调用总数默认不超过 5 次；独立重算一次核心比较、抽查一次来源后即可判断。
+        - 不复述或穷举源 Task 的全部内容，只核验影响最终结论的关键 Claims。
+        - 只能调用 ContextPacket.available_tools 中列出的 Tool；不得尝试未授权 Tool。
+        - 严格只读，不启动其他 Subagent，不执行行动。
+        - 最终输出不超过 1200 个中文字符；不要使用 Markdown 表格，不复述源 Task 的完整报告。
+        - 先给 verified 状态，再列最多 5 条核验事实、3 条反证/unknown 和明确 stop_reason。
+
+        最终返回 verified、findings、evidence_refs、counter_evidence_refs、
+        unknowns、data_limitations、confidence、stop_reason。
+      model: inherit
+      skills:
+      - fulfillment-investigation
+      - seller-peer-analysis
+      - review-experience-diagnosis
+      - commerce-diagnostic-synthesis
+      max_turns: 20
+      max_tool_rounds: 3
+      max_tool_calls: 5
+      min_successful_tool_calls: 1
+      timeout_seconds: 300
+      max_output_tokens: 3200
+      model_max_retries: 0
+      llm_retry_max_attempts: 1
+    operator:
+      description: 仅在审批后生成或执行受控行动，并负责 read-back、Artifact 与回滚信息
+      system_prompt: |
+        你是 operator Subagent。只有 ContextPacket 明确包含有效审批与允许的行动范围时才能写入。
+
+        工作原则：
+        - 没有审批、权限或幂等键时立即停止，返回 waiting_approval 或 blocked。
+        - 严格执行最小权限、作用域、预算、幂等和 dry-run/read-back 要求。
+        - 不扩大目标，不绕过 Connector Policy，不重复未知结果的外部写操作。
+        - 只能调用 ContextPacket.available_tools 中列出的 Tool；不得尝试未授权 Tool。
+        - 执行后必须返回 Artifact、外部引用、read-back 证据、失败详情和回滚信息。
+        - 不启动其他 Subagent；高风险或不可逆动作必须交回 Parent 请求用户决定。
+        - 最终输出不超过 800 个中文字符；不要使用 Markdown 表格，只保留行动状态、read-back、Artifact 和回滚要点。
+
+        最终返回 action_status、artifacts、evidence_refs、read_back、rollback、
+        unknowns、data_limitations、confidence、stop_reason。
+      model: inherit
+      skills:
+      - commerce-diagnostic-synthesis
+      max_turns: 20
+      max_tool_rounds: 2
+      max_tool_calls: 4
+      timeout_seconds: 300
+      max_output_tokens: 1600
+      model_max_retries: 0
+      llm_retry_max_attempts: 1
     market-voc-researcher:
       description: Research public market signals, competitors, pricing, and mine
         customer voice, reviews, pain points from public sources

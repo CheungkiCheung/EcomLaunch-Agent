@@ -82,13 +82,11 @@ class DomainEventRow(CommerceBase):
             name="uq_commerce_event_run_sequence",
         ),
         CheckConstraint(
-            "(case_id IS NOT NULL AND case_sequence IS NOT NULL) OR "
-            "(case_id IS NULL AND case_sequence IS NULL)",
+            "(case_id IS NOT NULL AND case_sequence IS NOT NULL) OR (case_id IS NULL AND case_sequence IS NULL)",
             name="ck_commerce_event_case_sequence_presence",
         ),
         CheckConstraint(
-            "(run_id IS NOT NULL AND run_sequence IS NOT NULL) OR "
-            "(run_id IS NULL AND run_sequence IS NULL)",
+            "(run_id IS NOT NULL AND run_sequence IS NOT NULL) OR (run_id IS NULL AND run_sequence IS NULL)",
             name="ck_commerce_event_run_sequence_presence",
         ),
         CheckConstraint(
@@ -208,6 +206,14 @@ class RunRow(CommerceBase):
     phase: Mapped[str] = mapped_column(String(32), nullable=False)
     goal: Mapped[str] = mapped_column(Text, nullable=False)
     idempotency_key_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    parent_run_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    subject_action_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    action_operation: Mapped[str | None] = mapped_column(String(16))
+    requested_paths_json: Mapped[list[str]] = mapped_column(
+        JSON,
+        default=list,
+        nullable=False,
+    )
     wait_reason: Mapped[str | None] = mapped_column(Text)
     stop_reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -272,6 +278,180 @@ class RunCheckpointRow(CommerceBase):
             "workspace_id",
             "run_id",
             "sequence",
+        ),
+    )
+
+
+class ActionRow(CommerceBase):
+    """Versioned Action projection plus its validated policy decision."""
+
+    __tablename__ = "commerce_actions"
+
+    action_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    case_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    policy_level: Mapped[str] = mapped_column(String(4), nullable=False)
+    risk_level: Mapped[str] = mapped_column(String(20), nullable=False)
+    decision_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("version >= 1", name="ck_commerce_actions_version_positive"),
+        Index(
+            "ix_commerce_actions_workspace_case_created",
+            "workspace_id",
+            "case_id",
+            "created_at",
+        ),
+    )
+
+
+class ApprovalRequestRow(CommerceBase):
+    """Mutable projection for one policy-required human Approval."""
+
+    __tablename__ = "commerce_approval_requests"
+
+    approval_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    case_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    action_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    request_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "version >= 1",
+            name="ck_commerce_approval_requests_version_positive",
+        ),
+        Index(
+            "ix_commerce_approval_requests_workspace_case_updated",
+            "workspace_id",
+            "case_id",
+            "updated_at",
+        ),
+    )
+
+
+class ApprovalDecisionRow(CommerceBase):
+    """Append-only idempotent human Approval decision."""
+
+    __tablename__ = "commerce_approval_decisions"
+
+    decision_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    approval_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    workspace_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    case_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    action_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    idempotency_key_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    decision_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id",
+            "action_id",
+            "idempotency_key_sha256",
+            name="uq_commerce_approval_decision_idempotency",
+        ),
+        Index(
+            "ix_commerce_approval_decisions_approval_created",
+            "approval_id",
+            "created_at",
+        ),
+    )
+
+
+class ActionArtifactRow(CommerceBase):
+    """Versioned real internal artifact created by one Action Connector."""
+
+    __tablename__ = "commerce_action_artifacts"
+
+    action_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    case_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    artifact_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "version >= 1",
+            name="ck_commerce_action_artifacts_version_positive",
+        ),
+        Index(
+            "ix_commerce_action_artifacts_workspace_case_updated",
+            "workspace_id",
+            "case_id",
+            "updated_at",
+        ),
+    )
+
+
+class FollowUpRow(CommerceBase):
+    """Versioned Follow-up request and deterministic evaluation projection."""
+
+    __tablename__ = "commerce_follow_ups"
+
+    follow_up_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    case_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    action_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    run_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    dataset_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    outcome: Mapped[str | None] = mapped_column(String(32), index=True)
+    follow_up_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "version >= 1",
+            name="ck_commerce_follow_ups_version_positive",
+        ),
+        Index(
+            "ix_commerce_follow_ups_workspace_action_created",
+            "workspace_id",
+            "action_id",
+            "created_at",
         ),
     )
 

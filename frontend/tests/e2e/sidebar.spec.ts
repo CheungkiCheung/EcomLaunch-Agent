@@ -3,7 +3,16 @@ import { expect, test } from "@playwright/test";
 import { MOCK_THREAD_ID, mockLangGraphAPI } from "./utils/mock-api";
 
 test.describe("Sidebar navigation", () => {
-  test("sidebar contains Chats and Agents nav links", async ({ page }) => {
+  test("sidebar contains the Chat-first Commerce Agent entry", async ({
+    page,
+  }) => {
+    await page.context().addCookies([
+      {
+        name: "locale",
+        value: "zh-CN",
+        url: "http://localhost:3000",
+      },
+    ]);
     mockLangGraphAPI(page);
 
     await page.goto("/workspace/chats/new");
@@ -13,12 +22,15 @@ test.describe("Sidebar navigation", () => {
     await expect(sidebar.locator("a[href='/workspace/chats']")).toBeVisible({
       timeout: 15_000,
     });
+    await expect(sidebar.locator("a[href='/workspace/chats']")).toContainText(
+      "对话",
+    );
     await expect(
-      sidebar.getByRole("link", { name: "Chat", exact: true }),
-    ).toBeVisible();
+      sidebar.locator("a[href='/workspace/agents/commerce-agent/chats/new']"),
+    ).toContainText("电商经营诊断");
     await expect(
       sidebar.locator("a[href='/workspace/agents/ecom-launch/war-room']"),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(sidebar.locator("a[href='/workspace/agents']")).toBeVisible();
   });
 
@@ -36,21 +48,12 @@ test.describe("Sidebar navigation", () => {
     await expect(page).toHaveURL(/\/workspace\/agents/);
   });
 
-  test("War Room link opens the full EcomLaunch game workspace", async ({
+  test("legacy EcomLaunch War Room remains directly reachable for compatibility", async ({
     page,
   }) => {
     mockLangGraphAPI(page);
 
-    await page.goto("/workspace/chats/new");
-
-    const sidebar = page.locator("[data-sidebar='sidebar']");
-    const warRoomLink = sidebar.locator(
-      "a[href='/workspace/agents/ecom-launch/war-room']",
-    );
-    await expect(warRoomLink).toBeVisible({ timeout: 15_000 });
-    await warRoomLink.click();
-
-    await page.waitForURL("**/workspace/agents/ecom-launch/war-room");
+    await page.goto("/workspace/agents/ecom-launch/war-room");
     await expect(
       page.getByRole("heading", { name: "Launch War Room" }),
     ).toBeVisible();

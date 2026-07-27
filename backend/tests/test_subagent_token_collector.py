@@ -6,11 +6,12 @@ from uuid import uuid4
 from deerflow.subagents.token_collector import SubagentTokenCollector
 
 
-def _make_llm_response(content="Hello", usage=None):
+def _make_llm_response(content="Hello", usage=None, response_metadata=None):
     """Create a mock LLM response with a message."""
     msg = MagicMock()
     msg.content = content
     msg.usage_metadata = usage
+    msg.response_metadata = response_metadata or {}
 
     gen = MagicMock()
     gen.message = msg
@@ -49,6 +50,29 @@ class TestSubagentTokenCollector:
         assert records[0]["output_tokens"] == 50
         assert records[0]["total_tokens"] == 150
         assert "source_run_id" in records[0]
+
+    def test_collects_model_identity_request_id_and_stop_reason(self):
+        collector = SubagentTokenCollector(caller="subagent:analyst")
+        usage = {"input_tokens": 100, "output_tokens": 50, "total_tokens": 150}
+        metadata = {
+            "model_name": "deepseek-v4-flash",
+            "id": "resp-1",
+            "finish_reason": "stop",
+            "system_fingerprint": "fp-1",
+            "headers": {"x-request-id": "request-1"},
+        }
+
+        collector.on_llm_end(
+            _make_llm_response("Hi", usage=usage, response_metadata=metadata),
+            run_id=uuid4(),
+        )
+
+        record = collector.snapshot_records()[0]
+        assert record["actual_model_identity"] == "deepseek-v4-flash"
+        assert record["provider_request_id"] == "request-1"
+        assert record["provider_response_id"] == "resp-1"
+        assert record["stop_reason"] == "stop"
+        assert record["system_fingerprint"] == "fp-1"
 
     def test_total_tokens_zero_uses_input_plus_output(self):
         collector = SubagentTokenCollector(caller="subagent:test")

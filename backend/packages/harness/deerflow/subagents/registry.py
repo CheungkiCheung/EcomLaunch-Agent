@@ -43,7 +43,13 @@ def _build_custom_subagent_config(name: str, *, app_config: Any | None = None) -
         skills=custom.skills,
         model=custom.model,
         max_turns=custom.max_turns,
+        max_tool_rounds=custom.max_tool_rounds,
+        max_tool_calls=custom.max_tool_calls,
+        min_successful_tool_calls=custom.min_successful_tool_calls,
         timeout_seconds=custom.timeout_seconds,
+        max_output_tokens=custom.max_output_tokens,
+        model_max_retries=custom.model_max_retries,
+        llm_retry_max_attempts=custom.llm_retry_max_attempts,
     )
 
 

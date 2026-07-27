@@ -1,0 +1,90 @@
+name: commerce-agent
+description: 中文 Chat-first 电商经营诊断与行动 Agent
+model: deepseek-reasoner
+subagent_required: true
+subagent_complexity_tool_call_threshold: 2
+required_subagent_types:
+  - analyst
+  - verifier
+subagent_requirement_recovery_mode: force_dispatch
+max_subagent_requirement_recovery_attempts: 8
+max_concurrent_subagents: 3
+max_subagent_tasks_per_run: 6
+max_failed_subagent_tasks_per_run: 2
+max_parent_direct_tool_calls: 3
+max_parent_direct_tool_rounds: 2
+require_explicit_subagent_scope: true
+todo_list_enabled: false
+memory_enabled: false
+model_generated_title: false
+local_title_rules:
+  - keywords: [履约, 延迟, 晚到, 配送]
+    title: 订单履约异常诊断
+  - keywords: [评价, 评论, 评分]
+    title: 商品评价体验诊断
+  - keywords: [对标, 同类, 同行]
+    title: 卖家同类对标分析
+  - keywords: [数据, 字段, 能力]
+    title: 电商数据能力检查
+local_title_fallback: 电商经营数据诊断
+subagent_scope_rules:
+  - name: fulfillment-coverage
+    subagent_type: explore
+    match_skills_all: [fulfillment-investigation]
+    enforced_skills: [fulfillment-investigation]
+    enforced_tools:
+      - commerce_capabilities
+      - commerce_list_entities
+      - commerce_seller_coverage
+    prompt_suffix: 实体解析合同：如果 Prompt 没有给出 seller_id，先用 `commerce_list_entities` 查询 seller；只有一个候选时使用其 `external_key`，不得向用户追问内部 ID。`commerce_seller_coverage` 在 Dataset 恰好只有一个卖家时也允许省略 seller_id 自动选择。
+    max_tool_rounds: 3
+    max_tool_calls: 3
+  - name: fulfillment-geography
+    subagent_type: analyst
+    match_skills_all: [fulfillment-investigation]
+    prompt_keywords_any: [地域, 区域]
+    enforced_skills: [fulfillment-investigation]
+    enforced_tools: [commerce_seller_coverage, commerce_geographic_segments]
+    prompt_suffix: 地域 Tool 合同：`commerce_geographic_segments` 每次只接受一个半开区间的 `start` 和 `end`，不接受 `metric_names`、baseline/current 复合参数。需要比较两个窗口时最多调用两次，并明确地域分段只能描述集中现象，不能归因给承运商。用户没有要求地域定位时，不得把本任务当作核心终答的前置条件。
+    max_tool_rounds: 2
+    max_tool_calls: 3
+  - name: fulfillment-window
+    subagent_type: analyst
+    match_skills_all: [fulfillment-investigation]
+    enforced_skills: [fulfillment-investigation]
+    enforced_tools:
+      - commerce_capabilities
+      - commerce_list_entities
+      - commerce_seller_coverage
+      - commerce_compare_windows
+      - commerce_evidence_query
+    prompt_suffix: 实体与时间窗口权威合同：如果 Prompt 没有给出 seller_id，先用 `commerce_list_entities` 查询 seller；只有一个候选时使用其 `external_key`，不得向用户追问内部 ID。`commerce_seller_coverage` 在 Dataset 恰好只有一个卖家时也允许省略 seller_id 自动选择。`commerce_compare_windows` 使用半开区间 `[start, end)`，结束时间是排他边界。相邻窗口必须保持 `baseline_end == current_start`。如果用户没有指定窗口，先调用一次 `commerce_seller_coverage`，原样使用返回的 `default_recent_windows`；不得心算、自造或移动边界，并在结果中披露使用了默认近期窗口。
+    max_tool_rounds: 4
+    max_tool_calls: 5
+  - name: fulfillment-verifier
+    subagent_type: verifier
+    match_skills_all: [fulfillment-investigation]
+    enforced_skills: [fulfillment-investigation]
+    enforced_tools: [commerce_evidence_query]
+    inherit_source_tools: true
+    prompt_suffix: 时间窗口权威合同：`commerce_compare_windows` 使用半开区间 `[start, end)`，结束时间是排他边界。本合同覆盖任务和 source snapshot 中“含两端”等冲突措辞。相邻窗口必须保持 `baseline_end == current_start`；必须按 source_refs 对应任务的原始 ISO-8601 边界独立重算，不得继承其边界调整，也不得减一天、加一天、改成当天 `23:59:59` 或自行移动边界。
+    max_tool_rounds: 3
+    max_tool_calls: 4
+final_answer_forbidden_phrases:
+  - 根因是
+  - 主因
+  - 导致
+  - 造成
+  - 压垮
+  - 完全排除
+  - 唯一主要驱动
+  - 责任区间
+max_final_answer_repairs: 1
+tool_groups:
+  - commerce
+  - file:read
+skills:
+  - fulfillment-investigation
+  - seller-peer-analysis
+  - review-experience-diagnosis
+  - commerce-diagnostic-synthesis

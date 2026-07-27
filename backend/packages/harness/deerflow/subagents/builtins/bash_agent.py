@@ -44,7 +44,16 @@ You have access to the sandbox environment:
 </working_directory>
 """,
     tools=["bash", "ls", "read_file", "write_file", "str_replace"],  # Sandbox tools only
-    disallowed_tools=["task", "ask_clarification", "present_files"],
+    disallowed_tools=[
+        "task",
+        "spawn_task",
+        "wait_task",
+        "follow_up_task",
+        "cancel_task",
+        "resume_task",
+        "ask_clarification",
+        "present_files",
+    ],
     model="inherit",
     max_turns=60,
 )

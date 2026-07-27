@@ -6,9 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 DeerFlow Frontend is a Next.js 16 web interface for an AI agent system. It communicates with a LangGraph-based backend to provide thread-based AI conversations with streaming responses, artifacts, and a skills/tools system.
 
-This fork is introducing a **Case-first Commerce Workspace**. Chat remains an interaction surface, but Dataset, Capability, Case, Evidence, Hypothesis, Action, Approval, Follow-up and Domain Event are the authoritative product objects. Timeline, Graph and War Room views must consume the same structured event stream instead of inferring business state from assistant text.
+This fork is building a **Chat-first Commerce Workspace**. The default product entry reuses DeerFlow Thread, Message, Composer, Artifact and Subtask interaction: users upload real ecommerce data and ask a natural question; Parent directly answers, calls deterministic Commerce tools or dynamically delegates 0–N Subagents. Case, Evidence, Hypothesis, Action, Approval and Follow-up remain authoritative persisted business objects for complex/long-running work, but users do not need to create a Case before chatting. The old fixed War Room is not a default page; an optional collaboration scene may visualize real Durable Task Events.
 
-The Commerce entry is fail-closed behind `NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED=false`; the backend flag must also be enabled. Every formal Commerce page, including War Room, requires an approved high-fidelity generated mockup before React implementation. Mocked-backend UI tests cannot serve as Commerce Agent acceptance evidence; Agent E2E must use the real backend and an identity-verified DeepSeek V4 request.
+The Commerce entry is fail-closed behind `NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED=false`; the backend flag must also be enabled. Existing Case-first APIs still use `NEXT_PUBLIC_COMMERCE_WORKSPACE_ID` for explicit Workspace scope. The Chat main interface and optional collaboration scene now use the approved generated direction. Runtime scene, actor and station assets are recorded in `../docs/design/commerce-collaboration-imagegen-assets-v1.md`; images consume structured ViewModel state and never decide Task state. Mocked-backend UI tests cannot serve as Commerce Agent acceptance evidence; Agent E2E must use the real backend and an identity-verified DeepSeek V4 request.
+
+The previously approved Chinese Master Shell, Case Detail v2, Data Inbox, Capability Report, Case Queue, Evidence Explorer, Action Center, Agent Run, and Skills & Evals remain implemented at `/commerce`, but they are now advanced-detail assets rather than the default product shell. Pure contracts and projections live under `src/core/commerce/`. New Chat state must consume Durable `SubagentTask` snapshots and append-only Task Events through a pure reducer; Chat compact cards and the optional collaboration scene share the same `CommerceTaskVisualState`. Unknown and out-of-order events remain explicit, and the UI never infers activity from assistant text, CSS timers or random animation. The frozen mapping is documented in `../docs/design/commerce-chat-task-visual-state-contract.md`; generated visual directions are documented in `../docs/design/commerce-chat-visual-directions.md`.
+
+Current frontend validation includes 62 Vitest files / 334 tests, repository-wide Prettier, ESLint and TypeScript, plus 6 passing Chromium mechanical interactions for the Commerce Chat/collaboration route and a real persistent DeepSeek V4 browser Gate. The Chat contract adds strict authenticated Durable Task/Event API parsing, append-only cursors, a pure Task/Event visual reducer, a shared Run activity ViewModel, and an abortable incremental polling Hook for Chat compact status and the optional collaboration scene. Each Task resumes from its own `next_after_seq`; cursors are monotonic and repeated sequence numbers never replay. The collaboration scene uses one generated actor and workstation per unique Durable Task, an empty generated room with no actors when no Task exists, deterministic collision-free 2×2/3×2 placement, explicit terminal states and reduced-motion support. The previously missing approved `CommerceWarRoomView` remains a read-only advanced event-lane view; it is not the default navigation. The persistent Gate used a real local account/CSRF flow, six frozen Olist CSV files and a fresh `deepseek-v4-flash` Parent–Subagent Run with 170,394 Tokens, 13 de-duplicated Provider Request IDs and retry 0. Explore/Analyst ran in parallel, fresh Verifier followed, and the same Run drove Chat, task activity and desktop/390px/reduced-motion collaboration screenshots. A read-only existing-run audit can revisit this Run without submitting another prompt or spending model tokens. Evidence is under `../docs/progress/runs/2026-07-27-commerce-chat-browser-gate-v7/`.
 
 **Stack**: Next.js 16, React 19, TypeScript 5.8, Tailwind CSS 4, pnpm 10.26.2
 
@@ -42,7 +46,7 @@ The frontend is a stateful chat application. Users create **threads** (conversat
 
 ### Source Layout (`src/`)
 
-- **`app/`** — Next.js App Router. Routes: `/` (landing), `/workspace/chats/[thread_id]` (chat).
+- **`app/`** — Next.js App Router. Routes: `/` (landing), `/workspace/chats/[thread_id]` (chat), `/commerce` (feature-flagged Case-first workspace).
 - **`components/`** — React components split into:
   - `ui/` — Shadcn UI primitives (auto-generated, ESLint-ignored)
   - `ai-elements/` — Vercel AI SDK elements (auto-generated, ESLint-ignored)
@@ -57,6 +61,7 @@ The frontend is a stateful chat application. Users create **threads** (conversat
   - `memory/` — Persistent user memory system
   - `skills/` — Skills installation and management
   - `messages/` — Message processing and transformation
+  - `commerce/` — Commerce API contracts, strict response parsing and Domain Event-to-view-model projection
   - `mcp/` — Model Context Protocol integration
   - `models/` — TypeScript types and data models
 - **`hooks/`** — Shared React hooks
@@ -94,6 +99,7 @@ Backend API URLs are optional; an nginx proxy is used by default:
 NEXT_PUBLIC_BACKEND_BASE_URL=http://localhost:8001
 NEXT_PUBLIC_LANGGRAPH_BASE_URL=http://localhost:8001/api
 NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED=false
+NEXT_PUBLIC_COMMERCE_WORKSPACE_ID=wsp_<32 lowercase hex chars>
 ```
 
 Leave these unset for the standard `make dev` / Docker flow, where nginx serves

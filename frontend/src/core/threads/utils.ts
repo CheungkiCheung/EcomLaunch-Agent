@@ -10,6 +10,13 @@ type ThreadRouteTarget =
       metadata?: Record<string, unknown> | null;
     };
 
+export function assistantIdForThreadContext(context?: object | null): string {
+  const rawAgentName = context ? Reflect.get(context, "agent_name") : null;
+  const agentName =
+    typeof rawAgentName === "string" ? rawAgentName.trim() : null;
+  return agentName && agentName.length > 0 ? agentName : "lead_agent";
+}
+
 export function pathOfThread(
   thread: ThreadRouteTarget,
   context?: Pick<AgentThreadContext, "agent_name"> | null,
@@ -46,6 +53,6 @@ export function textOfMessage(message: Message) {
   return null;
 }
 
-export function titleOfThread(thread: AgentThread) {
-  return thread.values?.title ?? "Untitled";
+export function titleOfThread(thread: AgentThread, fallback = "Untitled") {
+  return thread.values?.title ?? fallback;
 }

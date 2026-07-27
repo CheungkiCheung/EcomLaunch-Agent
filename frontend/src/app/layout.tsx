@@ -8,9 +8,9 @@ import { I18nProvider } from "@/core/i18n/context";
 import { detectLocaleServer } from "@/core/i18n/server";
 
 export const metadata: Metadata = {
-  title: "OpenSKU - Adaptive SKU Launch Loop",
+  title: "电商经营诊断 Agent · DeerFlow",
   description:
-    "Open-source AI launch loop for SKU stage diagnosis, evidence-backed decisions, promotion replanning, and launch knowledge capture.",
+    "基于 DeerFlow Durable Parent–Subagent Harness 的中文电商经营诊断与行动 Agent。",
 };
 
 export default async function RootLayout({

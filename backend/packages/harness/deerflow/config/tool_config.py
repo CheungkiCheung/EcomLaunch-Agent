@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -16,5 +18,13 @@ class ToolConfig(BaseModel):
     use: str = Field(
         ...,
         description="Variable name of the tool provider(e.g. deerflow.sandbox.tools:bash_tool)",
+    )
+    default_enabled: bool = Field(
+        default=True,
+        description="Whether the tool is visible when an Agent does not request explicit tool groups",
+    )
+    enabled_if_env: str | None = Field(
+        default=None,
+        description="Optional environment feature flag that must be truthy before the tool can be loaded",
     )
     model_config = ConfigDict(extra="allow")

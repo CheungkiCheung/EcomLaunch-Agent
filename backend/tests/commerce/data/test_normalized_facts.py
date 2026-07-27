@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.commerce.data.gold_cases import load_evaluation_case
@@ -48,6 +48,7 @@ def test_normalized_fact_preserves_canonical_and_raw_source_fields(tmp_path: Pat
 
     assert purchased.semantic_status is SemanticStatus.OBSERVED
     assert isinstance(purchased.value, datetime)
+    assert purchased.value.tzinfo is UTC
     assert purchased.name == "order.purchased_at"
     assert purchased.semantic_version == "commerce-semantics@1.0.0"
     assert purchased.source is not None

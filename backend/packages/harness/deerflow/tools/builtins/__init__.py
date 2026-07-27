@@ -1,4 +1,11 @@
 from .clarification_tool import ask_clarification_tool
+from .durable_task_tools import (
+    cancel_task_tool,
+    follow_up_task_tool,
+    resume_task_tool,
+    spawn_task_tool,
+    wait_task_tool,
+)
 from .opensku_artifact_validator import validate_opensku_artifacts_tool
 from .opensku_artifact_writer import write_opensku_artifact_bundle_tool
 from .present_file_tool import present_file_tool
@@ -14,6 +21,11 @@ __all__ = [
     "validate_opensku_artifacts_tool",
     "write_opensku_artifact_bundle_tool",
     "ask_clarification_tool",
+    "cancel_task_tool",
+    "follow_up_task_tool",
+    "resume_task_tool",
+    "spawn_task_tool",
+    "wait_task_tool",
     "view_image_tool",
     "task_tool",
 ]

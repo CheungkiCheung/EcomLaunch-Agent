@@ -14,6 +14,8 @@ from deerflow.persistence import engine as engine_module
 from deerflow.persistence import thread_meta as thread_meta_module
 from deerflow.runtime.checkpointer import async_provider as checkpointer_module
 from deerflow.runtime.events import store as event_store_module
+from deerflow.subagents.tasks import MemorySubagentTaskStore, SubagentTaskManager
+from deerflow.subagents.tasks.runtime import DurableSubagentTaskRuntime
 
 
 @asynccontextmanager
@@ -87,7 +89,9 @@ async def test_sqlite_runtime_reconciles_orphaned_runs_on_startup(monkeypatch):
     monkeypatch.setattr(gateway_deps, "RunManager", _FakeRunManager)
 
     async with gateway_deps.langgraph_runtime(app, config):
-        pass
+        assert isinstance(app.state.subagent_task_store, MemorySubagentTaskStore)
+        assert isinstance(app.state.subagent_task_manager, SubagentTaskManager)
+        assert isinstance(app.state.subagent_task_runtime, DurableSubagentTaskRuntime)
 
     assert len(_FakeRunManager.instances) == 1
     assert _FakeRunManager.instances[0].reconcile_calls

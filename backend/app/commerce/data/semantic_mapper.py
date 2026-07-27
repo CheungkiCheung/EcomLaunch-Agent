@@ -101,9 +101,11 @@ class SemanticMappingProfile(SemanticModel):
 
 class SemanticConfirmation(SemanticModel):
     workspace_id: WorkspaceId
+    dataset_id: DatasetId | None = None
     table_name: str = Field(min_length=1)
     column_name: str = Field(min_length=1)
     semantic_field: SemanticField
+    confirmed_by: str | None = Field(default=None, min_length=1, max_length=128)
     confirmed_at: datetime
 
 
@@ -117,35 +119,80 @@ class WorkspaceSemanticStore:
         self,
         *,
         workspace_id: WorkspaceId,
+        dataset_id: DatasetId | None = None,
         table_name: str,
         column_name: str,
         semantic_field: SemanticField,
+        confirmed_by: str | None = None,
     ) -> SemanticConfirmation:
-        confirmation = SemanticConfirmation(
+        return self.confirm_many(
             workspace_id=workspace_id,
-            table_name=table_name,
-            column_name=column_name,
-            semantic_field=semantic_field,
-            confirmed_at=datetime.now(UTC),
+            dataset_id=dataset_id,
+            confirmations=((table_name, column_name, semantic_field),),
+            confirmed_by=confirmed_by,
+        )[0]
+
+    def confirm_many(
+        self,
+        *,
+        workspace_id: WorkspaceId,
+        dataset_id: DatasetId | None = None,
+        confirmations: tuple[tuple[str, str, SemanticField], ...],
+        confirmed_by: str | None = None,
+    ) -> tuple[SemanticConfirmation, ...]:
+        if not confirmations:
+            raise ValueError("At least one semantic confirmation is required")
+        keys = tuple((table_name, column_name) for table_name, column_name, _ in confirmations)
+        if len(keys) != len(set(keys)):
+            raise ValueError("Semantic confirmation columns must be unique")
+        confirmed_at = datetime.now(UTC)
+        created = tuple(
+            SemanticConfirmation(
+                workspace_id=workspace_id,
+                dataset_id=dataset_id,
+                table_name=table_name,
+                column_name=column_name,
+                semantic_field=semantic_field,
+                confirmed_by=confirmed_by,
+                confirmed_at=confirmed_at,
+            )
+            for table_name, column_name, semantic_field in confirmations
         )
         existing = self.load(workspace_id)
-        existing[(table_name, column_name)] = confirmation
-        self._write(workspace_id, existing.values())
-        return confirmation
+        for confirmation in created:
+            existing[(confirmation.table_name, confirmation.column_name)] = confirmation
+        self._write(workspace_id, existing.values(), dataset_id=dataset_id)
+        return created
 
-    def load(self, workspace_id: WorkspaceId) -> dict[tuple[str, str], SemanticConfirmation]:
-        path = self._path(workspace_id)
+    def load(
+        self,
+        workspace_id: WorkspaceId,
+        *,
+        dataset_id: DatasetId | None = None,
+    ) -> dict[tuple[str, str], SemanticConfirmation]:
+        dataset_path = self._path(workspace_id, dataset_id=dataset_id)
+        legacy_path = self._path(workspace_id)
+        path = dataset_path if dataset_id is not None and dataset_path.is_file() else legacy_path
         if not path.is_file():
             return {}
         payload = json.loads(path.read_text(encoding="utf-8"))
         confirmations = (SemanticConfirmation.model_validate(item) for item in payload)
         return {(item.table_name, item.column_name): item for item in confirmations}
 
-    def _path(self, workspace_id: WorkspaceId) -> Path:
-        return self._storage_root / "workspaces" / str(workspace_id) / "semantic-mappings.json"
+    def _path(self, workspace_id: WorkspaceId, *, dataset_id: DatasetId | None = None) -> Path:
+        root = self._storage_root / "workspaces" / str(workspace_id)
+        if dataset_id is not None:
+            return root / "datasets" / str(dataset_id) / "semantic-mappings.json"
+        return root / "semantic-mappings.json"
 
-    def _write(self, workspace_id: WorkspaceId, confirmations) -> None:
-        path = self._path(workspace_id)
+    def _write(
+        self,
+        workspace_id: WorkspaceId,
+        confirmations,
+        *,
+        dataset_id: DatasetId | None = None,
+    ) -> None:
+        path = self._path(workspace_id, dataset_id=dataset_id)
         path.parent.mkdir(parents=True, exist_ok=True)
         ordered = sorted(confirmations, key=lambda item: (item.table_name, item.column_name))
         payload = [item.model_dump(mode="json") for item in ordered]
@@ -218,7 +265,7 @@ class SemanticMapper:
         self._semantic_store = semantic_store
 
     def map(self, profile: DatasetProfile) -> SemanticMappingProfile:
-        confirmations = self._semantic_store.load(profile.workspace_id) if self._semantic_store else {}
+        confirmations = self._semantic_store.load(profile.workspace_id, dataset_id=profile.dataset_id) if self._semantic_store else {}
         mappings: list[FieldMapping] = []
         all_columns: set[str] = set()
 
@@ -254,21 +301,13 @@ class SemanticMapper:
                         semantic_field=semantic_field,
                         confidence=confidence,
                         source=MappingSource.DETERMINISTIC_RULE,
-                        status=(
-                            MappingStatus.CONFIRMED
-                            if confidence >= self.AUTO_CONFIRM_THRESHOLD
-                            else MappingStatus.NEEDS_CONFIRMATION
-                        ),
+                        status=(MappingStatus.CONFIRMED if confidence >= self.AUTO_CONFIRM_THRESHOLD else MappingStatus.NEEDS_CONFIRMATION),
                         reason=f"Matched deterministic {role} field rule",
                     )
                 )
 
         mappings = self._downgrade_conflicts(mappings)
-        confirmed = {
-            f"{mapping.table_name}.{mapping.column_name}"
-            for mapping in mappings
-            if mapping.status is MappingStatus.CONFIRMED
-        }
+        confirmed = {f"{mapping.table_name}.{mapping.column_name}" for mapping in mappings if mapping.status is MappingStatus.CONFIRMED}
         return SemanticMappingProfile(
             dataset_id=profile.dataset_id,
             workspace_id=profile.workspace_id,

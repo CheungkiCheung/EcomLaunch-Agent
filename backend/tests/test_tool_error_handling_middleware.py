@@ -146,6 +146,39 @@ def test_build_subagent_runtime_middlewares_threads_app_config_to_llm_middleware
     assert isinstance(middlewares[-1], SafetyFinishReasonMiddleware)
 
 
+def test_build_subagent_runtime_middlewares_applies_explicit_retry_attempt_limit(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    _stub_runtime_middleware_imports(monkeypatch)
+    app_config = _make_app_config()
+
+    middlewares = build_subagent_runtime_middlewares(
+        app_config=app_config,
+        lazy_init=False,
+        llm_retry_max_attempts=1,
+    )
+
+    llm_middleware = next(
+        middleware
+        for middleware in middlewares
+        if getattr(middleware, "app_config", None) is app_config
+    )
+    assert llm_middleware.retry_max_attempts == 1
+
+
+def test_build_subagent_runtime_middlewares_rejects_zero_attempts(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    _stub_runtime_middleware_imports(monkeypatch)
+
+    with pytest.raises(ValueError, match="at least one attempt"):
+        build_subagent_runtime_middlewares(
+            app_config=_make_app_config(),
+            lazy_init=False,
+            llm_retry_max_attempts=0,
+        )
+
+
 def test_wrap_tool_call_passthrough_on_success():
     middleware = ToolErrorHandlingMiddleware()
     req = _request()

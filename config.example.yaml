@@ -148,8 +148,9 @@ models:
   #   model: gemini-2.5-pro
   #   gemini_api_key: $GEMINI_API_KEY
   #   timeout: 600.0
-  #   max_retries: 2
+  #   max_retries: 0
   #   max_tokens: 8192
+  #   temperature: 0
   #   supports_vision: true
 
   # Example: Gemini model via OpenAI-compatible gateway (with thinking support)
@@ -495,6 +496,7 @@ tool_groups:
   - name: file:read
   - name: file:write
   - name: bash
+  - name: commerce
 
 # ============================================================================
 # Tools Configuration
@@ -502,6 +504,68 @@ tool_groups:
 # Configure available tools for the agent to use
 
 tools:
+  # Chat-first Commerce data context tools (deterministic; no model calls)
+  - name: commerce_ingest_uploads
+    group: commerce
+    use: app.commerce.tools.data_tools:commerce_ingest_uploads_tool
+    default_enabled: false
+    enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+  - name: commerce_list_datasets
+    group: commerce
+    use: app.commerce.tools.data_tools:commerce_list_datasets_tool
+    default_enabled: false
+    enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+  - name: commerce_select_dataset
+    group: commerce
+    use: app.commerce.tools.data_tools:commerce_select_dataset_tool
+    default_enabled: false
+    enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+  - name: commerce_dataset_profile
+    group: commerce
+    use: app.commerce.tools.data_tools:commerce_dataset_profile_tool
+    default_enabled: false
+    enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+  - name: commerce_capabilities
+    group: commerce
+    use: app.commerce.tools.data_tools:commerce_capabilities_tool
+    default_enabled: false
+    enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+  - name: commerce_list_entities
+    group: commerce
+    use: app.commerce.tools.data_tools:commerce_list_entities_tool
+    default_enabled: false
+    enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+  - name: commerce_seller_coverage
+    group: commerce
+    use: app.commerce.tools.data_tools:commerce_seller_coverage_tool
+    default_enabled: false
+    enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+  - name: commerce_metric_snapshot
+    group: commerce
+    use: app.commerce.tools.data_tools:commerce_metric_snapshot_tool
+    default_enabled: false
+    enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+  - name: commerce_compare_windows
+    group: commerce
+    use: app.commerce.tools.data_tools:commerce_compare_windows_tool
+    default_enabled: false
+    enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+  - name: commerce_peer_comparison
+    group: commerce
+    use: app.commerce.tools.data_tools:commerce_peer_comparison_tool
+    default_enabled: false
+    enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+  - name: commerce_geographic_segments
+    group: commerce
+    use: app.commerce.tools.data_tools:commerce_geographic_segments_tool
+    default_enabled: false
+    enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+  - name: commerce_evidence_query
+    group: commerce
+    use: app.commerce.tools.data_tools:commerce_evidence_query_tool
+    default_enabled: false
+    enabled_if_env: COMMERCE_CASE_AGENT_ENABLED
+
   # Web search tool (uses DuckDuckGo, no API key required)
   - name: web_search
     group: web
@@ -894,6 +958,8 @@ sandbox:
 #   #       - visualization
 #   #     model: inherit          # 'inherit' uses parent's model
 #   #     max_turns: 80
+#   #     max_tool_rounds: 4       # Optional model→tool round budget
+#   #     max_tool_calls: 6        # Optional total Tool call budget
 #   #     timeout_seconds: 600
 #
 #   # Model override: by default, subagents inherit the lead agent's model.
@@ -1084,6 +1150,15 @@ title:
   max_words: 6
   max_chars: 60
   model_name: null # Use default model (first model in models list)
+  # Commerce Agent uses a Chinese-first title prompt in config.yaml. Keep the
+  # same placeholders when customizing this template.
+  # prompt_template: |
+  #   请根据下面第一轮对话生成一个简洁、自然的中文标题，最多 {max_words} 个短语。
+  #   标题必须以中文为主；必要缩写可以保留，但不要使用英文句子。
+  #   用户：{user_msg}
+  #   助手：{assistant_msg}
+  #
+  #   只返回标题，不要引号，不要解释。
 
 # ============================================================================
 # Summarization Configuration

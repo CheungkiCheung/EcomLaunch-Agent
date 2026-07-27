@@ -24,6 +24,7 @@ from app.commerce.domain.enums import (
     CaseSeverity,
     HypothesisStatus,
     RunPhase,
+    RunStatus,
     RunType,
     SemanticStatus,
 )
@@ -255,6 +256,82 @@ async def test_expired_lease_reacquires_with_fencing_and_restores_latest_checkpo
         heartbeat_at=now + timedelta(seconds=32),
     )
     assert heartbeat.expires_at == now + timedelta(seconds=62)
+    await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_wait_releases_lease_and_resume_acquires_new_fencing_owner(tmp_path):
+    engine, factory = await _storage(tmp_path)
+    now = datetime(2026, 7, 19, 12, 0, tzinfo=UTC)
+    queued = await _seed(factory, now)
+    leases = SqlRunLeaseRepository(factory)
+    uow = SqlCommerceUnitOfWork(factory)
+    first = await leases.acquire(
+        queued.workspace_id,
+        queued.id,
+        worker_id="worker-before-wait",
+        ttl=timedelta(seconds=30),
+        acquired_at=now + timedelta(seconds=1),
+        trace_id=TraceId.new(),
+        correlation_id=CorrelationId.new(),
+    )
+    waiting_at = now + timedelta(seconds=2)
+    waiting = first.run.transition_to(
+        RunStatus.WAITING,
+        wait_reason="awaiting_user_input",
+        occurred_at=waiting_at,
+    )
+    await uow.save_run(
+        waiting,
+        expected_version=first.run.version,
+        trace_id=TraceId.new(),
+        correlation_id=CorrelationId.new(),
+        actor=DomainEventActor.AGENT,
+        lease=first.credentials,
+        lease_checked_at=waiting_at,
+    )
+    released = await leases.release(
+        queued.workspace_id,
+        queued.id,
+        first.credentials,
+        released_at=now + timedelta(seconds=3),
+        trace_id=TraceId.new(),
+        correlation_id=CorrelationId.new(),
+    )
+
+    assert released.event_type == "run.lease_released"
+    with pytest.raises(RunLeaseLostError):
+        await leases.heartbeat(
+            queued.workspace_id,
+            queued.id,
+            first.credentials,
+            ttl=timedelta(seconds=30),
+            heartbeat_at=now + timedelta(seconds=4),
+        )
+
+    resumed = await leases.acquire(
+        queued.workspace_id,
+        queued.id,
+        worker_id="worker-after-wait",
+        ttl=timedelta(seconds=30),
+        acquired_at=now + timedelta(seconds=5),
+        trace_id=TraceId.new(),
+        correlation_id=CorrelationId.new(),
+    )
+
+    assert resumed.reacquired is True
+    assert resumed.credentials.fencing_token == 2
+    assert resumed.run.status is RunStatus.RUNNING
+    assert resumed.run.wait_reason is None
+    events = await SqlDomainEventStore(factory).list_run(
+        queued.workspace_id,
+        queued.id,
+    )
+    assert [event.event_type for event in events][-3:] == [
+        "run.status_changed",
+        "run.lease_released",
+        "run.status_changed",
+    ]
     await engine.dispose()
 
 

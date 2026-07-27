@@ -27,8 +27,15 @@ from deerflow.sandbox.tools import (
     str_replace_tool,
     write_file_tool,
 )
-from deerflow.tools.builtins.present_file_tool import present_file_tool
+from deerflow.tools.builtins.durable_task_tools import (
+    cancel_task_tool,
+    follow_up_task_tool,
+    resume_task_tool,
+    spawn_task_tool,
+    wait_task_tool,
+)
 from deerflow.tools.builtins.opensku_artifact_writer import write_opensku_artifact_bundle_tool
+from deerflow.tools.builtins.present_file_tool import present_file_tool
 from deerflow.tools.builtins.setup_agent_tool import setup_agent
 from deerflow.tools.builtins.task_tool import task_tool
 from deerflow.tools.builtins.update_agent_tool import update_agent
@@ -60,6 +67,11 @@ _TOOL_CASES = [
     (present_file_tool, {"filepaths": ["/tmp/x"], "tool_call_id": "call-1"}),
     (view_image_tool, {"image_path": "/tmp/img.png", "tool_call_id": "call-1"}),
     (task_tool, {"description": "do", "prompt": "go", "subagent_type": "general-purpose", "tool_call_id": "call-1"}),
+    (spawn_task_tool, {"description": "do", "prompt": "go", "subagent_type": "general-purpose", "tool_call_id": "call-1"}),
+    (wait_task_tool, {"task_ids": ["call-1"]}),
+    (follow_up_task_tool, {"parent_task_id": "call-1", "description": "follow", "prompt": "verify", "tool_call_id": "call-2"}),
+    (cancel_task_tool, {"task_id": "call-1"}),
+    (resume_task_tool, {"task_id": "call-1"}),
     (skill_manage_tool, {"action": "list", "name": "demo"}),
     (setup_agent, {"soul": "s", "description": "d"}),
     (update_agent, {}),

@@ -59,16 +59,16 @@ export function ArtifactFileList({
         if (result.success) {
           toast.success(result.message);
         } else {
-          toast.error(result.message || "Failed to install skill");
+          toast.error(result.message || t.common.installSkillFailed);
         }
       } catch (error) {
         console.error("Failed to install skill:", error);
-        toast.error("Failed to install skill");
+        toast.error(t.common.installSkillFailed);
       } finally {
         setInstallingFile(null);
       }
     },
-    [threadId, installingFile],
+    [threadId, installingFile, t.common.installSkillFailed],
   );
 
   return (
@@ -87,7 +87,7 @@ export function ArtifactFileList({
               </div>
             </CardTitle>
             <CardDescription className="min-w-0 pl-8 text-xs">
-              {getFileExtensionDisplayName(file)} file
+              {getFileExtensionDisplayName(file)} {t.common.file}
             </CardDescription>
             <CardAction className="row-span-1 self-center">
               {file.endsWith(".skill") && (

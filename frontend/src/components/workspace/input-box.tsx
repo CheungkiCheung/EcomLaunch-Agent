@@ -846,6 +846,7 @@ export function InputBox({
               </ModelSelectorContent>
             </ModelSelector>
             <PromptInputSubmit
+              aria-label={t.inputBox.submit}
               className="rounded-full"
               disabled={disabled}
               variant="outline"
@@ -889,7 +890,11 @@ export function InputBox({
   );
 }
 
-function SuggestionList({ suggestions }: { suggestions?: WelcomeSuggestion[] }) {
+function SuggestionList({
+  suggestions,
+}: {
+  suggestions?: WelcomeSuggestion[];
+}) {
   const { t } = useI18n();
   const { textInput } = usePromptInputController();
   const handleSuggestionClick = useCallback(

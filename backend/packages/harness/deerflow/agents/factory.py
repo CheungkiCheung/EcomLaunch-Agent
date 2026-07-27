@@ -268,9 +268,25 @@ def _assemble_from_features(
             from deerflow.agents.middlewares.subagent_limit_middleware import SubagentLimitMiddleware
 
             chain.append(SubagentLimitMiddleware())
-        from deerflow.tools.builtins import task_tool
+        from deerflow.tools.builtins import (
+            cancel_task_tool,
+            follow_up_task_tool,
+            resume_task_tool,
+            spawn_task_tool,
+            task_tool,
+            wait_task_tool,
+        )
 
-        extra_tools.append(task_tool)
+        extra_tools.extend(
+            [
+                spawn_task_tool,
+                wait_task_tool,
+                follow_up_task_tool,
+                cancel_task_tool,
+                resume_task_tool,
+                task_tool,
+            ]
+        )
 
     # --- [12] LoopDetection ---
     if feat.loop_detection is not False:

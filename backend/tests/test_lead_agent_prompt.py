@@ -166,6 +166,8 @@ def test_apply_prompt_template_threads_explicit_app_config_to_subagents_without_
                 "researcher": CustomSubagentConfig(
                     description="Research agent\nwith details",
                     system_prompt="You research.",
+                    max_tool_rounds=3,
+                    max_tool_calls=5,
                 )
             }
         ),
@@ -190,7 +192,92 @@ def test_apply_prompt_template_threads_explicit_app_config_to_subagents_without_
     prompt = prompt_module.apply_prompt_template(subagent_enabled=True, app_config=explicit_config)
 
     assert "**researcher**: Research agent" in prompt
+    assert "max_tool_rounds=3" in prompt
+    assert "max_tool_calls=5" in prompt
+    assert "显式传入只能收窄" in prompt
+    assert "通常省略预算参数" in prompt
     assert "**bash**" not in prompt
+
+
+def test_apply_prompt_template_includes_required_subagent_delivery_contract(monkeypatch):
+    explicit_config = SimpleNamespace(
+        sandbox=SimpleNamespace(
+            use="deerflow.sandbox.local:LocalSandboxProvider",
+            allow_host_bash=False,
+            mounts=[],
+        ),
+        subagents=SubagentsAppConfig(
+            custom_agents={
+                "verifier": CustomSubagentConfig(
+                    description="Independently verify evidence and counterevidence",
+                    system_prompt="Verify conclusions from fresh context.",
+                )
+            }
+        ),
+        skills=SimpleNamespace(container_path="/mnt/skills"),
+        skill_evolution=SimpleNamespace(enabled=False),
+        tool_search=SimpleNamespace(enabled=False),
+        memory=SimpleNamespace(enabled=False, injection_enabled=True, max_injection_tokens=2000),
+        acp_agents={},
+    )
+    monkeypatch.setattr(
+        prompt_module,
+        "get_or_new_skill_storage",
+        lambda app_config=None: SimpleNamespace(load_skills=lambda enabled_only=True: []),
+    )
+    monkeypatch.setattr(prompt_module, "get_agent_soul", lambda agent_name=None: "")
+
+    prompt = prompt_module.apply_prompt_template(
+        subagent_enabled=True,
+        subagent_required=True,
+        subagent_complexity_tool_call_threshold=2,
+        required_subagent_types=("verifier",),
+        app_config=explicit_config,
+    )
+
+    assert "强制交付策略" in prompt
+    assert "2 个直接工作 Tool" in prompt
+    assert "`verifier`" in prompt
+    assert "`task:<task_id>`" in prompt
+    assert "fail-closed" in prompt
+    assert "不允许 Parent 完成全部分析后跳过 Durable Task" in prompt
+
+
+def test_subagent_section_requires_explicit_scope_when_policy_enabled(monkeypatch):
+    explicit_config = SimpleNamespace(
+        sandbox=SimpleNamespace(
+            use="deerflow.sandbox.local:LocalSandboxProvider",
+            allow_host_bash=False,
+            mounts=[],
+        ),
+        subagents=SubagentsAppConfig(
+            custom_agents={
+                "analyst": CustomSubagentConfig(
+                    description="Analyze deterministic metrics",
+                    system_prompt="Analyze.",
+                    max_tool_rounds=4,
+                    max_tool_calls=6,
+                )
+            }
+        ),
+    )
+
+    prompt = prompt_module._build_subagent_section(
+        3,
+        app_config=explicit_config,
+        require_explicit_subagent_scope=True,
+    )
+
+    assert "每次 spawn_task 都必须显式传入" in prompt
+    assert "非空 skills" in prompt
+    assert "非空 tools" in prompt
+    assert "max_tool_rounds" in prompt
+    assert "max_tool_calls" in prompt
+    assert "通常省略预算参数" not in prompt
+    assert 'skills=["<已启用 Skill 名称>"]' in prompt
+    assert 'tools=["<完成目标所需的最小 Tool>"]' in prompt
+    assert "max_tool_rounds=1" in prompt
+    assert "max_tool_calls=1" in prompt
 
 
 def test_subagent_section_prefers_exact_custom_specialist_types(monkeypatch):
@@ -227,6 +314,11 @@ def test_subagent_section_prefers_exact_custom_specialist_types(monkeypatch):
     assert 'subagent_type="voc-miner"' in prompt
     assert 'subagent_type="offer-architect"' in prompt
     assert "**general-purpose**: Fallback for non-trivial tasks" in prompt
+    assert "spawn_task" in prompt
+    assert "wait_task" in prompt
+    assert "立即返回 task_id" in prompt
+    assert "旧版阻塞兼容入口" in prompt
+    assert "tool call will block" not in prompt
 
 
 def test_build_acp_section_uses_explicit_app_config_without_global_config(monkeypatch):

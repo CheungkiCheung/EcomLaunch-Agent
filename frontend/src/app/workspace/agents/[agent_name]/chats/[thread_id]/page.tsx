@@ -2,6 +2,7 @@
 
 import {
   BotIcon,
+  BriefcaseBusinessIcon,
   Gamepad2Icon,
   PlusSquare,
   ShoppingBagIcon,
@@ -11,6 +12,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
+import { CommerceRunActivityStrip } from "@/components/commerce/run-activity-strip";
+import { useCommerceRunTaskActivity } from "@/components/commerce/use-commerce-run-task-activity";
 import { Button } from "@/components/ui/button";
 import { AgentWelcome } from "@/components/workspace/agent-welcome";
 import { ArtifactTrigger } from "@/components/workspace/artifacts";
@@ -31,11 +34,20 @@ import { TodoList } from "@/components/workspace/todo-list";
 import { TokenUsageIndicator } from "@/components/workspace/token-usage-indicator";
 import { Tooltip } from "@/components/workspace/tooltip";
 import { useAgent } from "@/core/agents";
+import {
+  commerceCollaborationHref,
+  isCommerceAgentName,
+  selectCommerceRunId,
+} from "@/core/commerce/agent-ui";
 import { useI18n } from "@/core/i18n/hooks";
 import { useModels } from "@/core/models/hooks";
 import { useNotification } from "@/core/notification/hooks";
 import { useLocalSettings, useThreadSettings } from "@/core/settings";
-import { useThreadStream, useThreadTokenUsage } from "@/core/threads/hooks";
+import {
+  useThreadRuns,
+  useThreadStream,
+  useThreadTokenUsage,
+} from "@/core/threads/hooks";
 import { threadTokenUsageToTokenUsage } from "@/core/threads/token-usage";
 import { textOfMessage } from "@/core/threads/utils";
 import { env } from "@/env";
@@ -49,8 +61,12 @@ export default function AgentChatPage() {
     agent_name: string;
   }>();
   const isEcomLaunch = agent_name === "ecom-launch";
+  const isCommerceAgent = isCommerceAgentName(agent_name);
+  const usesUltraDefault = isEcomLaunch || isCommerceAgent;
 
-  const { agent } = useAgent(isEcomLaunch ? null : agent_name);
+  const { agent } = useAgent(
+    isEcomLaunch || isCommerceAgent ? null : agent_name,
+  );
 
   const { threadId, setThreadId, isNewThread, setIsNewThread, isMock } =
     useThreadChat();
@@ -58,7 +74,12 @@ export default function AgentChatPage() {
   // the thread. `isWelcomeMode` controls only the centered welcome layout, so
   // it can flip immediately on submit without triggering eager history loads.
   const [isWelcomeMode, setIsWelcomeMode] = useState(isNewThread);
-  const [ecomLaunchContextEdited, setEcomLaunchContextEdited] = useState(false);
+  const [specialAgentContextEdited, setSpecialAgentContextEdited] =
+    useState(false);
+  const [capturedCommerceRun, setCapturedCommerceRun] = useState<{
+    threadId: string;
+    runId: string;
+  } | null>(null);
   const [settings, setSettings] = useThreadSettings(threadId);
   const [localSettings, setLocalSettings] = useLocalSettings();
   const { tokenUsageEnabled } = useModels();
@@ -67,6 +88,37 @@ export default function AgentChatPage() {
     { enabled: tokenUsageEnabled && !isMock },
   );
   const backendTokenUsage = threadTokenUsageToTokenUsage(threadTokenUsage.data);
+  const threadRuns = useThreadRuns(
+    isCommerceAgent && !isNewThread && !isMock ? threadId : undefined,
+    { pollWhileActive: isCommerceAgent },
+  );
+  const activeCommerceRunId = useMemo(
+    () =>
+      selectCommerceRunId({
+        capturedRunId:
+          capturedCommerceRun?.threadId === threadId
+            ? capturedCommerceRun.runId
+            : null,
+        runs: threadRuns.data ?? [],
+      }),
+    [capturedCommerceRun, threadId, threadRuns.data],
+  );
+  const activeCommerceRunStatus = useMemo(
+    () =>
+      threadRuns.data?.find((run) => run.run_id === activeCommerceRunId)
+        ?.status ?? null,
+    [activeCommerceRunId, threadRuns.data],
+  );
+  const commerceTaskActivity = useCommerceRunTaskActivity({
+    runId: activeCommerceRunId,
+    runStatus: activeCommerceRunStatus,
+    enabled: isCommerceAgent && !isMock,
+  });
+  const collaborationHref = commerceCollaborationHref({
+    threadId,
+    runId: activeCommerceRunId,
+    isMock,
+  });
 
   const { showNotification } = useNotification();
 
@@ -76,12 +128,12 @@ export default function AgentChatPage() {
 
   useEffect(() => {
     if (isNewThread) {
-      setEcomLaunchContextEdited(false);
+      setSpecialAgentContextEdited(false);
     }
   }, [agent_name, isNewThread, threadId]);
 
   const effectiveContext = useMemo(() => {
-    if (!isEcomLaunch || ecomLaunchContextEdited) {
+    if (!usesUltraDefault || specialAgentContextEdited) {
       return settings.context;
     }
     return {
@@ -89,11 +141,11 @@ export default function AgentChatPage() {
       mode: "ultra" as const,
       reasoning_effort: "high" as const,
     };
-  }, [ecomLaunchContextEdited, isEcomLaunch, settings.context]);
+  }, [settings.context, specialAgentContextEdited, usesUltraDefault]);
 
   const handleContextChange = useCallback(
     (context: InputBoxContext) => {
-      if (!isEcomLaunch) {
+      if (!usesUltraDefault) {
         setSettings("context", context);
         return;
       }
@@ -103,17 +155,17 @@ export default function AgentChatPage() {
         (context.reasoning_effort !== undefined &&
           context.reasoning_effort !== "high");
       if (changedAwayFromDefault) {
-        setEcomLaunchContextEdited(true);
+        setSpecialAgentContextEdited(true);
         setSettings("context", context);
         return;
       }
 
       // The input box auto-selects the model on mount. Keep that model
-      // preference, while keeping the EcomLaunch Ultra default scoped to this
-      // page until the user explicitly changes mode/effort.
+      // preference, while keeping the built-in Agent Ultra default scoped to
+      // this page until the user explicitly changes mode/effort.
       setSettings("context", { model_name: context.model_name });
     },
-    [isEcomLaunch, setSettings],
+    [setSettings, usesUltraDefault],
   );
 
   const {
@@ -131,9 +183,15 @@ export default function AgentChatPage() {
     onSend: () => {
       setIsWelcomeMode(false);
     },
-    onStart: (createdThreadId) => {
+    onStart: (createdThreadId, createdRunId) => {
       setThreadId(createdThreadId);
       setIsNewThread(false);
+      if (isCommerceAgent) {
+        setCapturedCommerceRun({
+          threadId: createdThreadId,
+          runId: createdRunId,
+        });
+      }
       // ! Important: Never use next.js router for navigation in this case, otherwise it will cause the thread to re-mount and lose all states. Use native history API instead.
       history.replaceState(
         null,
@@ -143,7 +201,9 @@ export default function AgentChatPage() {
     },
     onFinish: (state) => {
       if (document.hidden || !document.hasFocus()) {
-        let body = "Conversation finished";
+        let body = isCommerceAgent
+          ? "本轮经营诊断已完成"
+          : t.common.conversationFinished;
         const lastMessage = state.messages[state.messages.length - 1];
         if (lastMessage) {
           const textContent = textOfMessage(lastMessage);
@@ -178,7 +238,16 @@ export default function AgentChatPage() {
     ? localSettings.tokenUsage.inlineMode
     : "off";
   const hasTodos = (thread.values.todos?.length ?? 0) > 0;
-  const AgentBadgeIcon = isEcomLaunch ? ShoppingBagIcon : BotIcon;
+  const AgentBadgeIcon = isEcomLaunch
+    ? ShoppingBagIcon
+    : isCommerceAgent
+      ? BriefcaseBusinessIcon
+      : BotIcon;
+  const agentBadgeName = isEcomLaunch
+    ? t.agents.ecomLaunchName
+    : isCommerceAgent
+      ? t.agents.commerceAgentName
+      : (agent?.name ?? agent_name);
 
   const chatExperience = (
     <ChatBox threadId={threadId}>
@@ -194,11 +263,7 @@ export default function AgentChatPage() {
           {/* Agent badge */}
           <div className="flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1">
             <AgentBadgeIcon className="text-primary h-3.5 w-3.5" />
-            <span className="text-xs font-medium">
-              {isEcomLaunch
-                ? t.agents.ecomLaunchName
-                : (agent?.name ?? agent_name)}
-            </span>
+            <span className="text-xs font-medium">{agentBadgeName}</span>
           </div>
 
           <div className="flex w-full items-center text-sm font-medium">
@@ -228,17 +293,29 @@ export default function AgentChatPage() {
                 </Button>
               </Tooltip>
             )}
-            <TokenUsageIndicator
-              threadId={isNewThread ? undefined : threadId}
-              backendUsage={backendTokenUsage}
-              enabled={tokenUsageEnabled}
-              messages={thread.messages}
-              pendingMessages={pendingUsageMessages}
-              preferences={localSettings.tokenUsage}
-              onPreferencesChange={(preferences) =>
-                setLocalSettings("tokenUsage", preferences)
-              }
-            />
+            {isCommerceAgent && activeCommerceRunId && (
+              <Tooltip content="查看协作空间">
+                <Button size="sm" variant="outline" asChild>
+                  <Link href={collaborationHref}>
+                    <Gamepad2Icon />
+                    协作空间
+                  </Link>
+                </Button>
+              </Tooltip>
+            )}
+            {!isCommerceAgent && (
+              <TokenUsageIndicator
+                threadId={isNewThread ? undefined : threadId}
+                backendUsage={backendTokenUsage}
+                enabled={tokenUsageEnabled}
+                messages={thread.messages}
+                pendingMessages={pendingUsageMessages}
+                preferences={localSettings.tokenUsage}
+                onPreferencesChange={(preferences) =>
+                  setLocalSettings("tokenUsage", preferences)
+                }
+              />
+            )}
             <ExportTrigger threadId={threadId} />
             <ArtifactTrigger />
           </div>
@@ -295,6 +372,16 @@ export default function AgentChatPage() {
                 </div>
               )}
 
+              {isCommerceAgent && activeCommerceRunId && !isWelcomeMode && (
+                <CommerceRunActivityStrip
+                  viewModel={commerceTaskActivity.viewModel}
+                  isLoading={commerceTaskActivity.isLoading}
+                  isRefreshing={commerceTaskActivity.isRefreshing}
+                  error={commerceTaskActivity.error}
+                  collaborationHref={collaborationHref}
+                />
+              )}
+
               <InputBox
                 className={cn(
                   "bg-background/5 w-full",
@@ -317,7 +404,11 @@ export default function AgentChatPage() {
                   )
                 }
                 welcomeSuggestions={
-                  isEcomLaunch ? t.agents.ecomLaunchSuggestions : undefined
+                  isEcomLaunch
+                    ? t.agents.ecomLaunchSuggestions
+                    : isCommerceAgent
+                      ? t.agents.commerceSuggestions
+                      : undefined
                 }
                 disabled={
                   env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" || isUploading

@@ -33,6 +33,7 @@ from pydantic import Field, model_validator
 from app.commerce.domain.models import CommerceModel
 from deerflow.config.app_config import AppConfig
 from deerflow.config.model_config import ModelConfig
+from deerflow.models.lifecycle import close_model_clients
 from deerflow.reflection import resolve_class
 
 EXPECTED_PROVIDER_CLASS = "deerflow.models.patched_deepseek:PatchedChatDeepSeek"
@@ -555,9 +556,12 @@ def run_real_model_preflight(
     http_client = httpx.Client(event_hooks={"request": [count_request]})
     request_nonce_sha256 = hashlib.sha256(run_id.encode("utf-8")).hexdigest()
     started = time.perf_counter()
+    model = None
     try:
         model_class = resolve_class(provider_class, BaseChatModel)
-        model = model_class(**_model_settings_for_preflight(model_config, http_client=http_client))
+        model = model_class(
+            **_model_settings_for_preflight(model_config, http_client=http_client)
+        )
         response = model.invoke(
             [
                 SystemMessage(content="You are serving a provider identity preflight. Follow the response format exactly."),
@@ -590,6 +594,8 @@ def run_real_model_preflight(
         store.persist(result)
         return result
     finally:
+        if model is not None:
+            close_model_clients(model)
         http_client.close()
 
     metadata = _mapping(response.response_metadata)

@@ -1,7 +1,8 @@
 # Commerce Case Agent 完整设计与实施计划
 
-> 状态：设计已收口；确定性 Case/Run/Context 主干与首条真实诊断闭环已完成；运行时路线已优化为 DeerFlow Subagent Harness + Commerce Domain
-> 日期：2026-07-18
+> 2026-07-24 架构重定向：本文件保留 2026-07-18 至 2026-07-23 的实现范围、验证证据和历史决策，不再作为后续默认产品与运行时主线。新的权威实施计划为 `docs/plans/2026-07-24-commerce-chat-subagent-harness-plan.md`，决策见 `docs/adr/0006-commerce-agent-is-chat-first-with-dynamic-subagents.md`。
+> 状态：设计已收口；四 Gold Case 完整 Agent Investigation Gate 已通过；运行时路线为 DeerFlow Subagent Harness + Commerce Domain
+> 日期：2026-07-18（2026-07-20 更新）
 > 当前分支：`feature/commerce-case-agent`
 > 保护快照：`archive/ecom-launch-pre-commerce-agent-20260718` / `9144237`
 > 上游基础：DeerFlow
@@ -791,7 +792,7 @@ https://api.deepseek.com/v1
 6. 无法确认模型版本时停止；
 7. 额度不足、认证失败、限额不可恢复或服务不可用时停止。
 
-2026-07-18 实施状态：
+2026-07-20 实施状态：
 
 - [x] `backend/app/commerce/evaluation/real_model_preflight.py` 已实现；
 - [x] 官方 `https://api.deepseek.com/v1` 新鲜请求已返回 `deepseek-v4-flash`；
@@ -800,7 +801,9 @@ https://api.deepseek.com/v1
 - [x] 缺密钥、鉴权、额度、服务、身份或遥测时失败关闭，真实模型测试不 Skip、不回退；
 - [x] 门禁已接入 Semantic LLM Candidate 与首个 FulfillmentPathAgent；
 - [x] SellerPeer / ReviewExperience / Lead / Verification 独立真实门禁已接入；
-- [ ] 多 Path Worker 与四条 Gold Case E2E 仍待接入。
+- [x] 多 Path Worker 已接入持续 Lead transaction；
+- [x] 四条 Gold Case 的统一 fresh V4 synthesis/semantic Holdout 已通过；
+- [x] 四条 Gold Case 的统一完整 Agent Investigation Run E2E 已通过：14 条唯一 fresh Agent Provider 请求、`71,478` Agent Tokens、全部 `deepseek-v4-flash`、retry `0`；Action/Approval/Follow-up 不属于该调查门禁。
 
 阻塞状态：
 
@@ -1151,9 +1154,9 @@ GREEN：添加：
 - [x] Case 状态写入与 Domain Event 同事务 Unit of Work；
 - [x] Event Replay 重建 Case Projection；
 - [x] Append-only Evidence 与 versioned Hypothesis Repository（Supporting / Contradicting Evidence、Fact / MetricObservation 来源追踪）；
-- [ ] Action / Approval / Follow-up Repository；
+- [x] Action / Approval / Follow-up Repository；
 - [ ] PostgreSQL 真实实例集成测试；
-- [ ] Commerce API 与 Feature Flag Router（Data Intake / Profile / Capability、Semantic Candidate、Anomaly-to-Case 与只读 Case / Evidence / Hypothesis / Event slice 已实现；Investigation Start、Run API 待后续）。
+- [x] Commerce API 与 Feature Flag Router：Data Intake / Profile / Capability、Semantic Candidate、Anomaly-to-Case、Case/Evidence/Hypothesis/Event、Investigation/Run、Action/Approval/Execution/Rollback/Follow-up 与 Skill Candidate。
 
 #### Task 3.1：Commerce Persistence
 
@@ -1242,12 +1245,18 @@ GREEN：添加：
 - [x] SellerPeer Path Agent 真实 Tool + DeepSeek V4 行为测试；
 - [x] ReviewExperience Path Agent 真实 Tool + DeepSeek V4 行为测试。
 - [x] Explicit Case Trigger / requested Paths / outcome-agnostic Peer Policy 合同与 API；
-- [x] 247 个非 live Commerce 确定性回归通过；
-- [ ] DeerFlow CommerceSubagentAdapter；
-- [ ] 三条 Path 的 Subagent Runtime 迁移；
-- [ ] 多 Path fan-out / Evidence Barrier；
-- [ ] 持续 Commerce Lead Agent Loop；
-- [ ] Fresh Verification Subagent 接入新 Loop。
+- [x] 413 个非 live Commerce 确定性回归通过，23 个真实模型测试明确 deselect；
+- [x] DeerFlow CommerceSubagentAdapter / Committer / Supervisor Gate A-C；
+- [x] 三条 Path 的 Subagent Runtime 迁移：Fulfillment、SellerPeer、ReviewExperience 均有 versioned Spec、fresh V4 gate 与 Case-scoped execution；
+- [x] 多 Path fan-out / Evidence Barrier：0–3 独立 Task 并行、terminal join、partial success、unknown external outcome 与生产 Investigation 接线；
+- [x] 持续 Commerce Lead Agent Loop；
+- [x] Fresh Verification Subagent 接入新 Loop；
+- [x] Verification Claim-to-Evidence 合同支持 Fact/VOC-backed Claim，服务器双向补全 Evidence / Fact / Metric lineage 并拒绝越界与跨 Claim 绑定；
+- [x] ReviewExperience 使用 `review_metrics` / `late_delivery_metrics` / `voc_excerpts` 语义 scope，由服务器映射 opaque IDs；
+- [x] Explicit-user Fulfillment 允许无伪造 Anomaly 的 baseline/current 快照对比，检测型 Case 仍要求 Anomaly；
+- [x] Provider sync/async client lifecycle 显式关闭，完整 Gate 不再出现 event-loop teardown 错误；
+- [x] Distinct idempotent Replan Run；
+- [x] Fresh verified Action Planner 接入固定内部 Catalog。
 
 #### Task 4.1：ContextPacket
 
@@ -1309,7 +1318,7 @@ GREEN：添加：
 - [x] No New Evidence；
 - [x] Safe Checkpoint Contract；
 - [x] Durable Checkpoint Persistence；
-- [ ] Resume（Task 4.10）。
+- [x] WAIT / Resume / CANCEL（Task 4.10）。
 
 #### Task 4.7：Structured PathResult
 
@@ -1364,62 +1373,72 @@ GREEN：添加：
 - [x] Atomic path.completed / post-call Checkpoint；
 - [x] Restart Resume classification：initial / unknown external outcome / partial Evidence / completed / invalid；
 - [x] Existing Checkpoint blocks automatic external model retry；
-- [ ] User Clarification Resume；
-- [ ] Mapping Confirmation Resume；
-- [ ] Approval Wait Resume；
-- [ ] Tool Failure Resume；
+- [x] User Clarification WAIT / Resume 基础合同；
+- [x] Mapping Confirmation Resume：批量预校验、单次原子 Semantic Store 替换、Human Actor、幂等 Receipt、Capability refresh；
+- [x] Approval Wait Resume：Wait Checkpoint 与 `lead.waiting` 对齐，只有持久化 `waiting -> running` 且更高 fencing token 后才继续；Action Approval 仍使用独立结构化生命周期；
+- [x] Tool Failure Resume：旧失败 Run 不复活，只允许从明确 `tool_failure` Investigation 创建独立 Replan Run；
 - [x] Process Restart state reconstruction and retry-risk classification；
-- [ ] Process Restart continuation / reconciliation execution。
+- [x] Process Restart continuation for WAIT/Resume and terminal Path scope reconstruction；
+- [x] General unknown-external-outcome reconciliation execution：验证部分 Evidence，持久化 `path.blocked / run.reconciled / post-checkpoint`，旧 Run 结束为 Blocked，重试必须进入独立 Replan；Checkpoint 与 Run projection 间再次崩溃可恢复且不重复 terminal Event。
 
 #### Task 4.11：CommerceSubagentAdapter
 
-- [ ] 定义 `CommerceAgentTask`：Run/Case/Path/Context/Budget/Skill/Model/Lease 引用；
-- [ ] 将 Commerce Run 映射到 DeerFlow Thread/Run，但不改变 Domain Source of Truth；
-- [ ] 将 DeerFlow Agent/Tool/Task stream 映射为 Commerce Domain Event；
-- [ ] Provider middleware 接入现有 fresh DeepSeek V4 identity gate；
-- [ ] Subagent 只能返回 `PathResult`，不得直接写 Case/Evidence；
-- [ ] Adapter cancellation、timeout、heartbeat 和 stale fencing 测试；
-- [ ] Harness boundary：`deerflow.*` 不导入 `app.commerce.*`。
+- [x] Gate A - 纯边界合同：定义 `CommerceAgentTask`、`CommerceSubagentOutcome` 和状态映射；
+- [x] Gate A - 任务只携带 Run/Case/Path/Context hash/Budget/Skill/Model/Fencing/Trace 引用，不携带 Lease secret；
+- [x] Gate A - Adapter 只构造最小 Prompt、`SubagentConfig`、`SubagentExecutor` 并校验 `PathResult`，不得持有 Repository/UoW；
+- [x] Gate A - Provider ID、实际模型身份、Token、Latency、Retry、Stop Reason 等受保护字段只能由 Harness runtime 组装，模型不得自证或覆盖；
+- [x] Gate A - `task` 永久进入 disallowed tools，Path allowlist 之外的 Tool 不得注入 Subagent；
+- [x] Gate A - task ID、PathType、Context hash、ModelAssignment、SkillVersion、SchemaVersion 任一不一致时 fail closed；
+- [x] Gate A - PENDING/RUNNING/COMPLETED/FAILED/CANCELLED/TIMED_OUT 显式映射，非法 JSON/Schema 不得伪装为 completed；
+- [x] Gate B - 异步生命周期：start/poll/cancel/timeout/cleanup，Commerce AgentTaskId 与 DeerFlow task ID 一一对应；
+- [x] Gate B - Commerce Run 映射到 DeerFlow Thread/Run projection，但不改变 Domain Source of Truth；
+- [x] Gate C - 独立 Committer 在 lease/fencing 与 optimistic concurrency 下提交 Evidence/Event/Checkpoint；Adapter 不直接写 Case/Evidence；
+- [x] Gate C - 将 DeerFlow Task/Tool/Path 结构化状态映射为真实 Commerce Domain Event，禁止从文本猜状态；
+- [x] Gate D - Provider middleware 接入 fresh DeepSeek V4 preflight、服务端身份、Provider ID、Token、Latency、Retry 和 Stop Reason 门禁；
+- [x] Gate D - cancellation、timeout、heartbeat、stale fencing、process restart reconciliation 的确定性运行合同测试；Fulfillment Subagent 已通过 fresh DeepSeek V4、Gold Case、parity 与 fenced persistence live gate；
+- [x] Harness boundary：`deerflow.*` 不导入 `app.commerce.*`。
 
 #### Task 4.12：Path Subagent Fan-out
 
-- [ ] 将三条已验收 Path 行为包装为 versioned DeerFlow SubagentSpec；
-- [ ] 每个 Path 使用独立最小 ContextPacket、Tool allowlist、Skill 和 Budget；
-- [ ] Router 只启动 Capability 可用或用户显式请求且合同完整的 Path；
-- [ ] 同一 Run 下 0–3 Path 并行执行；
-- [ ] 每条 Path 独立 pre/post Checkpoint 与 AgentTaskId；
-- [ ] 一个 Path blocked/failed 不抹除其他 Path 已完成 Evidence；
-- [ ] Evidence 持久化通过 lease/fencing 和 optimistic concurrency；
-- [ ] Evidence Barrier 等待所有 selected Path 进入 completed/blocked/failed；
-- [ ] 记录 fan-out wall time、单 Path latency、tokens 和 critical path。
+- [x] 先只将 Fulfillment 包装为 versioned DeerFlow SubagentSpec；
+- [x] Fulfillment 通过 deterministic contract、fresh DeepSeek V4、Gold Case 和旧 Worker parity；迁移期间旧 Worker 仍保留为基准。
+- [x] 将另外两条已验收 Path 行为包装为 versioned DeerFlow SubagentSpec，并通过 deterministic contracts 与 standalone fresh DeepSeek V4 Gold Case gates；
+- [x] 每个 Path 使用独立最小 ContextPacket、Tool allowlist、Skill 和 Budget；
+- [x] Router 只启动 Capability 可用或用户显式请求且合同完整的 Path；
+- [x] 同一 Run 下 0–3 Path 并行执行并接入真实 Case-scoped Coordinator；
+- [x] 每条 Path 独立 pre/post Checkpoint 与 AgentTaskId；
+- [x] 一个 Path blocked/failed 不抹除其他 Path 已完成 Evidence；
+- [x] Evidence 持久化基础能力通过 lease/fencing、optimistic concurrency 和 Path 级原子事务；
+- [x] Evidence Barrier 等待所有 selected Path 进入 completed/blocked/failed；
+- [x] 记录 fan-out wall time、单 Path latency、tokens 和 critical path。
 
 #### Task 4.13：持续 Commerce Lead Agent Loop
 
-- [ ] Lead observe：只读取持久化 Case/Event/Evidence/Hypothesis；
-- [ ] Lead act：调用 deterministic Tool 或创建受约束 Subagent Task；
-- [ ] Lead 不直接生成或修改 Metric；
-- [ ] 读取已有结论的追问走 read-only answer，不重跑全部 Path；
-- [ ] 新调查角度创建 Replan Run，只补跑缺失 Path；
-- [ ] 用户澄清进入 WAITING/Resume，不丢失已完成 Evidence；
-- [ ] 每轮必须有 Goal、Budget、Progress Signal、Checkpoint 和 Stop Condition；
-- [ ] 连续无新 Evidence、预算耗尽、能力不足或用户取消时停止。
+- [x] Lead observe：只读取持久化 Case/Event/Evidence/Hypothesis/Checkpoint，并从 terminal Path Event 恢复 ID-only Evidence Scope；
+- [x] Lead act：调用 deterministic Tool 或创建受约束 Subagent Task；
+- [x] Lead 不直接生成或修改 Metric；
+- [x] 读取已有结论的追问走 fresh V4 read-only answer，不重跑 Path、不新增 Hypothesis，并使用 answer/fast_structured 绑定；
+- [x] 新调查角度创建独立、幂等 Replan Run，只补跑缺失 Path；
+- [x] 用户澄清进入 WAITING/Resume，持久化 wait reason/Checkpoint、释放 Lease，并以更高 fencing token 恢复；
+- [x] 每轮必须有 Goal、Budget、Progress Signal、Checkpoint 和 Stop Condition；
+- [x] 连续无新 Evidence、预算耗尽、能力不足或用户取消时停止。
 
 #### Task 4.14：Fresh Verification Subagent
 
-- [ ] 从持久化 Evidence 和 deterministic Metric 重建 fresh packet；
-- [ ] 不包含 Lead reasoning、隐藏 label 或未持久化中间消息；
-- [ ] 验证 Claim-Evidence、Metric membership、Capability 和 Policy；
-- [ ] pass/reject/repair 显式更新 Hypothesis 新版本；
-- [ ] reject/repair 进入 Replan，不允许静默转成 pass。
+- [x] 从持久化 Evidence 和 deterministic Metric 重建 fresh packet；
+- [x] 不包含 Lead reasoning、隐藏 label 或未持久化中间消息；
+- [x] 验证 Claim-Evidence、Metric membership、Capability 和 Policy；
+- [x] pass/reject/repair 显式更新 Hypothesis 新版本；
+- [x] reject/repair 进入 Replan，不允许静默转成 pass。
 
 #### Task 4.15：渐进迁移与等价门禁
 
-- [ ] 现有 Fulfillment Worker Loop 保留为迁移基准；
-- [ ] 新 Subagent Loop 必须通过相同 Gold Case 和真实模型门禁；
-- [ ] 对比旧/新 Evidence coverage、tokens、latency、failure semantics；
-- [ ] 新链路通过前不删除旧链路；
+- [x] 现有 Fulfillment Worker Loop 保留为迁移基准；
+- [x] 新 Subagent Loop 通过相同 Gold Case 和真实模型门禁；
+- [x] 对比旧/新 Evidence coverage、tokens、latency、failure semantics；
+- [x] 新链路通过前不删除旧链路；
 - [ ] 新链路通过后移除角色专用 Worker 编排，保留通用 Adapter；
-- [ ] README/ADR 明确 DeerFlow 上游与 Commerce 新增能力。
+- [x] README/ADR 明确 DeerFlow 上游与 Commerce 新增能力。
 
 退出条件：
 
@@ -1433,46 +1452,48 @@ GREEN：添加：
 
 #### Task 5.1：Action Validator
 
-- Schema；
-- Preconditions；
-- Evidence；
-- Risk；
-- Permission；
-- Rollback；
-- Expected Signals。
+- [x] Schema；
+- [x] Preconditions；
+- [x] Evidence；
+- [x] Risk；
+- [x] Permission；
+- [x] Rollback；
+- [x] Expected Signals。
 
 #### Task 5.2：Policy Gate
 
-- L0–L5；
-- Tool Allowlist；
-- Connector Policy；
-- High-risk Approval；
-- Policy Denied 不重试。
+- [x] L0–L5；
+- [x] Tool Allowlist；
+- [x] Connector Policy；
+- [x] High-risk Approval；
+- [x] Policy Denied 不重试。
 
 #### Task 5.3：Approval API
 
-- Approve；
-- Modify；
-- Reject；
-- Audit Log；
-- Idempotency。
+- [x] Approve；
+- [x] Modify；
+- [x] Reject；
+- [x] Audit Log；
+- [x] Idempotency。
 
 #### Task 5.4：Internal Task Connector
 
 只实现可逆低风险动作：
 
-- 创建内部调查任务；
-- 创建监控规则；
-- 记录执行结果；
-- 支持取消和归档。
+- [x] 创建内部调查任务；
+- [x] 创建监控规则；
+- [x] 导出审计 Cohort 与请求缺失数据；
+- [x] 记录真实 Artifact、哈希、执行结果和 fenced Run；
+- [x] 支持取消、禁用、归档和可验证 Rollback；
+- [x] 外部商家写操作 fail closed。
 
 #### Task 5.5：FollowUp
 
-- 新数据触发；
-- 重新计算指标；
-- effective / ineffective / inconclusive；
-- Case Close / Reopen；
-- 不伪造因果归因。
+- [x] 新数据触发；
+- [x] 重新计算指标；
+- [x] target met / not met / unknown 与 `inconclusive` Outcome；
+- [x] Case Close / Reopen / 保持调查；
+- [x] 不伪造因果归因。
 
 退出条件：
 
@@ -1484,75 +1505,85 @@ GREEN：添加：
 
 #### Task 6.1：Evaluation Runner
 
-- Frozen Input；
-- Frozen Config；
-- Real DeepSeek V4 Preflight；
-- Actual Model Identity；
-- Provider Request ID；
-- Multiple Repetitions；
-- Fresh Real-model Request；
-- Raw Output；
-- Trace；
-- Token；
-- Latency。
+- [x] Frozen Input；
+- [x] Frozen Config；
+- [x] Real DeepSeek V4 Preflight；
+- [x] Actual Model Identity；
+- [x] Provider Request ID；
+- [x] Multiple Repetitions；
+- [x] Fresh Real-model Request；
+- [x] Raw Output hash / audit boundary；
+- [x] Trace；
+- [x] Token；
+- [x] Latency。
 
 #### Task 6.2：Deterministic Evaluator
 
-- Metric；
-- Capability；
-- Routing；
-- Schema；
-- Budget；
-- Policy。
+- [x] Metric；
+- [x] Capability；
+- [x] Routing；
+- [x] Schema；
+- [x] Budget；
+- [x] Policy。
 
 #### Task 6.3：Evidence / Semantic Evaluator
 
-- Required Fact；
-- Forbidden Claim；
-- Unknown；
-- Causal Language；
-- Action Usefulness；
-- Structured Reason。
+- [x] Required Fact；
+- [x] Forbidden Claim；
+- [x] Unknown；
+- [x] Causal Language；
+- [x] Action Usefulness；
+- [x] Structured Reason。
 
 #### Task 6.4：Trace Evaluator
 
-- Agent Path；
-- Tool Call；
-- Duplicate Call；
-- Checkpoint；
-- Model Assignment；
-- Verification Repair。
+- [x] Agent Path；
+- [x] Tool Call；
+- [x] Duplicate Call；
+- [x] Checkpoint；
+- [x] Model Assignment；
+- [x] Verification Repair。
 
 #### Task 6.5：Experiment Registry
 
-- Control / Candidate；
-- Hypothesis；
-- Controlled Variables；
-- Split；
-- Results；
-- Decision；
-- Reproduction Command。
+- [x] Control / Candidate；
+- [x] Hypothesis；
+- [x] Controlled Variables；
+- [x] Split；
+- [x] Results；
+- [x] Decision；
+- [x] Reproduction Command。
 
 #### Task 6.6：架构实验
 
 按既定实验矩阵执行，禁止预填数字。
 
+- [x] 单 Case 微实验暴露 Candidate Token Pareto 回归；
+- [x] Semantic Judge 因果措辞漏检修复后重跑；
+- [x] 三 Gold Case × Control/Candidate × 2 repetitions Holdout；
+- [x] 四 Gold Case 统一 Synthesis / Semantic Eval Release Gate；
+- [x] 四 Gold Case 统一完整 Agent Investigation Run Release Gate；
+- [ ] 外部 Connector / PostgreSQL / 前端 E2E 架构实验。
+
 #### Task 6.7：Skill Candidate Registry
 
-- Immutable Candidate；
-- Base Version；
-- Content Hash；
-- Security Scan；
-- Eval Status；
-- Shadow；
-- Promotion；
-- Rollback。
+- [x] Immutable Candidate；
+- [x] Base Version；
+- [x] Content Hash；
+- [x] Security Scan；
+- [x] Eval Status；
+- [x] Shadow；
+- [ ] Human Review；
+- [ ] Promotion；
+- [x] Active Pointer / Rollback release transaction、幂等 receipt 与 pointer-write failure recovery；真实 Candidate 的人工 Promotion 仍需用户授权。
 
 #### Task 6.8：替换 Runtime Skill Manage
 
-- Commerce Lead 移除直接 Skill Edit；
-- 新增 propose candidate；
-- Active Pointer 仅 Promotion Service 可修改。
+- [x] Commerce Lead 不允许直接 Skill Edit；
+- [x] 新增 propose candidate；
+- [x] Candidate API 不接受客户端伪造状态、内容哈希或 Active Pointer；
+- [x] Active Pointer 只能由显式 Promotion 流程修改；
+- [ ] Human reviewer 通过后执行首次 Promotion / Rollback 演练。
 
 退出条件：
 
@@ -1577,15 +1608,15 @@ GREEN：添加：
 
 页面实现顺序：
 
-1. Master Shell；
-2. Case Detail；
-3. Data Inbox；
-4. Capability Report；
-5. Case Queue；
-6. Evidence Explorer；
-7. Action Center；
-8. Agent Run；
-9. Skills & Evals；
+1. [x] Master Shell：中文 View Model / strict API contract / React / desktop + mobile browser QA；
+2. [x] Case Detail：v1 因默认层级偏多归档；v2 已完成 Image Generation、用户确认、确定性 Analysis/Action 读模型、React、真实 Olist 数据联调、桌面/移动浏览器与截图 QA；
+3. [x] Data Inbox：已完成可恢复 Dataset List / Detail、完整性 fail-closed、Dataset-scoped Semantic Confirmation、中文 React 上传审核态、真实浏览器机械交互与截图 QA；
+4. [x] Capability Report：已完成 Image Generation、Dataset/Capability/Semantic Mapping 纯投影、空态与错误态、中文 React、单一顶栏刷新、桌面/移动浏览器交互与截图 QA；
+5. [x] Case Queue：已完成 Image Generation、Case List 分组/筛选/搜索、独立导航状态、Capability 预选路径、Explicit Case 创建侧栏、内容寻址幂等回放、无异常标题保护、桌面/移动浏览器交互与截图 QA；
+6. [x] Evidence Explorer：已完成 Image Generation、支持/矛盾/未知同级筛选、Metric/Fact/Hypothesis 对象引用、证据边界、中文 React、Composer 页面边界和桌面/移动截图 QA；
+7. [x] Action Center：已完成 Image Generation、跨 Case Action Queue、严格 Action/Approval/Artifact/Follow-up 合同、证据/参数/策略/回滚详情、批准/拒绝/执行/回滚主路径、中文 React 和桌面/移动截图 QA；Approval modify 通用编辑仍列入后续闭环交互；
+8. [x] Agent Run：已完成 Image Generation、跨 Case Run Queue、Run Detail/Event/Checkpoint 严格合同、三 Path 同级 fan-out、Evidence Barrier 确定性派生、模型遥测/预算/Checkpoint/事件流工程详情、中文 React、桌面/移动浏览器交互与截图 QA；当前浏览器场景为 Mock API 机械验证，不计作真实 DeepSeek V4 Agent 前端 E2E；
+9. [x] Skills & Evals：已完成 Image Generation、Candidate/Experiment/Active Pointer 严格合同、候选评测依据读 API、七阶段演进门禁、Control/Candidate Pareto、Shadow Run 边界、人工激活/回滚机械路径、中文 React 和桌面/移动截图 QA；真实 Candidate 仍保持 shadow，未执行真实 Human Review；
 10. War Room；
 11. Follow-up；
 12. Overview。
@@ -1602,24 +1633,24 @@ GREEN：添加：
 
 ### Phase 8：硬化、发布和面试材料
 
-- Backend 全量测试；
+- [x] Backend Commerce 确定性全量测试；
 - Blocking IO Gate；
-- Harness Boundary；
+- [x] Harness Boundary；
 - Frontend Unit；
 - Typecheck；
 - E2E；
 - Browser QA；
-- Security / Permission Tests；
-- Fault Injection；
-- Performance；
-- README；
-- ADR；
-- Architecture Diagram；
-- Demo Script；
-- Failure Analysis；
-- Experiment Report；
-- Upstream Attribution；
-- 面试 Q&A。
+- [x] Security / Permission Tests；
+- [x] Fault Injection；
+- [x] Backend deterministic Performance audit；
+- [x] README；
+- [x] ADR；
+- [x] Architecture Diagram；
+- [x] Backend Demo Script；
+- [x] Failure Analysis；
+- [x] Experiment Report；
+- [x] Upstream Attribution；
+- [x] 面试 Q&A。
 
 ## 19. 每阶段统一验证命令
 
@@ -1743,17 +1774,181 @@ git status --short
 - DeerFlow 上游与个人贡献边界清晰；
 - 所有公开演示结论均不虚构业务效果。
 
-## 23. 当前实施启动点（2026-07-19）
+## 23. 当前执行状态与后续顺序（2026-07-19）
 
-按以下顺序继续，不进行推倒式重写：
+迁移期间旧 Worker 只作为行为基准。新 DeerFlow Subagent Loop 已完成 Fulfillment parity、三 Path standalone gate、0–3 Path fan-out、Evidence Barrier、持续 Lead transaction、read-only answer、bounded repair、WAIT/Resume/CANCEL、Fresh Verification 与 distinct Replan Run；当前不再把旧 Worker 当作产品架构主线。
 
-1. 提交已通过 247 个确定性测试的 Explicit Case Trigger/API 切片；
-2. 为 CommerceSubagentAdapter 写 RED 合同测试和 Harness boundary 测试；
-3. 先把一个 Fulfillment Path 包装为 DeerFlow Subagent，验证事件/预算/证据等价；
-4. 使用 fresh DeepSeek V4 运行 Subagent Fulfillment→Lead→Verification E2E；
-5. 接入 SellerPeer/ReviewExperience，并实现 0–3 Path fan-out 和 Evidence Barrier；
-6. 将一次性 LeadSynthesis 升级为持续 Lead Agent Loop；
-7. 完成 Replan、Action/Approval/Follow-up；
-8. 完成 Eval/Skill Evolution 后，再进入每页先生成视觉稿的前端实施。
+后端闭环当前已完成：
 
-迁移期间旧 Worker 是行为基准，不是长期双轨架构。只有新 Subagent Loop 在真实 DeepSeek V4、Gold Case、失败路径、Token/Latency 和审计门禁上等价或更优，才移除旧角色专用编排。
+1. [x] Deterministic Data / Capability / Metric / Anomaly / Case；
+2. [x] Case、Lineage、Evidence、Hypothesis、Run、Checkpoint、Lease/Fencing、Domain Event；
+3. [x] DeerFlow Adapter / Supervisor / Committer 与三条 bounded Path Subagents；
+4. [x] 0–3 Path 并行、Evidence Barrier、持续 Lead Goal Loop；
+5. [x] Fresh Verification Subagent、versioned verdict、Replan Run；
+6. [x] Action / Approval API、Policy、Internal Connector、Execution / Rollback；
+7. [x] Follow-up 新数据重算、Close / Reopen / Inconclusive；
+8. [x] Fresh Action Planner + fixed Action Catalog + idempotent free replay；
+9. [x] Semantic Evaluator、Experiment、Pareto Comparator、Holdout、Skill Candidate、Security Scan、Shadow；
+10. [x] Human Review、Promotion、Active Pointer 与 Rollback API、幂等与 pointer-write fault recovery；
+11. [ ] 对当前真实 `1.3.0` Shadow Candidate 执行用户授权的人审与首次 Promotion / Rollback 发布演练。
+
+真实调优与评测证据：
+
+- `exp_4d14ee6a77a74c3eb7be5d5c278d6cd8`：Control/Candidate 均通过，但 Candidate Token 高约 `13.2%`，超过成本包络，Decision=`hold`；
+- `exp_6b9fe42117b74d30997800495b8eca61`：三 Case Candidate `6/6`，形成 `1.2.0` 历史 Shadow；
+- `exp_1ac1367cfb5445b597ef0d1c0ffdbab6`：首次四 Case 在旧 Evaluator 下技术通过，但人工审计发现 Candidate 自造 `15% / 2×` Action 阈值，因此不作为最终晋级证据；
+- `commerce-semantic-evaluator@1.2.0` 新增确定性 `unsupported-action-threshold`，Candidate Skill 升级为 `1.3.0`；
+- `exp_f566076c6af9487893e2a9eb40631dc9`：Peer 微实验 Candidate `2/2`，证明不再自造数值阈值；
+- `exp_aca844e7ef134b7dba264e919eacdb38`：四 Case × 两次 repetition，Candidate `8/8`、零 hard-gate failure，Control `6/8`；Candidate 平均 Token 下降约 `12.1%`，Latency 下降约 `26.0%`，Decision=`promote_candidate`；
+- Candidate `skillcand_e71dc9eeb63d5ee6bcfa73920931384c` 已通过 Security、Offline/Holdout 和 Fulfillment/Review 两个 fresh V4 Shadow Run，当前状态=`shadow`；旧 `1.2.0` Candidate 保持不可变但已 superseded；没有 Human Review，不修改 Active Pointer。
+
+最新验证基线：
+
+```text
+Ruff Commerce: passed
+Commerce deterministic: 427 passed, 23 real-model tests deselected
+Security / fault focused gate: 215 passed
+Harness sandbox / lazy-import regression: 204 passed
+Fresh DeepSeek V4 preflight: 1 passed
+Fresh Action Planner live gate: 1 passed
+Four-Gold synthesis/semantic live gate: 1 passed
+Four-Gold full Agent Investigation live gate: 1 passed in 94.19s
+Four-Gold Agent requests: 14 unique Provider Request IDs, 71,478 Agent Tokens
+Actual model identity: deepseek-v4-flash
+Provider retry: 0
+```
+
+前端当前视觉资产状态：
+
+```text
+历史，不再采用：
+- docs/design/commerce/mockups/overview-visual-master-v1.png
+- docs/design/commerce/overview-visual-master-v1.md
+- docs/design/commerce/mockups/master-shell-visual-v1.png
+- docs/design/commerce/master-shell-visual-v1.md
+
+当前已确认并实现：
+- docs/design/commerce/mockups/master-shell-visual-v2.png
+- docs/design/commerce/master-shell-visual-v2.md
+- docs/design/commerce/implementation/master-shell-react-desktop-v1.png
+- docs/design/commerce/implementation/master-shell-react-mobile-v1.png
+```
+
+用户已明确要求面向用户的内容使用中文，并选择浅色 Codex Desktop-inspired 工作区作为全局设计方向。Master Shell v2 已完成 Image Generation、用户确认、中文信息架构与 View Model TDD、严格 API Contract、React、类型和单元验证、真实 Chromium 交互与桌面/移动截图 QA。`/commerce` 在 Feature Flag 关闭时 fail closed，Workspace ID 缺失时不猜测；英文后端 Case/Evidence 不直接泄露到中文主界面；未知和乱序 Domain Event 有显式处理。2026-07-20 信息密度评审进一步确定“运营默认视图 + 工程详情视图”的渐进披露规则，Case Detail v1 因默认同时暴露层级过多归档。Case Detail v2 已完成视觉确认、确定性 Analysis/Action 读模型、严格前端合同、React、真实 Gateway + SQLite + `GC-FULFILLMENT-001` 数据联调、桌面/Inspector/390×844 移动浏览器 QA 和实现截图。
+
+Case Detail v1 已生成并作为历史密集版本归档：
+
+```text
+docs/design/commerce/mockups/case-detail-visual-v1.png
+docs/design/commerce/case-detail-visual-v1.md
+```
+
+Case Detail v2 已确认并实现：
+
+```text
+docs/design/commerce/information-density-guidelines-v1.md
+docs/design/commerce/mockups/case-detail-visual-v2-default.png
+docs/design/commerce/mockups/case-detail-visual-v2-evidence-inspector.png
+docs/design/commerce/mockups/case-detail-visual-v2-mobile-default.png
+docs/design/commerce/case-detail-visual-v2.md
+docs/design/commerce/implementation/case-detail-react-desktop-v1.png
+docs/design/commerce/implementation/case-detail-react-evidence-inspector-v1.png
+docs/design/commerce/implementation/case-detail-react-mobile-v1.png
+docs/progress/2026-07-20-commerce-case-detail-react-v2.md
+```
+
+当前已完成 Data Inbox、Capability Report、Case Queue、Evidence Explorer、Action Center、Agent Run 与 Skills & Evals 的视觉稿、数据合同、React 和浏览器 QA，下一页进入 War Room 的 Image-first 设计与真实事件活动检查门禁。
+
+Data Inbox v1 当前视觉候选：
+
+```text
+docs/design/commerce/mockups/data-inbox-visual-v1-empty.png
+docs/design/commerce/mockups/data-inbox-visual-v1-review.png
+docs/design/commerce/mockups/data-inbox-visual-v1-mobile-review.png
+docs/design/commerce/data-inbox-visual-v1.md
+```
+
+三张图已完成中文、空态、真实 Olist 行数、Semantic Confirmation、未观察字段、无 Chat Composer 和移动响应式人工检查。实现截图与测试记录见 `docs/progress/2026-07-21-commerce-data-inbox-contract-and-react.md`。
+
+Capability Report v1 已确认并实现：
+
+```text
+docs/design/commerce/mockups/capability-report-visual-v1-desktop.png
+docs/design/commerce/mockups/capability-report-visual-v1-mobile.png
+docs/design/commerce/capability-report-visual-v1.md
+docs/design/commerce/implementation/capability-report-react-desktop-v1.png
+docs/design/commerce/implementation/capability-report-react-mobile-v1.png
+docs/progress/2026-07-22-commerce-capability-report-react.md
+```
+
+页面读取真实 Dataset Detail、Capability Profile 与 Semantic Mapping Profile，不把代表数据状态写死；“未观察”不会投影为零；非 Case 页面没有 Chat Composer、Runtime 或假 Agent 活动。视觉终检后删除了正文重复刷新，并修复顶栏刷新误刷 Case、非 Case 页面仍高亮当前案例的问题。
+
+Case Queue v1 已确认并实现：
+
+```text
+docs/design/commerce/mockups/case-queue-visual-v1-desktop.png
+docs/design/commerce/mockups/case-queue-visual-v1-mobile.png
+docs/design/commerce/case-queue-visual-v1.md
+docs/design/commerce/implementation/case-queue-react-desktop-v1.png
+docs/design/commerce/implementation/case-queue-react-mobile-v1.png
+docs/design/commerce/implementation/case-queue-react-create-v1.png
+docs/progress/2026-07-22-commerce-case-queue-react.md
+```
+
+队列读取真实 Case List 并按权威生命周期状态分组，不从聊天或计时器推断活动；Capability 创建入口会预选路径，用户必须补齐经营主体、基线窗口和当前窗口后才能持久化 Explicit Case。相同内容重复提交只保留一个内容寻址 Case。无异常信号的 Explicit Case 不再错误显示为“履约延迟异常”。
+
+Evidence Explorer v1 已确认并实现：
+
+```text
+docs/design/commerce/mockups/evidence-explorer-visual-v1-desktop.png
+docs/design/commerce/mockups/evidence-explorer-visual-v1-mobile-corrected.png
+docs/design/commerce/evidence-explorer-visual-v1.md
+docs/design/commerce/implementation/evidence-explorer-react-desktop-v1.png
+docs/design/commerce/implementation/evidence-explorer-react-mobile-v1.png
+docs/progress/2026-07-22-commerce-evidence-explorer-react.md
+```
+
+页面从真实 Case Detail 投影 Evidence、Metric Observation、可审计 Fact ID 和关联 Hypothesis，支持、矛盾与未知证据同级可见；Fact 正文尚未开放时不伪造详情。Case Composer 现在只在概览页挂载，不再遮挡调查记录、证据或运行检查视图。
+
+Action Center v1 已确认并实现：
+
+```text
+docs/design/commerce/mockups/action-center-visual-v1-desktop.png
+docs/design/commerce/mockups/action-center-visual-v1-mobile.png
+docs/design/commerce/action-center-visual-v1.md
+docs/design/commerce/implementation/action-center-react-desktop-v1.png
+docs/design/commerce/implementation/action-center-react-mobile-v1.png
+docs/progress/2026-07-23-commerce-action-center-react.md
+```
+
+页面读取跨 Case 的真实 Action Record 和选中 Action Detail，从严格参数合同恢复执行计划，并展示服务端风险、策略、审批、执行工具、回滚和 Artifact；批准、拒绝、稳定幂等执行与回滚主路径已接通。结构化 Mock 浏览器场景完成 `policy_checked → monitoring → rolled_back`，后端确定性 Router 同步回归通过。Approval modify 的不可变替换后端合同已存在，通用前端编辑表单仍保留在行动闭环后续项。
+
+Agent Run v1 已确认并实现：
+
+```text
+docs/design/commerce/mockups/agent-run-visual-v1-desktop.png
+docs/design/commerce/mockups/agent-run-visual-v1-mobile.png
+docs/design/commerce/agent-run-visual-v1.md
+docs/design/commerce/implementation/agent-run-react-desktop-v1.png
+docs/design/commerce/implementation/agent-run-react-mobile-v1.png
+docs/progress/2026-07-23-commerce-agent-run-react.md
+```
+
+页面读取跨 Case Run List、选中 Run Detail、严格 Domain Event 与 Goal Loop Checkpoint 合同，投影目标、能力路由、三 Path 同级 fan-out、证据屏障、主智能体综合、新鲜上下文验证和停止阶段。后端没有独立 `evidence.barrier_released` 事件，因此屏障完成只由“全部 requested Path 进入终态 + 真实 `lead.started` / `lead.completed` 事件存在”确定性派生，并在界面中显示派生边界。实际模型、提供方请求编号、令牌、延迟、重试和原始停止原因只从真实事件 payload 聚合；缺失时显示“未观察”。最新 Checkpoint、预算、事件重排和可展开事件流已接通，非 Case 页面没有 Chat Composer。前端全量回归为 46 files / 272 tests，Commerce Playwright 11 passed，Webpack production build 通过；后端 Run Router 6 passed。该 Playwright 场景仍是 Mock API 机械验证，真实 DeepSeek V4 Agent 前端 E2E 保留在发布门禁。
+
+Skills & Evals v1 已确认并实现：
+
+```text
+docs/design/commerce/mockups/skills-evals-visual-v1-desktop.png
+docs/design/commerce/mockups/skills-evals-visual-v1-mobile.png
+docs/design/commerce/skills-evals-visual-v1.md
+docs/design/commerce/implementation/skills-evals-react-desktop-v1.png
+docs/design/commerce/implementation/skills-evals-react-mobile-v1.png
+docs/progress/2026-07-23-commerce-skills-evals-react.md
+```
+
+页面读取 Workspace-scoped immutable Skill Candidate、绑定的 Experiment Definition/Report 和可选 Active Pointer，投影候选提出、安全扫描、离线评测、留出集、Shadow、人工审查和生效七阶段门禁。新增 `GET /skill-candidates/{candidate_id}/evidence` 只读合同，使前端可以从真实 Experiment Report 展示 Candidate/Control 通过率、hard gate、令牌、延迟和唯一 Provider Request ID；它不重跑模型。Shadow 区域只显示 Candidate 当前持久化的 `shadow_live_run_ids`，请求遥测未开放时明确显示边界，不从 Run 数量推断请求数量。Actor-scoped 激活和 reason-bound 回滚主路径已接通，操作后重新读取 Candidate 与 Pointer。结构化 Mock 浏览器场景完成 `shadow → active → rolled_back`，但真实 `1.3.0` Candidate 没有被人工批准，仍保持 `shadow`。前端全量回归为 49 files / 276 tests，Commerce Playwright 12 passed，Webpack production build 通过；后端 Skill Candidate Router 5 passed。
+
+四 Gold 完整调查门禁的 v1–v11 Failure Analysis 与逐 Case 证据见 `docs/progress/2026-07-20-commerce-four-gold-agent-release.md`。
+
+仍需完成：War Room、Follow-up、Overview；Commerce Case-bound 问答、Approval modify 通用编辑和剩余行动跟踪交互；真实 DeepSeek V4 Agent 前端 E2E；live PostgreSQL；外部商家 Connector；当前真实 Shadow Candidate 的 Human Review/Skill Promotion；带完整真实页面截图/录屏的最终 Demo 包。当前 mock API Playwright 只验证 UI 机械行为；真实 Gateway + Olist 浏览器验收验证确定性读取，但还没有由浏览器启动并读取一条新的真实 DeepSeek V4 Agent Run，因此仍不计作前端 Agent Release Gate。Goal 在这些门禁全部完成前保持 active。

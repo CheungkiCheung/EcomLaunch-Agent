@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from app.commerce.api.analysis_service import CommerceAnalysisService
+from app.commerce.api.data_service import CommerceDataService
 from app.commerce.api.dependencies import get_commerce_read_service
 from app.commerce.api.router import router
 from app.commerce.api.service import CommerceReadService
+from app.commerce.data.gold_cases import load_evaluation_case
 from app.commerce.domain.enums import CaseSeverity, HypothesisStatus, SemanticStatus
 from app.commerce.domain.events import DomainEventActor
 from app.commerce.domain.ids import (
@@ -27,8 +31,12 @@ from app.commerce.domain.ids import (
 )
 from app.commerce.domain.lineage import CaseLineage
 from app.commerce.domain.models import Case, Evidence, EvidenceRelation, Hypothesis
+from app.commerce.metrics.registry import MetricWindow
 from app.commerce.persistence.schema import create_commerce_schema
 from app.commerce.persistence.unit_of_work import SqlCommerceUnitOfWork
+
+REPO_ROOT = Path(__file__).parents[4]
+CASE_ROOT = REPO_ROOT / "evals" / "commerce" / "cases" / "GC-FULFILLMENT-001"
 
 
 async def _app(tmp_path):
@@ -98,9 +106,7 @@ async def _seed(factory, workspace_id: WorkspaceId) -> tuple[Case, Evidence, Hyp
         correlation_id=correlation_id,
         actor=DomainEventActor.SYSTEM,
     )
-    case_with_evidence = case.model_copy(
-        update={"evidence_ids": (evidence.id,), "version": 2}
-    )
+    case_with_evidence = case.model_copy(update={"evidence_ids": (evidence.id,), "version": 2})
     await uow.append_evidence(
         case_with_evidence,
         evidence,
@@ -109,9 +115,7 @@ async def _seed(factory, workspace_id: WorkspaceId) -> tuple[Case, Evidence, Hyp
         correlation_id=correlation_id,
         actor=DomainEventActor.AGENT,
     )
-    case_with_hypothesis = case_with_evidence.model_copy(
-        update={"hypothesis_ids": (hypothesis.id,), "version": 3}
-    )
+    case_with_hypothesis = case_with_evidence.model_copy(update={"hypothesis_ids": (hypothesis.id,), "version": 3})
     await uow.append_hypothesis_version(
         case_with_hypothesis,
         hypothesis,
@@ -160,6 +164,14 @@ async def test_read_workspace_returns_case_evidence_hypothesis_and_events(tmp_pa
     assert detail.json()["evidence"][0]["id"] == str(evidence.id)
     assert detail.json()["hypotheses"][0]["id"] == str(hypothesis.id)
     assert detail.json()["lineage"]["seller_external_key"] == "seller-1"
+    assert detail.json()["analysis"] == {
+        "status": "unavailable",
+        "unavailable_reason": "analysis_reader_unconfigured",
+        "baseline_metrics": [],
+        "current_metrics": [],
+        "anomalies": [],
+    }
+    assert detail.json()["actions"] == []
     assert lineage_response.status_code == 200
     assert lineage_response.json()["case_id"] == str(case.id)
     assert evidence_response.status_code == 200
@@ -173,6 +185,68 @@ async def test_read_workspace_returns_case_evidence_hypothesis_and_events(tmp_pa
         "evidence.appended",
         "hypothesis.version_appended",
     ]
+    await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_case_detail_returns_verified_deterministic_analysis(tmp_path):
+    app, engine, factory = await _app(tmp_path)
+    workspace_id = WorkspaceId.new()
+    evaluation_case = load_evaluation_case(CASE_ROOT)
+    uploads = tuple(
+        (
+            Path(file.relative_path).name,
+            (CASE_ROOT / file.relative_path).read_bytes(),
+        )
+        for file in evaluation_case.input_bundle.files
+    )
+    data_service = CommerceDataService(storage_root=tmp_path / "commerce-storage")
+    view = data_service.ingest_uploads(workspace_id, uploads)
+    request = evaluation_case.input_bundle.analysis_request
+    assert request is not None
+    analyzed = await CommerceAnalysisService(
+        data_service=data_service,
+        session_factory=factory,
+    ).analyze(
+        workspace_id,
+        view.manifest.dataset_id,
+        baseline_window=MetricWindow(
+            start=request.baseline_window.start,
+            end=request.baseline_window.end,
+        ),
+        current_window=MetricWindow(
+            start=request.anomaly_window.start,
+            end=request.anomaly_window.end,
+        ),
+        seller_id=request.seller_id,
+    )
+    case = analyzed.cases[0]
+    app.dependency_overrides[get_commerce_read_service] = lambda: CommerceReadService(
+        factory,
+        data_service=data_service,
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.get(
+            f"/api/commerce/cases/{case.id}",
+            headers={"X-Commerce-Workspace-Id": str(workspace_id)},
+        )
+
+    assert response.status_code == 200
+    analysis = response.json()["analysis"]
+    assert analysis["status"] == "available"
+    assert analysis["unavailable_reason"] is None
+    assert analysis["baseline_metrics"]
+    assert analysis["current_metrics"]
+    assert analysis["anomalies"]
+    signal = analysis["anomalies"][0]
+    baseline = {item["id"]: item for item in analysis["baseline_metrics"]}[signal["baseline_observation_id"]]
+    current = {item["id"]: item for item in analysis["current_metrics"]}[signal["current_observation_id"]]
+    assert signal["baseline_value"] == baseline["value"]
+    assert signal["current_value"] == current["value"]
     await engine.dispose()
 
 

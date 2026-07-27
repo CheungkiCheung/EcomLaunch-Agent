@@ -13,14 +13,14 @@
 ## Testing
 
 - Domain、Metric、State、Repository、Event、Budget、Policy 和数据质量测试保持无模型。
-- 任何 Lead、Path Agent、Router 模型判断、Tool Selection、Verification、Eval 或 E2E 测试必须通过真实 DeepSeek V4 Preflight。
+- 任何 Parent、Subagent、Router 模型判断、Tool Selection、Verification、Eval 或 E2E 测试必须通过真实 DeepSeek V4 Preflight。
 - 禁止使用 Fake ChatModel、Mock LLM、Replay 或缓存响应证明 Commerce Agent 通过。
 - 现有 DeerFlow 中使用 Fake/Replay 的上游测试可以作为历史基础设施参考，但不能作为 Commerce Agent 验收证据，也不要混入 Commerce Release Gate。
 - 真实模型身份、请求 ID、Token、Latency、Retry 和版本元数据必须持久化。
 
 ## Implementation
 
-- 新功能先写失败测试；只实现当前阶段最小合同。
+- 新功能与 Bug 修复优先实现真实效果和根因修复，不强制先写失败测试；完成前必须补齐最小合同和风险匹配的回归测试。
 - FastAPI Router 不直接承载业务规则；调用 application service。
 - Domain 不依赖 FastAPI、LangChain、LangGraph、数据库 ORM 或前端类型。
 - Agent 输入输出使用版本化结构化合同；解析失败必须显式进入 repair / blocked 流程。

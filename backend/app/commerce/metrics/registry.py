@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any, Literal, Self
 from uuid import NAMESPACE_URL, uuid5
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.commerce.data.normalized import EntityType, NormalizedDataset, NormalizedEntity
 from app.commerce.data.semantic_mapper import SemanticField
@@ -46,6 +46,13 @@ class MetricDefinition(MetricModel):
 class MetricWindow(MetricModel):
     start: datetime
     end: datetime
+
+    @field_validator("start", "end")
+    @classmethod
+    def normalize_to_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
 
     @model_validator(mode="after")
     def require_ordered_window(self) -> Self:
@@ -129,9 +136,7 @@ class PeerComparisonSnapshot(MetricModel):
 
     @property
     def late_delivery_rate_gap(self) -> Decimal:
-        return Decimal(str(self.target_late_delivery_rate.value)) - Decimal(
-            str(self.peer_late_delivery_rate.value)
-        )
+        return Decimal(str(self.target_late_delivery_rate.value)) - Decimal(str(self.peer_late_delivery_rate.value))
 
 
 class GeographicSegment(MetricModel):
@@ -367,17 +372,10 @@ class MetricEngine:
         for order in comparable:
             orders_by_seller[order.seller_id].append(order)
 
-        eligible = {
-            member_seller_id: orders
-            for member_seller_id, orders in orders_by_seller.items()
-            if len(orders) >= policy.min_orders_per_seller
-        }
+        eligible = {member_seller_id: orders for member_seller_id, orders in orders_by_seller.items() if len(orders) >= policy.min_orders_per_seller}
         if seller_id not in eligible:
             actual = len(orders_by_seller.get(seller_id, ()))
-            raise PeerCohortUnavailableError(
-                f"Target seller has {actual} comparable orders; "
-                f"requires {policy.min_orders_per_seller}"
-            )
+            raise PeerCohortUnavailableError(f"Target seller has {actual} comparable orders; requires {policy.min_orders_per_seller}")
 
         peer_seller_ids = tuple(sorted(set(eligible) - {seller_id}))
         if not peer_seller_ids:
@@ -386,10 +384,7 @@ class MetricEngine:
         target_entity = self._seller_entity(normalized, seller_id)
         target_orders = eligible[seller_id]
         target_member = self._peer_member(normalized, seller_id, target_orders)
-        peer_members = tuple(
-            self._peer_member(normalized, peer_seller_id, eligible[peer_seller_id])
-            for peer_seller_id in peer_seller_ids
-        )
+        peer_members = tuple(self._peer_member(normalized, peer_seller_id, eligible[peer_seller_id]) for peer_seller_id in peer_seller_ids)
         peer_orders = [order for peer_seller_id in peer_seller_ids for order in eligible[peer_seller_id]]
         dimension_key = self._cohort_dimension_key(policy, target_state, peer_seller_ids)
 
@@ -409,10 +404,7 @@ class MetricEngine:
             peer_orders,
             dimension_key=f"peers:{dimension_key}",
         )
-        cohort_key = (
-            f"{normalized.dataset_id}:{seller_id}:{window.start.isoformat()}:"
-            f"{window.end.isoformat()}:{policy.formula_version}:{dimension_key}"
-        )
+        cohort_key = f"{normalized.dataset_id}:{seller_id}:{window.start.isoformat()}:{window.end.isoformat()}:{policy.formula_version}:{dimension_key}"
         return PeerComparisonSnapshot(
             cohort_id=CohortId(f"cohort_{uuid5(NAMESPACE_URL, cohort_key).hex}"),
             cohort_formula_version=policy.formula_version,
@@ -618,10 +610,7 @@ class MetricEngine:
     ) -> tuple[_ComparableOrder, ...]:
         categories = self._product_categories(normalized, facts_by_entity)
         seller_state_details = self._seller_state_details(normalized, facts_by_entity)
-        seller_states = {
-            seller_id: state
-            for seller_id, (state, _) in seller_state_details.items()
-        }
+        seller_states = {seller_id: state for seller_id, (state, _) in seller_state_details.items()}
         item_rows: dict[str, list[tuple[str, str, tuple[FactId, ...]]]] = defaultdict(list)
         for entity in normalized.entities_of_type(EntityType.ORDER_ITEM):
             facts = facts_by_entity[entity.id]
@@ -646,10 +635,7 @@ class MetricEngine:
             estimated = self._known(facts, SemanticField.ESTIMATED_DELIVERY_AT)
             if purchased is None or delivered is None or estimated is None:
                 continue
-            if (
-                not isinstance(purchased.value, datetime)
-                or not window.start <= purchased.value < window.end
-            ):
+            if not isinstance(purchased.value, datetime) or not window.start <= purchased.value < window.end:
                 continue
 
             items = item_rows.get(entity.external_key, ())
@@ -735,13 +721,7 @@ class MetricEngine:
             sample_size=len(orders),
             numerator=late_count,
             denominator=len(orders),
-            source_ids=self._dedupe(
-                [
-                    source_id
-                    for order in orders
-                    for source_id in order.source_fact_ids
-                ]
-            ),
+            source_ids=self._dedupe([source_id for order in orders for source_id in order.source_fact_ids]),
             dimension_key=dimension_key,
         )
 
@@ -752,10 +732,7 @@ class MetricEngine:
         peer_seller_ids: tuple[str, ...],
     ) -> str:
         peers = ",".join(peer_seller_ids)
-        return (
-            f"category={policy.product_category};seller_state={seller_state or '*'};"
-            f"min_orders={policy.min_orders_per_seller};peers={peers}"
-        )
+        return f"category={policy.product_category};seller_state={seller_state or '*'};min_orders={policy.min_orders_per_seller};peers={peers}"
 
     def _selected_orders(
         self,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -45,6 +45,33 @@ def test_metric_registry_has_unique_versioned_definitions():
     assert {definition.name for definition in registry.definitions} == set(MetricName)
     assert len({definition.formula_version for definition in registry.definitions}) == len(registry.definitions)
     assert all(definition.required_fields for definition in registry.definitions)
+
+
+def test_metric_window_normalizes_naive_and_offset_aware_boundaries_to_utc():
+    window = MetricWindow(
+        start=datetime(2018, 1, 1),
+        end=datetime(2018, 2, 1, tzinfo=timezone(timedelta(hours=8))),
+    )
+
+    assert window.start == datetime(2018, 1, 1, tzinfo=UTC)
+    assert window.start.tzinfo is UTC
+    assert window.end == datetime(2018, 1, 31, 16, tzinfo=UTC)
+    assert window.end.tzinfo is UTC
+
+
+def test_utc_metric_window_can_select_orders_from_naive_olist_csv(tmp_path: Path):
+    normalized = _normalized_gold_case(tmp_path, "GC-FULFILLMENT-001")
+
+    snapshot = MetricEngine().compute_seller_window(
+        normalized,
+        seller_id="4869f7a5dfa277a7dca6462dcf3b52b2",
+        window=MetricWindow(
+            start=datetime(2017, 12, 2, tzinfo=UTC),
+            end=datetime(2018, 1, 31, tzinfo=UTC),
+        ),
+    )
+
+    assert int(snapshot.metric(MetricName.ORDER_COUNT).value) == 141
 
 
 def test_fulfillment_window_metrics_match_frozen_gold_case(tmp_path: Path):
@@ -92,8 +119,8 @@ def test_known_metric_observation_is_versioned_and_traceable(tmp_path: Path):
     assert metric.numerator == 8
     assert metric.denominator == 18
     assert metric.source_fact_ids
-    assert metric.window_start == datetime(2018, 4, 1)
-    assert metric.window_end == datetime(2018, 5, 1)
+    assert metric.window_start == datetime(2018, 4, 1, tzinfo=UTC)
+    assert metric.window_end == datetime(2018, 5, 1, tzinfo=UTC)
 
 
 def test_missing_review_capability_produces_unknown_metrics_not_zero(tmp_path: Path):

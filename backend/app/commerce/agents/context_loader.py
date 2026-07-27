@@ -26,11 +26,14 @@ from app.commerce.agents.contracts import (
     HypothesisDigest,
     LeadContextPacket,
     MetricObservationDigest,
+    PathEvidenceScope,
+    PathType,
     canonical_context_sha256,
     estimate_context_tokens,
     hidden_evaluation_label_paths,
 )
 from app.commerce.agents.goal_loop import GoalLoopCheckpoint, GoalLoopState
+from app.commerce.agents.lead import path_evidence_scopes_from_events
 from app.commerce.api.data_service import (
     CommerceDataService,
     DatasetNotFoundError,
@@ -38,6 +41,7 @@ from app.commerce.api.data_service import (
 )
 from app.commerce.data.capabilities import CapabilityProfile, CapabilityStatus
 from app.commerce.data.intake import DataIntakeError
+from app.commerce.data.normalized import NormalizedDataset
 from app.commerce.domain.enums import RunStatus, RunType
 from app.commerce.domain.ids import (
     CaseId,
@@ -58,7 +62,8 @@ from app.commerce.domain.models import (
 )
 from app.commerce.domain.runs import CommerceRun
 from app.commerce.metrics.anomaly import AnomalySignal
-from app.commerce.metrics.registry import MetricSnapshot
+from app.commerce.metrics.registry import MetricEngine, MetricSnapshot
+from app.commerce.persistence.events import SqlDomainEventStore
 from app.commerce.persistence.lineage import SqlCaseLineageRepository
 from app.commerce.persistence.repositories import SqlCaseRepository
 from app.commerce.persistence.runs import (
@@ -90,6 +95,7 @@ class ContextLoadReason(StrEnum):
     CASE_REFERENCE_MISMATCH = "case_reference_mismatch"
     HIDDEN_EVALUATION_LABEL = "hidden_evaluation_label"
     CONTEXT_BUDGET_EXCEEDED = "context_budget_exceeded"
+    PATH_EVIDENCE_SCOPE_INVALID = "path_evidence_scope_invalid"
 
 
 class ContextLoadError(RuntimeError):
@@ -101,9 +107,7 @@ class ContextLoadError(RuntimeError):
 class CaseAnalysisArtifact(CommerceModel):
     """Strict persisted artifact schema written by deterministic analysis."""
 
-    schema_version: str = Field(
-        pattern=r"^commerce\.case-analysis-context@[0-9]+\.[0-9]+\.[0-9]+$"
-    )
+    schema_version: str = Field(pattern=r"^commerce\.case-analysis-context@[0-9]+\.[0-9]+\.[0-9]+$")
     workspace_id: WorkspaceId
     dataset_id: DatasetId
     case_id: CaseId
@@ -113,11 +117,16 @@ class CaseAnalysisArtifact(CommerceModel):
     current: MetricSnapshot
     signals: tuple[AnomalySignal, ...] = ()
     capabilities: CapabilityProfile
-    trigger: CaseTriggerDigest = Field(
-        default_factory=lambda: CaseTriggerDigest(
-            trigger_type=CaseTriggerType.DETECTED_ANOMALY
-        )
-    )
+    trigger: CaseTriggerDigest = Field(default_factory=lambda: CaseTriggerDigest(trigger_type=CaseTriggerType.DETECTED_ANOMALY))
+
+
+class LoadedCaseAnalysis(CommerceModel):
+    """Verified deterministic Case analysis without Agent prompt construction."""
+
+    case: Case
+    lineage: CaseLineage
+    artifact: CaseAnalysisArtifact
+    artifact_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 class InitialContextLoad(CommerceModel):
@@ -143,6 +152,7 @@ class ContextPacketLoader:
         self._hypotheses = SqlHypothesisRepository(session_factory)
         self._runs = SqlRunRepository(session_factory)
         self._checkpoints = SqlRunCheckpointRepository(session_factory)
+        self._events = SqlDomainEventStore(session_factory)
 
     async def load_initial(
         self,
@@ -158,10 +168,10 @@ class ContextPacketLoader:
                 ContextLoadReason.RUN_NOT_FOUND,
                 f"Investigation Run not found: {run_id}",
             )
-        if run.run_type is not RunType.CASE_INVESTIGATION:
+        if run.run_type not in {RunType.CASE_INVESTIGATION, RunType.REPLAN}:
             raise ContextLoadError(
                 ContextLoadReason.RUN_NOT_EXECUTABLE,
-                f"Run {run_id} is not a Case investigation",
+                f"Run {run_id} is not a Case investigation or Replan",
             )
         if run.status is not RunStatus.RUNNING:
             raise ContextLoadError(
@@ -183,9 +193,7 @@ class ContextPacketLoader:
         )
         resume_token_sha256 = None
         if resume_token is not None:
-            resume_token_sha256 = hashlib.sha256(
-                resume_token.get_secret_value().encode("utf-8")
-            ).hexdigest()
+            resume_token_sha256 = hashlib.sha256(resume_token.get_secret_value().encode("utf-8")).hexdigest()
         state = GoalLoopState(
             workspace_id=workspace_id,
             run_id=run.id,
@@ -224,6 +232,54 @@ class ContextPacketLoader:
         goal: str,
         budget: AgentBudgetLimit,
     ) -> LeadContextPacket:
+        loaded = await self.load_case_analysis(workspace_id, case_id)
+        case = loaded.case
+        lineage = loaded.lineage
+        artifact = loaded.artifact
+        artifact_sha256 = loaded.artifact_sha256
+
+        normalized = self._data.normalize(workspace_id, lineage.dataset_id)
+        evidence = await self._load_evidence(case)
+        hypotheses = await self._load_hypotheses(case, evidence)
+        try:
+            path_scopes = path_evidence_scopes_from_events(await self._events.list_case(workspace_id, case_id))
+        except ValueError as exc:
+            raise ContextLoadError(
+                ContextLoadReason.PATH_EVIDENCE_SCOPE_INVALID,
+                "Persisted Path Evidence scope is invalid",
+            ) from exc
+        supplemental_metrics = self._reconstruct_supplemental_metrics(
+            normalized,
+            artifact,
+            path_scopes,
+        )
+        self._validate_source_references(
+            evidence,
+            artifact,
+            artifact_sha256=artifact_sha256,
+            normalized_fact_ids=frozenset(fact.id for fact in normalized.facts),
+            path_scopes=path_scopes,
+            supplemental_metric_ids=frozenset(item.metric_observation_id for item in supplemental_metrics),
+        )
+        return self._build_packet(
+            case=case,
+            lineage=lineage,
+            artifact=artifact,
+            artifact_sha256=artifact_sha256,
+            evidence=evidence,
+            hypotheses=hypotheses,
+            supplemental_metrics=supplemental_metrics,
+            goal=goal,
+            budget=budget,
+        )
+
+    async def load_case_analysis(
+        self,
+        workspace_id: WorkspaceId,
+        case_id: CaseId,
+    ) -> LoadedCaseAnalysis:
+        """Load and verify the immutable analysis artifact for product read views."""
+
         case = await self._cases.get(workspace_id, case_id)
         if case is None:
             raise ContextLoadError(
@@ -235,24 +291,11 @@ class ContextPacketLoader:
         artifact, artifact_sha256 = self._load_artifact(lineage)
         self._validate_dataset_identity(workspace_id, lineage.dataset_id, view)
         self._validate_artifact(lineage, artifact, view)
-
-        normalized = self._data.normalize(workspace_id, lineage.dataset_id)
-        evidence = await self._load_evidence(case)
-        hypotheses = await self._load_hypotheses(case, evidence)
-        self._validate_source_references(
-            evidence,
-            artifact,
-            normalized_fact_ids=frozenset(fact.id for fact in normalized.facts),
-        )
-        return self._build_packet(
+        return LoadedCaseAnalysis(
             case=case,
             lineage=lineage,
             artifact=artifact,
             artifact_sha256=artifact_sha256,
-            evidence=evidence,
-            hypotheses=hypotheses,
-            goal=goal,
-            budget=budget,
         )
 
     async def _load_lineage(
@@ -263,11 +306,7 @@ class ContextPacketLoader:
         try:
             lineage = await self._lineage.get(workspace_id, case_id)
         except ValidationError as exc:
-            reason = (
-                ContextLoadReason.ARTIFACT_PATH_UNSAFE
-                if "relative derived path" in str(exc)
-                else ContextLoadReason.LINEAGE_INVALID
-            )
+            reason = ContextLoadReason.ARTIFACT_PATH_UNSAFE if "relative derived path" in str(exc) else ContextLoadReason.LINEAGE_INVALID
             raise ContextLoadError(reason, f"Stored Case lineage is invalid: {case_id}") from exc
         if lineage is None:
             raise ContextLoadError(
@@ -285,11 +324,7 @@ class ContextPacketLoader:
         workspace_root = self._data.storage_root / str(workspace_id)
         dataset_root = workspace_root / str(dataset_id)
         resolved_dataset_root = dataset_root.resolve()
-        if (
-            workspace_root.is_symlink()
-            or dataset_root.is_symlink()
-            or not resolved_dataset_root.is_relative_to(storage_root)
-        ):
+        if workspace_root.is_symlink() or dataset_root.is_symlink() or not resolved_dataset_root.is_relative_to(storage_root):
             raise ContextLoadError(
                 ContextLoadReason.ARTIFACT_PATH_UNSAFE,
                 "Dataset storage path escaped the configured Commerce storage root",
@@ -318,28 +353,16 @@ class ContextPacketLoader:
         lineage: CaseLineage,
     ) -> tuple[CaseAnalysisArtifact, str]:
         relative = PurePosixPath(lineage.analysis_artifact_relative_path)
-        if (
-            relative.is_absolute()
-            or ".." in relative.parts
-            or len(relative.parts) != 2
-            or relative.parts[0] != "derived"
-        ):
+        if relative.is_absolute() or ".." in relative.parts or len(relative.parts) != 2 or relative.parts[0] != "derived":
             raise ContextLoadError(
                 ContextLoadReason.ARTIFACT_PATH_UNSAFE,
                 "Case analysis artifact path escaped the Dataset derived directory",
             )
-        dataset_root = (
-            self._data.storage_root
-            / str(lineage.workspace_id)
-            / str(lineage.dataset_id)
-        )
+        dataset_root = self._data.storage_root / str(lineage.workspace_id) / str(lineage.dataset_id)
         artifact_path = dataset_root.joinpath(*relative.parts)
         resolved_root = dataset_root.resolve()
         resolved_path = artifact_path.resolve()
-        if not resolved_path.is_relative_to(resolved_root) or any(
-            part.is_symlink()
-            for part in (dataset_root / relative.parts[0], artifact_path)
-        ):
+        if not resolved_path.is_relative_to(resolved_root) or any(part.is_symlink() for part in (dataset_root / relative.parts[0], artifact_path)):
             raise ContextLoadError(
                 ContextLoadReason.ARTIFACT_PATH_UNSAFE,
                 "Case analysis artifact resolved outside immutable Dataset storage",
@@ -386,12 +409,7 @@ class ContextPacketLoader:
         dataset_id: DatasetId,
         view: DatasetView,
     ) -> None:
-        if (
-            view.manifest.workspace_id != workspace_id
-            or view.manifest.dataset_id != dataset_id
-            or view.capabilities.workspace_id != workspace_id
-            or view.capabilities.dataset_id != dataset_id
-        ):
+        if view.manifest.workspace_id != workspace_id or view.manifest.dataset_id != dataset_id or view.capabilities.workspace_id != workspace_id or view.capabilities.dataset_id != dataset_id:
             raise ContextLoadError(
                 ContextLoadReason.DATASET_IDENTITY_MISMATCH,
                 "Dataset Manifest or Capability Profile identity does not match lineage",
@@ -414,9 +432,7 @@ class ContextPacketLoader:
             and artifact.current.seller_id == lineage.seller_external_key
             and artifact.baseline.seller_entity_id == lineage.seller_entity_id
             and artifact.current.seller_entity_id == lineage.seller_entity_id
-            and cls._same_instant(
-                artifact.baseline.window.start, lineage.baseline_start
-            )
+            and cls._same_instant(artifact.baseline.window.start, lineage.baseline_start)
             and cls._same_instant(artifact.baseline.window.end, lineage.baseline_end)
             and cls._same_instant(artifact.current.window.start, lineage.current_start)
             and cls._same_instant(artifact.current.window.end, lineage.current_end)
@@ -432,17 +448,12 @@ class ContextPacketLoader:
                 "Stored Case capability context differs from the current Dataset view",
             )
         signal_ids = tuple(signal.id for signal in artifact.signals)
-        if len(signal_ids) != len(set(signal_ids)) or set(signal_ids) != set(
-            lineage.anomaly_ids
-        ):
+        if len(signal_ids) != len(set(signal_ids)) or set(signal_ids) != set(lineage.anomaly_ids):
             raise ContextLoadError(
                 ContextLoadReason.ARTIFACT_IDENTITY_MISMATCH,
                 "Case analysis Anomaly IDs do not match lineage",
             )
-        if (
-            artifact.trigger.trigger_type is CaseTriggerType.DETECTED_ANOMALY
-            and not artifact.signals
-        ):
+        if artifact.trigger.trigger_type is CaseTriggerType.DETECTED_ANOMALY and not artifact.signals:
             raise ContextLoadError(
                 ContextLoadReason.ARTIFACT_INVALID,
                 "Detected anomaly Case analysis must contain at least one signal",
@@ -456,9 +467,7 @@ class ContextPacketLoader:
     ) -> None:
         baseline = {item.id: item for item in artifact.baseline.observations}
         current = {item.id: item for item in artifact.current.observations}
-        if len(baseline) != len(artifact.baseline.observations) or len(current) != len(
-            artifact.current.observations
-        ):
+        if len(baseline) != len(artifact.baseline.observations) or len(current) != len(artifact.current.observations):
             raise ContextLoadError(
                 ContextLoadReason.ARTIFACT_INVALID,
                 "Case analysis MetricObservation IDs must be unique",
@@ -482,9 +491,7 @@ class ContextPacketLoader:
                     ContextLoadReason.ARTIFACT_IDENTITY_MISMATCH,
                     "Anomaly values do not match deterministic MetricSnapshots",
                 )
-            signal_metric_ids.extend(
-                (signal.baseline_observation_id, signal.current_observation_id)
-            )
+            signal_metric_ids.extend((signal.baseline_observation_id, signal.current_observation_id))
         if set(signal_metric_ids) != set(lineage.metric_observation_ids):
             raise ContextLoadError(
                 ContextLoadReason.ARTIFACT_IDENTITY_MISMATCH,
@@ -513,18 +520,8 @@ class ContextPacketLoader:
                 case.workspace_id,
                 hypothesis_id,
             )
-            references = (
-                frozenset(hypothesis.supporting_evidence_ids)
-                | frozenset(hypothesis.contradicting_evidence_ids)
-                if hypothesis is not None
-                else frozenset()
-            )
-            if (
-                hypothesis is None
-                or hypothesis.case_id != case.id
-                or hypothesis.workspace_id != case.workspace_id
-                or not references.issubset(known_evidence_ids)
-            ):
+            references = frozenset(hypothesis.supporting_evidence_ids) | frozenset(hypothesis.contradicting_evidence_ids) if hypothesis is not None else frozenset()
+            if hypothesis is None or hypothesis.case_id != case.id or hypothesis.workspace_id != case.workspace_id or not references.issubset(known_evidence_ids):
                 raise ContextLoadError(
                     ContextLoadReason.CASE_REFERENCE_MISMATCH,
                     "Case Hypothesis membership or Evidence references are invalid",
@@ -537,7 +534,10 @@ class ContextPacketLoader:
         evidence: tuple[Evidence, ...],
         artifact: CaseAnalysisArtifact,
         *,
+        artifact_sha256: str,
         normalized_fact_ids: frozenset[FactId],
+        path_scopes: tuple[PathEvidenceScope, ...],
+        supplemental_metric_ids: frozenset[MetricObservationId],
     ) -> None:
         metric_ids = frozenset(
             observation.id
@@ -546,7 +546,47 @@ class ContextPacketLoader:
                 *artifact.current.observations,
             )
         )
+        reconstructable_metric_ids = metric_ids | supplemental_metric_ids
+        evidence_by_id = {item.id: item for item in evidence}
+        scoped_by_evidence = {}
+        for scope in path_scopes:
+            if scope.workspace_id != artifact.workspace_id or scope.case_id != artifact.case_id or scope.dataset_id != artifact.dataset_id or scope.source_artifact_sha256 != artifact_sha256:
+                raise ContextLoadError(
+                    ContextLoadReason.PATH_EVIDENCE_SCOPE_INVALID,
+                    "Persisted Path scope identity differs from Case artifact",
+                )
+            if not set(scope.included_fact_ids).issubset(normalized_fact_ids):
+                raise ContextLoadError(
+                    ContextLoadReason.PATH_EVIDENCE_SCOPE_INVALID,
+                    "Persisted Path scope references Facts outside the Dataset",
+                )
+            if not set(scope.included_metric_observation_ids).issubset(reconstructable_metric_ids):
+                raise ContextLoadError(
+                    ContextLoadReason.PATH_EVIDENCE_SCOPE_INVALID,
+                    "Persisted Path scope Metrics cannot be deterministically reconstructed",
+                )
+            for evidence_id in scope.evidence_ids:
+                if evidence_id not in evidence_by_id:
+                    raise ContextLoadError(
+                        ContextLoadReason.PATH_EVIDENCE_SCOPE_INVALID,
+                        "Persisted Path scope references missing Case Evidence",
+                    )
+                if evidence_id in scoped_by_evidence:
+                    raise ContextLoadError(
+                        ContextLoadReason.PATH_EVIDENCE_SCOPE_INVALID,
+                        "Case Evidence belongs to multiple persisted Path scopes",
+                    )
+                scoped_by_evidence[evidence_id] = scope
+
         for item in evidence:
+            scope = scoped_by_evidence.get(item.id)
+            if scope is not None:
+                if not set(item.fact_ids).issubset(scope.included_fact_ids) or not set(item.metric_observation_ids).issubset(scope.included_metric_observation_ids):
+                    raise ContextLoadError(
+                        ContextLoadReason.PATH_EVIDENCE_SCOPE_INVALID,
+                        f"Evidence {item.id} escaped its persisted Path scope",
+                    )
+                continue
             if not frozenset(item.fact_ids).issubset(normalized_fact_ids):
                 raise ContextLoadError(
                     ContextLoadReason.CASE_REFERENCE_MISMATCH,
@@ -568,6 +608,7 @@ class ContextPacketLoader:
         artifact_sha256: str,
         evidence: tuple[Evidence, ...],
         hypotheses: tuple[Hypothesis, ...],
+        supplemental_metrics: tuple[MetricObservationDigest, ...],
         goal: str,
         budget: AgentBudgetLimit,
     ) -> LeadContextPacket:
@@ -605,12 +646,9 @@ class ContextPacketLoader:
             seller_external_key=lineage.seller_external_key,
             baseline_window=artifact.baseline.window,
             current_window=artifact.current.window,
-            baseline_metrics=tuple(
-                cls._metric_digest(item) for item in artifact.baseline.observations
-            ),
-            current_metrics=tuple(
-                cls._metric_digest(item) for item in artifact.current.observations
-            ),
+            baseline_metrics=tuple(cls._metric_digest(item) for item in artifact.baseline.observations),
+            current_metrics=tuple(cls._metric_digest(item) for item in artifact.current.observations),
+            supplemental_metrics=supplemental_metrics,
             anomalies=tuple(
                 AnomalyDigest(
                     anomaly_id=item.id,
@@ -633,19 +671,24 @@ class ContextPacketLoader:
             ),
             trigger=artifact.trigger,
         )
-        capabilities = frozenset(
-            assessment.name
-            for assessment in artifact.capabilities.capabilities
-            if assessment.status
-            in {CapabilityStatus.AVAILABLE, CapabilityStatus.PARTIAL}
-        )
+        capabilities = frozenset(assessment.name for assessment in artifact.capabilities.capabilities if assessment.status in {CapabilityStatus.AVAILABLE, CapabilityStatus.PARTIAL})
         metric_ids = tuple(
             item.metric_observation_id
-            for item in (*analysis.baseline_metrics, *analysis.current_metrics)
+            for item in (
+                *analysis.baseline_metrics,
+                *analysis.current_metrics,
+                *analysis.supplemental_metrics,
+            )
         )
-        fact_ids = tuple(
-            dict.fromkeys(fact_id for item in evidence for fact_id in item.fact_ids)
+        metric_ids = tuple(
+            dict.fromkeys(
+                (
+                    *metric_ids,
+                    *(metric_id for item in evidence for metric_id in item.metric_observation_ids),
+                )
+            )
         )
+        fact_ids = tuple(dict.fromkeys(fact_id for item in evidence for fact_id in item.fact_ids))
         manifest = ContextManifest(
             context_version="commerce-context@1.0.0",
             workspace_id=case.workspace_id,
@@ -698,6 +741,56 @@ class ContextPacketLoader:
                 )
             }
         )
+
+    @classmethod
+    def _reconstruct_supplemental_metrics(
+        cls,
+        normalized: NormalizedDataset,
+        artifact: CaseAnalysisArtifact,
+        path_scopes: tuple[PathEvidenceScope, ...],
+    ) -> tuple[MetricObservationDigest, ...]:
+        """Recompute Path-only metrics from the persisted Dataset and Case trigger."""
+
+        peer_scopes = tuple(scope for scope in path_scopes if scope.path_type is PathType.SELLER_PEER)
+        if not peer_scopes:
+            return ()
+        policy = artifact.trigger.peer_policy
+        if policy is None:
+            raise ContextLoadError(
+                ContextLoadReason.PATH_EVIDENCE_SCOPE_INVALID,
+                "SellerPeer scope is missing its persisted outcome-agnostic policy",
+            )
+        try:
+            engine = MetricEngine()
+            peer = engine.compute_peer_comparison(
+                normalized,
+                seller_id=artifact.seller_external_key,
+                window=artifact.current.window,
+                policy=policy,
+            )
+            geography = engine.compute_geographic_order_count(
+                normalized,
+                seller_id=artifact.seller_external_key,
+                window=artifact.current.window,
+            )
+        except (KeyError, ValueError) as exc:
+            raise ContextLoadError(
+                ContextLoadReason.PATH_EVIDENCE_SCOPE_INVALID,
+                "SellerPeer metrics could not be reconstructed from persisted data",
+            ) from exc
+        observations = (
+            peer.target_late_delivery_rate,
+            peer.peer_late_delivery_rate,
+            *(item.observation for item in geography.segments),
+        )
+        reconstructed_ids = frozenset(item.id for item in observations)
+        for scope in peer_scopes:
+            if frozenset(scope.included_metric_observation_ids) != reconstructed_ids:
+                raise ContextLoadError(
+                    ContextLoadReason.PATH_EVIDENCE_SCOPE_INVALID,
+                    "SellerPeer scope differs from deterministic metric reconstruction",
+                )
+        return tuple(cls._metric_digest(item) for item in observations)
 
     @staticmethod
     def _metric_digest(item: MetricObservation) -> MetricObservationDigest:

@@ -23,6 +23,10 @@ def _task_call(task_id="call_1"):
     return {"name": "task", "id": task_id, "args": {"prompt": "do something"}}
 
 
+def _durable_dispatch_call(name: str, task_id: str) -> dict:
+    return {"name": name, "id": task_id, "args": {"prompt": "do something"}}
+
+
 def _other_call(name="bash", call_id="call_other"):
     return {"name": name, "id": call_id, "args": {}}
 
@@ -124,6 +128,24 @@ class TestTruncateTaskCalls:
         assert "read" in names
         task_calls = [tc for tc in updated_msg.tool_calls if tc["name"] == "task"]
         assert len(task_calls) == 2
+
+    def test_mixed_legacy_and_durable_dispatches_share_one_limit(self):
+        mw = SubagentLimitMiddleware(max_concurrent=2)
+        msg = AIMessage(
+            content="",
+            tool_calls=[
+                _durable_dispatch_call("spawn_task", "s1"),
+                _task_call("legacy-1"),
+                _durable_dispatch_call("follow_up_task", "f1"),
+                _other_call("wait_task", "w1"),
+            ],
+        )
+
+        result = mw._truncate_task_calls({"messages": [msg]})
+
+        assert result is not None
+        updated_msg = result["messages"][0]
+        assert [tc["id"] for tc in updated_msg.tool_calls] == ["s1", "legacy-1", "w1"]
 
     def test_truncation_syncs_raw_provider_tool_calls(self):
         mw = SubagentLimitMiddleware(max_concurrent=2)

@@ -33,6 +33,13 @@ export const zhCN: Translations = {
     download: "下载",
     thinking: "思考",
     artifacts: "文件",
+    noArtifactSelected: "当前没有选中文件",
+    selectArtifactDescription: "选择一个文件后，可在这里查看详情",
+    showArtifacts: "查看本次对话的文件",
+    file: "文件",
+    selectFile: "选择文件",
+    installSkillFailed: "安装技能失败",
+    conversationFinished: "本轮对话已完成",
     public: "公共",
     custom: "自定义",
     notAvailableInDemoMode: "在演示模式下不可用",
@@ -80,6 +87,7 @@ export const zhCN: Translations = {
   // Input Box
   inputBox: {
     placeholder: "今天我能为你做些什么？",
+    submit: "发送",
     createSkillPrompt:
       "我们一起用 skill-creator 技能来创建一个技能吧。先问问我希望这个技能能做什么。",
     addAttachments: "添加附件",
@@ -90,7 +98,7 @@ export const zhCN: Translations = {
     reasoningModeDescription: "思考后再行动，在时间与准确性之间取得平衡",
     proMode: "Pro",
     proModeDescription: "思考、计划再执行，获得更精准的结果，可能需要更多时间",
-    ultraMode: "Ultra",
+    ultraMode: "深度模式",
     ultraModeDescription:
       "继承自 Pro 模式，可调用子代理分工协作，适合复杂多步骤任务，能力最强",
     reasoningEffort: "推理深度",
@@ -170,6 +178,7 @@ export const zhCN: Translations = {
     ecomLaunch: "OpenSKU 上新循环",
     ecomLaunchChat: "Chat",
     ecomLaunchWarRoom: "War Room",
+    commerceAgent: "电商经营诊断",
   },
 
   // Agents
@@ -249,6 +258,41 @@ export const zhCN: Translations = {
         icon: SparklesIcon,
       },
     ],
+    commerceAgentName: "电商经营诊断",
+    commerceWelcomeDescription:
+      "上传真实经营数据并自然提问，我会先用确定性指标检查，再按需要动态派遣子任务，给出可追溯的证据、反证和独立核验结果。",
+    commerceWelcomeBadges: [
+      "确定性指标",
+      "动态子任务",
+      "证据与反证",
+      "独立核验",
+    ],
+    commerceSuggestions: [
+      {
+        suggestion: "履约异常",
+        prompt:
+          "我上传了最近两个月的订单数据。请先检查数据能力，再分析晚到率是否变化，并区分卖家处理和承运运输阶段。",
+        icon: CompassIcon,
+      },
+      {
+        suggestion: "评价体验",
+        prompt:
+          "请分析最近评价是否变差，区分可复算的评分变化、评论文本信号、履约反证和当前数据限制。",
+        icon: MicroscopeIcon,
+      },
+      {
+        suggestion: "同类对标",
+        prompt:
+          "请按照结果无关的类目、地区、时间和样本规则，将当前卖家与可比卖家进行对标，并说明对标口径和不可观测差异。",
+        icon: ShapesIcon,
+      },
+      {
+        suggestion: "检查数据",
+        prompt:
+          "先不要下经营结论。请检查我上传的数据包含哪些表和字段、能回答哪些问题，以及还缺少什么数据。",
+        icon: SparklesIcon,
+      },
+    ],
   },
 
   // Breadcrumb
@@ -282,7 +326,7 @@ export const zhCN: Translations = {
 
   // Page titles (document title)
   pages: {
-    appName: "OpenSKU",
+    appName: "电商经营诊断",
     chats: "对话",
     newChat: "新对话",
     untitled: "未命名",
@@ -326,16 +370,16 @@ export const zhCN: Translations = {
 
   // Token Usage
   tokenUsage: {
-    title: "Token 用量",
-    label: "Tokens",
+    title: "模型用量",
+    label: "用量",
     input: "输入",
     output: "输出",
     total: "总计",
     view: "显示方式",
     unavailable:
-      "暂无 Token 用量。只有模型成功返回且供应商提供 usage_metadata 时才会显示。",
+      "暂无模型用量。只有模型成功返回且供应商提供用量元数据时才会显示。",
     unavailableShort: "未返回用量",
-    note: "顶部总量优先使用后端持久化的线程用量；当当前回复仍在流式返回时，还会叠加可见的进行中用量。每轮和调试用量只来自当前可见消息，可能与平台账单页不完全一致。",
+    note: "顶部总量优先使用后端持久化的对话用量；当当前回复仍在流式返回时，还会叠加可见的进行中用量。每轮和调试用量只来自当前可见消息，可能与平台账单页不完全一致。",
     presets: {
       off: "关闭",
       summary: "总览",
@@ -343,19 +387,19 @@ export const zhCN: Translations = {
       debug: "调试",
     },
     presetDescriptions: {
-      off: "隐藏顶部和会话内的 token 展示。",
-      summary: "只在顶部显示当前对话累计 token。",
-      perTurn: "显示顶部累计，并为每轮 assistant 回复显示一条汇总 token。",
-      debug: "显示顶部累计，并展示按步骤归类的 token 调试信息。",
+      off: "隐藏顶部和对话内的用量展示。",
+      summary: "只在顶部显示当前对话累计用量。",
+      perTurn: "显示顶部累计，并为每轮智能体回复显示一条汇总用量。",
+      debug: "显示顶部累计，并展示按步骤归类的用量调试信息。",
     },
     finalAnswer: "最终回复",
     stepTotal: "步骤总计",
-    sharedAttribution: "该 token 由此步骤中的多个动作共同消耗",
+    sharedAttribution: "该用量由此步骤中的多个动作共同消耗",
     subagent: (description: string) => `子任务：${description}`,
-    startTodo: (content: string) => `开始 To-do：${content}`,
-    completeTodo: (content: string) => `完成 To-do：${content}`,
-    updateTodo: (content: string) => `更新 To-do：${content}`,
-    removeTodo: (content: string) => `移除 To-do：${content}`,
+    startTodo: (content: string) => `开始待办：${content}`,
+    completeTodo: (content: string) => `完成待办：${content}`,
+    updateTodo: (content: string) => `更新待办：${content}`,
+    removeTodo: (content: string) => `移除待办：${content}`,
   },
 
   // Shortcuts

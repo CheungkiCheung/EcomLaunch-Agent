@@ -14,9 +14,11 @@ the real implementation in isolation.
 """
 
 import asyncio
+import hashlib
 import importlib
 import sys
 import threading
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -32,10 +34,8 @@ _MOCKED_MODULE_NAMES = [
     "deerflow.agents.thread_state",
     "deerflow.agents.middlewares",
     "deerflow.agents.middlewares.thread_data_middleware",
-    "deerflow.sandbox",
     "deerflow.sandbox.middleware",
     "deerflow.sandbox.security",
-    "deerflow.models",
     "deerflow.skills.storage",
 ]
 
@@ -313,6 +313,10 @@ class TestAgentConstruction:
             "model_name": "parent-model",
             "lazy_init": True,
             "deferred_setup": None,
+            "llm_retry_max_attempts": 3,
+            "max_tool_rounds": None,
+            "max_tool_calls": None,
+            "available_tool_names": set(),
         }
         assert captured["agent"]["model"] is model
         assert captured["agent"]["middleware"] is middlewares
@@ -661,6 +665,65 @@ class TestAgentConstruction:
 
         assert captured["middlewares"]["deferred_setup"] is deferred_setup
 
+    def test_create_agent_applies_subagent_model_and_retry_budgets(
+        self,
+        classes,
+        base_config,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        from deerflow.subagents import executor as executor_module
+
+        SubagentExecutor = classes["SubagentExecutor"]
+        app_config = SimpleNamespace(models=[SimpleNamespace(name="default-model")])
+        captured: dict[str, object] = {}
+
+        def fake_create_chat_model(**kwargs):
+            captured["model"] = kwargs
+            return object()
+
+        def fake_build_subagent_runtime_middlewares(**kwargs):
+            captured["middlewares"] = kwargs
+            return []
+
+        monkeypatch.setattr(executor_module, "create_chat_model", fake_create_chat_model)
+        monkeypatch.setattr(executor_module, "create_agent", lambda **kwargs: kwargs)
+        monkeypatch.setitem(
+            sys.modules,
+            "deerflow.agents.middlewares.tool_error_handling_middleware",
+            _module(
+                "deerflow.agents.middlewares.tool_error_handling_middleware",
+                build_subagent_runtime_middlewares=fake_build_subagent_runtime_middlewares,
+            ),
+        )
+
+        config = replace(
+            base_config,
+            max_output_tokens=1_600,
+            model_max_retries=0,
+            llm_retry_max_attempts=1,
+            max_tool_rounds=2,
+            max_tool_calls=3,
+        )
+        executor = SubagentExecutor(
+            config=config,
+            tools=[],
+            app_config=app_config,
+            parent_model="parent-model",
+        )
+
+        executor._create_agent(tools=[])
+
+        assert captured["model"] == {
+            "name": "parent-model",
+            "thinking_enabled": False,
+            "app_config": app_config,
+            "max_tokens": 1_600,
+            "max_retries": 0,
+        }
+        assert captured["middlewares"]["llm_retry_max_attempts"] == 1
+        assert captured["middlewares"]["max_tool_rounds"] == 2
+        assert captured["middlewares"]["max_tool_calls"] == 3
+
 
 # -----------------------------------------------------------------------------
 # Async Execution Path Tests
@@ -669,6 +732,38 @@ class TestAgentConstruction:
 
 class TestAsyncExecutionPath:
     """Test _aexecute() async execution path."""
+
+    @pytest.mark.anyio
+    async def test_aexecute_propagates_explicit_user_id_into_runtime_context(
+        self,
+        classes,
+        base_config,
+        mock_agent,
+        msg,
+    ):
+        """Subagent tools must keep the Parent's explicit user scope."""
+        SubagentExecutor = classes["SubagentExecutor"]
+        captured_context = {}
+        final_state = {"messages": [msg.human("Task"), msg.ai("Done", "msg-1")]}
+
+        async def capture_context(*args, **kwargs):
+            captured_context.update(kwargs["context"])
+            yield final_state
+
+        mock_agent.astream = capture_context
+        executor = SubagentExecutor(
+            config=base_config,
+            tools=[],
+            thread_id="test-thread",
+            user_id="user-42",
+        )
+
+        with patch.object(executor, "_create_agent", return_value=mock_agent):
+            result = await executor._aexecute("Task")
+
+        assert result.status.value == "completed"
+        assert captured_context["user_id"] == "user-42"
+        assert captured_context["available_tool_names"] == ()
 
     @pytest.mark.anyio
     async def test_aexecute_success(self, classes, base_config, mock_agent, msg):
@@ -700,6 +795,46 @@ class TestAsyncExecutionPath:
         assert result.error is None
         assert result.started_at is not None
         assert result.completed_at is not None
+
+    @pytest.mark.anyio
+    async def test_aexecute_maps_agent_turns_to_react_graph_steps(
+        self,
+        classes,
+        base_config,
+        mock_agent,
+        msg,
+    ):
+        """Agent turns include actual middleware, tool, and END graph steps."""
+
+        SubagentExecutor = classes["SubagentExecutor"]
+        captured_config = {}
+        final_state = {"messages": [msg.human("Task"), msg.ai("Done", "msg-1")]}
+
+        async def capture_config(*args, **kwargs):
+            captured_config.update(kwargs["config"])
+            yield final_state
+
+        mock_agent.astream = capture_config
+        mock_agent.get_graph.return_value.nodes = {
+            "__start__": object(),
+            "thread_data.before_agent": object(),
+            "sandbox.before_agent": object(),
+            "model": object(),
+            "safety_finish_reason.after_model": object(),
+            "tools": object(),
+            "sandbox.after_agent": object(),
+            "__end__": object(),
+        }
+        executor = SubagentExecutor(
+            config=replace(base_config, max_turns=4),
+            tools=[],
+            thread_id="test-thread",
+        )
+
+        with patch.object(executor, "_create_agent", return_value=mock_agent):
+            await executor._aexecute("Task")
+
+        assert captured_config["recursion_limit"] == 15
 
     @pytest.mark.anyio
     async def test_aexecute_collects_ai_messages(self, classes, base_config, mock_agent, msg):
@@ -752,6 +887,181 @@ class TestAsyncExecutionPath:
             result = await executor._aexecute("Task")
 
         assert len(result.ai_messages) == 1
+
+    @pytest.mark.anyio
+    async def test_aexecute_collects_secret_free_structured_tool_events(
+        self,
+        classes,
+        base_config,
+        mock_agent,
+        msg,
+    ):
+        """Tool traces use message contracts and hashes, not response text parsing."""
+        from langchain_core.messages import ToolMessage
+
+        SubagentExecutor = classes["SubagentExecutor"]
+        SubagentStatus = classes["SubagentStatus"]
+        tool_request = classes["AIMessage"](
+            id="msg-tool-request",
+            content="",
+            tool_calls=[
+                {
+                    "id": "call-1",
+                    "name": "metric_query",
+                    "args": {"query": "late delivery rate"},
+                    "type": "tool_call",
+                }
+            ],
+        )
+        tool_result = ToolMessage(
+            id="msg-tool-result",
+            content='{"late_delivery_rate":0.35}',
+            tool_call_id="call-1",
+            name="metric_query",
+            status="success",
+        )
+        final_message = msg.ai('{"observations":[]}', "msg-final")
+        chunks = [
+            {"messages": [msg.human("Task"), tool_request]},
+            {"messages": [msg.human("Task"), tool_request, tool_result]},
+            {
+                "messages": [
+                    msg.human("Task"),
+                    tool_request,
+                    tool_result,
+                    final_message,
+                ]
+            },
+        ]
+        mock_agent.astream = lambda *args, **kwargs: async_iterator(chunks)
+        executor = SubagentExecutor(
+            config=replace(base_config, min_successful_tool_calls=1),
+            tools=[NamedTool("metric_query")],
+            thread_id="test-thread",
+        )
+
+        with patch.object(executor, "_create_agent", return_value=mock_agent):
+            result = await executor._aexecute("Task")
+
+        assert result.status == SubagentStatus.COMPLETED
+        assert len(result.execution_events) == 1
+        event = result.execution_events[0]
+        assert event == {
+            "kind": "tool.result",
+            "tool_call_id": "call-1",
+            "tool_name": "metric_query",
+            "status": "succeeded",
+            "request_sha256": hashlib.sha256(b'{"query":"late delivery rate"}').hexdigest(),
+            "response_sha256": hashlib.sha256(b'"{\\"late_delivery_rate\\":0.35}"').hexdigest(),
+            "latency_ms": event["latency_ms"],
+            "error_code": None,
+        }
+        assert event["latency_ms"] >= 0
+        assert "late_delivery_rate" not in str(result.execution_events)
+
+    @pytest.mark.anyio
+    async def test_aexecute_fails_when_required_tool_never_succeeds(
+        self,
+        classes,
+        base_config,
+        mock_agent,
+        msg,
+    ):
+        SubagentExecutor = classes["SubagentExecutor"]
+        SubagentStatus = classes["SubagentStatus"]
+        final_state = {
+            "messages": [
+                msg.human("核验关键指标"),
+                msg.ai("我将调用 commerce_compare_windows，但这里没有真实 ToolResult。"),
+            ]
+        }
+        mock_agent.astream = lambda *args, **kwargs: async_iterator([final_state])
+        executor = SubagentExecutor(
+            config=replace(base_config, min_successful_tool_calls=1),
+            tools=[NamedTool("commerce_compare_windows")],
+            thread_id="test-thread",
+        )
+
+        with patch.object(executor, "_create_agent", return_value=mock_agent):
+            result = await executor._aexecute("核验关键指标")
+
+        assert result.status == SubagentStatus.FAILED
+        assert "requires at least 1 successful tool call" in result.error
+
+    @pytest.mark.anyio
+    async def test_aexecute_fails_closed_when_model_calls_tool_outside_envelope(
+        self,
+        classes,
+        base_config,
+        mock_agent,
+        msg,
+    ):
+        from langchain_core.messages import ToolMessage
+
+        SubagentExecutor = classes["SubagentExecutor"]
+        SubagentStatus = classes["SubagentStatus"]
+        unauthorized_request = classes["AIMessage"](
+            id="msg-unauthorized-request",
+            content="",
+            tool_calls=[
+                {
+                    "id": "call-read-file",
+                    "name": "read_file",
+                    "args": {"path": "/mnt/user-data/outputs/result.txt"},
+                    "type": "tool_call",
+                }
+            ],
+        )
+        invalid_result = ToolMessage(
+            id="msg-unauthorized-result",
+            content="Error: read_file is not a valid tool",
+            tool_call_id="call-read-file",
+            name="read_file",
+            status="error",
+        )
+        final_message = msg.ai("I could not read the file.", "msg-final")
+        chunks = [
+            {"messages": [msg.human("Task"), unauthorized_request]},
+            {
+                "messages": [
+                    msg.human("Task"),
+                    unauthorized_request,
+                    invalid_result,
+                ]
+            },
+            {
+                "messages": [
+                    msg.human("Task"),
+                    unauthorized_request,
+                    invalid_result,
+                    final_message,
+                ]
+            },
+        ]
+        mock_agent.astream = lambda *args, **kwargs: async_iterator(chunks)
+        executor = SubagentExecutor(
+            config=base_config,
+            tools=[NamedTool("commerce_compare_windows")],
+            thread_id="test-thread",
+        )
+
+        with patch.object(executor, "_create_agent", return_value=mock_agent):
+            result = await executor._aexecute("Task")
+
+        assert result.status == SubagentStatus.FAILED
+        assert result.error == "Unauthorized tool call(s): read_file"
+        assert result.execution_events == [
+            {
+                "kind": "tool.result",
+                "tool_call_id": "call-read-file",
+                "tool_name": "read_file",
+                "status": "failed",
+                "request_sha256": result.execution_events[0]["request_sha256"],
+                "response_sha256": result.execution_events[0]["response_sha256"],
+                "latency_ms": result.execution_events[0]["latency_ms"],
+                "error_code": "unauthorized_tool_call",
+            }
+        ]
 
     @pytest.mark.anyio
     async def test_aexecute_handles_list_content(self, classes, base_config, mock_agent, msg):

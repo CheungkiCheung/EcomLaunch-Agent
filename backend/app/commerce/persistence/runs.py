@@ -15,7 +15,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.commerce.agents.goal_loop import GoalLoopCheckpoint
 from app.commerce.domain.enums import RunPhase, RunStatus
-from app.commerce.domain.events import DomainEventActor, NewDomainEvent
+from app.commerce.domain.events import (
+    DomainEventActor,
+    DomainEventEnvelope,
+    NewDomainEvent,
+)
 from app.commerce.domain.ids import (
     CaseId,
     CheckpointId,
@@ -48,6 +52,10 @@ def _run_values(run: CommerceRun) -> dict:
         "phase": run.phase.value,
         "goal": run.goal,
         "idempotency_key_sha256": run.idempotency_key_sha256,
+        "parent_run_id": str(run.parent_run_id) if run.parent_run_id else None,
+        "subject_action_id": (str(run.subject_action_id) if run.subject_action_id else None),
+        "action_operation": (run.action_operation.value if run.action_operation is not None else None),
+        "requested_paths_json": [value.value for value in run.requested_paths],
         "wait_reason": run.wait_reason,
         "stop_reason": run.stop_reason,
         "created_at": run.created_at,
@@ -69,6 +77,10 @@ def _row_to_run(row: RunRow) -> CommerceRun:
             "phase": row.phase,
             "goal": row.goal,
             "idempotency_key_sha256": row.idempotency_key_sha256,
+            "parent_run_id": row.parent_run_id,
+            "subject_action_id": row.subject_action_id,
+            "action_operation": row.action_operation,
+            "requested_paths": tuple(row.requested_paths_json),
             "wait_reason": row.wait_reason,
             "stop_reason": row.stop_reason,
             "created_at": _utc(row.created_at),
@@ -100,9 +112,7 @@ class SqlRunRepository:
             async with self._session_factory() as session, session.begin():
                 await self.create_in_session(session, run)
         except IntegrityError as exc:
-            raise DuplicateEntityError(
-                f"Run or idempotency key already exists: {run.id}"
-            ) from exc
+            raise DuplicateEntityError(f"Run or idempotency key already exists: {run.id}") from exc
 
     async def get(
         self,
@@ -205,9 +215,7 @@ class SqlRunRepository:
         if current is None:
             raise EntityNotFoundError(f"Run not found: {run.id}")
         if current.version != expected_version:
-            raise OptimisticConcurrencyError(
-                f"Run {run.id} expected version {expected_version}, found {current.version}"
-            )
+            raise OptimisticConcurrencyError(f"Run {run.id} expected version {expected_version}, found {current.version}")
         result = await session.execute(
             update(RunRow)
             .where(
@@ -218,9 +226,7 @@ class SqlRunRepository:
             .values(**_run_values(run))
         )
         if result.rowcount != 1:
-            raise OptimisticConcurrencyError(
-                f"Run {run.id} changed while saving version {run.version}"
-            )
+            raise OptimisticConcurrencyError(f"Run {run.id} changed while saving version {run.version}")
         return RunStatus(current.status), RunPhase(current.phase)
 
 
@@ -281,9 +287,7 @@ class SqlRunCheckpointRepository:
             except IntegrityError as exc:
                 last_error = exc
                 await asyncio.sleep(0.001 * (attempt + 1))
-        raise OptimisticConcurrencyError(
-            "Checkpoint sequence allocation exceeded retry budget"
-        ) from last_error
+        raise OptimisticConcurrencyError("Checkpoint sequence allocation exceeded retry budget") from last_error
 
     async def get_latest(
         self,
@@ -339,9 +343,7 @@ class SqlRunCheckpointRepository:
         if existing_row is not None:
             existing = _row_to_checkpoint(existing_row)
             if existing.checkpoint != checkpoint:
-                raise DuplicateEntityError(
-                    f"Checkpoint ID reused with different data: {checkpoint_id}"
-                )
+                raise DuplicateEntityError(f"Checkpoint ID reused with different data: {checkpoint_id}")
             return existing
 
         run_row = await session.scalar(
@@ -473,9 +475,7 @@ class SqlRunLeaseRepository:
             except IntegrityError as exc:
                 last_error = exc
                 await asyncio.sleep(0.001 * (attempt + 1))
-        raise RunLeaseConflictError(
-            f"Run lease acquisition exceeded retry budget: {run_id}"
-        ) from last_error
+        raise RunLeaseConflictError(f"Run lease acquisition exceeded retry budget: {run_id}") from last_error
 
     async def _acquire_in_session(
         self,
@@ -520,11 +520,38 @@ class SqlRunLeaseRepository:
                 "fencing_token": fencing_token,
                 "version": run.version,
             }
+        elif run.status is RunStatus.WAITING:
+            if row is None:
+                raise RunLeaseConflictError(f"Waiting Run has no resumable lease record: {run_id}")
+            if row.released_at is None and _utc(row.expires_at) > acquired_at:
+                raise RunLeaseConflictError(f"Waiting Run lease has not been released: {run_id}")
+            previous_phase = run.phase
+            running = run.transition_to(
+                RunStatus.RUNNING,
+                occurred_at=acquired_at,
+            )
+            await SqlRunRepository.save_in_session(
+                session,
+                running,
+                expected_version=run.version,
+            )
+            run = running
+            fencing_token = row.fencing_token + 1
+            reacquired = True
+            event_type = "run.status_changed"
+            payload = {
+                "from_status": RunStatus.WAITING.value,
+                "to_status": RunStatus.RUNNING.value,
+                "from_phase": previous_phase.value,
+                "to_phase": run.phase.value,
+                "worker_id": worker_id,
+                "fencing_token": fencing_token,
+                "resumed_from_wait": True,
+                "version": run.version,
+            }
         elif run.status is RunStatus.RUNNING:
             if row is None or row.released_at is not None:
-                raise RunLeaseConflictError(
-                    f"Running Run has no recoverable lease: {run_id}"
-                )
+                raise RunLeaseConflictError(f"Running Run has no recoverable lease: {run_id}")
             if _utc(row.expires_at) > acquired_at:
                 raise RunLeaseConflictError(f"Run lease is still active: {run_id}")
             fencing_token = row.fencing_token + 1
@@ -538,9 +565,7 @@ class SqlRunLeaseRepository:
                 "version": run.version,
             }
         else:
-            raise RunLeaseConflictError(
-                f"Run status {run.status.value} cannot be acquired"
-            )
+            raise RunLeaseConflictError(f"Run status {run.status.value} cannot be acquired")
 
         if row is None:
             row = RunLeaseRow(
@@ -619,6 +644,56 @@ class SqlRunLeaseRepository:
             row.expires_at = heartbeat_at + ttl
             await session.flush()
             return _row_to_lease(row)
+
+    async def release(
+        self,
+        workspace_id: WorkspaceId,
+        run_id: RunId,
+        credentials: RunLeaseCredentials,
+        *,
+        released_at: datetime,
+        trace_id: TraceId,
+        correlation_id: CorrelationId,
+    ) -> DomainEventEnvelope:
+        """Release a waiting or terminal Run lease without exposing its token."""
+
+        async with self._session_factory() as session, session.begin():
+            row = await self.require_valid_in_session(
+                session,
+                workspace_id,
+                run_id,
+                credentials,
+                checked_at=released_at,
+            )
+            run = await SqlRunRepository.get_in_session(
+                session,
+                workspace_id,
+                run_id,
+            )
+            if run is None:
+                raise EntityNotFoundError(f"Run not found: {run_id}")
+            if run.status in {RunStatus.QUEUED, RunStatus.RUNNING}:
+                raise RunLeaseConflictError("Lease can be released only after Run leaves active execution")
+            row.released_at = released_at
+            await session.flush()
+            return await SqlDomainEventStore.append_in_session(
+                session,
+                NewDomainEvent(
+                    workspace_id=workspace_id,
+                    case_id=run.case_id,
+                    run_id=run_id,
+                    event_type="run.lease_released",
+                    occurred_at=released_at,
+                    trace_id=trace_id,
+                    correlation_id=correlation_id,
+                    actor=DomainEventActor.SYSTEM,
+                    payload={
+                        "worker_id": credentials.worker_id,
+                        "fencing_token": credentials.fencing_token,
+                        "run_status": run.status.value,
+                    },
+                ),
+            )
 
     @staticmethod
     async def require_valid_in_session(

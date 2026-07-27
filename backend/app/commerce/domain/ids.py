@@ -98,6 +98,10 @@ class ApprovalId(TypedId):
     PREFIX = "appr"
 
 
+class ApprovalDecisionId(TypedId):
+    PREFIX = "apprdec"
+
+
 class FollowUpId(TypedId):
     PREFIX = "follow"
 

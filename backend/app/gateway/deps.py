@@ -21,6 +21,7 @@ import asyncio
 import logging
 from collections.abc import AsyncGenerator, Callable
 from contextlib import AsyncExitStack, asynccontextmanager
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, TypeVar, cast
 
 from fastapi import FastAPI, HTTPException, Request
@@ -31,6 +32,11 @@ from deerflow.persistence.feedback import FeedbackRepository
 from deerflow.runtime import RunContext, RunManager, StreamBridge
 from deerflow.runtime.events.store.base import RunEventStore
 from deerflow.runtime.runs.store.base import RunStore
+from deerflow.subagents.tasks import (
+    DurableSubagentTaskRuntime,
+    SubagentTaskManager,
+    SubagentTaskStore,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -188,14 +194,18 @@ async def langgraph_runtime(app: FastAPI, startup_config: AppConfig) -> AsyncGen
         if sf is not None:
             from deerflow.persistence.feedback import FeedbackRepository
             from deerflow.persistence.run import RunRepository
+            from deerflow.persistence.subagent_task import SubagentTaskRepository
 
             app.state.run_store = RunRepository(sf)
             app.state.feedback_repo = FeedbackRepository(sf)
+            app.state.subagent_task_store = SubagentTaskRepository(sf)
         else:
             from deerflow.runtime.runs.store.memory import MemoryRunStore
+            from deerflow.subagents.tasks import MemorySubagentTaskStore
 
             app.state.run_store = MemoryRunStore()
             app.state.feedback_repo = None
+            app.state.subagent_task_store = MemorySubagentTaskStore()
 
         from deerflow.persistence.thread_meta import make_thread_store
 
@@ -211,6 +221,13 @@ async def langgraph_runtime(app: FastAPI, startup_config: AppConfig) -> AsyncGen
 
         # RunManager with store backing for persistence
         app.state.run_manager = RunManager(store=app.state.run_store)
+        app.state.subagent_task_manager = SubagentTaskManager(app.state.subagent_task_store)
+        app.state.subagent_task_runtime = DurableSubagentTaskRuntime(app.state.subagent_task_manager)
+        if sf is not None:
+            await app.state.subagent_task_manager.reconcile_orphaned_inflight(
+                before=datetime.now(UTC),
+                reason="Gateway restarted after the task worker lease expired; explicit resume or reassignment is required.",
+            )
         if getattr(config.database, "backend", None) == "sqlite":
             from deerflow.utils.time import now_iso
 
@@ -221,6 +238,7 @@ async def langgraph_runtime(app: FastAPI, startup_config: AppConfig) -> AsyncGen
                 before=now_iso(),
             )
             await _mark_latest_recovered_threads_error(app.state.run_manager, app.state.thread_store, recovered_runs)
+        await app.state.subagent_task_runtime.start()
 
         try:
             yield
@@ -233,6 +251,11 @@ async def langgraph_runtime(app: FastAPI, startup_config: AppConfig) -> AsyncGen
             run_manager = getattr(app.state, "run_manager", None)
             if run_manager is not None:
                 await _drain_inflight_runs(run_manager)
+            subagent_task_runtime = getattr(app.state, "subagent_task_runtime", None)
+            if subagent_task_runtime is not None:
+                await subagent_task_runtime.shutdown(
+                    reason="Gateway is shutting down; explicit resume or reassignment is required.",
+                )
             await close_engine()
 
 
@@ -260,6 +283,9 @@ get_checkpointer: Callable[[Request], Checkpointer] = _require("checkpointer", "
 get_run_event_store: Callable[[Request], RunEventStore] = _require("run_event_store", "Run event store")
 get_feedback_repo: Callable[[Request], FeedbackRepository] = _require("feedback_repo", "Feedback")
 get_run_store: Callable[[Request], RunStore] = _require("run_store", "Run store")
+get_subagent_task_store: Callable[[Request], SubagentTaskStore] = _require("subagent_task_store", "Subagent task store")
+get_subagent_task_manager: Callable[[Request], SubagentTaskManager] = _require("subagent_task_manager", "Subagent task manager")
+get_subagent_task_runtime: Callable[[Request], DurableSubagentTaskRuntime] = _require("subagent_task_runtime", "Subagent task runtime")
 
 
 def get_store(request: Request):
@@ -292,6 +318,8 @@ def get_run_context(request: Request) -> RunContext:
         run_events_config=getattr(request.app.state, "run_events_config", None),
         thread_store=get_thread_store(request),
         app_config=get_config(),
+        subagent_task_manager=get_subagent_task_manager(request),
+        subagent_task_runtime=get_subagent_task_runtime(request),
     )
 
 

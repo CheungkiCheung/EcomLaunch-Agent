@@ -14,6 +14,7 @@ from app.commerce.data.intake import (
     DataFileManifest,
     DataIntakeError,
     DataIntakeService,
+    DatasetIntegrityError,
     FileFormat,
     TableManifest,
 )
@@ -62,6 +63,7 @@ __all__ = [
     "DataFileManifest",
     "DataIntakeError",
     "DataIntakeService",
+    "DatasetIntegrityError",
     "DataProfiler",
     "DatasetProfile",
     "FileFormat",

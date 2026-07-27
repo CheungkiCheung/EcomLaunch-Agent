@@ -1,6 +1,21 @@
 import { expect, test } from "vitest";
 
-import { pathOfThread } from "@/core/threads/utils";
+import {
+  assistantIdForThreadContext,
+  pathOfThread,
+  titleOfThread,
+} from "@/core/threads/utils";
+
+test("uses the selected custom agent as the Run assistant identity", () => {
+  expect(assistantIdForThreadContext({ agent_name: "commerce-agent" })).toBe(
+    "commerce-agent",
+  );
+  expect(assistantIdForThreadContext({ agent_name: "  researcher  " })).toBe(
+    "researcher",
+  );
+  expect(assistantIdForThreadContext({})).toBe("lead_agent");
+  expect(assistantIdForThreadContext({ agent_name: "   " })).toBe("lead_agent");
+});
 
 test("uses standard chat route when thread has no agent context", () => {
   expect(pathOfThread("thread-123")).toBe("/workspace/chats/thread-123");
@@ -43,4 +58,16 @@ test("prefers context.agent_name over metadata.agent_name", () => {
       metadata: { agent_name: "from-metadata" },
     }),
   ).toBe("/workspace/agents/from-context/chats/thread-789");
+});
+
+test("uses the caller locale fallback for an untitled thread", () => {
+  expect(
+    titleOfThread(
+      {
+        thread_id: "thread-untitled",
+        values: {},
+      } as never,
+      "未命名",
+    ),
+  ).toBe("未命名");
 });

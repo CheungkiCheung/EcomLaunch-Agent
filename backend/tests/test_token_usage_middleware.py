@@ -175,6 +175,7 @@ class TestTokenUsageMiddleware:
                 "kind": "subagent",
                 "description": "spec-coder patch message grouping",
                 "subagent_type": "general-purpose",
+                "lifecycle_action": "task",
                 "tool_call_id": "task:1",
             },
             {
@@ -183,6 +184,39 @@ class TestTokenUsageMiddleware:
                 "query": "LangGraph useStream messages tuple",
                 "tool_call_id": "web_search:1",
             },
+        ]
+
+    def test_annotates_durable_subagent_dispatch(self):
+        middleware = TokenUsageMiddleware()
+        message = AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "id": "spawn:1",
+                    "name": "spawn_task",
+                    "args": {
+                        "description": "分析履约异常",
+                        "subagent_type": "analyst",
+                    },
+                }
+            ],
+        )
+
+        result = middleware.after_model({"messages": [message]}, _make_runtime())
+
+        assert result is not None
+        attribution = result["messages"][0].additional_kwargs[
+            TOKEN_USAGE_ATTRIBUTION_KEY
+        ]
+        assert attribution["kind"] == "subagent_dispatch"
+        assert attribution["actions"] == [
+            {
+                "kind": "subagent",
+                "description": "分析履约异常",
+                "subagent_type": "analyst",
+                "lifecycle_action": "spawn_task",
+                "tool_call_id": "spawn:1",
+            }
         ]
 
     def test_marks_final_answer_when_no_tools(self):

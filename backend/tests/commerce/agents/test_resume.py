@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 from app.commerce.agents.budget import BudgetSnapshot, BudgetUsage
 from app.commerce.agents.contracts import AgentBudgetLimit
-from app.commerce.agents.goal_loop import GoalLoopCheckpoint
+from app.commerce.agents.goal_loop import GoalLoopCheckpoint, GoalStopReason
 from app.commerce.agents.resume import (
     ResumeDisposition,
     ResumeReasonCode,
@@ -36,6 +36,7 @@ def _checkpoint(
     iteration: int,
     task_ids: tuple[AgentTaskId, ...],
     evidence_ids: tuple[EvidenceId, ...] = (),
+    wait_reason: GoalStopReason | None = None,
 ) -> RunCheckpointRecord:
     now = datetime(2026, 7, 19, 12, 0, tzinfo=UTC)
     return RunCheckpointRecord(
@@ -57,6 +58,7 @@ def _checkpoint(
             evidence_ids=evidence_ids,
             active_path_task_ids=task_ids,
             context_sha256="a" * 64,
+            wait_reason=wait_reason,
         ),
         created_at=now,
     )
@@ -231,6 +233,78 @@ def test_post_call_checkpoint_skips_completed_path_and_continues_loop():
     assert ResumeReasonCode.POST_CALL_CHECKPOINT_VERIFIED in plan.reason_codes
 
 
+def test_post_call_checkpoint_reconciles_blocked_path_without_model_retry():
+    workspace_id, case_id, run_id, task_id = _identity()
+    latest = _checkpoint(
+        workspace_id=workspace_id,
+        case_id=case_id,
+        run_id=run_id,
+        sequence=2,
+        iteration=1,
+        task_ids=(),
+    )
+
+    plan = RunResumeClassifier().classify(
+        latest_checkpoint=latest,
+        run_events=(
+            _event(
+                "path.blocked",
+                workspace_id=workspace_id,
+                case_id=case_id,
+                run_id=run_id,
+                run_sequence=1,
+                payload={
+                    "task_id": str(task_id),
+                    "path_type": "fulfillment",
+                    "status": "blocked",
+                    "error_code": "invalid_path_result",
+                },
+            ),
+        ),
+    )
+
+    assert plan.disposition is ResumeDisposition.CONTINUE_AFTER_TERMINAL_PATH
+    assert plan.may_invoke_external_model is False
+    assert plan.blocked_task_ids == (task_id,)
+    assert ResumeReasonCode.TERMINAL_PATH_CHECKPOINT_VERIFIED in plan.reason_codes
+
+
+def test_post_call_checkpoint_reconciles_cancelled_path_as_failed_terminal():
+    workspace_id, case_id, run_id, task_id = _identity()
+    latest = _checkpoint(
+        workspace_id=workspace_id,
+        case_id=case_id,
+        run_id=run_id,
+        sequence=2,
+        iteration=1,
+        task_ids=(),
+    )
+
+    plan = RunResumeClassifier().classify(
+        latest_checkpoint=latest,
+        run_events=(
+            _event(
+                "path.failed",
+                workspace_id=workspace_id,
+                case_id=case_id,
+                run_id=run_id,
+                run_sequence=1,
+                payload={
+                    "task_id": str(task_id),
+                    "path_type": "fulfillment",
+                    "status": "cancelled",
+                    "error_code": "harness_cancelled",
+                },
+            ),
+        ),
+    )
+
+    assert plan.disposition is ResumeDisposition.CONTINUE_AFTER_TERMINAL_PATH
+    assert plan.may_invoke_external_model is False
+    assert plan.failed_task_ids == (task_id,)
+    assert ResumeReasonCode.TERMINAL_PATH_CHECKPOINT_VERIFIED in plan.reason_codes
+
+
 def test_completed_event_without_post_call_checkpoint_is_invalid_state():
     workspace_id, case_id, run_id, task_id = _identity()
     latest = _checkpoint(
@@ -263,3 +337,92 @@ def test_completed_event_without_post_call_checkpoint_is_invalid_state():
     assert plan.disposition is ResumeDisposition.INVALID_STATE
     assert plan.may_invoke_external_model is False
     assert ResumeReasonCode.COMPLETION_WITHOUT_POST_CHECKPOINT in plan.reason_codes
+
+
+def test_approval_wait_checkpoint_remains_waiting_without_a_fenced_resume_event():
+    workspace_id, case_id, run_id, _task_id = _identity()
+    latest = _checkpoint(
+        workspace_id=workspace_id,
+        case_id=case_id,
+        run_id=run_id,
+        sequence=1,
+        iteration=0,
+        task_ids=(),
+        wait_reason=GoalStopReason.AWAITING_APPROVAL,
+    )
+
+    plan = RunResumeClassifier().classify(
+        latest_checkpoint=latest,
+        run_events=(
+            _event(
+                "lead.waiting",
+                workspace_id=workspace_id,
+                case_id=case_id,
+                run_id=run_id,
+                run_sequence=1,
+                payload={"wait_reason": "awaiting_approval"},
+            ),
+        ),
+    )
+
+    assert plan.disposition is ResumeDisposition.WAITING_FOR_APPROVAL
+    assert plan.may_invoke_external_model is False
+    assert ResumeReasonCode.APPROVAL_WAIT_CHECKPOINT_VERIFIED in plan.reason_codes
+
+
+def test_user_input_wait_continues_only_after_a_fenced_resume_event():
+    workspace_id, case_id, run_id, _task_id = _identity()
+    latest = _checkpoint(
+        workspace_id=workspace_id,
+        case_id=case_id,
+        run_id=run_id,
+        sequence=1,
+        iteration=0,
+        task_ids=(),
+        wait_reason=GoalStopReason.AWAITING_USER_INPUT,
+    )
+
+    waiting = RunResumeClassifier().classify(
+        latest_checkpoint=latest,
+        run_events=(
+            _event(
+                "lead.waiting",
+                workspace_id=workspace_id,
+                case_id=case_id,
+                run_id=run_id,
+                run_sequence=1,
+                payload={"wait_reason": "awaiting_user_input"},
+            ),
+        ),
+    )
+    resumed = RunResumeClassifier().classify(
+        latest_checkpoint=latest,
+        run_events=(
+            _event(
+                "lead.waiting",
+                workspace_id=workspace_id,
+                case_id=case_id,
+                run_id=run_id,
+                run_sequence=1,
+                payload={"wait_reason": "awaiting_user_input"},
+            ),
+            _event(
+                "run.status_changed",
+                workspace_id=workspace_id,
+                case_id=case_id,
+                run_id=run_id,
+                run_sequence=2,
+                payload={
+                    "from_status": "waiting",
+                    "to_status": "running",
+                    "resumed_from_wait": True,
+                    "fencing_token": 2,
+                },
+            ),
+        ),
+    )
+
+    assert waiting.disposition is ResumeDisposition.WAITING_FOR_USER_INPUT
+    assert resumed.disposition is ResumeDisposition.CONTINUE_AFTER_WAIT
+    assert resumed.may_invoke_external_model is False
+    assert ResumeReasonCode.WAIT_RESUME_FENCING_VERIFIED in resumed.reason_codes

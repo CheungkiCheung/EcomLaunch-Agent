@@ -1,4 +1,5 @@
 import logging
+import os
 
 from langchain.tools import BaseTool
 
@@ -8,10 +9,15 @@ from deerflow.reflection import resolve_variable
 from deerflow.sandbox.security import is_host_bash_allowed
 from deerflow.tools.builtins import (
     ask_clarification_tool,
+    cancel_task_tool,
+    follow_up_task_tool,
     present_file_tool,
+    resume_task_tool,
+    spawn_task_tool,
     task_tool,
     validate_opensku_artifacts_tool,
     view_image_tool,
+    wait_task_tool,
     write_opensku_artifact_bundle_tool,
 )
 from deerflow.tools.mcp_metadata import tag_mcp_tool
@@ -27,9 +33,38 @@ BUILTIN_TOOLS = [
 ]
 
 SUBAGENT_TOOLS = [
+    spawn_task_tool,
+    wait_task_tool,
+    follow_up_task_tool,
+    cancel_task_tool,
+    resume_task_tool,
     task_tool,
-    # task_status_tool is no longer exposed to LLM (backend handles polling internally)
 ]
+
+_TRUTHY_ENV_VALUES = frozenset({"1", "true", "yes", "on"})
+
+
+def _config_tool_is_available(tool: object, groups: list[str] | None) -> bool:
+    """Apply generic group/default/environment policy before importing a Tool.
+
+    Application-specific tools can live in the shared YAML registry without
+    leaking into the default Agent.  Explicit group selection opts into a
+    hidden Tool, while ``enabled_if_env`` remains a fail-closed deployment
+    boundary for both default and explicit selection.
+    """
+    group = getattr(tool, "group", None)
+    if groups is not None:
+        if group not in groups:
+            return False
+    else:
+        default_enabled = getattr(tool, "default_enabled", True)
+        if isinstance(default_enabled, bool) and not default_enabled:
+            return False
+
+    env_name = getattr(tool, "enabled_if_env", None)
+    if not isinstance(env_name, str) or not env_name.strip():
+        return True
+    return os.getenv(env_name.strip(), "").strip().lower() in _TRUTHY_ENV_VALUES
 
 
 def _is_host_bash_tool(tool: object) -> bool:
@@ -73,7 +108,7 @@ def get_available_tools(
         List of available tools.
     """
     config = app_config or get_app_config()
-    tool_configs = [tool for tool in config.tools if groups is None or tool.group in groups]
+    tool_configs = [tool for tool in config.tools if _config_tool_is_available(tool, groups)]
 
     # Do not expose host bash by default when LocalSandboxProvider is active.
     if not is_host_bash_allowed(config):
@@ -107,7 +142,7 @@ def get_available_tools(
     # Add subagent tools only if enabled via runtime parameter
     if subagent_enabled:
         builtin_tools.extend(SUBAGENT_TOOLS)
-        logger.info("Including subagent tools (task)")
+        logger.info("Including durable subagent tools (spawn_task, wait_task, follow_up_task, cancel_task, resume_task) and legacy task compatibility")
 
     # If no model_name specified, use the first model (default)
     if model_name is None and config.models:

@@ -72,6 +72,25 @@ def test_gold_case_contracts_load_without_exposing_expected_behavior(case_key: s
     assert "forbidden_claims" not in agent_input
 
 
+def test_peer_gold_case_exposes_reproducible_outcome_agnostic_request():
+    evaluation_case = load_evaluation_case(CASES_ROOT / "GC-PEER-004")
+
+    request = evaluation_case.input_bundle.peer_analysis_request
+
+    assert request is not None
+    assert request.seller_id == "e5a3438891c0bfdb9394643f95273d8e"
+    assert request.product_category == "fashion_bolsas_e_acessorios"
+    assert request.min_orders_per_seller == 20
+    assert request.match_seller_state is True
+    assert request.baseline_window.start == datetime(2017, 7, 1)
+    assert request.baseline_window.end == datetime(2018, 1, 1)
+    assert request.baseline_window.end <= request.window.start
+    assert tuple(item.value for item in request.requested_paths) == (
+        "fulfillment",
+        "seller_peer",
+    )
+
+
 @pytest.mark.parametrize("case_key, expected", tuple(EXPECTED_COUNTS.items()))
 def test_gold_case_row_counts_are_frozen(case_key: str, expected: dict[str, int]):
     tables = _read_tables(case_key)

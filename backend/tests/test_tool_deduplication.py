@@ -8,6 +8,7 @@ priority, and logs a warning for every skipped duplicate.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from langchain_core.tools import BaseTool, StructuredTool, tool
@@ -198,3 +199,63 @@ def test_duplicate_triggers_warning(mock_bash, mock_cfg, caplog):
             get_available_tools(include_mcp=False)
 
     assert any("Duplicate tool name" in r.message for r in caplog.records), "Expected a duplicate-tool warning in log output"
+
+
+@patch("deerflow.tools.tools.resolve_variable", return_value=_tool_alpha)
+@patch("deerflow.tools.tools.is_host_bash_allowed", return_value=True)
+def test_default_hidden_config_tool_requires_explicit_group(mock_bash, mock_resolve):
+    """Application tools stay out of the default Agent but remain group-addressable."""
+    tool_cfg = SimpleNamespace(
+        name=_tool_alpha.name,
+        group="commerce",
+        use="example.module:tool",
+        default_enabled=False,
+        enabled_if_env=None,
+    )
+    config = _make_minimal_config([tool_cfg])
+
+    with patch("deerflow.tools.tools.BUILTIN_TOOLS", []):
+        default_tools = get_available_tools(include_mcp=False, app_config=config)
+        commerce_tools = get_available_tools(
+            groups=["commerce"],
+            include_mcp=False,
+            app_config=config,
+        )
+
+    assert _tool_alpha not in default_tools
+    assert commerce_tools == [_tool_alpha]
+
+
+@patch("deerflow.tools.tools.resolve_variable", return_value=_tool_alpha)
+@patch("deerflow.tools.tools.is_host_bash_allowed", return_value=True)
+def test_environment_guard_fails_closed_even_for_explicit_group(
+    mock_bash,
+    mock_resolve,
+    monkeypatch,
+):
+    """An explicitly requested application Tool group still obeys its env gate."""
+    tool_cfg = SimpleNamespace(
+        name=_tool_alpha.name,
+        group="commerce",
+        use="example.module:tool",
+        default_enabled=False,
+        enabled_if_env="COMMERCE_CASE_AGENT_ENABLED",
+    )
+    config = _make_minimal_config([tool_cfg])
+    monkeypatch.delenv("COMMERCE_CASE_AGENT_ENABLED", raising=False)
+
+    with patch("deerflow.tools.tools.BUILTIN_TOOLS", []):
+        disabled_tools = get_available_tools(
+            groups=["commerce"],
+            include_mcp=False,
+            app_config=config,
+        )
+        monkeypatch.setenv("COMMERCE_CASE_AGENT_ENABLED", "true")
+        enabled_tools = get_available_tools(
+            groups=["commerce"],
+            include_mcp=False,
+            app_config=config,
+        )
+
+    assert disabled_tools == []
+    assert enabled_tools == [_tool_alpha]

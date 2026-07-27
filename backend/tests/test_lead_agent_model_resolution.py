@@ -8,7 +8,20 @@ from unittest.mock import MagicMock
 import pytest
 
 from deerflow.agents.lead_agent import agent as lead_agent_module
+from deerflow.agents.middlewares.final_answer_policy_middleware import (
+    FinalAnswerPolicyMiddleware,
+)
 from deerflow.agents.middlewares.loop_detection_middleware import LoopDetectionMiddleware
+from deerflow.agents.middlewares.parent_direct_tool_budget_middleware import (
+    ParentDirectToolBudgetMiddleware,
+)
+from deerflow.agents.middlewares.subagent_dispatch_policy_middleware import (
+    SubagentDispatchPolicyMiddleware,
+)
+from deerflow.agents.middlewares.subagent_requirement_middleware import (
+    SubagentRequirementMiddleware,
+)
+from deerflow.config.agents_config import AgentConfig
 from deerflow.config.app_config import AppConfig
 from deerflow.config.loop_detection_config import LoopDetectionConfig
 from deerflow.config.memory_config import MemoryConfig
@@ -288,6 +301,126 @@ def test_make_lead_agent_reads_runtime_options_from_context(monkeypatch):
     assert result["model"] is not None
 
 
+def test_builtin_agent_can_require_subagent_harness_even_when_client_disables_it(
+    monkeypatch,
+):
+    app_config = _make_app_config([_make_model("commerce-model", supports_thinking=True)])
+
+    import deerflow.tools as tools_module
+
+    get_available_tools = MagicMock(return_value=[])
+    runtime_seen: dict[str, object] = {}
+    prompt_seen: dict[str, object] = {}
+    config: dict = {
+        "configurable": {
+            "agent_name": "commerce-agent",
+            "subagent_enabled": False,
+        }
+    }
+
+    monkeypatch.setattr(
+        lead_agent_module,
+        "load_agent_config",
+        lambda name: AgentConfig(
+            name="commerce-agent",
+            model="commerce-model",
+            tool_groups=["commerce"],
+            skills=[],
+            subagent_required=True,
+            subagent_complexity_tool_call_threshold=2,
+            required_subagent_types=["verifier"],
+            max_concurrent_subagents=3,
+            max_parent_direct_tool_calls=8,
+            max_parent_direct_tool_rounds=6,
+            require_explicit_subagent_scope=True,
+            memory_enabled=False,
+            model_generated_title=False,
+            local_title_rules=[
+                {
+                    "keywords": ["履约", "延迟"],
+                    "title": "订单履约异常诊断",
+                }
+            ],
+            local_title_fallback="电商经营数据诊断",
+            subagent_scope_rules=[
+                {
+                    "name": "fulfillment-verifier",
+                    "subagent_type": "verifier",
+                    "match_skills_all": ["fulfillment-investigation"],
+                    "prompt_keywords_any": ["核验", "重算"],
+                    "enforced_skills": ["fulfillment-investigation"],
+                    "enforced_tools": ["commerce_evidence_query"],
+                    "inherit_source_tools": True,
+                    "max_tool_rounds": 2,
+                    "max_tool_calls": 3,
+                }
+            ],
+        ),
+    )
+    monkeypatch.setattr(lead_agent_module, "is_builtin_agent", lambda name: True)
+    monkeypatch.setattr(tools_module, "get_available_tools", get_available_tools)
+    monkeypatch.setattr(
+        lead_agent_module,
+        "_load_enabled_skills_for_tool_policy",
+        lambda available_skills, *, app_config: [],
+    )
+
+    def fake_build_middlewares(config, model_name, agent_name=None, **kwargs):
+        runtime_seen.update(lead_agent_module._get_runtime_config(config))
+        return []
+
+    monkeypatch.setattr(lead_agent_module, "build_middlewares", fake_build_middlewares)
+    monkeypatch.setattr(
+        lead_agent_module,
+        "apply_prompt_template",
+        lambda **kwargs: prompt_seen.update(kwargs) or "commerce prompt",
+    )
+    monkeypatch.setattr(
+        lead_agent_module,
+        "create_chat_model",
+        lambda **kwargs: object(),
+    )
+    monkeypatch.setattr(
+        lead_agent_module,
+        "create_agent",
+        lambda **kwargs: kwargs,
+    )
+
+    lead_agent_module._make_lead_agent(config, app_config=app_config)
+
+    get_available_tools.assert_called_once_with(
+        model_name="commerce-model",
+        groups=["commerce"],
+        subagent_enabled=True,
+        app_config=app_config,
+    )
+    assert runtime_seen["subagent_enabled"] is True
+    assert runtime_seen["subagent_required"] is True
+    assert runtime_seen["subagent_complexity_tool_call_threshold"] == 2
+    assert runtime_seen["required_subagent_types"] == ["verifier"]
+    assert runtime_seen["max_concurrent_subagents"] == 3
+    assert runtime_seen["max_parent_direct_tool_calls"] == 8
+    assert runtime_seen["max_parent_direct_tool_rounds"] == 6
+    assert runtime_seen["require_explicit_subagent_scope"] is True
+    assert runtime_seen["memory_enabled"] is False
+    assert runtime_seen["model_generated_title"] is False
+    assert runtime_seen["local_title_rules"] == [
+        {"keywords": ["履约", "延迟"], "title": "订单履约异常诊断"}
+    ]
+    assert runtime_seen["local_title_fallback"] == "电商经营数据诊断"
+    assert runtime_seen["subagent_scope_rules"][0]["name"] == (
+        "fulfillment-verifier"
+    )
+    assert prompt_seen["subagent_required"] is True
+    assert prompt_seen["subagent_complexity_tool_call_threshold"] == 2
+    assert prompt_seen["required_subagent_types"] == ["verifier"]
+    assert prompt_seen["require_explicit_subagent_scope"] is True
+    assert config["metadata"]["subagent_enabled"] is True
+    assert config["metadata"]["memory_enabled"] is False
+    assert config["metadata"]["model_generated_title"] is False
+    assert config["metadata"]["subagent_scope_rule_count"] == 1
+
+
 def test_make_lead_agent_rejects_invalid_bootstrap_agent_name(monkeypatch):
     app_config = _make_app_config([_make_model("safe-model", supports_thinking=False)])
 
@@ -343,6 +476,100 @@ def test_build_middlewares_uses_resolved_model_name_for_vision(monkeypatch):
     assert len(middlewares) > 0 and isinstance(middlewares[-3], MagicMock)
 
 
+def test_build_middlewares_can_disable_todos_for_plan_mode(monkeypatch):
+    app_config = _make_app_config([_make_model("safe-model", supports_thinking=False)])
+    todo_enabled_values: list[bool] = []
+
+    monkeypatch.setattr(
+        lead_agent_module,
+        "build_lead_runtime_middlewares",
+        lambda *, app_config, lazy_init=True: [],
+    )
+    monkeypatch.setattr(
+        lead_agent_module,
+        "_create_summarization_middleware",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        lead_agent_module,
+        "_create_todo_list_middleware",
+        lambda enabled: todo_enabled_values.append(enabled) or None,
+    )
+
+    lead_agent_module.build_middlewares(
+        {
+            "configurable": {
+                "is_plan_mode": True,
+                "todo_list_enabled": False,
+                "subagent_enabled": False,
+            }
+        },
+        model_name="safe-model",
+        app_config=app_config,
+    )
+
+    assert todo_enabled_values == [False]
+
+
+def test_build_middlewares_can_disable_agent_memory_and_model_title(monkeypatch):
+    from deerflow.agents.middlewares.dynamic_context_middleware import (
+        DynamicContextMiddleware,
+    )
+    from deerflow.agents.middlewares.memory_middleware import MemoryMiddleware
+    from deerflow.agents.middlewares.title_middleware import TitleMiddleware
+
+    app_config = _make_app_config(
+        [_make_model("safe-model", supports_thinking=False)]
+    )
+    app_config.memory = MemoryConfig(enabled=True, injection_enabled=True)
+
+    monkeypatch.setattr(
+        lead_agent_module,
+        "build_lead_runtime_middlewares",
+        lambda *, app_config, lazy_init=True: [],
+    )
+    monkeypatch.setattr(
+        lead_agent_module,
+        "_create_summarization_middleware",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        lead_agent_module,
+        "_create_todo_list_middleware",
+        lambda enabled: None,
+    )
+
+    middlewares = lead_agent_module.build_middlewares(
+        {
+            "configurable": {
+                "is_plan_mode": False,
+                "subagent_enabled": False,
+                "memory_enabled": False,
+                "model_generated_title": False,
+                "local_title_rules": [
+                    {
+                        "keywords": ["履约", "延迟"],
+                        "title": "订单履约异常诊断",
+                    }
+                ],
+                "local_title_fallback": "电商经营数据诊断",
+            }
+        },
+        model_name="safe-model",
+        agent_name="commerce-agent",
+        app_config=app_config,
+    )
+
+    dynamic_context = next(
+        item for item in middlewares if isinstance(item, DynamicContextMiddleware)
+    )
+    title = next(item for item in middlewares if isinstance(item, TitleMiddleware))
+    assert dynamic_context._memory_enabled is False
+    assert title._use_model is False
+    assert title._local_title_fallback == "电商经营数据诊断"
+    assert not any(isinstance(item, MemoryMiddleware) for item in middlewares)
+
+
 def test_build_middlewares_passes_explicit_app_config_to_shared_factory(monkeypatch):
     app_config = _make_app_config([_make_model("safe-model", supports_thinking=False)])
     captured: dict[str, object] = {}
@@ -366,7 +593,10 @@ def test_build_middlewares_passes_explicit_app_config_to_shared_factory(monkeypa
     monkeypatch.setattr(
         lead_agent_module,
         "TitleMiddleware",
-        lambda *, app_config: captured.setdefault("title_app_config", app_config) or "title-middleware",
+        lambda *, app_config, **kwargs: captured.setdefault(
+            "title_app_config", app_config
+        )
+        or "title-middleware",
     )
     monkeypatch.setattr(
         lead_agent_module,
@@ -404,7 +634,9 @@ def test_build_middlewares_uses_loop_detection_config(monkeypatch):
 
     monkeypatch.setattr(lead_agent_module, "get_app_config", lambda: app_config)
     monkeypatch.setattr(lead_agent_module, "build_lead_runtime_middlewares", lambda *, app_config, lazy_init=True: [])
-    monkeypatch.setattr(lead_agent_module, "_create_summarization_middleware", lambda *, app_config=None: None)
+    monkeypatch.setattr(
+        lead_agent_module, "_create_summarization_middleware", lambda **kwargs: None
+    )
     monkeypatch.setattr(lead_agent_module, "_create_todo_list_middleware", lambda is_plan_mode: None)
 
     middlewares = lead_agent_module.build_middlewares(
@@ -422,6 +654,79 @@ def test_build_middlewares_uses_loop_detection_config(monkeypatch):
     assert loop_detection.tool_freq_hard_limit == 60
 
 
+def test_build_middlewares_adds_fail_closed_subagent_requirement(monkeypatch):
+    app_config = _make_app_config([_make_model("safe-model", supports_thinking=False)])
+
+    monkeypatch.setattr(lead_agent_module, "get_app_config", lambda: app_config)
+    monkeypatch.setattr(
+        lead_agent_module,
+        "build_lead_runtime_middlewares",
+        lambda *, app_config, lazy_init=True: [],
+    )
+    monkeypatch.setattr(
+        lead_agent_module,
+        "_create_summarization_middleware",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        lead_agent_module,
+        "_create_todo_list_middleware",
+        lambda is_plan_mode: None,
+    )
+
+    middlewares = lead_agent_module.build_middlewares(
+        {
+            "configurable": {
+                "is_plan_mode": False,
+                "subagent_enabled": True,
+                "subagent_required": True,
+                "subagent_complexity_tool_call_threshold": 4,
+                "required_subagent_types": ["verifier"],
+                "max_parent_direct_tool_calls": 8,
+                "max_parent_direct_tool_rounds": 6,
+                "final_answer_forbidden_phrases": ["主因", "完全排除"],
+                "max_final_answer_repairs": 1,
+                "subagent_scope_rules": [
+                    {
+                        "name": "fulfillment-verifier",
+                        "subagent_type": "verifier",
+                        "match_skills_all": ["fulfillment-investigation"],
+                        "prompt_keywords_any": ["核验"],
+                        "enforced_skills": ["fulfillment-investigation"],
+                        "enforced_tools": ["commerce_evidence_query"],
+                        "inherit_source_tools": True,
+                        "max_tool_rounds": 2,
+                        "max_tool_calls": 3,
+                    }
+                ],
+            }
+        },
+        model_name="safe-model",
+        app_config=app_config,
+    )
+
+    requirement = next(middleware for middleware in middlewares if isinstance(middleware, SubagentRequirementMiddleware))
+    assert requirement.complexity_tool_call_threshold == 4
+    assert requirement.required_subagent_types == ("verifier",)
+    parent_budget = next(middleware for middleware in middlewares if isinstance(middleware, ParentDirectToolBudgetMiddleware))
+    assert parent_budget.max_direct_tool_calls == 8
+    assert parent_budget.max_direct_tool_rounds == 6
+    final_answer_policy = next(middleware for middleware in middlewares if isinstance(middleware, FinalAnswerPolicyMiddleware))
+    assert final_answer_policy.forbidden_phrases == ("主因", "完全排除")
+    assert final_answer_policy.max_repairs == 1
+    assert any(
+        isinstance(middleware, SubagentDispatchPolicyMiddleware)
+        for middleware in middlewares
+    )
+    dispatch_policy = next(
+        middleware
+        for middleware in middlewares
+        if isinstance(middleware, SubagentDispatchPolicyMiddleware)
+    )
+    assert dispatch_policy.scope_rules[0]["name"] == "fulfillment-verifier"
+    assert middlewares.index(dispatch_policy) < middlewares.index(requirement)
+
+
 def test_build_middlewares_omits_loop_detection_when_disabled(monkeypatch):
     app_config = _make_app_config(
         [_make_model("safe-model", supports_thinking=False)],
@@ -430,7 +735,9 @@ def test_build_middlewares_omits_loop_detection_when_disabled(monkeypatch):
 
     monkeypatch.setattr(lead_agent_module, "get_app_config", lambda: app_config)
     monkeypatch.setattr(lead_agent_module, "build_lead_runtime_middlewares", lambda *, app_config, lazy_init=True: [])
-    monkeypatch.setattr(lead_agent_module, "_create_summarization_middleware", lambda *, app_config=None: None)
+    monkeypatch.setattr(
+        lead_agent_module, "_create_summarization_middleware", lambda **kwargs: None
+    )
     monkeypatch.setattr(lead_agent_module, "_create_todo_list_middleware", lambda is_plan_mode: None)
 
     middlewares = lead_agent_module.build_middlewares(
@@ -492,6 +799,34 @@ def test_create_summarization_middleware_uses_frontend_supported_update_key(monk
     assert middleware is not None
     update_key = f"{type(middleware).__name__}.before_model"
     assert update_key == "DeerFlowSummarizationMiddleware.before_model"
+
+
+def test_create_summarization_middleware_omits_memory_flush_for_agent_opt_out(
+    monkeypatch,
+):
+    app_config = _make_app_config(
+        [_make_model("safe-model", supports_thinking=False)]
+    )
+    app_config.summarization = SummarizationConfig(enabled=True)
+    app_config.memory = MemoryConfig(enabled=True)
+
+    fake_model = MagicMock()
+    fake_model.with_config.return_value = fake_model
+    monkeypatch.setattr(
+        lead_agent_module, "create_chat_model", lambda **kwargs: fake_model
+    )
+    monkeypatch.setattr(
+        lead_agent_module,
+        "DeerFlowSummarizationMiddleware",
+        lambda **kwargs: kwargs,
+    )
+
+    middleware = lead_agent_module._create_summarization_middleware(
+        app_config=app_config,
+        memory_enabled=False,
+    )
+
+    assert middleware["before_summarization"] == []
 
 
 def test_create_summarization_middleware_threads_resolved_app_config_to_model(monkeypatch):

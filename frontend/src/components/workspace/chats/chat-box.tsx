@@ -10,6 +10,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { useI18n } from "@/core/i18n/hooks";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
   children,
   threadId,
 }) => {
+  const { t } = useI18n();
   const { thread } = useThread();
   const pathname = usePathname();
   const threadIdRef = useRef(threadId);
@@ -149,16 +151,18 @@ const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
                   <XIcon />
                 </Button>
               </div>
-              {thread.values.artifacts?.length === 0 ? (
+              {!thread.values.artifacts?.length ? (
                 <ConversationEmptyState
                   icon={<FilesIcon />}
-                  title="No artifact selected"
-                  description="Select an artifact to view its details"
+                  title={t.common.noArtifactSelected}
+                  description={t.common.selectArtifactDescription}
                 />
               ) : (
                 <div className="flex size-full max-w-(--container-width-sm) flex-col justify-center p-4 pt-8">
                   <header className="shrink-0">
-                    <h2 className="text-lg font-medium">Artifacts</h2>
+                    <h2 className="text-lg font-medium">
+                      {t.common.artifacts}
+                    </h2>
                   </header>
                   <main className="min-h-0 grow">
                     <ArtifactFileList

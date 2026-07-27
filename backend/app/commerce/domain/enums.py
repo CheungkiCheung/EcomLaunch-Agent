@@ -44,6 +44,12 @@ class HypothesisStatus(StrEnum):
     BLOCKED = "blocked"
 
 
+class PathType(StrEnum):
+    FULFILLMENT = "fulfillment"
+    SELLER_PEER = "seller_peer"
+    REVIEW_EXPERIENCE = "review_experience"
+
+
 class RunType(StrEnum):
     DATA_INTAKE = "data_intake"
     CASE_INVESTIGATION = "case_investigation"
@@ -51,6 +57,11 @@ class RunType(StrEnum):
     FOLLOW_UP = "follow_up"
     REPLAN = "replan"
     EVALUATION = "evaluation"
+
+
+class ActionRunOperation(StrEnum):
+    EXECUTE = "execute"
+    ROLLBACK = "rollback"
 
 
 class RunStatus(StrEnum):
@@ -91,6 +102,7 @@ class ActionStatus(StrEnum):
     EFFECTIVE = "effective"
     INEFFECTIVE = "ineffective"
     INCONCLUSIVE = "inconclusive"
+    ROLLING_BACK = "rolling_back"
     ROLLED_BACK = "rolled_back"
 
 

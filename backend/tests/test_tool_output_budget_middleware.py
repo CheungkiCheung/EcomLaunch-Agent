@@ -8,6 +8,7 @@ sync/async code paths.
 
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 from types import SimpleNamespace
@@ -330,6 +331,56 @@ class TestWrapToolCallExternalize:
             assert len(files) == 1
             with open(os.path.join(storage_dir, files[0]), encoding="utf-8") as f:
                 assert f.read() == content
+
+    def test_wait_task_externalization_preserves_compact_lifecycle_state(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = ToolOutputConfig(
+                externalize_min_chars=100,
+                preview_head_chars=20,
+                preview_tail_chars=10,
+            )
+            mw = ToolOutputBudgetMiddleware(config=config)
+            content = json.dumps(
+                {
+                    "ok": True,
+                    "ready": True,
+                    "tasks": [
+                        {
+                            "task_id": "task-analyst",
+                            "thread_id": "thread-1",
+                            "run_id": "run-1",
+                            "subagent_type": "analyst",
+                            "status": "completed",
+                            "source_refs": [],
+                            "result": {"large": "x" * 500},
+                        }
+                    ],
+                }
+            )
+            msg = _tm(content, name="wait_task", tool_call_id="wait-1")
+            req = _make_request(
+                tool_name="wait_task",
+                tool_call_id="wait-1",
+                outputs_path=tmpdir,
+            )
+
+            result = mw.wrap_tool_call(req, lambda _: msg)
+
+            assert "Full wait_task output saved to" in result.content
+            assert result.additional_kwargs["durable_task_control"] == {
+                "ok": True,
+                "ready": True,
+                "tasks": [
+                    {
+                        "task_id": "task-analyst",
+                        "thread_id": "thread-1",
+                        "run_id": "run-1",
+                        "subagent_type": "analyst",
+                        "status": "completed",
+                        "source_refs": [],
+                    }
+                ],
+            }
 
     def test_preview_contains_head_and_tail(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -865,6 +916,52 @@ class TestMiddlewareChainIntegration:
         middlewares = build_lead_runtime_middlewares(app_config=app_config, lazy_init=False)
 
         assert isinstance(middlewares[0], ToolOutputBudgetMiddleware)
+
+    def test_subagent_without_read_file_uses_inline_fallback_not_dead_reference(self):
+        from deerflow.agents.middlewares.tool_error_handling_middleware import (
+            build_subagent_runtime_middlewares,
+        )
+
+        app_config = AppConfig(
+            sandbox=SandboxConfig(use="test"),
+            tool_output=ToolOutputConfig(
+                externalize_min_chars=12_000,
+                fallback_max_chars=30_000,
+            ),
+        )
+        middlewares = build_subagent_runtime_middlewares(
+            app_config=app_config,
+            lazy_init=False,
+            available_tool_names={"commerce_compare_windows"},
+        )
+
+        budget = middlewares[0]
+        assert isinstance(budget, ToolOutputBudgetMiddleware)
+        assert budget._config.externalize_min_chars == 0
+        assert budget._config.fallback_max_chars == 12_000
+
+    def test_subagent_with_read_file_keeps_externalized_output_path(self):
+        from deerflow.agents.middlewares.tool_error_handling_middleware import (
+            build_subagent_runtime_middlewares,
+        )
+
+        app_config = AppConfig(
+            sandbox=SandboxConfig(use="test"),
+            tool_output=ToolOutputConfig(
+                externalize_min_chars=12_000,
+                fallback_max_chars=30_000,
+            ),
+        )
+        middlewares = build_subagent_runtime_middlewares(
+            app_config=app_config,
+            lazy_init=False,
+            available_tool_names={"read_file", "commerce_compare_windows"},
+        )
+
+        budget = middlewares[0]
+        assert isinstance(budget, ToolOutputBudgetMiddleware)
+        assert budget._config.externalize_min_chars == 12_000
+        assert budget._config.fallback_max_chars == 30_000
 
 
 # ===========================================================================

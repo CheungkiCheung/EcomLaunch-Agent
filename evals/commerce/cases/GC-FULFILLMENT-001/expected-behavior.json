@@ -34,6 +34,20 @@
       ]
     },
     {
+      "code": "no-transit-causal-certainty",
+      "description": "Temporal metric decomposition can identify a transit-associated signal, but cannot prove carrier transit is the causal root without route, carrier, intervention, or comparison evidence.",
+      "kind": "unsupported_causal",
+      "match_mode": "regex",
+      "terms": [
+        "\\b(?:dominant|primary|main)\\s+(?:causal\\s+)?driver\\b",
+        "\\b(?:is|was)\\s+(?:the\\s+)?root cause\\b",
+        "\\b(?:further|thereby)\\s+(?:confirms?|confirmed|proves?|proved|verifies?|verified)\\b",
+        "(?:是|为).{0,12}(?:核心原因|主因)",
+        "(?<!是否)为.{0,12}根本原因",
+        "(?:进一步|由此)(?:验证|证实|证明)"
+      ]
+    },
+    {
       "code": "no-unavailable-private-metrics",
       "description": "Do not invent GMV, CTR, CVR, ROI, ad spend, inventory, profit, or causal uplift.",
       "kind": "unsupported_private_metric",

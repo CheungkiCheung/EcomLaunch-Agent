@@ -156,12 +156,13 @@ def _describe_tool_call(tool_call: dict[str, Any], todos: list[Todo]) -> list[di
             for action in actions
         ]
 
-    if name == "task":
+    if name in {"task", "spawn_task", "follow_up_task", "resume_task"}:
         return [
             {
                 "kind": "subagent",
                 "description": _string_arg(args.get("description")),
                 "subagent_type": _string_arg(args.get("subagent_type")),
+                "lifecycle_action": name,
                 "tool_call_id": tool_call_id,
             }
         ]

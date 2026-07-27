@@ -23,6 +23,10 @@ class DataIntakeError(ValueError):
     """Raised when an uploaded bundle is unsafe, unsupported, or unreadable."""
 
 
+class DatasetIntegrityError(DataIntakeError):
+    """Raised when an already stored Dataset cannot be trusted or resumed."""
+
+
 class FileFormat(StrEnum):
     CSV = "csv"
     JSON = "json"
@@ -168,6 +172,49 @@ class DataIntakeService:
         except Exception:
             shutil.rmtree(bundle_root, ignore_errors=True)
             raise
+
+    def verify_manifest(self, manifest: DataBundleManifest) -> None:
+        """Verify that a persisted manifest still points to immutable source bytes."""
+
+        expected_storage_path = f"{manifest.workspace_id}/{manifest.dataset_id}"
+        if manifest.storage_relative_path != expected_storage_path:
+            raise DatasetIntegrityError(f"Dataset manifest storage path does not match identity: {manifest.dataset_id}")
+
+        bundle_root = self._storage_root / manifest.storage_relative_path
+        storage_root = self._storage_root.resolve()
+        resolved_bundle = bundle_root.resolve(strict=False)
+        try:
+            resolved_bundle.relative_to(storage_root)
+        except ValueError as exc:
+            raise DatasetIntegrityError(f"Dataset manifest storage path escapes storage root: {manifest.dataset_id}") from exc
+        if not bundle_root.is_dir() or bundle_root.is_symlink():
+            raise DatasetIntegrityError(f"Dataset storage directory is missing: {manifest.dataset_id}")
+
+        file_ids = {file.id for file in manifest.files}
+        for table in manifest.tables:
+            if table.source_file_id not in file_ids:
+                raise DatasetIntegrityError(f"Dataset table references a missing source file: {table.table_name}")
+
+        for source_file in manifest.files:
+            relative_path = PurePosixPath(source_file.stored_relative_path)
+            if relative_path.is_absolute() or ".." in relative_path.parts or not relative_path.parts:
+                raise DatasetIntegrityError(f"Dataset file path is unsafe: {source_file.stored_relative_path}")
+            path = bundle_root.joinpath(*relative_path.parts)
+            if path.is_symlink() or not path.is_file():
+                raise DatasetIntegrityError(f"Dataset source file is missing: {source_file.original_name}")
+            resolved_path = path.resolve(strict=False)
+            try:
+                resolved_path.relative_to(resolved_bundle)
+            except ValueError as exc:
+                raise DatasetIntegrityError(f"Dataset source file escapes its bundle: {source_file.original_name}") from exc
+            if not source_file.read_only:
+                raise DatasetIntegrityError(f"Dataset source file is not marked read-only: {source_file.original_name}")
+            if path.stat().st_mode & (stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH):
+                raise DatasetIntegrityError(f"Dataset source file is writable: {source_file.original_name}")
+            if path.stat().st_size != source_file.size_bytes:
+                raise DatasetIntegrityError(f"Dataset source file size does not match its manifest: {source_file.original_name}")
+            if self._sha256(path) != source_file.sha256:
+                raise DatasetIntegrityError(f"Dataset source file hash does not match its manifest: {source_file.original_name}")
 
     @classmethod
     def _format_for_path(cls, path: Path) -> FileFormat:

@@ -23,6 +23,8 @@ export const env = createEnv({
     NEXT_PUBLIC_LANGGRAPH_BASE_URL: z.string().optional(),
     NEXT_PUBLIC_STATIC_WEBSITE_ONLY: z.string().optional(),
     NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED: z.string().optional(),
+    NEXT_PUBLIC_COMMERCE_WORKSPACE_ID: z.string().optional(),
+    NEXT_PUBLIC_COMMERCE_ACTOR_ID: z.string().optional(),
   },
 
   /**
@@ -38,6 +40,9 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY,
     NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED:
       process.env.NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED,
+    NEXT_PUBLIC_COMMERCE_WORKSPACE_ID:
+      process.env.NEXT_PUBLIC_COMMERCE_WORKSPACE_ID,
+    NEXT_PUBLIC_COMMERCE_ACTOR_ID: process.env.NEXT_PUBLIC_COMMERCE_ACTOR_ID,
     GITHUB_OAUTH_TOKEN: process.env.GITHUB_OAUTH_TOKEN,
   },
   /**

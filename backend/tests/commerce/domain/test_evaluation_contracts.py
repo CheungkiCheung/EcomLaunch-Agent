@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 import pytest
 from pydantic import ValidationError
 
 from app.commerce.domain.enums import SemanticStatus
 from app.commerce.domain.evaluation import (
     CapabilityAblation,
+    EvaluationAnalysisRequest,
     EvaluationCase,
+    EvaluationWindow,
     ExpectedBehavior,
     FactExpectation,
     ForbiddenClaim,
@@ -65,6 +69,53 @@ def test_hidden_labels_cannot_be_added_to_input_bundle():
             user_prompt="Investigate the delivery anomaly",
             hidden_labels={"root_cause": "carrier_transit"},
         )
+
+
+def test_agent_visible_analysis_request_requires_ordered_non_overlapping_windows():
+    with pytest.raises(ValidationError, match="Baseline window must end"):
+        EvaluationAnalysisRequest(
+            seller_id="seller-1",
+            baseline_window=EvaluationWindow(
+                start=datetime(2018, 1, 1),
+                end=datetime(2018, 3, 1),
+            ),
+            anomaly_window=EvaluationWindow(
+                start=datetime(2018, 2, 1),
+                end=datetime(2018, 4, 1),
+            ),
+        )
+
+
+def test_agent_visible_analysis_request_is_input_not_hidden_label():
+    request = EvaluationAnalysisRequest(
+        seller_id="seller-1",
+        baseline_window=EvaluationWindow(
+            start=datetime(2018, 1, 1),
+            end=datetime(2018, 2, 1),
+        ),
+        anomaly_window=EvaluationWindow(
+            start=datetime(2018, 2, 1),
+            end=datetime(2018, 3, 1),
+        ),
+        follow_up_window=EvaluationWindow(
+            start=datetime(2018, 3, 1),
+            end=datetime(2018, 4, 1),
+        ),
+        controlled_intervention_observed=False,
+        comparison_group_observed=False,
+    )
+    bundle = InputBundle(
+        schema_version="1.1",
+        files=(_input_file(),),
+        user_prompt="Investigate the delivery anomaly",
+        analysis_request=request,
+    )
+
+    payload = bundle.model_dump(mode="json")
+
+    assert payload["analysis_request"]["seller_id"] == "seller-1"
+    assert "expected_behavior" not in payload
+    assert "forbidden_claims" not in payload
 
 
 def test_forbidden_claim_requires_machine_readable_terms():

@@ -189,6 +189,35 @@ class TestLoadAgentConfig:
 
         assert cfg.tool_groups == ["file:read", "file:write"]
 
+    def test_load_config_with_required_subagent_runtime_policy(self, tmp_path):
+        config_dict = {
+            "name": "commerce-agent",
+            "subagent_required": True,
+            "subagent_complexity_tool_call_threshold": 2,
+            "required_subagent_types": ["verifier"],
+            "max_concurrent_subagents": 4,
+            "max_parent_direct_tool_calls": 8,
+            "max_parent_direct_tool_rounds": 6,
+            "require_explicit_subagent_scope": True,
+        }
+        _write_agent(tmp_path, "commerce-agent", config_dict)
+
+        with patch(
+            "deerflow.config.agents_config.get_paths",
+            return_value=_make_paths(tmp_path),
+        ):
+            from deerflow.config.agents_config import load_agent_config
+
+            cfg = load_agent_config("commerce-agent")
+
+        assert cfg.subagent_required is True
+        assert cfg.subagent_complexity_tool_call_threshold == 2
+        assert cfg.required_subagent_types == ["verifier"]
+        assert cfg.max_concurrent_subagents == 4
+        assert cfg.max_parent_direct_tool_calls == 8
+        assert cfg.max_parent_direct_tool_rounds == 6
+        assert cfg.require_explicit_subagent_scope is True
+
     def test_load_config_with_skills_empty_list(self, tmp_path):
         config_dict = {"name": "no-skills-agent", "skills": []}
         _write_agent(tmp_path, "no-skills-agent", config_dict)

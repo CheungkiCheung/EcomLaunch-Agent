@@ -104,6 +104,24 @@
     }
   ],
   "not_a_live_merchant_integration": true,
+  "peer_analysis_request": {
+    "baseline_window": {
+      "end": "2018-01-01T00:00:00",
+      "start": "2017-07-01T00:00:00"
+    },
+    "match_seller_state": true,
+    "min_orders_per_seller": 20,
+    "product_category": "fashion_bolsas_e_acessorios",
+    "requested_paths": [
+      "fulfillment",
+      "seller_peer"
+    ],
+    "seller_id": "e5a3438891c0bfdb9394643f95273d8e",
+    "window": {
+      "end": "2018-07-01T00:00:00",
+      "start": "2018-01-01T00:00:00"
+    }
+  },
   "schema_version": "1.0",
   "source_type": "public_benchmark_fixture",
   "user_prompt": "该卖家的延迟率看起来偏高。请与同时间、同品类、同卖家州且样本充足的真实卖家进行对标，说明差距、地域分布和证据边界。"

@@ -1071,6 +1071,30 @@ def test_no_duplicate_kwarg_when_reasoning_effort_in_config_and_thinking_disable
     assert captured.get("reasoning_effort") == "minimal"
 
 
+def test_runtime_token_cap_overrides_model_config_without_duplicate_keyword(monkeypatch):
+    """A bounded caller can override a configured max_tokens value safely."""
+
+    model = _make_model("bounded", max_tokens=8192)
+    cfg = _make_app_config([model])
+    captured: dict = {}
+
+    class CapturingModel(FakeChatModel):
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+            BaseChatModel.__init__(self, **kwargs)
+
+    _patch_factory(monkeypatch, cfg, model_class=CapturingModel)
+
+    factory_module.create_chat_model(
+        name="bounded",
+        max_tokens=1600,
+        max_retries=0,
+    )
+
+    assert captured["max_tokens"] == 1600
+    assert captured["max_retries"] == 0
+
+
 # ---------------------------------------------------------------------------
 # stream_chunk_timeout default injection (issue #3189)
 # ---------------------------------------------------------------------------

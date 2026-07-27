@@ -1,7 +1,7 @@
 """Tool error handling middleware and shared runtime middleware builders."""
 
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Collection
 from typing import TYPE_CHECKING, override
 
 from langchain.agents import AgentState
@@ -132,6 +132,8 @@ def _build_runtime_middlewares(
     include_uploads: bool,
     include_dangling_tool_call_patch: bool,
     lazy_init: bool = True,
+    llm_retry_max_attempts: int | None = None,
+    available_tool_names: Collection[str] | None = None,
 ) -> list[AgentMiddleware]:
     """Build shared base middlewares for agent execution."""
     from deerflow.agents.middlewares.llm_error_handling_middleware import LLMErrorHandlingMiddleware
@@ -139,8 +141,36 @@ def _build_runtime_middlewares(
     from deerflow.agents.middlewares.tool_output_budget_middleware import ToolOutputBudgetMiddleware
     from deerflow.sandbox.middleware import SandboxMiddleware
 
+    tool_output_config = app_config.tool_output
+    if available_tool_names is not None and not {
+        "read_file",
+        "read_file_tool",
+    }.intersection(available_tool_names):
+        externalize_thresholds = [
+            tool_output_config.tool_overrides.get(
+                name,
+                tool_output_config.externalize_min_chars,
+            )
+            for name in available_tool_names
+        ]
+        inline_limits = [
+            value
+            for value in (
+                tool_output_config.fallback_max_chars,
+                *externalize_thresholds,
+            )
+            if value > 0
+        ]
+        tool_output_config = tool_output_config.model_copy(
+            update={
+                "externalize_min_chars": 0,
+                "fallback_max_chars": min(inline_limits) if inline_limits else 0,
+                "tool_overrides": {name: 0 for name in tool_output_config.tool_overrides},
+            }
+        )
+
     middlewares: list[AgentMiddleware] = [
-        ToolOutputBudgetMiddleware.from_app_config(app_config),
+        ToolOutputBudgetMiddleware(config=tool_output_config),
         ThreadDataMiddleware(lazy_init=lazy_init),
         SandboxMiddleware(lazy_init=lazy_init),
     ]
@@ -155,7 +185,12 @@ def _build_runtime_middlewares(
 
         middlewares.append(DanglingToolCallMiddleware())
 
-    middlewares.append(LLMErrorHandlingMiddleware(app_config=app_config))
+    llm_error_middleware = LLMErrorHandlingMiddleware(app_config=app_config)
+    if llm_retry_max_attempts is not None:
+        if llm_retry_max_attempts < 1:
+            raise ValueError("llm_retry_max_attempts must include at least one attempt")
+        llm_error_middleware.retry_max_attempts = llm_retry_max_attempts
+    middlewares.append(llm_error_middleware)
 
     # Guardrail middleware (if configured)
     guardrails_config = app_config.guardrails
@@ -203,6 +238,10 @@ def build_subagent_runtime_middlewares(
     model_name: str | None = None,
     lazy_init: bool = True,
     deferred_setup: "DeferredToolSetup | None" = None,
+    llm_retry_max_attempts: int | None = None,
+    max_tool_rounds: int | None = None,
+    max_tool_calls: int | None = None,
+    available_tool_names: Collection[str] | None = None,
 ) -> list[AgentMiddleware]:
     """Middlewares shared by subagent runtime before subagent-only middlewares."""
     if app_config is None:
@@ -215,6 +254,8 @@ def build_subagent_runtime_middlewares(
         include_uploads=False,
         include_dangling_tool_call_patch=True,
         lazy_init=lazy_init,
+        llm_retry_max_attempts=llm_retry_max_attempts,
+        available_tool_names=available_tool_names,
     )
 
     if model_name is None and app_config.models:
@@ -235,6 +276,18 @@ def build_subagent_runtime_middlewares(
         from deerflow.agents.middlewares.deferred_tool_filter_middleware import DeferredToolFilterMiddleware
 
         middlewares.append(DeferredToolFilterMiddleware(deferred_setup.deferred_names, deferred_setup.catalog_hash))
+
+    if max_tool_rounds is not None or max_tool_calls is not None:
+        from deerflow.agents.middlewares.subagent_tool_budget_middleware import (
+            SubagentToolBudgetMiddleware,
+        )
+
+        middlewares.append(
+            SubagentToolBudgetMiddleware(
+                max_tool_rounds=max_tool_rounds,
+                max_tool_calls=max_tool_calls,
+            )
+        )
 
     # Same provider safety-termination guard the lead agent uses — subagents
     # are equally exposed to truncated tool_calls returned with

@@ -86,6 +86,29 @@ def test_memory_included_when_present():
     assert result["messages"][1].content == "Hi"
 
 
+def test_agent_memory_disabled_keeps_date_without_reading_cross_thread_memory():
+    mw = _make_middleware(memory_enabled=False)
+    state = {"messages": [HumanMessage(content="检查这份新数据", id="msg-1")]}
+
+    with (
+        mock.patch(
+            "deerflow.agents.lead_agent.prompt._get_memory_context",
+            side_effect=AssertionError("disabled agent memory must not be read"),
+        ) as get_memory_context,
+        mock.patch(
+            "deerflow.agents.middlewares.dynamic_context_middleware.datetime"
+        ) as mock_dt,
+    ):
+        mock_dt.now.return_value.strftime.return_value = "2026-07-27, Monday"
+        result = mw.before_agent(state, _fake_runtime())
+
+    reminder_content = result["messages"][0].content
+    get_memory_context.assert_not_called()
+    assert "<memory>" not in reminder_content
+    assert "<current_date>2026-07-27, Monday</current_date>" in reminder_content
+    assert result["messages"][1].content == "检查这份新数据"
+
+
 # ---------------------------------------------------------------------------
 # Frozen-snapshot: no re-injection within a session
 # ---------------------------------------------------------------------------

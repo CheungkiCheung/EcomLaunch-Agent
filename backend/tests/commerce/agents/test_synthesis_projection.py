@@ -64,6 +64,7 @@ def _verification(
                 if verdict is ClaimVerdict.PASS
                 else "The supplied evidence is not sufficient for this claim."
             ),
+            evidence_ids=lead_claim.evidence_ids,
             metric_observation_ids=(MetricObservationId.new(),),
         )
         for index, (lead_claim, verdict) in enumerate(zip(lead.claims, verdicts, strict=True))

@@ -1,10 +1,10 @@
-# Commerce Case Agent — Project Instructions
+# Commerce Agent — Project Instructions
 
 本文件适用于整个 `deer-flow` 仓库。更深层的 `AGENTS.md` 可以增加目录专属约束，但不得降低这里的证据、测试和安全要求。
 
 ## 1. 项目身份
 
-当前主线是 **Commerce Case Agent**（工作名）：面向电商运营的异构数据诊断与行动 Agent。
+当前主线是 **Commerce Agent**（工作名）：面向电商经营人员的 Chat-first 异构数据诊断与行动 Agent。
 
 它解决四个连续问题：
 
@@ -15,31 +15,30 @@
 做完以后有没有改善？
 ```
 
-核心产品对象是 `Case`，不是 Chat、文案、报告或一次性 Artifact。标准闭环：
+默认产品入口是持续 Chat；`Case` 是复杂、长期任务的内部持久化对象，不是所有交互的前置条件。标准闭环：
 
 ```text
-数据进入
-→ Capability Profile
-→ 异常检测
-→ Case
-→ Goal Loop 调查
+用户上传数据并自然提问
+→ Parent 检查 Capability、历史 Evidence 和任务复杂度
+→ 直接回答 / 调用确定性 Tool / 动态派遣 0–N Subagent
+→ 必要时升级为 Case 并持久化 Evidence
 → Fresh-context Verification
-→ Action 审批与执行
+→ Chat 内 Action 审批与受控执行
 → Follow-up
-→ Close / Reopen / Inconclusive / Blocked
+→ Answer / Close / Reopen / Inconclusive / Blocked
 ```
 
-完整设计以 `docs/plans/2026-07-18-commerce-case-agent-complete-design-and-implementation-plan.md` 为准。
+完整设计以 `docs/plans/2026-07-24-commerce-chat-subagent-harness-plan.md` 为准；2026-07-18 计划保留为历史实现与验证记录。
 
 ## 2. 首批范围
 
-只完成三条可复现的证据路径：
+首批保持三条可复现的已验证业务能力：
 
-- `FulfillmentPathAgent`：履约与承运链路；
-- `SellerPeerPathAgent`：同类卖家或实体对标；
-- `ReviewExperiencePathAgent`：评价与商品体验问题。
+- 履约与承运调查；
+- 同类卖家或实体对标；
+- 评价与商品体验诊断。
 
-系统按 Capability 动态启动 0–3 个 Path Agent，不使用固定五 Agent Crew。
+这些能力逐步迁移为 Commerce Skill、确定性 Tool 和 Gold Case，不再要求固定 Path Agent 主拓扑。Parent 使用通用 `explore`、`analyst`、`verifier`、`operator` Profile 动态派遣 0–N 个任务，不使用固定 Crew。
 
 本轮不建设万能电商平台，不模拟市场，不虚构 GMV、CTR、CVR、ROI、利润、库存或经营提升，不把相关性写成因果，不以生成方案或文案作为核心价值。
 
@@ -71,7 +70,7 @@
 1. 纯确定性测试：Domain、Metric、State Transition、Repository、Event、Budget、Policy、数据质量和 Join。它们保持无模型，不得为了形式调用 LLM。
 2. LLM / Agent 测试：任何触达模型或验证 Agent 行为的路径，必须向真实 DeepSeek V4 发起当次新请求。
 
-LLM / Agent 测试包括 Lead、Path Agent、模型路由判断、Tool Selection、Structured Output Repair、Verification、Semantic Evaluator、Skill Candidate、Agent Integration、Gold Case E2E、Experiment 和 Release Gate。
+LLM / Agent 测试包括 Parent、Subagent、模型路由判断、Tool Selection、Structured Output Repair、Verification、Semantic Evaluator、Skill Candidate、Agent Integration、Gold Case E2E、Experiment 和 Release Gate。
 
 对这些测试：
 
@@ -87,12 +86,12 @@ LLM / Agent 测试包括 Lead、Path Agent、模型路由判断、Tool Selection
 
 ## 6. Agent 与 Loop 规则
 
-- Lead 负责目标、预算、路由、综合与停止条件，不替代确定性数据计算。
-- Path Agent 只接收最小 `ContextPacket`，返回结构化 Evidence 和未解决问题。
+- Parent 负责目标、预算、动态委派、综合与停止条件，不替代确定性数据计算。
+- Subagent 只接收最小、版本化 `ContextPacket`，返回结构化 Evidence、Artifact、未知项和停止原因。
 - Verification 使用新鲜上下文，不继承 Lead 的完整推理历史。
-- 每次循环必须有明确 Goal、Budget、Stop Condition 和 Checkpoint。
+- 每次 Agent 执行必须有明确 Goal、Budget、Stop Condition 和 Checkpoint；Loop Engineering 是 Harness 内部机制，不作为独立产品概念。
 - 无新证据、预算耗尽、能力不足、策略阻塞或目标已满足时必须停止。
-- War Room 只能显示真实 Domain Event；无事件时不播放假忙碌。
+- Chat、任务详情和游戏化协作空间必须读取同一真实 Task / Domain Event；无事件时不播放假忙碌。
 - Action 必须经过权限策略；高风险写操作需要人工审批。
 
 ## 7. Skill Evolution
@@ -106,8 +105,8 @@ LLM / Agent 测试包括 Lead、Path Agent、模型路由判断、Tool Selection
 ## 8. 开发纪律
 
 - 多步骤改造先更新实施计划或阶段清单。
-- 功能和 Bug 修复默认采用 RED → GREEN → REFACTOR → VERIFY。
-- 先确认失败测试确实因目标行为缺失而失败，再实现最小代码。
+- 功能和 Bug 修复优先解决真实用户效果与根因，不强制测试先行；实现、实验和合同验证可以按风险选择顺序。
+- 完成前必须补齐与改动风险匹配的回归测试，并以真实浏览器或真实模型 Gate 验证 Agent 行为。
 - 不用提高重试、吞异常、降低断言或更换模型掩盖失败。
 - 修改优先使用 `apply_patch`；搜索优先使用 `rg`。
 - 保留用户已有改动，不做无关重构。
@@ -116,11 +115,13 @@ LLM / Agent 测试包括 Lead、Path Agent、模型路由判断、Tool Selection
 
 ## 9. 前端原则
 
-- 前端是 Case-first Workspace，不是给旧聊天页换皮。
-- Chat、Timeline、Graph、Evidence、Action、Follow-up 和 War Room 读取同一 Domain Event Stream。
+- 前端默认是复用 DeerFlow 的 Chat-first Workspace，用户通过上传数据和自然问题开始任务。
+- Case、Evidence、Action、Follow-up 和高级 Run 详情按需展开，不作为全部常驻一级页面。
+- Chat 内的 Subagent 状态、Evidence 引用、Artifact 和 Approval 读取真实结构化事件。
 - 核心状态不得从自然语言消息、CSS 动画计时器或前端猜测中推断。
-- 视觉采用 Codex-inspired Workspace，但保留 Commerce 的信息结构和业务可读性。
-- 每个正式页面（包括 War Room）必须先生成高保真视觉稿、记录选择，再写页面代码。
+- 默认视觉采用 Codex-inspired 中文对话；按需提供原创游戏小人与微缩场景构成的 Subagent 协作空间。
+- 协作空间替代固定 War Room，所有人物与动作由真实任务事件驱动，不使用固定角色或假忙碌。
+- Chat 主界面和协作空间必须先生成高保真视觉稿、记录选择，再写页面代码；游戏资产在状态合同冻结后使用图像生成制作。
 - 前端实现完成后必须做真实浏览器交互和视觉 QA；涉及 Agent 的 E2E 必须连接真实后端和真实 DeepSeek V4。
 
 ## 10. Legacy 边界

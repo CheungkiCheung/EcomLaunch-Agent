@@ -1,4 +1,17 @@
 {
+  "analysis_request": {
+    "anomaly_window": {
+      "end": "2018-05-01T00:00:00",
+      "start": "2018-04-01T00:00:00"
+    },
+    "baseline_window": {
+      "end": "2018-04-01T00:00:00",
+      "start": "2018-03-01T00:00:00"
+    },
+    "comparison_group_observed": false,
+    "controlled_intervention_observed": false,
+    "seller_id": "0b90b6df587eb83608a64ea8b390cf07"
+  },
   "declared_missing_fields": [
     "exposure",
     "click",
@@ -104,7 +117,7 @@
     }
   ],
   "not_a_live_merchant_integration": true,
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "source_type": "public_benchmark_fixture",
   "user_prompt": "评分和低分评价突然恶化，但我不确定是否与物流有关。请基于数据调查原因并说明证据边界。"
 }

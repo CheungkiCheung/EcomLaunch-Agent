@@ -22,6 +22,13 @@ export interface Translations {
     download: string;
     thinking: string;
     artifacts: string;
+    noArtifactSelected: string;
+    selectArtifactDescription: string;
+    showArtifacts: string;
+    file: string;
+    selectFile: string;
+    installSkillFailed: string;
+    conversationFinished: string;
     public: string;
     custom: string;
     notAvailableInDemoMode: string;
@@ -65,6 +72,7 @@ export interface Translations {
   // Input Box
   inputBox: {
     placeholder: string;
+    submit: string;
     createSkillPrompt: string;
     addAttachments: string;
     mode: string;
@@ -120,6 +128,7 @@ export interface Translations {
     ecomLaunch: string;
     ecomLaunchChat: string;
     ecomLaunchWarRoom: string;
+    commerceAgent: string;
   };
 
   // Agents
@@ -161,6 +170,14 @@ export interface Translations {
     ecomLaunchWelcomeDescription: string;
     ecomLaunchWelcomeBadges: string[];
     ecomLaunchSuggestions: {
+      suggestion: string;
+      prompt: string;
+      icon: LucideIcon;
+    }[];
+    commerceAgentName: string;
+    commerceWelcomeDescription: string;
+    commerceWelcomeBadges: string[];
+    commerceSuggestions: {
       suggestion: string;
       prompt: string;
       icon: LucideIcon;

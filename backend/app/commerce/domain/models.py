@@ -236,6 +236,7 @@ _APPROVAL_GATED_ACTION_STATUSES = frozenset(
         ActionStatus.EFFECTIVE,
         ActionStatus.INEFFECTIVE,
         ActionStatus.INCONCLUSIVE,
+        ActionStatus.ROLLING_BACK,
         ActionStatus.ROLLED_BACK,
     }
 )

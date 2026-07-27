@@ -22,6 +22,7 @@ from app.gateway.routers import (
     models,
     runs,
     skills,
+    subagent_tasks,
     suggestions,
     thread_runs,
     threads,
@@ -394,9 +395,12 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Stateless Runs API (stream/wait without a pre-existing thread)
     app.include_router(runs.router)
 
+    # Durable Parent–Subagent task state and append-only events
+    app.include_router(subagent_tasks.router)
+
     # Commerce Case Agent is fail-closed and mounted only when explicitly enabled.
     if config.commerce_case_agent_enabled:
-        from app.commerce.api import router as commerce_router
+        from app.commerce.api.router import router as commerce_router
 
         app.include_router(commerce_router)
 

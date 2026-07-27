@@ -298,3 +298,39 @@ class TestTitleMiddlewareCoreLogic:
         assert result is not None
         assert "<think>" not in result["title"]
         assert result["title"] == "贵阳发展研究"
+
+    def test_local_rule_title_skips_model_and_ignores_uploaded_file_wrapper(
+        self, monkeypatch
+    ):
+        _set_test_title_config(max_chars=30)
+        middleware = TitleMiddleware(
+            use_model=False,
+            local_title_rules=[
+                {
+                    "keywords": ["履约", "延迟", "晚到", "配送"],
+                    "title": "订单履约异常诊断",
+                }
+            ],
+            local_title_fallback="电商经营数据诊断",
+        )
+        monkeypatch.setattr(
+            title_middleware_module,
+            "create_chat_model",
+            MagicMock(side_effect=AssertionError("local title must not call model")),
+        )
+        state = {
+            "messages": [
+                HumanMessage(
+                    content=(
+                        "<uploaded_files>orders.csv\norder_items.csv</uploaded_files>"
+                        "最近履约变差了，帮我定位延迟阶段"
+                    )
+                ),
+                AIMessage(content="我会先检查覆盖和窗口指标"),
+            ]
+        }
+
+        result = asyncio.run(middleware._agenerate_title_result(state))
+
+        assert result == {"title": "订单履约异常诊断"}
+        title_middleware_module.create_chat_model.assert_not_called()

@@ -44,6 +44,7 @@ from app.commerce.evaluation.real_model_preflight import (
     run_real_model_preflight,
 )
 from deerflow.config.app_config import AppConfig
+from deerflow.models.lifecycle import close_model_clients
 from deerflow.reflection import resolve_class
 
 SEMANTIC_CANDIDATE_PROMPT_VERSION = "commerce-semantic-candidate@1.0.0"
@@ -171,6 +172,7 @@ class SemanticCandidateService:
         http_client = httpx.Client(event_hooks={"request": [count_request]})
         started = time.perf_counter()
         request_nonce_sha256 = hashlib.sha256(run_id.encode("utf-8")).hexdigest()
+        model = None
         try:
             model_class = resolve_class(model_config.use, BaseChatModel)
             settings = _model_settings_for_preflight(
@@ -209,6 +211,8 @@ class SemanticCandidateService:
                 f"DeepSeek V4 semantic candidate call failed: {telemetry.error_code}",
             ) from exc
         finally:
+            if model is not None:
+                close_model_clients(model)
             http_client.close()
 
         metadata = _mapping(response.response_metadata)

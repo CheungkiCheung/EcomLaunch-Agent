@@ -16,6 +16,8 @@ from deerflow.client import DeerFlowClient, StreamEvent
 from deerflow.sandbox.security import is_host_bash_allowed
 from deerflow.uploads.manager import PathTraversalError
 
+pytestmark = pytest.mark.real_model
+
 # Skip entire module in CI or when no config.yaml exists
 _skip_reason = None
 if os.environ.get("CI"):

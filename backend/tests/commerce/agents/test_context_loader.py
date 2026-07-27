@@ -20,24 +20,56 @@ from app.commerce.agents.context_loader import (
 )
 from app.commerce.agents.contracts import (
     AgentBudgetLimit,
+    PathEvidenceScope,
+    PathType,
     canonical_context_sha256,
+)
+from app.commerce.agents.goal_loop import GoalStopReason
+from app.commerce.agents.lead import build_persisted_lead_context
+from app.commerce.agents.lead_execution import (
+    CommerceLeadTurnService,
+    CommercePathPreparationService,
+)
+from app.commerce.agents.lead_loop import (
+    CommerceLeadObserver,
+    LeadAction,
+    LeadActionDecision,
+    LeadActionReasonCode,
+    LeadTurnIntent,
+    LeadTurnRequest,
+)
+from app.commerce.agents.verification_subagent import (
+    build_fresh_verification_packet,
 )
 from app.commerce.api.analysis_service import CommerceAnalysisService
 from app.commerce.api.data_service import CommerceDataService
 from app.commerce.api.run_service import CommerceRunService
 from app.commerce.data.gold_cases import load_evaluation_case
-from app.commerce.domain.events import DomainEventActor
+from app.commerce.domain.enums import RunStatus, SemanticStatus
+from app.commerce.domain.events import (
+    DomainEventActor,
+    NewDomainEvent,
+)
 from app.commerce.domain.ids import (
+    AgentTaskId,
     CaseId,
     CorrelationId,
     DatasetId,
+    EvidenceId,
+    MetricObservationId,
     RunId,
     TraceId,
     WorkspaceId,
 )
+from app.commerce.domain.models import Evidence, EvidenceRelation
 from app.commerce.metrics.registry import MetricWindow
+from app.commerce.persistence.events import SqlDomainEventStore
 from app.commerce.persistence.models import CaseLineageRow, EvidenceRow
-from app.commerce.persistence.runs import SqlRunLeaseRepository
+from app.commerce.persistence.repositories import SqlCaseRepository
+from app.commerce.persistence.runs import (
+    RunLeaseLostError,
+    SqlRunLeaseRepository,
+)
 from app.commerce.persistence.schema import create_commerce_schema
 from app.commerce.persistence.unit_of_work import SqlCommerceUnitOfWork
 
@@ -111,12 +143,7 @@ async def _seed(tmp_path: Path) -> _Seed:
     async with factory() as session:
         lineage = await session.get(CaseLineageRow, str(case.id))
     assert lineage is not None
-    artifact_path = (
-        storage_root
-        / str(workspace_id)
-        / str(view.manifest.dataset_id)
-        / lineage.analysis_artifact_relative_path
-    )
+    artifact_path = storage_root / str(workspace_id) / str(view.manifest.dataset_id) / lineage.analysis_artifact_relative_path
     return _Seed(
         engine=engine,
         factory=factory,
@@ -153,11 +180,25 @@ async def _rewrite_artifact(
     if update_persisted_sha:
         digest = hashlib.sha256(seed.artifact_path.read_bytes()).hexdigest()
         async with seed.factory() as session, session.begin():
-            await session.execute(
-                update(CaseLineageRow)
-                .where(CaseLineageRow.case_id == str(seed.case_id))
-                .values(analysis_artifact_sha256=digest)
-            )
+            await session.execute(update(CaseLineageRow).where(CaseLineageRow.case_id == str(seed.case_id)).values(analysis_artifact_sha256=digest))
+
+
+@pytest.mark.anyio
+async def test_loader_exposes_verified_case_analysis_without_agent_budget(tmp_path):
+    seed = await _seed(tmp_path)
+
+    loaded = await _loader(seed).load_case_analysis(
+        seed.workspace_id,
+        seed.case_id,
+    )
+
+    assert loaded.case.id == seed.case_id
+    assert loaded.lineage.dataset_id == seed.dataset_id
+    assert loaded.artifact.case_id == seed.case_id
+    assert loaded.artifact.baseline.observations
+    assert loaded.artifact.current.observations
+    assert loaded.artifact_sha256 == hashlib.sha256(seed.artifact_path.read_bytes()).hexdigest()
+    await seed.engine.dispose()
 
 
 @pytest.mark.anyio
@@ -173,28 +214,20 @@ async def test_loader_builds_canonical_minimal_context_and_initial_checkpoint(tm
     assert loaded.packet.case.case_id == seed.case_id
     assert loaded.packet.manifest.workspace_id == seed.workspace_id
     assert loaded.packet.manifest.dataset_id == seed.dataset_id
-    assert loaded.packet.manifest.source_artifact_sha256 == hashlib.sha256(
-        seed.artifact_path.read_bytes()
-    ).hexdigest()
-    assert loaded.packet.manifest.context_sha256 == canonical_context_sha256(
-        loaded.packet
-    )
+    assert loaded.packet.manifest.source_artifact_sha256 == hashlib.sha256(seed.artifact_path.read_bytes()).hexdigest()
+    assert loaded.packet.manifest.context_sha256 == canonical_context_sha256(loaded.packet)
     assert loaded.packet.manifest.estimated_tokens <= loaded.packet.budget.max_tokens
     assert loaded.packet.analysis.seller_external_key == SELLER_ID
     assert loaded.packet.capabilities
     assert loaded.packet.evidence
-    assert set(loaded.packet.manifest.included_evidence_ids) == set(
-        loaded.state.evidence_ids
-    )
+    assert set(loaded.packet.manifest.included_evidence_ids) == set(loaded.state.evidence_ids)
     assert loaded.state.loop_iteration == 0
     assert loaded.state.context_sha256 == loaded.packet.manifest.context_sha256
     assert loaded.checkpoint.loop_iteration == 0
     assert loaded.checkpoint.budget_snapshot.usage.iterations == 0
     serialized = loaded.checkpoint.model_dump_json()
     assert "resume-only-in-worker-memory" not in serialized
-    assert loaded.state.resume_token_sha256 == hashlib.sha256(
-        b"resume-only-in-worker-memory"
-    ).hexdigest()
+    assert loaded.state.resume_token_sha256 == hashlib.sha256(b"resume-only-in-worker-memory").hexdigest()
 
     with pytest.raises(Exception, match="requires a lease"):
         await SqlCommerceUnitOfWork(seed.factory).append_run_checkpoint(
@@ -219,10 +252,271 @@ async def test_loader_builds_canonical_minimal_context_and_initial_checkpoint(tm
             seed.run_id,
             budget=AgentBudgetLimit(max_tokens=16_000),
         )
-    assert (
-        duplicate_initialization.value.reason
-        is ContextLoadReason.CHECKPOINT_ALREADY_EXISTS
+    assert duplicate_initialization.value.reason is ContextLoadReason.CHECKPOINT_ALREADY_EXISTS
+    await seed.engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_loader_rejects_unreconstructable_path_metric_scope(tmp_path):
+    seed = await _seed(tmp_path)
+    loader = _loader(seed)
+    before = await loader.load_case_packet(
+        seed.workspace_id,
+        seed.case_id,
+        goal="Explain the anomaly",
+        budget=AgentBudgetLimit(max_tokens=16_000),
     )
+    case = await SqlCaseRepository(seed.factory).get(seed.workspace_id, seed.case_id)
+    assert case is not None
+    peer_metric_id = MetricObservationId.new()
+    peer_evidence = Evidence(
+        id=EvidenceId.new(),
+        workspace_id=seed.workspace_id,
+        case_id=seed.case_id,
+        summary="The target seller is above its persisted deterministic peer rate",
+        relation=EvidenceRelation.CONTEXT,
+        semantic_status=SemanticStatus.DERIVED,
+        confidence=0.88,
+        metric_observation_ids=(peer_metric_id,),
+    )
+    updated_case = case.model_copy(
+        update={
+            "evidence_ids": (*case.evidence_ids, peer_evidence.id),
+            "updated_at": datetime.now(UTC),
+            "version": case.version + 1,
+        }
+    )
+    trace_id = TraceId.new()
+    correlation_id = CorrelationId.new()
+    await SqlCommerceUnitOfWork(seed.factory).append_evidence(
+        updated_case,
+        peer_evidence,
+        expected_version=case.version,
+        trace_id=trace_id,
+        correlation_id=correlation_id,
+        actor=DomainEventActor.AGENT,
+    )
+    task_id = AgentTaskId.new()
+    scope = PathEvidenceScope(
+        workspace_id=seed.workspace_id,
+        case_id=seed.case_id,
+        run_id=seed.run_id,
+        task_id=task_id,
+        path_type=PathType.SELLER_PEER,
+        dataset_id=seed.dataset_id,
+        context_version="commerce-seller-peer-context@1.0.0",
+        context_sha256="c" * 64,
+        source_artifact_sha256=before.manifest.source_artifact_sha256,
+        evidence_ids=(peer_evidence.id,),
+        included_metric_observation_ids=(peer_metric_id,),
+    )
+    await SqlDomainEventStore(seed.factory).append(
+        NewDomainEvent(
+            workspace_id=seed.workspace_id,
+            case_id=seed.case_id,
+            run_id=seed.run_id,
+            event_type="path.completed",
+            trace_id=trace_id,
+            correlation_id=correlation_id,
+            actor=DomainEventActor.AGENT,
+            payload={
+                "task_id": str(task_id),
+                "path_type": PathType.SELLER_PEER.value,
+                "evidence_ids": [str(peer_evidence.id)],
+                "evidence_scope": scope.model_dump(mode="json"),
+            },
+        )
+    )
+
+    with pytest.raises(ContextLoadError) as error:
+        await loader.load_case_packet(
+            seed.workspace_id,
+            seed.case_id,
+            goal="Explain the anomaly after process restart",
+            budget=AgentBudgetLimit(max_tokens=16_000),
+        )
+    assert error.value.reason is ContextLoadReason.PATH_EVIDENCE_SCOPE_INVALID
+    assert "outcome-agnostic policy" in str(error.value)
+    await seed.engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_lead_selected_paths_prepare_case_bound_coordinator_entries(tmp_path):
+    seed = await _seed(tmp_path)
+    observation = await CommerceLeadObserver(
+        data_service=seed.data_service,
+        session_factory=seed.factory,
+    ).observe(
+        seed.workspace_id,
+        seed.run_id,
+        budget=AgentBudgetLimit(max_tokens=16_000),
+    )
+    decision = LeadActionDecision(
+        action=LeadAction.INVESTIGATE,
+        selected_paths=(PathType.FULFILLMENT,),
+        reason_codes=frozenset({LeadActionReasonCode.MISSING_PATH_EVIDENCE}),
+    )
+
+    prepared = await CommercePathPreparationService(data_service=seed.data_service).prepare(observation=observation, decision=decision)
+
+    assert len(prepared) == 1
+    context = prepared[0].spec.plan.context
+    assert context.case == observation.context.case
+    assert context.path_type is PathType.FULFILLMENT
+    assert {tool.name for tool in prepared[0].tool_builder(context)} == {
+        "metric_query",
+        "source_fact_lookup",
+    }
+    assert prepared[0].spec.plan.assignment.model_alias == "deepseek-reasoner"
+    await seed.engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_lead_wait_persists_checkpoint_releases_lease_and_resumes(tmp_path):
+    seed = await _seed(tmp_path)
+    lease_ttl = timedelta(minutes=5)
+    service = CommerceLeadTurnService(
+        data_service=seed.data_service,
+        session_factory=seed.factory,
+        lease_ttl=lease_ttl,
+    )
+    budget = AgentBudgetLimit(max_tokens=16_000)
+
+    waiting = await service.execute(
+        seed.workspace_id,
+        seed.run_id,
+        request=LeadTurnRequest(
+            intent=LeadTurnIntent.WAIT,
+            wait_reason=GoalStopReason.AWAITING_USER_INPUT,
+        ),
+        budget=budget,
+        lease=seed.grant.credentials,
+        correlation_id=CorrelationId.new(),
+    )
+
+    assert waiting.decision.action is LeadAction.WAIT
+    assert waiting.run.status is RunStatus.WAITING
+    assert waiting.run.wait_reason == GoalStopReason.AWAITING_USER_INPUT.value
+    assert waiting.final_checkpoint is not None
+    assert waiting.final_checkpoint.checkpoint.wait_reason is (GoalStopReason.AWAITING_USER_INPUT)
+    leases = SqlRunLeaseRepository(seed.factory)
+    with pytest.raises(RunLeaseLostError):
+        await leases.heartbeat(
+            seed.workspace_id,
+            seed.run_id,
+            seed.grant.credentials,
+            ttl=lease_ttl,
+            heartbeat_at=datetime.now(UTC),
+        )
+
+    resumed = await leases.acquire(
+        seed.workspace_id,
+        seed.run_id,
+        worker_id="context-loader-resumed-worker",
+        ttl=lease_ttl,
+        acquired_at=datetime.now(UTC) + timedelta(seconds=1),
+        trace_id=TraceId.new(),
+        correlation_id=CorrelationId.new(),
+    )
+    assert resumed.run.status is RunStatus.RUNNING
+    assert resumed.run.wait_reason is None
+    assert resumed.latest_checkpoint is not None
+    assert resumed.latest_checkpoint.checkpoint.wait_reason is (GoalStopReason.AWAITING_USER_INPUT)
+    events = await SqlDomainEventStore(seed.factory).list_run(
+        seed.workspace_id,
+        seed.run_id,
+    )
+    assert "lead.waiting" in [event.event_type for event in events]
+    assert "run.lease_released" in [event.event_type for event in events]
+    await seed.engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_lead_cancel_stops_run_and_fences_old_worker(tmp_path):
+    seed = await _seed(tmp_path)
+    lease_ttl = timedelta(minutes=5)
+
+    stopped = await CommerceLeadTurnService(
+        data_service=seed.data_service,
+        session_factory=seed.factory,
+        lease_ttl=lease_ttl,
+    ).execute(
+        seed.workspace_id,
+        seed.run_id,
+        request=LeadTurnRequest(intent=LeadTurnIntent.CANCEL),
+        budget=AgentBudgetLimit(max_tokens=16_000),
+        lease=seed.grant.credentials,
+        correlation_id=CorrelationId.new(),
+    )
+
+    assert stopped.decision.action is LeadAction.STOP
+    assert stopped.run.status is RunStatus.CANCELLED
+    assert stopped.run.stop_reason == GoalStopReason.CANCELLED.value
+    assert stopped.final_checkpoint is not None
+    assert stopped.final_checkpoint.checkpoint.active_path_task_ids == ()
+    leases = SqlRunLeaseRepository(seed.factory)
+    with pytest.raises(RunLeaseLostError):
+        await leases.heartbeat(
+            seed.workspace_id,
+            seed.run_id,
+            seed.grant.credentials,
+            ttl=lease_ttl,
+            heartbeat_at=datetime.now(UTC),
+        )
+    events = await SqlDomainEventStore(seed.factory).list_run(
+        seed.workspace_id,
+        seed.run_id,
+    )
+    event_types = [event.event_type for event in events]
+    assert "lead.stopped" in event_types
+    assert event_types[-1] == "run.lease_released"
+    await seed.engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_fresh_verification_packet_rebuilds_from_persisted_evidence_only(tmp_path):
+    seed = await _seed(tmp_path)
+    base = await _loader(seed).load_case_packet(
+        seed.workspace_id,
+        seed.case_id,
+        goal="Explain the anomaly",
+        budget=AgentBudgetLimit(max_tokens=16_000),
+    )
+    evidence = base.evidence[0]
+    scope = PathEvidenceScope(
+        workspace_id=seed.workspace_id,
+        case_id=seed.case_id,
+        run_id=seed.run_id,
+        task_id=AgentTaskId.new(),
+        path_type=PathType.FULFILLMENT,
+        dataset_id=seed.dataset_id,
+        context_version="commerce-fulfillment-path-context@1.0.0",
+        context_sha256="d" * 64,
+        source_artifact_sha256=base.manifest.source_artifact_sha256,
+        evidence_ids=(evidence.evidence_id,),
+        included_fact_ids=evidence.fact_ids,
+        included_metric_observation_ids=evidence.metric_observation_ids,
+    )
+    persisted = build_persisted_lead_context(base, path_scopes=(scope,))
+
+    packet = build_fresh_verification_packet(
+        base=base,
+        persisted=persisted,
+        claims=("The observed anomaly is localized to the supplied metric Evidence.",),
+        claim_evidence_ids=((evidence.evidence_id,),),
+    )
+
+    assert packet.evidence == (evidence,)
+    assert packet.manifest.included_evidence_ids == (evidence.evidence_id,)
+    assert set(packet.manifest.included_metric_observation_ids) == set(evidence.metric_observation_ids)
+    assert packet.metadata == {
+        "base_context_sha256": base.manifest.context_sha256,
+        "persisted_lead_context_sha256": persisted.manifest.context_sha256,
+    }
+    serialized = packet.model_dump_json().casefold()
+    assert "lead reasoning history excluded" in serialized
+    assert "chain_of_thought" not in serialized
+    assert "private reasoning" not in serialized
     await seed.engine.dispose()
 
 
@@ -247,11 +541,7 @@ async def test_loader_rejects_missing_case_and_lineage(tmp_path):
     assert missing_case.value.reason is ContextLoadReason.CASE_NOT_FOUND
 
     async with seed.factory() as session, session.begin():
-        await session.execute(
-            delete(CaseLineageRow).where(
-                CaseLineageRow.case_id == str(seed.case_id)
-            )
-        )
+        await session.execute(delete(CaseLineageRow).where(CaseLineageRow.case_id == str(seed.case_id)))
     with pytest.raises(ContextLoadError) as missing_lineage:
         await _loader(seed).load_case_packet(
             seed.workspace_id,
@@ -303,15 +593,11 @@ async def test_loader_rejects_missing_or_tampered_artifact(tmp_path):
             ContextLoadReason.ARTIFACT_IDENTITY_MISMATCH,
         ),
         (
-            lambda payload: payload["capabilities"]["capabilities"][0].update(
-                {"status": "unavailable", "reason_codes": ["missing_required_semantics"]}
-            ),
+            lambda payload: payload["capabilities"]["capabilities"][0].update({"status": "unavailable", "reason_codes": ["missing_required_semantics"]}),
             ContextLoadReason.CAPABILITY_MISMATCH,
         ),
         (
-            lambda payload: payload.update(
-                {"hidden_labels": {"expected_facts": ["carrier caused it"]}}
-            ),
+            lambda payload: payload.update({"hidden_labels": {"expected_facts": ["carrier caused it"]}}),
             ContextLoadReason.HIDDEN_EVALUATION_LABEL,
         ),
     ],
@@ -340,20 +626,9 @@ async def test_loader_rejects_identity_capability_and_hidden_label_tampering(
 async def test_loader_rejects_case_reference_and_context_budget_mismatch(tmp_path):
     seed = await _seed(tmp_path)
     async with seed.factory() as session, session.begin():
-        selected_evidence_id = await session.scalar(
-            select(EvidenceRow.evidence_id)
-            .where(EvidenceRow.case_id == str(seed.case_id))
-            .limit(1)
-        )
+        selected_evidence_id = await session.scalar(select(EvidenceRow.evidence_id).where(EvidenceRow.case_id == str(seed.case_id)).limit(1))
         assert selected_evidence_id is not None
-        evidence_id = (
-            await session.execute(
-                update(EvidenceRow)
-                .where(EvidenceRow.evidence_id == selected_evidence_id)
-                .values(case_id=str(CaseId.new()))
-                .returning(EvidenceRow.evidence_id)
-            )
-        ).scalar_one()
+        evidence_id = (await session.execute(update(EvidenceRow).where(EvidenceRow.evidence_id == selected_evidence_id).values(case_id=str(CaseId.new())).returning(EvidenceRow.evidence_id))).scalar_one()
     assert evidence_id
     with pytest.raises(ContextLoadError) as reference_error:
         await _loader(seed).load_case_packet(
@@ -381,11 +656,7 @@ async def test_loader_rejects_case_reference_and_context_budget_mismatch(tmp_pat
 async def test_loader_rejects_path_traversal_and_missing_dataset_manifest(tmp_path):
     traversal = await _seed(tmp_path / "traversal")
     async with traversal.factory() as session, session.begin():
-        await session.execute(
-            update(CaseLineageRow)
-            .where(CaseLineageRow.case_id == str(traversal.case_id))
-            .values(analysis_artifact_relative_path="../manifest.json")
-        )
+        await session.execute(update(CaseLineageRow).where(CaseLineageRow.case_id == str(traversal.case_id)).values(analysis_artifact_relative_path="../manifest.json"))
     with pytest.raises(ContextLoadError) as traversal_error:
         await _loader(traversal).load_case_packet(
             traversal.workspace_id,
@@ -397,12 +668,7 @@ async def test_loader_rejects_path_traversal_and_missing_dataset_manifest(tmp_pa
     await traversal.engine.dispose()
 
     missing_manifest = await _seed(tmp_path / "manifest")
-    manifest_path = (
-        missing_manifest.data_service.storage_root
-        / str(missing_manifest.workspace_id)
-        / str(missing_manifest.dataset_id)
-        / "manifest.json"
-    )
+    manifest_path = missing_manifest.data_service.storage_root / str(missing_manifest.workspace_id) / str(missing_manifest.dataset_id) / "manifest.json"
     manifest_path.unlink()
     with pytest.raises(ContextLoadError) as manifest_error:
         await _loader(missing_manifest).load_case_packet(

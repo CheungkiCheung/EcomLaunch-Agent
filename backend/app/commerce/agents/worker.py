@@ -508,12 +508,14 @@ class CommerceInvestigationWorker:
             ttl=self._lease_ttl,
             heartbeat_at=post_lead_time,
         )
-        lead_tokens = lead_run.telemetry.token_usage
-        assert lead_tokens is not None
+        assert all(
+            item.token_usage is not None for item in lead_run.attempt_telemetry
+        )
         await manager.consume(
             BudgetDelta(
-                tokens=lead_tokens.total_tokens,
-                wall_time_seconds=lead_run.telemetry.latency_ms / 1000,
+                tokens=lead_run.total_tokens,
+                wall_time_seconds=lead_run.total_latency_ms / 1000,
+                repeated_actions=len(lead_run.attempt_telemetry) - 1,
             )
         )
 

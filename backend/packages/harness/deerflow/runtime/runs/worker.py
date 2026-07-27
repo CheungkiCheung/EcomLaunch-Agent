@@ -50,6 +50,8 @@ def _build_runtime_context(
     run_id: str,
     caller_context: Any | None,
     app_config: AppConfig | None = None,
+    subagent_task_manager: Any | None = None,
+    subagent_task_runtime: Any | None = None,
 ) -> dict[str, Any]:
     """Build the dict that becomes ``ToolRuntime.context`` for the run.
 
@@ -69,6 +71,10 @@ def _build_runtime_context(
             runtime_ctx.setdefault(key, value)
     if app_config is not None:
         runtime_ctx["app_config"] = app_config
+    if subagent_task_manager is not None:
+        runtime_ctx["__subagent_task_manager"] = subagent_task_manager
+    if subagent_task_runtime is not None:
+        runtime_ctx["__subagent_task_runtime"] = subagent_task_runtime
     return runtime_ctx
 
 
@@ -87,6 +93,8 @@ class RunContext:
     run_events_config: Any | None = field(default=None)
     thread_store: Any | None = field(default=None)
     app_config: AppConfig | None = field(default=None)
+    subagent_task_manager: Any | None = field(default=None)
+    subagent_task_runtime: Any | None = field(default=None)
 
 
 def _install_runtime_context(config: dict, runtime_context: dict[str, Any]) -> None:
@@ -96,6 +104,10 @@ def _install_runtime_context(config: dict, runtime_context: dict[str, Any]) -> N
         existing_context.setdefault("run_id", runtime_context["run_id"])
         if "app_config" in runtime_context:
             existing_context["app_config"] = runtime_context["app_config"]
+        if "__subagent_task_manager" in runtime_context:
+            existing_context["__subagent_task_manager"] = runtime_context["__subagent_task_manager"]
+        if "__subagent_task_runtime" in runtime_context:
+            existing_context["__subagent_task_runtime"] = runtime_context["__subagent_task_runtime"]
         return
 
     config["context"] = dict(runtime_context)
@@ -151,6 +163,7 @@ async def run_agent(
     pre_run_snapshot: dict[str, Any] | None = None
     snapshot_capture_failed = False
     llm_error_fallback_message: str | None = None
+    latest_values_state: dict[str, Any] | None = None
 
     journal = None
 
@@ -218,7 +231,14 @@ async def run_agent(
         # access thread-level data. langgraph-cli does this automatically; we must do it
         # manually here because we drive the graph through ``agent.astream(config=...)``
         # without passing the official ``context=`` parameter.
-        runtime_ctx = _build_runtime_context(thread_id, run_id, config.get("context"), ctx.app_config)
+        runtime_ctx = _build_runtime_context(
+            thread_id,
+            run_id,
+            config.get("context"),
+            ctx.app_config,
+            ctx.subagent_task_manager,
+            ctx.subagent_task_runtime,
+        )
         # Expose the run-scoped journal under a sentinel key so middleware can
         # write audit events (e.g. SafetyFinishReasonMiddleware recording
         # suppressed tool calls). Double-underscore prefix marks it as a
@@ -227,7 +247,14 @@ async def run_agent(
             runtime_ctx["__run_journal"] = journal
         _install_runtime_context(config, runtime_ctx)
         runtime = Runtime(context=cast(Any, runtime_ctx), store=store)
-        config.setdefault("configurable", {})["__pregel_runtime"] = runtime
+        configurable = config.setdefault("configurable", {})
+        # LangGraph checkpointers still read thread identity from the legacy
+        # ``configurable`` channel even when the application uses the newer
+        # runtime ``context`` channel. Keep the run record authoritative and
+        # install both identities before graph construction/streaming.
+        configurable["thread_id"] = thread_id
+        configurable["run_id"] = run_id
+        configurable["__pregel_runtime"] = runtime
 
         # Inject RunJournal as a LangChain callback handler.
         # on_llm_end captures token usage; on_chain_start/end captures lifecycle.
@@ -313,6 +340,8 @@ async def run_agent(
                 if record.abort_event.is_set():
                     logger.info("Run %s abort requested — stopping", run_id)
                     break
+                if single_mode == "values" and isinstance(chunk, dict):
+                    latest_values_state = chunk
                 llm_error_fallback_message = llm_error_fallback_message or _extract_llm_error_fallback_message(chunk)
                 sse_event = _lg_mode_to_sse_event(single_mode)
                 await bridge.publish(run_id, sse_event, serialize(chunk, mode=single_mode))
@@ -332,9 +361,26 @@ async def run_agent(
                 if mode is None:
                     continue
 
+                if mode == "values" and isinstance(chunk, dict):
+                    latest_values_state = chunk
                 llm_error_fallback_message = llm_error_fallback_message or _extract_llm_error_fallback_message(chunk)
                 sse_event = _lg_mode_to_sse_event(mode)
                 await bridge.publish(run_id, sse_event, serialize(chunk, mode=mode))
+
+        terminal_state = latest_values_state
+        get_state = getattr(agent, "aget_state", None)
+        if callable(get_state):
+            try:
+                snapshot = await get_state(runnable_config)
+                values = getattr(snapshot, "values", None)
+                if isinstance(values, dict):
+                    terminal_state = values
+            except Exception:
+                logger.warning(
+                    "Run %s could not read authoritative terminal checkpoint",
+                    run_id,
+                    exc_info=True,
+                )
 
         # 8. Final status
         if record.abort_event.is_set():
@@ -361,6 +407,13 @@ async def run_agent(
                 error_msg = journal.llm_error_fallback_message
             error_msg = error_msg or "LLM provider failed after retries"
             await run_manager.set_status(run_id, RunStatus.error, error=error_msg)
+        elif terminal_error := _terminal_delivery_error(terminal_state):
+            logger.error("Run %s ended without a deliverable final response: %s", run_id, terminal_error)
+            await run_manager.set_status(
+                run_id,
+                RunStatus.error,
+                error=terminal_error,
+            )
         else:
             await run_manager.set_status(run_id, RunStatus.success)
 
@@ -585,6 +638,57 @@ def _try_extract_from_message(obj: Any) -> str | None:
         nested_kwargs = obj.get("additional_kwargs")
         if isinstance(nested_kwargs, dict) and nested_kwargs.get("deerflow_error_fallback"):
             return _error_fallback_message_from_metadata(nested_kwargs, obj.get("content"))
+    return None
+
+
+def _message_content_text(content: Any) -> str:
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict) and isinstance(item.get("text"), str):
+                parts.append(item["text"])
+        return "".join(parts).strip()
+    return ""
+
+
+def _terminal_delivery_error(state: dict[str, Any] | None) -> str | None:
+    """Reject a normal graph exit that still has no user-deliverable AI turn."""
+
+    if not isinstance(state, dict):
+        return None
+    messages = state.get("messages")
+    if not isinstance(messages, (list, tuple)):
+        return None
+    last_ai = next(
+        (message for message in reversed(messages) if getattr(message, "type", None) == "ai" or (isinstance(message, dict) and message.get("type") == "ai")),
+        None,
+    )
+    if last_ai is None:
+        return None
+
+    if isinstance(last_ai, dict):
+        tool_calls = last_ai.get("tool_calls") or ()
+        invalid_tool_calls = last_ai.get("invalid_tool_calls") or ()
+        additional_kwargs = last_ai.get("additional_kwargs") or {}
+        content = last_ai.get("content")
+    else:
+        tool_calls = getattr(last_ai, "tool_calls", None) or ()
+        invalid_tool_calls = getattr(last_ai, "invalid_tool_calls", None) or ()
+        additional_kwargs = getattr(last_ai, "additional_kwargs", None) or {}
+        content = getattr(last_ai, "content", None)
+
+    if tool_calls or invalid_tool_calls:
+        return "Agent graph ended with unresolved AI tool calls"
+    if isinstance(additional_kwargs, dict) and (additional_kwargs.get("subagent_gate_status") == "blocked" or additional_kwargs.get("final_answer_policy_status") == "blocked"):
+        return "Agent final delivery was blocked by Harness policy"
+    if isinstance(additional_kwargs, dict) and additional_kwargs.get("hide_from_ui"):
+        return "Agent graph ended with a hidden AI response"
+    if not _message_content_text(content):
+        return "Agent graph ended without a persisted final AI answer"
     return None
 
 

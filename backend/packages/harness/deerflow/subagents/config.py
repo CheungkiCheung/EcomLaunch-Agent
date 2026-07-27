@@ -21,18 +21,42 @@ class SubagentConfig:
                 If an empty list, no skills are loaded.
         model: Model to use - 'inherit' uses parent's model.
         max_turns: Maximum number of agent turns before stopping.
+        max_tool_rounds: Optional model-to-tool round budget. Parallel calls in
+            one model response consume one round.
+        max_tool_calls: Optional total deterministic Tool call budget. Parallel
+            calls each consume one call.
+        min_successful_tool_calls: Minimum successful ToolResult events required
+            before the execution may be marked completed.
         timeout_seconds: Maximum execution time in seconds (default: 900 = 15 minutes).
+        max_output_tokens: Optional per-model-call output limit.
+        model_max_retries: Optional provider-client retry limit.
+        llm_retry_max_attempts: Harness middleware attempt limit, including the first call.
     """
 
     name: str
     description: str
     system_prompt: str | None = None
     tools: list[str] | None = None
-    disallowed_tools: list[str] | None = field(default_factory=lambda: ["task"])
+    disallowed_tools: list[str] | None = field(
+        default_factory=lambda: [
+            "task",
+            "spawn_task",
+            "wait_task",
+            "follow_up_task",
+            "cancel_task",
+            "resume_task",
+        ]
+    )
     skills: list[str] | None = None
     model: str = "inherit"
     max_turns: int = 50
+    max_tool_rounds: int | None = None
+    max_tool_calls: int | None = None
+    min_successful_tool_calls: int = 0
     timeout_seconds: int = 900
+    max_output_tokens: int | None = None
+    model_max_retries: int | None = None
+    llm_retry_max_attempts: int = 3
 
 
 def _default_model_name(app_config: "AppConfig") -> str:

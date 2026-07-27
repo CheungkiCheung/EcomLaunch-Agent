@@ -38,6 +38,7 @@ from app.commerce.evaluation.real_model_preflight import (
     run_real_model_preflight,
 )
 from deerflow.config.app_config import AppConfig
+from deerflow.models.lifecycle import close_model_clients
 from deerflow.reflection import resolve_class
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -334,6 +335,7 @@ class VerifiedModelCaller:
 
         client = httpx.Client(event_hooks={"request": [count_request]})
         started = time.perf_counter()
+        model = None
         try:
             model_class = resolve_class(model_config.use, BaseChatModel)
             settings = _model_settings_for_preflight(
@@ -344,7 +346,8 @@ class VerifiedModelCaller:
             settings["timeout"] = min(
                 float(settings["timeout"]), assignment.timeout_seconds
             )
-            response = model_class(**settings).invoke(
+            model = model_class(**settings)
+            response = model.invoke(
                 [
                     SystemMessage(content=system_prompt),
                     HumanMessage(content=user_prompt),
@@ -371,4 +374,6 @@ class VerifiedModelCaller:
                 ),
             )
         finally:
+            if model is not None:
+                close_model_clients(model)
             client.close()

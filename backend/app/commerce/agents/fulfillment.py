@@ -24,6 +24,7 @@ from pydantic import Field, ValidationError, model_validator
 from app.commerce.agents.budget import BudgetManager
 from app.commerce.agents.contracts import (
     CaseAnalysisDigest,
+    CaseTriggerType,
     ContextManifest,
     LeadContextPacket,
     PathContextPacket,
@@ -70,10 +71,11 @@ from app.commerce.evaluation.real_model_preflight import (
 )
 from app.commerce.metrics.registry import MetricName
 from deerflow.config.app_config import AppConfig
+from deerflow.models.lifecycle import close_model_clients
 from deerflow.reflection import resolve_class
 
-FULFILLMENT_PROMPT_VERSION = "commerce.fulfillment-path@1.0.0"
-FULFILLMENT_PATH_CONTEXT_VERSION = "commerce-fulfillment-path-context@1.0.0"
+FULFILLMENT_PROMPT_VERSION = "commerce.fulfillment-path@1.1.0"
+FULFILLMENT_PATH_CONTEXT_VERSION = "commerce-fulfillment-path-context@1.1.0"
 FULFILLMENT_MAX_OUTPUT_TOKENS = 1_600
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -530,8 +532,17 @@ class FulfillmentPathAgent:
             for item in lead.analysis.anomalies
             if item.metric_name.value in _FULFILLMENT_METRICS
         )
-        if not baseline or not current or not anomalies:
-            raise ValueError("Fulfillment Path requires metric snapshots and anomalies")
+        trigger = lead.analysis.trigger
+        explicit_fulfillment_request = (
+            trigger.trigger_type is CaseTriggerType.EXPLICIT_USER
+            and PathType.FULFILLMENT in trigger.requested_paths
+        )
+        if not baseline or not current:
+            raise ValueError("Fulfillment Path requires baseline and current metrics")
+        if not anomalies and not explicit_fulfillment_request:
+            raise ValueError(
+                "Fulfillment Path requires anomalies unless explicitly requested"
+            )
         analysis = CaseAnalysisDigest(
             dataset_id=lead.analysis.dataset_id,
             seller_entity_id=lead.analysis.seller_entity_id,
@@ -541,6 +552,7 @@ class FulfillmentPathAgent:
             baseline_metrics=baseline,
             current_metrics=current,
             anomalies=anomalies,
+            trigger=trigger,
         )
         capability_profile = CapabilityProfile(
             dataset_id=lead.capability_profile.dataset_id,
@@ -587,8 +599,13 @@ class FulfillmentPathAgent:
         packet = PathContextPacket(
             case=lead.case,
             goal=(
-                "Determine whether the observed fulfillment anomaly is localized "
+                "Compare the explicitly requested fulfillment snapshots without "
+                "claiming that an anomaly was detected; localize observed changes "
                 "to seller handling, carrier transit, or another observed stage."
+                if explicit_fulfillment_request and not anomalies
+                else "Determine whether the observed fulfillment anomaly is "
+                "localized to seller handling, carrier transit, or another "
+                "observed stage."
             ),
             manifest=manifest,
             budget=self._spec.default_budget,
@@ -656,6 +673,7 @@ class FulfillmentPathAgent:
 
         http_client = httpx.Client(event_hooks={"request": [count_request]})
         started = time.perf_counter()
+        model = None
         try:
             model_class = resolve_class(model_config.use, BaseChatModel)
             settings = _model_settings_for_preflight(
@@ -702,6 +720,8 @@ class FulfillmentPathAgent:
                 failure=failure,
             )
         finally:
+            if model is not None:
+                close_model_clients(model)
             http_client.close()
 
     @staticmethod

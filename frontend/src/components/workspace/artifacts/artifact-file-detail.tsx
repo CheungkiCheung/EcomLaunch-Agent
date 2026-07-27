@@ -145,15 +145,15 @@ export function ArtifactFileDetail({
       if (result.success) {
         toast.success(result.message);
       } else {
-        toast.error(result.message ?? "Failed to install skill");
+        toast.error(result.message ?? t.common.installSkillFailed);
       }
     } catch (error) {
       console.error("Failed to install skill:", error);
-      toast.error("Failed to install skill");
+      toast.error(t.common.installSkillFailed);
     } finally {
       setIsInstalling(false);
     }
-  }, [threadId, filepath, isInstalling]);
+  }, [threadId, filepath, isInstalling, t.common.installSkillFailed]);
   return (
     <Artifact className={cn(className)}>
       <ArtifactHeader className="px-2">
@@ -164,7 +164,7 @@ export function ArtifactFileDetail({
             ) : (
               <Select value={filepath} onValueChange={select}>
                 <SelectTrigger className="border-none bg-transparent! shadow-none select-none focus:outline-0 active:outline-0">
-                  <SelectValue placeholder="Select a file" />
+                  <SelectValue placeholder={t.common.selectFile} />
                 </SelectTrigger>
                 <SelectContent className="select-none">
                   <SelectGroup>

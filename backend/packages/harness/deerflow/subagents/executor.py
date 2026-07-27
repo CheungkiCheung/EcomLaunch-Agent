@@ -2,10 +2,13 @@
 
 import asyncio
 import atexit
+import hashlib
+import json
 import logging
 import threading
+import time
 import uuid
-from collections.abc import Callable, Coroutine
+from collections.abc import Callable, Coroutine, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeoutError
 from contextvars import Context, copy_context
@@ -16,13 +19,14 @@ from typing import TYPE_CHECKING, Any
 
 from langchain.agents import create_agent
 from langchain.tools import BaseTool
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 
 from deerflow.agents.thread_state import SandboxState, ThreadDataState, ThreadState
 from deerflow.config import get_app_config
 from deerflow.config.app_config import AppConfig
 from deerflow.models import create_chat_model
+from deerflow.models.lifecycle import aclose_model_clients
 from deerflow.skills.tool_policy import filter_tools_by_skill_allowed_tools
 from deerflow.skills.types import Skill
 from deerflow.subagents.config import SubagentConfig, resolve_subagent_model_name
@@ -36,6 +40,49 @@ if TYPE_CHECKING:
     from deerflow.tools.builtins.tool_search import DeferredToolSetup
 
 logger = logging.getLogger(__name__)
+
+
+def _agent_graph_recursion_limit(agent: Any, *, max_turns: int) -> int:
+    """Translate model-turn budget into this compiled Agent graph's supersteps."""
+
+    graph = agent.get_graph()
+    nodes = getattr(graph, "nodes", None)
+    if not isinstance(nodes, Mapping):
+        # Test doubles or third-party CompiledGraphs may not expose topology.
+        # Keep a conservative fail-safe without changing the model-turn budget.
+        logger.warning("Subagent graph topology unavailable; using conservative recursion limit")
+        return max_turns * 6 + 8
+
+    names = {str(name) for name in nodes}
+    if "model" not in names:
+        raise RuntimeError("Subagent graph is missing its model node")
+    before_agent = sum(name.endswith(".before_agent") for name in names)
+    after_agent = sum(name.endswith(".after_agent") for name in names)
+    before_model = sum(name.endswith(".before_model") for name in names)
+    after_model = sum(name.endswith(".after_model") for name in names)
+    standard = {
+        "__start__",
+        "__end__",
+        "model",
+        "tools",
+        *(
+            name
+            for name in names
+            if name.endswith(
+                (
+                    ".before_agent",
+                    ".after_agent",
+                    ".before_model",
+                    ".after_model",
+                )
+            )
+        ),
+    }
+    unknown_loop_nodes = len(names - standard)
+    per_model_turn = 1 + before_model + after_model + unknown_loop_nodes
+    tool_supersteps = max_turns - 1 if "tools" in names else 0
+    terminal_margin = 1
+    return before_agent + after_agent + max_turns * per_model_turn + tool_supersteps + terminal_margin
 
 
 _previous_shutdown_isolated_subagent_loop = globals().get("_shutdown_isolated_subagent_loop")
@@ -87,6 +134,7 @@ class SubagentResult:
     started_at: datetime | None = None
     completed_at: datetime | None = None
     ai_messages: list[dict[str, Any]] | None = None
+    execution_events: list[dict[str, Any]] = field(default_factory=list)
     token_usage_records: list[dict[str, int | str]] = field(default_factory=list)
     usage_reported: bool = False
     cancel_event: threading.Event = field(default_factory=threading.Event, repr=False)
@@ -285,6 +333,7 @@ class SubagentExecutor:
         sandbox_state: SandboxState | None = None,
         thread_data: ThreadDataState | None = None,
         thread_id: str | None = None,
+        user_id: str | None = None,
         trace_id: str | None = None,
     ):
         """Initialize the executor.
@@ -299,6 +348,7 @@ class SubagentExecutor:
             sandbox_state: Sandbox state from parent agent.
             thread_data: Thread data from parent agent.
             thread_id: Thread ID for sandbox operations.
+            user_id: Explicit Parent user scope for Subagent ToolRuntime.
             trace_id: Trace ID from parent for distributed tracing.
         """
         self.config = config
@@ -314,6 +364,8 @@ class SubagentExecutor:
         self.sandbox_state = sandbox_state
         self.thread_data = thread_data
         self.thread_id = thread_id
+        self.user_id = user_id
+        self._active_model: Any | None = None
         # Generate trace_id if not provided (for top-level calls)
         self.trace_id = trace_id or str(uuid.uuid4())[:8]
 
@@ -336,12 +388,32 @@ class SubagentExecutor:
         app_config = self.app_config or get_app_config()
         if self.model_name is None:
             self.model_name = resolve_subagent_model_name(self.config, self.parent_model, app_config=app_config)
-        model = create_chat_model(name=self.model_name, thinking_enabled=False, app_config=app_config)
+        model_kwargs: dict[str, int] = {}
+        if self.config.max_output_tokens is not None:
+            model_kwargs["max_tokens"] = self.config.max_output_tokens
+        if self.config.model_max_retries is not None:
+            model_kwargs["max_retries"] = self.config.model_max_retries
+        model = create_chat_model(
+            name=self.model_name,
+            thinking_enabled=False,
+            app_config=app_config,
+            **model_kwargs,
+        )
+        self._active_model = model
 
         from deerflow.agents.middlewares.tool_error_handling_middleware import build_subagent_runtime_middlewares
 
         # Reuse shared middleware composition with lead agent.
-        middlewares = build_subagent_runtime_middlewares(app_config=app_config, model_name=self.model_name, lazy_init=True, deferred_setup=deferred_setup)
+        middlewares = build_subagent_runtime_middlewares(
+            app_config=app_config,
+            model_name=self.model_name,
+            lazy_init=True,
+            deferred_setup=deferred_setup,
+            llm_retry_max_attempts=self.config.llm_retry_max_attempts,
+            max_tool_rounds=self.config.max_tool_rounds,
+            max_tool_calls=self.config.max_tool_calls,
+            available_tool_names={tool.name for tool in (tools if tools is not None else self.tools)},
+        )
 
         # system_prompt is included in initial state messages (see _build_initial_state)
         # to avoid multiple SystemMessages which some LLM APIs don't support.
@@ -506,18 +578,30 @@ class SubagentExecutor:
             ai_messages = []
             result.ai_messages = ai_messages
 
+        seen_message_keys: set[str] = set()
+        tool_call_starts: dict[str, tuple[str, str, float]] = {}
+
         collector: SubagentTokenCollector | None = None
         try:
             state, final_tools, deferred_setup = await self._build_initial_state(task)
+            authorized_tool_names = {tool.name for tool in final_tools}
+            unauthorized_tool_names: set[str] = set()
             agent = self._create_agent(final_tools, deferred_setup=deferred_setup)
 
             # Token collector for subagent LLM calls
             collector_caller = f"subagent:{self.config.name}"
             collector = SubagentTokenCollector(caller=collector_caller)
 
-            # Build config with thread_id for sandbox access and recursion limit
+            # ``max_turns`` is a model-turn budget, while LangGraph counts every
+            # middleware hook, model node, tool node, and terminal transition.
+            # Derive the internal cap from the compiled topology so enabling a
+            # middleware cannot silently consume the business-level turn budget.
+            graph_recursion_limit = _agent_graph_recursion_limit(
+                agent,
+                max_turns=self.config.max_turns,
+            )
             run_config: RunnableConfig = {
-                "recursion_limit": self.config.max_turns,
+                "recursion_limit": graph_recursion_limit,
                 "callbacks": [collector],
                 "tags": [collector_caller],
             }
@@ -525,6 +609,9 @@ class SubagentExecutor:
             if self.thread_id:
                 run_config["configurable"] = {"thread_id": self.thread_id}
                 context["thread_id"] = self.thread_id
+            if self.user_id:
+                context["user_id"] = self.user_id
+            context["available_tool_names"] = tuple(sorted(authorized_tool_names))
             if self.app_config is not None:
                 context["app_config"] = self.app_config
 
@@ -560,26 +647,72 @@ class SubagentExecutor:
 
                 final_state = chunk
 
-                # Extract AI messages from the current state
+                # Extract structured model/tool events from the current state.
+                # Content is retained only as hashes so the Harness never turns
+                # model prose into Commerce state or leaks tool payloads.
                 messages = chunk.get("messages", [])
                 if messages:
-                    last_message = messages[-1]
-                    # Check if this is a new AI message
-                    if isinstance(last_message, AIMessage):
-                        # Convert message to dict for serialization
-                        message_dict = last_message.model_dump()
-                        # Only add if it's not already in the list (avoid duplicates)
-                        # Check by comparing message IDs if available, otherwise compare full dict
-                        message_id = message_dict.get("id")
-                        is_duplicate = False
-                        if message_id:
-                            is_duplicate = any(msg.get("id") == message_id for msg in ai_messages)
-                        else:
-                            is_duplicate = message_dict in ai_messages
+                    for message in messages:
+                        message_dict = message.model_dump() if hasattr(message, "model_dump") else None
+                        message_id = getattr(message, "id", None)
+                        message_key = str(message_id) if message_id else hashlib.sha256(repr(message_dict or message).encode("utf-8")).hexdigest()
+                        if message_key in seen_message_keys:
+                            continue
+                        seen_message_keys.add(message_key)
 
-                        if not is_duplicate:
-                            ai_messages.append(message_dict)
-                            logger.info(f"[trace={self.trace_id}] Subagent {self.config.name} captured AI message #{len(ai_messages)}")
+                        if isinstance(message, AIMessage):
+                            if message_dict is not None:
+                                ai_messages.append(message_dict)
+                            for call in message.tool_calls or []:
+                                call_id = str(call.get("id") or f"{message_key}:{len(tool_call_starts)}")
+                                tool_name = str(call.get("name") or "unknown_tool")
+                                if tool_name not in authorized_tool_names:
+                                    unauthorized_tool_names.add(tool_name)
+                                args = call.get("args", {})
+                                request_bytes = json.dumps(
+                                    args,
+                                    ensure_ascii=False,
+                                    separators=(",", ":"),
+                                    sort_keys=True,
+                                    default=str,
+                                ).encode("utf-8")
+                                tool_call_starts[call_id] = (
+                                    tool_name,
+                                    hashlib.sha256(request_bytes).hexdigest(),
+                                    time.monotonic(),
+                                )
+                        elif isinstance(message, ToolMessage):
+                            call_id = str(getattr(message, "tool_call_id", "unknown"))
+                            tool_name, request_sha256, started_at = tool_call_starts.get(
+                                call_id,
+                                (
+                                    str(getattr(message, "name", None) or "unknown_tool"),
+                                    "0" * 64,
+                                    time.monotonic(),
+                                ),
+                            )
+                            response_bytes = json.dumps(
+                                getattr(message, "content", ""),
+                                ensure_ascii=False,
+                                separators=(",", ":"),
+                                sort_keys=True,
+                                default=str,
+                            ).encode("utf-8")
+                            status = str(getattr(message, "status", "success") or "success")
+                            unauthorized = tool_name in unauthorized_tool_names
+                            failed = unauthorized or status in {"error", "failed"}
+                            result.execution_events.append(
+                                {
+                                    "kind": "tool.result",
+                                    "tool_call_id": call_id,
+                                    "tool_name": tool_name,
+                                    "status": "failed" if failed else "succeeded",
+                                    "request_sha256": request_sha256,
+                                    "response_sha256": hashlib.sha256(response_bytes).hexdigest(),
+                                    "latency_ms": max(0.0, (time.monotonic() - started_at) * 1000),
+                                    "error_code": ("unauthorized_tool_call" if unauthorized else ("tool_execution_failed" if failed else None)),
+                                }
+                            )
 
             logger.info(f"[trace={self.trace_id}] Subagent {self.config.name} completed async execution")
             token_usage_records = collector.snapshot_records()
@@ -658,11 +791,24 @@ class SubagentExecutor:
             if final_result is None:
                 final_result = "No response generated"
 
-            result.try_set_terminal(
-                SubagentStatus.COMPLETED,
-                result=final_result,
-                token_usage_records=token_usage_records,
-            )
+            if unauthorized_tool_names:
+                result.try_set_terminal(
+                    SubagentStatus.FAILED,
+                    error=("Unauthorized tool call(s): " + ", ".join(sorted(unauthorized_tool_names))),
+                    token_usage_records=token_usage_records,
+                )
+            elif (successful_tool_calls := sum(1 for event in result.execution_events if event.get("kind") == "tool.result" and event.get("status") == "succeeded")) < self.config.min_successful_tool_calls:
+                result.try_set_terminal(
+                    SubagentStatus.FAILED,
+                    error=(f"Subagent completion contract requires at least {self.config.min_successful_tool_calls} successful tool call(s); observed {successful_tool_calls}"),
+                    token_usage_records=token_usage_records,
+                )
+            else:
+                result.try_set_terminal(
+                    SubagentStatus.COMPLETED,
+                    result=final_result,
+                    token_usage_records=token_usage_records,
+                )
 
         except Exception as e:
             logger.exception(f"[trace={self.trace_id}] Subagent {self.config.name} async execution failed")
@@ -671,6 +817,14 @@ class SubagentExecutor:
                 error=str(e),
                 token_usage_records=collector.snapshot_records() if collector is not None else None,
             )
+        finally:
+            model = self._active_model
+            self._active_model = None
+            if model is not None:
+                try:
+                    await aclose_model_clients(model)
+                except Exception:
+                    logger.exception(f"[trace={self.trace_id}] Failed to close model clients for subagent {self.config.name}")
 
         return result
 

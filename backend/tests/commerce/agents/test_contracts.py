@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from decimal import Decimal
 
@@ -20,9 +21,15 @@ from app.commerce.agents.contracts import (
     ModelProfile,
     PathContextPacket,
     PathType,
+    VerificationClaimInput,
     VerificationPacket,
+    VerificationReferenceKind,
     canonical_context_bytes,
     default_path_agent_specs,
+)
+from app.commerce.agents.verification import (
+    VerificationEngine,
+    verification_max_output_tokens,
 )
 from app.commerce.data.capabilities import (
     CapabilityAssessment,
@@ -160,6 +167,243 @@ def _fulfillment_capabilities(
             ),
         ),
     )
+
+
+def _verification_packet() -> tuple[
+    VerificationPacket,
+    EvidenceDigest,
+    EvidenceDigest,
+]:
+    workspace_id = WorkspaceId.new()
+    case_id = CaseId.new()
+    dataset_id = DatasetId.new()
+    analysis = _analysis(dataset_id)
+    metric_ids = tuple(
+        item.metric_observation_id
+        for item in (*analysis.baseline_metrics, *analysis.current_metrics)
+    )
+    metric_evidence = EvidenceDigest(
+        evidence_id=EvidenceId.new(),
+        summary="Late-delivery rate increased in the current window.",
+        semantic_status=SemanticStatus.DERIVED,
+        confidence=0.96,
+        metric_observation_ids=metric_ids,
+    )
+    fact_evidence = EvidenceDigest(
+        evidence_id=EvidenceId.new(),
+        summary="A review reports that the shipment did not arrive.",
+        semantic_status=SemanticStatus.OBSERVED,
+        confidence=0.72,
+        fact_ids=(FactId.new(),),
+    )
+    manifest = _manifest(workspace_id, case_id, dataset_id).model_copy(
+        update={
+            "included_evidence_ids": (
+                fact_evidence.evidence_id,
+                metric_evidence.evidence_id,
+            ),
+            "included_fact_ids": fact_evidence.fact_ids,
+            "included_metric_observation_ids": metric_ids,
+        }
+    )
+    packet = VerificationPacket(
+        case=_header(workspace_id, case_id),
+        goal="Verify the two claims against their original supporting Evidence.",
+        manifest=manifest,
+        budget=AgentBudgetLimit(),
+        claims=(
+            VerificationClaimInput(
+                claim_index=0,
+                statement="A low-rating review reports non-receipt.",
+                evidence_ids=(fact_evidence.evidence_id,),
+                required_reference_kinds=frozenset(
+                    {VerificationReferenceKind.FACT}
+                ),
+            ),
+            VerificationClaimInput(
+                claim_index=1,
+                statement="Late-delivery rate increased in the current window.",
+                evidence_ids=(metric_evidence.evidence_id,),
+                required_reference_kinds=frozenset(
+                    {VerificationReferenceKind.METRIC_OBSERVATION}
+                ),
+            ),
+        ),
+        capability_profile=_fulfillment_capabilities(workspace_id, dataset_id),
+        analysis=analysis,
+        evidence=(fact_evidence, metric_evidence),
+    )
+    return packet, fact_evidence, metric_evidence
+
+
+def _valid_verification_payload(
+    fact_evidence: EvidenceDigest,
+    metric_evidence: EvidenceDigest,
+) -> dict[str, object]:
+    return {
+        "claims": [
+            {
+                "claim_index": 0,
+                "verdict": "pass",
+                "issue_codes": [],
+                "reason": "The supplied review Fact supports this VOC statement.",
+                "evidence_ids": [str(fact_evidence.evidence_id)],
+                "fact_ids": [str(fact_evidence.fact_ids[0])],
+                "metric_observation_ids": [],
+            },
+            {
+                "claim_index": 1,
+                "verdict": "pass",
+                "issue_codes": [],
+                "reason": "The supplied deterministic Metrics support the change.",
+                "evidence_ids": [str(metric_evidence.evidence_id)],
+                "fact_ids": [],
+                "metric_observation_ids": [
+                    str(value)
+                    for value in metric_evidence.metric_observation_ids
+                ],
+            },
+        ]
+    }
+
+
+def test_verification_accepts_fact_and_metric_claim_references():
+    packet, fact_evidence, metric_evidence = _verification_packet()
+
+    parsed = VerificationEngine._parse(
+        json.dumps(_valid_verification_payload(fact_evidence, metric_evidence)),
+        packet,
+    )
+
+    assert parsed[0].evidence_ids == (fact_evidence.evidence_id,)
+    assert parsed[0].fact_ids == fact_evidence.fact_ids
+    assert parsed[0].metric_observation_ids == ()
+    assert parsed[1].evidence_ids == (metric_evidence.evidence_id,)
+    assert parsed[1].fact_ids == ()
+    assert parsed[1].metric_observation_ids == (
+        metric_evidence.metric_observation_ids
+    )
+
+
+def test_verification_derives_evidence_lineage_from_valid_source_references():
+    packet, fact_evidence, metric_evidence = _verification_packet()
+    payload = _valid_verification_payload(fact_evidence, metric_evidence)
+    claims = payload["claims"]
+    assert isinstance(claims, list)
+    for claim in claims:
+        assert isinstance(claim, dict)
+        claim["evidence_ids"] = []
+
+    parsed = VerificationEngine._parse(json.dumps(payload), packet)
+
+    assert parsed[0].evidence_ids == (fact_evidence.evidence_id,)
+    assert parsed[1].evidence_ids == (metric_evidence.evidence_id,)
+
+
+def test_verification_derives_source_lineage_from_valid_evidence_references():
+    packet, fact_evidence, metric_evidence = _verification_packet()
+    payload = _valid_verification_payload(fact_evidence, metric_evidence)
+    claims = payload["claims"]
+    assert isinstance(claims, list)
+    for claim in claims:
+        assert isinstance(claim, dict)
+        claim["fact_ids"] = []
+        claim["metric_observation_ids"] = []
+
+    parsed = VerificationEngine._parse(json.dumps(payload), packet)
+
+    assert parsed[0].fact_ids == fact_evidence.fact_ids
+    assert parsed[0].metric_observation_ids == ()
+    assert parsed[1].fact_ids == ()
+    assert parsed[1].metric_observation_ids == (
+        metric_evidence.metric_observation_ids
+    )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        ("metric_without_metric_reference", "original supporting Evidence"),
+        ("evidence_outside_claim", "original supporting Evidence"),
+        ("fact_outside_evidence", "Fact outside cited Evidence"),
+        ("metric_outside_evidence", "Metric outside cited Evidence"),
+        ("empty_references", "schema validation"),
+        ("duplicate_claim_index", "each claim index exactly once"),
+    ),
+)
+def test_verification_rejects_untraceable_or_cross_bound_references(
+    mutation: str,
+    message: str,
+):
+    packet, fact_evidence, metric_evidence = _verification_packet()
+    payload = _valid_verification_payload(fact_evidence, metric_evidence)
+    claims = payload["claims"]
+    assert isinstance(claims, list)
+    fact_claim = claims[0]
+    metric_claim = claims[1]
+    assert isinstance(fact_claim, dict)
+    assert isinstance(metric_claim, dict)
+
+    if mutation == "metric_without_metric_reference":
+        metric_claim["evidence_ids"] = []
+        metric_claim["metric_observation_ids"] = []
+        metric_claim["fact_ids"] = [str(fact_evidence.fact_ids[0])]
+    elif mutation == "evidence_outside_claim":
+        fact_claim["evidence_ids"] = [str(metric_evidence.evidence_id)]
+        fact_claim["fact_ids"] = []
+        fact_claim["metric_observation_ids"] = [
+            str(metric_evidence.metric_observation_ids[0])
+        ]
+    elif mutation == "fact_outside_evidence":
+        fact_claim["fact_ids"] = [str(FactId.new())]
+    elif mutation == "metric_outside_evidence":
+        metric_claim["metric_observation_ids"] = [
+            str(MetricObservationId.new())
+        ]
+    elif mutation == "empty_references":
+        fact_claim["evidence_ids"] = []
+        fact_claim["fact_ids"] = []
+        fact_claim["metric_observation_ids"] = []
+    elif mutation == "duplicate_claim_index":
+        metric_claim["claim_index"] = 0
+    else:  # pragma: no cover - parametrization is exhaustive
+        raise AssertionError(f"Unexpected mutation: {mutation}")
+
+    with pytest.raises(ValueError, match=message):
+        VerificationEngine._parse(json.dumps(payload), packet)
+
+
+def test_verification_rejects_passing_causal_fact_claim():
+    packet, fact_evidence, metric_evidence = _verification_packet()
+    packet = packet.model_copy(
+        update={
+            "claims": (
+                packet.claims[0].model_copy(
+                    update={
+                        "statement": "The review complaint caused the sales decline."
+                    }
+                ),
+                packet.claims[1],
+            )
+        }
+    )
+
+    with pytest.raises(ValueError, match="unsupported causal language"):
+        VerificationEngine._parse(
+            json.dumps(
+                _valid_verification_payload(fact_evidence, metric_evidence)
+            ),
+            packet,
+        )
+
+
+def test_verification_output_budget_scales_for_multi_claim_lineage():
+    assert verification_max_output_tokens(1) == 1_600
+    assert verification_max_output_tokens(2) == 1_600
+    assert verification_max_output_tokens(8) == 4_000
+    assert verification_max_output_tokens(20) == 5_000
+    with pytest.raises(ValueError, match="positive Claim count"):
+        verification_max_output_tokens(0)
 
 
 def test_context_packets_reject_hidden_label_metadata_and_reasoning_history():

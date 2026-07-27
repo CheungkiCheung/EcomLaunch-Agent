@@ -16,6 +16,7 @@ from deerflow.runtime.runs.worker import (
     _extract_llm_error_fallback_message,
     _install_runtime_context,
     _rollback_to_pre_run_checkpoint,
+    _terminal_delivery_error,
     _try_extract_from_message,
     run_agent,
 )
@@ -46,6 +47,21 @@ def test_build_runtime_context_includes_app_config_when_present():
     assert context["app_config"] is app_config
 
 
+def test_build_runtime_context_includes_authoritative_subagent_task_manager():
+    manager = object()
+    caller_context = {"__subagent_task_manager": "spoofed"}
+
+    context = _build_runtime_context(
+        "thread-1",
+        "run-1",
+        caller_context,
+        None,
+        manager,
+    )
+
+    assert context["__subagent_task_manager"] is manager
+
+
 def test_install_runtime_context_preserves_existing_thread_id_and_threads_app_config():
     app_config = object()
     config = {"context": {"thread_id": "caller-thread"}}
@@ -62,6 +78,223 @@ def test_install_runtime_context_preserves_existing_thread_id_and_threads_app_co
     assert config["context"]["thread_id"] == "caller-thread"
     assert config["context"]["run_id"] == "run-1"
     assert config["context"]["app_config"] is app_config
+
+
+def test_install_runtime_context_threads_authoritative_subagent_task_manager():
+    manager = object()
+    config = {"context": {"__subagent_task_manager": "spoofed"}}
+
+    _install_runtime_context(
+        config,
+        {
+            "thread_id": "thread-1",
+            "run_id": "run-1",
+            "__subagent_task_manager": manager,
+        },
+    )
+
+    assert config["context"]["__subagent_task_manager"] is manager
+
+
+def test_terminal_delivery_rejects_unresolved_tool_call_or_empty_answer():
+    assert (
+        _terminal_delivery_error(
+            {
+                "messages": [
+                    AIMessage(
+                        content="",
+                        tool_calls=[
+                            {
+                                "name": "spawn_task",
+                                "args": {},
+                                "id": "call-1",
+                                "type": "tool_call",
+                            }
+                        ],
+                    )
+                ]
+            }
+        )
+        == "Agent graph ended with unresolved AI tool calls"
+    )
+    assert _terminal_delivery_error({"messages": [AIMessage(content="")]}) == "Agent graph ended without a persisted final AI answer"
+    assert (
+        _terminal_delivery_error(
+            {
+                "messages": [
+                    AIMessage(
+                        content="本次结果被阻止交付。",
+                        additional_kwargs={"subagent_gate_status": "blocked"},
+                    )
+                ]
+            }
+        )
+        == "Agent final delivery was blocked by Harness policy"
+    )
+
+
+def test_terminal_delivery_accepts_visible_text_answer():
+    assert _terminal_delivery_error({"messages": [AIMessage(content="这是可交付的中文终答。")]}) is None
+
+
+@pytest.mark.anyio
+async def test_run_agent_exposes_subagent_task_manager_to_tool_runtime_context():
+    run_manager = RunManager()
+    record = await run_manager.create("thread-1")
+    bridge = SimpleNamespace(
+        publish=AsyncMock(),
+        publish_end=AsyncMock(),
+        cleanup=AsyncMock(),
+    )
+    manager = object()
+    captured: dict[str, object] = {}
+
+    class DummyAgent:
+        async def astream(self, graph_input, config=None, stream_mode=None, subgraphs=False):
+            captured["runtime_context"] = config["configurable"]["__pregel_runtime"].context
+            yield {"messages": []}
+
+    def factory(*, config):
+        return DummyAgent()
+
+    await run_agent(
+        bridge,
+        run_manager,
+        record,
+        ctx=RunContext(checkpointer=None, subagent_task_manager=manager),
+        agent_factory=factory,
+        graph_input={},
+        config={},
+    )
+
+    assert captured["runtime_context"]["__subagent_task_manager"] is manager
+
+
+@pytest.mark.anyio
+async def test_run_agent_does_not_mark_unresolved_tool_call_as_success():
+    run_manager = RunManager()
+    record = await run_manager.create("thread-terminal-contract")
+    bridge = SimpleNamespace(
+        publish=AsyncMock(),
+        publish_end=AsyncMock(),
+        cleanup=AsyncMock(),
+    )
+
+    class DummyAgent:
+        async def astream(
+            self,
+            graph_input,
+            config=None,
+            stream_mode=None,
+            subgraphs=False,
+        ):
+            yield {"messages": [AIMessage(content="流式帧中的暂时回答")]}
+
+        async def aget_state(self, config):
+            return SimpleNamespace(
+                values={
+                    "messages": [
+                        AIMessage(
+                            content="",
+                            tool_calls=[
+                                {
+                                    "name": "spawn_task",
+                                    "args": {},
+                                    "id": "call-unresolved",
+                                    "type": "tool_call",
+                                }
+                            ],
+                        )
+                    ]
+                }
+            )
+
+    def factory(*, config):
+        return DummyAgent()
+
+    await run_agent(
+        bridge,
+        run_manager,
+        record,
+        ctx=RunContext(checkpointer=None),
+        agent_factory=factory,
+        graph_input={},
+        config={},
+        stream_modes=["values"],
+    )
+
+    fetched = await run_manager.get(record.run_id)
+    assert fetched is not None
+    assert fetched.status == RunStatus.error
+    assert fetched.error == "Agent graph ended with unresolved AI tool calls"
+
+
+@pytest.mark.anyio
+async def test_run_agent_exposes_durable_subagent_runtime_to_tool_runtime_context():
+    run_manager = RunManager()
+    record = await run_manager.create("thread-1")
+    bridge = SimpleNamespace(
+        publish=AsyncMock(),
+        publish_end=AsyncMock(),
+        cleanup=AsyncMock(),
+    )
+    subagent_runtime = object()
+    captured: dict[str, object] = {}
+
+    class DummyAgent:
+        async def astream(self, graph_input, config=None, stream_mode=None, subgraphs=False):
+            captured["runtime_context"] = config["configurable"]["__pregel_runtime"].context
+            yield {"messages": []}
+
+    def factory(*, config):
+        return DummyAgent()
+
+    await run_agent(
+        bridge,
+        run_manager,
+        record,
+        ctx=RunContext(checkpointer=None, subagent_task_runtime=subagent_runtime),
+        agent_factory=factory,
+        graph_input={},
+        config={},
+    )
+
+    assert captured["runtime_context"]["__subagent_task_runtime"] is subagent_runtime
+
+
+@pytest.mark.anyio
+async def test_run_agent_context_mode_installs_authoritative_configurable_identity():
+    run_manager = RunManager()
+    record = await run_manager.create("thread-1")
+    bridge = SimpleNamespace(
+        publish=AsyncMock(),
+        publish_end=AsyncMock(),
+        cleanup=AsyncMock(),
+    )
+    captured: dict[str, object] = {}
+
+    class DummyAgent:
+        async def astream(self, graph_input, config=None, stream_mode=None, subgraphs=False):
+            captured["configurable"] = config["configurable"]
+            yield {"messages": []}
+
+    def factory(*, config):
+        return DummyAgent()
+
+    await run_agent(
+        bridge,
+        run_manager,
+        record,
+        ctx=RunContext(checkpointer=None),
+        agent_factory=factory,
+        graph_input={},
+        config={"context": {"user_id": "user-1"}},
+    )
+
+    configurable = captured["configurable"]
+    assert configurable["thread_id"] == record.thread_id
+    assert configurable["run_id"] == record.run_id
+    assert configurable["__pregel_runtime"].context["thread_id"] == record.thread_id
 
 
 @pytest.mark.anyio

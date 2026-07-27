@@ -7,8 +7,14 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from app.commerce.domain.enums import RunPhase, RunStatus, RunType
-from app.commerce.domain.ids import CaseId, RunId, WorkspaceId
+from app.commerce.domain.enums import (
+    ActionRunOperation,
+    PathType,
+    RunPhase,
+    RunStatus,
+    RunType,
+)
+from app.commerce.domain.ids import ActionId, CaseId, RunId, WorkspaceId
 from app.commerce.domain.models import CommerceModel
 
 
@@ -27,9 +33,7 @@ _TERMINAL_RUN_STATUSES = frozenset(
 )
 
 _ALLOWED_RUN_TRANSITIONS = {
-    RunStatus.QUEUED: frozenset(
-        {RunStatus.RUNNING, RunStatus.CANCELLED, RunStatus.BLOCKED}
-    ),
+    RunStatus.QUEUED: frozenset({RunStatus.RUNNING, RunStatus.CANCELLED, RunStatus.BLOCKED}),
     RunStatus.RUNNING: frozenset(
         {
             RunStatus.WAITING,
@@ -85,6 +89,10 @@ class CommerceRun(CommerceModel):
     phase: RunPhase
     goal: str = Field(min_length=1)
     idempotency_key_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    parent_run_id: RunId | None = None
+    subject_action_id: ActionId | None = None
+    action_operation: ActionRunOperation | None = None
+    requested_paths: tuple[PathType, ...] = ()
     wait_reason: str | None = Field(default=None, min_length=1)
     stop_reason: str | None = Field(default=None, min_length=1)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -95,6 +103,29 @@ class CommerceRun(CommerceModel):
 
     @model_validator(mode="after")
     def keep_status_and_timestamps_consistent(self) -> Self:
+        if self.parent_run_id == self.id:
+            raise ValueError("Run cannot be its own parent")
+        if len(self.requested_paths) != len(set(self.requested_paths)):
+            raise ValueError("Run requested Paths must be unique")
+        if len(self.requested_paths) > 3:
+            raise ValueError("Run supports at most three requested Paths")
+        if self.run_type is RunType.REPLAN:
+            if self.parent_run_id is None:
+                raise ValueError("Replan Run requires a parent Run")
+            if not self.requested_paths:
+                raise ValueError("Replan Run requires requested Paths")
+        elif self.requested_paths:
+            raise ValueError("Only a Replan Run may carry requested Paths")
+        if self.run_type in {RunType.ACTION_EXECUTION, RunType.FOLLOW_UP}:
+            if self.subject_action_id is None:
+                raise ValueError("Action Execution and Follow-up Runs require a subject Action")
+        elif self.subject_action_id is not None:
+            raise ValueError("Only Action Execution or Follow-up Runs may carry a subject Action")
+        if self.run_type is RunType.ACTION_EXECUTION:
+            if self.action_operation is None:
+                raise ValueError("Action Execution Run requires an explicit operation")
+        elif self.action_operation is not None:
+            raise ValueError("Only Action Execution Runs may carry an Action operation")
         if self.updated_at < self.created_at:
             raise ValueError("Run updated_at cannot precede created_at")
         if self.started_at is not None and self.started_at < self.created_at:
@@ -136,9 +167,7 @@ class CommerceRun(CommerceModel):
         occurred_at: datetime | None = None,
     ) -> Self:
         if target not in _ALLOWED_RUN_TRANSITIONS[self.status]:
-            raise InvalidRunTransitionError(
-                f"Run cannot transition from {self.status.value} to {target.value}"
-            )
+            raise InvalidRunTransitionError(f"Run cannot transition from {self.status.value} to {target.value}")
         occurred = occurred_at or datetime.now(UTC)
         if occurred < self.updated_at:
             raise ValueError("Run transition time cannot precede updated_at")
@@ -156,9 +185,7 @@ class CommerceRun(CommerceModel):
                 "status": target,
                 "phase": phase or self.phase,
                 "wait_reason": wait_reason if target is RunStatus.WAITING else None,
-                "stop_reason": (
-                    stop_reason if target in _TERMINAL_RUN_STATUSES else None
-                ),
+                "stop_reason": (stop_reason if target in _TERMINAL_RUN_STATUSES else None),
                 "started_at": started_at,
                 "ended_at": ended_at,
                 "updated_at": occurred,
@@ -175,13 +202,9 @@ class CommerceRun(CommerceModel):
         """Advance one active Run without inventing a same-status transition."""
 
         if self.status is not RunStatus.RUNNING:
-            raise InvalidRunTransitionError(
-                f"Run phase can advance only while running, found {self.status.value}"
-            )
+            raise InvalidRunTransitionError(f"Run phase can advance only while running, found {self.status.value}")
         if _RUN_PHASE_ORDER[target] <= _RUN_PHASE_ORDER[self.phase]:
-            raise InvalidRunTransitionError(
-                f"Run phase cannot move from {self.phase.value} to {target.value}"
-            )
+            raise InvalidRunTransitionError(f"Run phase cannot move from {self.phase.value} to {target.value}")
         occurred = occurred_at or datetime.now(UTC)
         if occurred < self.updated_at:
             raise ValueError("Run phase time cannot precede updated_at")

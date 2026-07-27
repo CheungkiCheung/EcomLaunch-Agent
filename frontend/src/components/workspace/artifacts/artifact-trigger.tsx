@@ -14,7 +14,7 @@ export const ArtifactTrigger = () => {
     return null;
   }
   return (
-    <Tooltip content="Show artifacts of this conversation">
+    <Tooltip content={t.common.showArtifacts}>
       <Button
         className="text-muted-foreground hover:text-foreground"
         variant="ghost"

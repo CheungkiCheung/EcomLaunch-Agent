@@ -4,9 +4,10 @@
 
 ## Product Model
 
-- 新前端是 Case-first Commerce Workspace，Chat 只是调查与协作入口之一。
-- 核心对象包括 Dataset、Capability、Case、Evidence、Hypothesis、Action、Approval、Follow-up 和 Domain Event。
-- Timeline、Graph、War Room、Evidence、Action 和 Follow-up 必须读取同一个结构化事件与 Case 状态。
+- 新前端是 Chat-first Commerce Workspace，默认复用 DeerFlow 的 Thread、Message、Composer、Subtask 和 Artifact 体验。
+- 用户通过上传真实数据和自然问题开始任务；Case 是复杂任务的内部持久化对象，不是所有交互的前置条件。
+- Evidence、Artifact、Action Approval 和紧凑 Subagent 状态内嵌 Chat；高级详情按需展开。
+- 固定 War Room 不再是目标产品页面；点击“查看协作空间”后切换到真实事件驱动的游戏化 Subagent 场景。
 - 不允许从消息文本、角色文案、前端计时器或随机动画推断 Case / Run 状态。
 - 没有真实事件时显示空闲、等待或阻塞，不播放假忙碌。
 
@@ -18,9 +19,11 @@
 
 ## Image-first Design
 
-- 每一个正式页面，包括 War Room，都必须先生成高保真视觉稿，再实现 React 页面。
+- Chat 主界面和游戏化协作空间必须先生成高保真视觉稿，再实现 React / Canvas 页面。
 - 视觉稿需要记录页面目标、数据状态、生成 Prompt、选中版本和实现差异。
-- 采用 Codex-inspired Workspace：克制、信息密度高、清晰的工作区层级、可检查的运行状态。
+- 默认 Chat 采用 Codex-inspired Workspace：克制、自然回答、紧凑的可展开运行状态。
+- 协作空间使用原创游戏小人和明亮克制的微缩工作场景；不使用鹿，不复制 Marvis 角色或品牌资产。
+- 场景角色、工位和动画必须映射真实 Task Event；状态合同冻结后再使用图像生成制作统一资产。
 - 不复制 Codex 品牌资产；形成 Commerce Case Agent 自己的信息架构。
 - 视觉选择属于关键产品节点，需要用户确认；确认前可以继续后端合同和数据层工作。
 
@@ -39,4 +42,4 @@
 - 任何验证 Agent 输出或完整 Commerce 流程的前端 E2E，必须连接真实后端并使用真实 DeepSeek V4。
 - Mocked backend E2E 只能验证通用 UI 机械行为，不能作为 Commerce Agent 验收或 Release Gate。
 - 页面实现后运行单元测试、类型检查、Lint、真实浏览器交互和视觉截图对比。
-- War Room 验收必须证明每个可见活动都能追溯到真实 Domain Event。
+- 游戏化协作空间验收必须证明每个可见角色、动作、屏幕内容和状态都能追溯到真实 Task / Domain Event。

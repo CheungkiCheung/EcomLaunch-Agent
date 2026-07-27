@@ -193,7 +193,7 @@ export function RecentChatList() {
                           className="text-muted-foreground block w-full whitespace-nowrap group-hover/side-menu-item:overflow-hidden"
                           href={pathOfThread(thread)}
                         >
-                          {titleOfThread(thread)}
+                          {titleOfThread(thread, t.pages.untitled)}
                         </Link>
                         {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true" && (
                           <DropdownMenu>
@@ -215,7 +215,7 @@ export function RecentChatList() {
                                 onSelect={() =>
                                   handleRenameClick(
                                     thread.thread_id,
-                                    titleOfThread(thread),
+                                    titleOfThread(thread, t.pages.untitled),
                                   )
                                 }
                               >

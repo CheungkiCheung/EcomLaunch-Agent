@@ -7,6 +7,7 @@ import json
 import re
 import time
 from decimal import Decimal
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal, Self
 from uuid import NAMESPACE_URL, uuid5
@@ -73,7 +74,7 @@ from app.commerce.metrics.registry import (
     MetricWindow,
 )
 
-REVIEW_EXPERIENCE_PROMPT_VERSION = "commerce.review-experience-path@1.1.0"
+REVIEW_EXPERIENCE_PROMPT_VERSION = "commerce.review-experience-path@1.3.0"
 REVIEW_EXPERIENCE_CONTEXT_VERSION = "commerce-review-experience-path-context@1.0.0"
 REVIEW_EXPERIENCE_MAX_OUTPUT_TOKENS = 1_800
 _REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -217,16 +218,30 @@ class ReviewExperienceRun(CommerceModel):
     audit_path: str = Field(min_length=1)
 
 
+class ReviewReferenceScope(StrEnum):
+    REVIEW_METRICS = "review_metrics"
+    LATE_DELIVERY_METRICS = "late_delivery_metrics"
+    VOC_EXCERPTS = "voc_excerpts"
+
+
 class _ObservationCandidate(CommerceModel):
     summary: str = Field(min_length=1)
     confidence: float = Field(ge=0, le=1)
+    reference_scopes: frozenset[ReviewReferenceScope] = frozenset()
     fact_ids: tuple[FactId, ...] = ()
     metric_observation_ids: tuple[MetricObservationId, ...] = ()
 
     @model_validator(mode="after")
     def require_reference(self) -> Self:
-        if not self.fact_ids and not self.metric_observation_ids:
-            raise ValueError("Review observation requires Fact or Metric references")
+        if (
+            not self.reference_scopes
+            and not self.fact_ids
+            and not self.metric_observation_ids
+        ):
+            raise ValueError(
+                "Review observation requires a semantic scope, Fact, or Metric "
+                "reference"
+            )
         return self
 
 
@@ -629,12 +644,18 @@ class ReviewExperiencePathAgent:
             "sentence. Do not convert review text into verified operational facts. Some review "
             "allegations may conflict with delivered-order records; state that boundary. "
             "Use direct observations without caused, driven, attributable, indicating, "
-            "suggesting or implying language. Every observation must cite supplied Fact "
-            "or MetricObservation IDs; merge evidence boundaries into cited observations, "
-            "never create empty-reference observations. Do not invent GMV, CTR, CVR, ROI, "
+            "suggesting or implying language. Every observations element must choose "
+            "one or more non-empty reference_scopes: review_metrics for review-score "
+            "and low-rating comparisons, late_delivery_metrics for the late-rate "
+            "comparison, and voc_excerpts for bounded review themes. The server maps "
+            "those scopes to supplied MetricObservation IDs and review excerpt Fact ID "
+            "lineage; never copy or invent opaque IDs. Include at least one bounded VOC "
+            "observation using voc_excerpts. Merge evidence "
+            "boundaries into cited observations; put recommendations or unsupported follow-up "
+            "questions in unknowns, never in standalone observations. Do not invent GMV, CTR, CVR, ROI, "
             "ad spend, inventory, profit or uplift. Use exactly: "
             '{"observations":[{"summary":string,"confidence":number,'
-            '"fact_ids":[string],"metric_observation_ids":[string]}],'
+            '"reference_scopes":[string]}],'
             '"unknowns":[{"question":string,"reason":string,'
             '"missing_capabilities":[string]}],'
             '"suggested_next_paths":["fulfillment"]}.'
@@ -647,10 +668,96 @@ class ReviewExperiencePathAgent:
         context: ReviewExperienceContextPacket,
     ) -> _ReviewOutput:
         payload = cls._decode_json(response_text)
+        observations = payload.get("observations")
+        if isinstance(observations, list):
+            payload = {
+                **payload,
+                "observations": [
+                    item
+                    for item in observations
+                    if not (
+                        isinstance(item, dict)
+                        and not item.get("reference_scopes")
+                        and not item.get("fact_ids")
+                        and not item.get("metric_observation_ids")
+                    )
+                ],
+            }
         try:
             output = _ReviewOutput.model_validate(payload)
         except ValidationError as exc:
-            raise ValueError("ReviewExperience output failed schema validation") from exc
+            signature = ";".join(
+                f"{'.'.join(str(part) for part in error['loc'])}:{error['type']}"
+                for error in exc.errors(
+                    include_url=False,
+                    include_context=False,
+                    include_input=False,
+                )
+            )
+            raise ValueError(
+                "ReviewExperience output failed schema validation: "
+                f"{signature}"
+            ) from None
+        metrics = context.metrics
+        review_metric_ids = (
+            metrics.baseline_average_review_score_id,
+            metrics.current_average_review_score_id,
+            metrics.baseline_low_rating_rate_id,
+            metrics.current_low_rating_rate_id,
+        )
+        late_metric_ids = (
+            metrics.baseline_late_delivery_rate_id,
+            metrics.current_late_delivery_rate_id,
+        )
+        voc_fact_ids = tuple(
+            dict.fromkeys(
+                fact_id
+                for excerpt in context.review_signals.excerpts
+                for fact_id in excerpt.fact_ids
+            )
+        )
+        normalized_observations = tuple(
+            item.model_copy(
+                update={
+                    "fact_ids": tuple(
+                        dict.fromkeys(
+                            (
+                                *item.fact_ids,
+                                *(
+                                    voc_fact_ids
+                                    if ReviewReferenceScope.VOC_EXCERPTS
+                                    in item.reference_scopes
+                                    else ()
+                                ),
+                            )
+                        )
+                    ),
+                    "metric_observation_ids": tuple(
+                        dict.fromkeys(
+                            (
+                                *item.metric_observation_ids,
+                                *(
+                                    review_metric_ids
+                                    if ReviewReferenceScope.REVIEW_METRICS
+                                    in item.reference_scopes
+                                    else ()
+                                ),
+                                *(
+                                    late_metric_ids
+                                    if ReviewReferenceScope.LATE_DELIVERY_METRICS
+                                    in item.reference_scopes
+                                    else ()
+                                ),
+                            )
+                        )
+                    ),
+                }
+            )
+            for item in output.observations
+        )
+        output = output.model_copy(
+            update={"observations": normalized_observations}
+        )
         allowed_facts = frozenset(context.manifest.included_fact_ids)
         allowed_metrics = frozenset(context.manifest.included_metric_observation_ids)
         if any(
@@ -667,7 +774,6 @@ class ReviewExperiencePathAgent:
             for item in output.observations
         ):
             raise ValueError("Review output used unsupported causal language")
-        metrics = context.metrics
         required_pairs = (
             {
                 metrics.baseline_average_review_score_id,
@@ -719,13 +825,22 @@ class ReviewExperiencePathAgent:
             if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
             text = "\n".join(lines).strip()
+        start, end = text.find("{"), text.rfind("}")
+        candidate = text if start < 0 or end <= start else text[start : end + 1]
         try:
-            payload = json.loads(text)
-        except json.JSONDecodeError:
-            start, end = text.find("{"), text.rfind("}")
-            if start < 0 or end <= start:
-                raise ValueError("ReviewExperience response is not valid JSON") from None
-            payload = json.loads(text[start : end + 1])
+            payload = json.loads(candidate)
+        except json.JSONDecodeError as exc:
+            repaired = re.sub(r",\s*([}\]])", r"\1", candidate)
+            if repaired == candidate:
+                raise ValueError(
+                    "ReviewExperience response is not valid JSON"
+                ) from exc
+            try:
+                payload = json.loads(repaired)
+            except json.JSONDecodeError as repaired_exc:
+                raise ValueError(
+                    "ReviewExperience response is not valid JSON"
+                ) from repaired_exc
         if not isinstance(payload, dict):
             raise ValueError("ReviewExperience response root must be an object")
         return payload

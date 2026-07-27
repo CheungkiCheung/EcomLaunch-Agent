@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 
 def test_format_sse_basic():
     from app.gateway.services import format_sse
@@ -261,6 +263,126 @@ def test_resolve_agent_factory_returns_make_lead_agent():
     assert resolve_agent_factory("lead_agent") is make_lead_agent
     assert resolve_agent_factory("finalis") is make_lead_agent
     assert resolve_agent_factory("custom-agent-123") is make_lead_agent
+
+
+def test_commerce_agent_run_is_rejected_when_feature_is_disabled():
+    from fastapi import HTTPException
+
+    from app.gateway.config import GatewayConfig
+    from app.gateway.services import ensure_assistant_feature_enabled
+
+    with pytest.raises(HTTPException) as exc_info:
+        ensure_assistant_feature_enabled(
+            "commerce-agent",
+            gateway_config=GatewayConfig(commerce_case_agent_enabled=False),
+        )
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Commerce Agent is disabled"
+
+
+def test_commerce_agent_run_is_allowed_only_when_feature_is_enabled():
+    from app.gateway.config import GatewayConfig
+    from app.gateway.services import ensure_assistant_feature_enabled
+
+    ensure_assistant_feature_enabled(
+        "commerce-agent",
+        gateway_config=GatewayConfig(commerce_case_agent_enabled=True),
+    )
+    ensure_assistant_feature_enabled(
+        "ordinary-agent",
+        gateway_config=GatewayConfig(commerce_case_agent_enabled=False),
+    )
+
+
+@pytest.mark.parametrize(
+    ("context", "request_config"),
+    [
+        ({"agent_name": "commerce-agent"}, None),
+        (None, {"context": {"agent_name": "commerce_agent"}}),
+        (None, {"configurable": {"agent_name": "COMMERCE-AGENT"}}),
+    ],
+)
+def test_commerce_agent_feature_gate_cannot_be_bypassed_by_runtime_agent_name(
+    context,
+    request_config,
+):
+    from fastapi import HTTPException
+
+    from app.gateway.config import GatewayConfig
+    from app.gateway.services import ensure_assistant_feature_enabled
+
+    with pytest.raises(HTTPException) as exc_info:
+        ensure_assistant_feature_enabled(
+            "lead_agent",
+            context=context,
+            request_config=request_config,
+            gateway_config=GatewayConfig(commerce_case_agent_enabled=False),
+        )
+
+    assert exc_info.value.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_start_run_rejects_disabled_commerce_agent_before_side_effects(
+    monkeypatch,
+):
+    from types import SimpleNamespace
+
+    from fastapi import HTTPException
+
+    from app.gateway import services
+    from app.gateway.config import GatewayConfig
+
+    monkeypatch.setattr(
+        services,
+        "get_gateway_config",
+        lambda: GatewayConfig(commerce_case_agent_enabled=False),
+    )
+
+    def unexpected_dependency_access(*args, **kwargs):
+        raise AssertionError("disabled Commerce Agent must fail before Run dependencies")
+
+    monkeypatch.setattr(services, "get_stream_bridge", unexpected_dependency_access)
+    body = SimpleNamespace(assistant_id="commerce-agent")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await services.start_run(body, "thread-1", SimpleNamespace())
+
+    assert exc_info.value.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_start_run_rejects_disabled_commerce_context_before_side_effects(
+    monkeypatch,
+):
+    from types import SimpleNamespace
+
+    from fastapi import HTTPException
+
+    from app.gateway import services
+    from app.gateway.config import GatewayConfig
+
+    monkeypatch.setattr(
+        services,
+        "get_gateway_config",
+        lambda: GatewayConfig(commerce_case_agent_enabled=False),
+    )
+
+    def unexpected_dependency_access(*args, **kwargs):
+        raise AssertionError("disabled Commerce Agent must fail before Run dependencies")
+
+    monkeypatch.setattr(services, "get_stream_bridge", unexpected_dependency_access)
+    body = SimpleNamespace(
+        assistant_id="lead_agent",
+        context={"agent_name": "commerce-agent"},
+        config=None,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await services.start_run(body, "thread-1", SimpleNamespace())
+
+    assert exc_info.value.status_code == 404
 
 
 # ---------------------------------------------------------------------------

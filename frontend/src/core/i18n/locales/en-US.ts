@@ -33,6 +33,13 @@ export const enUS: Translations = {
     download: "Download",
     thinking: "Thinking",
     artifacts: "Artifacts",
+    noArtifactSelected: "No artifact selected",
+    selectArtifactDescription: "Select an artifact to view its details",
+    showArtifacts: "Show artifacts from this conversation",
+    file: "file",
+    selectFile: "Select a file",
+    installSkillFailed: "Failed to install skill",
+    conversationFinished: "Conversation finished",
     public: "Public",
     custom: "Custom",
     notAvailableInDemoMode: "Not available in demo mode",
@@ -80,6 +87,7 @@ export const enUS: Translations = {
   // Input Box
   inputBox: {
     placeholder: "How can I assist you today?",
+    submit: "Submit",
     createSkillPrompt:
       "We're going to build a new skill step by step with `skill-creator`. To start, what do you want this skill to do?",
     addAttachments: "Add attachments",
@@ -176,6 +184,7 @@ export const enUS: Translations = {
     ecomLaunch: "OpenSKU Launch Loop",
     ecomLaunchChat: "Chat",
     ecomLaunchWarRoom: "War Room",
+    commerceAgent: "Commerce Diagnosis",
   },
 
   // Agents
@@ -258,6 +267,41 @@ export const enUS: Translations = {
         suggestion: "Incomplete brief",
         prompt:
           "I only have a rough new-product idea. Ask me the single most important clarifying question first; if information is still missing, continue with clearly labeled assumptions and build an adaptive launch loop.",
+        icon: SparklesIcon,
+      },
+    ],
+    commerceAgentName: "Commerce Diagnosis",
+    commerceWelcomeDescription:
+      "Upload real operational data and ask naturally. I will run deterministic checks first, dispatch bounded sub-tasks only when needed, and return traceable evidence, counter-evidence, and independent verification.",
+    commerceWelcomeBadges: [
+      "Deterministic metrics",
+      "Dynamic sub-tasks",
+      "Evidence boundaries",
+      "Independent verification",
+    ],
+    commerceSuggestions: [
+      {
+        suggestion: "Fulfillment issue",
+        prompt:
+          "I uploaded two months of order data. Check data capability first, then determine whether late delivery changed and separate seller handling from carrier transit.",
+        icon: CompassIcon,
+      },
+      {
+        suggestion: "Review experience",
+        prompt:
+          "Analyze whether review experience changed, separating reproducible rating metrics, review-text signals, fulfillment counter-evidence, and data limitations.",
+        icon: MicroscopeIcon,
+      },
+      {
+        suggestion: "Peer comparison",
+        prompt:
+          "Compare this seller with eligible peers using outcome-independent category, region, time, and sample rules, and explain the cohort and unobserved differences.",
+        icon: ShapesIcon,
+      },
+      {
+        suggestion: "Inspect data",
+        prompt:
+          "Do not draw an operational conclusion yet. Inspect the uploaded tables and fields, explain which questions are supported, and list the exact missing data.",
         icon: SparklesIcon,
       },
     ],

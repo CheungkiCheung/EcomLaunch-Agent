@@ -98,11 +98,24 @@ class PathCost(CommerceModel):
 
 class ModelExecutionTrace(CommerceModel):
     provider_request_id: str = Field(min_length=1)
+    provider_request_ids: tuple[str, ...] = ()
     actual_model_identity: str = Field(min_length=1)
     retry_count: int = Field(ge=0)
     stop_reason: str = Field(min_length=1)
     prompt_version: str = Field(min_length=1)
     context_version: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def keep_provider_request_lineage_consistent(self) -> Self:
+        if not self.provider_request_ids:
+            return self
+        if len(self.provider_request_ids) != len(set(self.provider_request_ids)):
+            raise ValueError("Path model Provider Request IDs must be unique")
+        if self.provider_request_ids[-1] != self.provider_request_id:
+            raise ValueError(
+                "Path final Provider Request ID must end the request lineage"
+            )
+        return self
 
 
 class PathResult(CommerceModel):

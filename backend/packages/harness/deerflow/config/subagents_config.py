@@ -45,7 +45,16 @@ class CustomSubagentConfig(BaseModel):
         description="Tool names whitelist (None = inherit all tools from parent)",
     )
     disallowed_tools: list[str] | None = Field(
-        default_factory=lambda: ["task", "ask_clarification", "present_files"],
+        default_factory=lambda: [
+            "task",
+            "spawn_task",
+            "wait_task",
+            "follow_up_task",
+            "cancel_task",
+            "resume_task",
+            "ask_clarification",
+            "present_files",
+        ],
         description="Tool names to deny",
     )
     skills: list[str] | None = Field(
@@ -61,10 +70,43 @@ class CustomSubagentConfig(BaseModel):
         ge=1,
         description="Maximum number of agent turns before stopping",
     )
+    max_tool_rounds: int | None = Field(
+        default=None,
+        ge=1,
+        le=64,
+        description="Optional model-to-tool round budget for this Subagent",
+    )
+    max_tool_calls: int | None = Field(
+        default=None,
+        ge=1,
+        le=256,
+        description="Optional total deterministic Tool call budget for this Subagent",
+    )
+    min_successful_tool_calls: int = Field(
+        default=0,
+        ge=0,
+        le=64,
+        description="Minimum successful ToolResult events required before completion",
+    )
     timeout_seconds: int = Field(
         default=900,
         ge=1,
         description="Maximum execution time in seconds",
+    )
+    max_output_tokens: int | None = Field(
+        default=None,
+        ge=64,
+        description="Optional maximum output tokens for each Subagent model call",
+    )
+    model_max_retries: int | None = Field(
+        default=None,
+        ge=0,
+        description="Optional provider SDK retry limit for each Subagent model call",
+    )
+    llm_retry_max_attempts: int = Field(
+        default=3,
+        ge=1,
+        description="Harness LLM attempt budget including the first call",
     )
 
 

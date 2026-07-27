@@ -161,9 +161,9 @@ async def test_worker_closes_fulfillment_diagnosis_through_fresh_lead_and_verifi
                 "suggesting",
             )
         )
-        assert loop.verification_run.context.claims == tuple(
-            claim.statement for claim in loop.lead_run.result.claims
-        )
+        assert tuple(
+            claim.statement for claim in loop.verification_run.context.claims
+        ) == tuple(claim.statement for claim in loop.lead_run.result.claims)
         assert "Lead reasoning history excluded" in (
             loop.verification_run.context.manifest.redactions
         )
@@ -173,7 +173,11 @@ async def test_worker_closes_fulfillment_diagnosis_through_fresh_lead_and_verifi
         )
         assert tuple(item.sequence for item in checkpoints) == (1, 2, 3, 4, 5)
         final = checkpoints[-1].checkpoint
-        expected_tokens = sum(item.token_usage.total_tokens for item in calls)
+        expected_tokens = (
+            loop.path_step.path_run.telemetry.token_usage.total_tokens
+            + loop.lead_run.total_tokens
+            + loop.verification_run.telemetry.token_usage.total_tokens
+        )
         assert final.budget_snapshot.usage.tokens == expected_tokens
         assert final.budget_snapshot.usage.path_agents == 1
         assert final.budget_snapshot.usage.model_escalations == 1

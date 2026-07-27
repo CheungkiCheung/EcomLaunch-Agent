@@ -62,6 +62,31 @@ async def test_verifier_role_is_bound_to_strong_verifier_profile_and_event():
 
 
 @pytest.mark.anyio
+async def test_read_only_answer_uses_fast_profile_without_escalation():
+    manager = BudgetManager(
+        AgentBudgetLimit(max_model_escalations=1, max_tokens=20_000)
+    )
+
+    assignment = await ModelRouter().assign(
+        ModelRouteRequest(
+            role=ModelRole.ANSWER,
+            base_profile=ModelProfile.FAST_STRUCTURED,
+            case_severity=CaseSeverity.CRITICAL,
+            evidence_path_count=3,
+            schema_complexity=OutputSchemaComplexity.HIGH,
+        ),
+        manager,
+    )
+
+    assert assignment.role is ModelRole.ANSWER
+    assert assignment.profile is ModelProfile.FAST_STRUCTURED
+    assert assignment.effort is ModelEffort.LOW
+    assert assignment.escalation_count == 0
+    assert manager.snapshot.usage.model_escalations == 0
+    assert ModelRouteReasonCode.ROLE_READ_ONLY_ANSWER in assignment.reason_codes
+
+
+@pytest.mark.anyio
 async def test_high_risk_lead_upgrade_consumes_escalation_budget_once():
     manager = BudgetManager(
         AgentBudgetLimit(max_model_escalations=1, max_tokens=20_000)

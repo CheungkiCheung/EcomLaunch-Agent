@@ -8,8 +8,8 @@ import { translations } from "./translations";
 
 import {
   DEFAULT_LOCALE,
-  detectLocale,
   normalizeLocale,
+  resolvePreferredLocale,
   type Locale,
 } from "./index";
 
@@ -35,9 +35,9 @@ export function useI18n() {
       return;
     }
 
-    const detected = detectLocale();
-    setLocale(detected);
-    setLocaleInCookie(detected);
+    const preferred = resolvePreferredLocale(saved);
+    setLocale(preferred);
+    setLocaleInCookie(preferred);
   }, [setLocale]);
 
   return {

@@ -8,7 +8,7 @@ import math
 from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any, Self
+from typing import Any, Self, cast
 
 from pydantic import Field, model_validator
 
@@ -17,8 +17,14 @@ from app.commerce.data.capabilities import (
     CapabilityProfile,
     CapabilityStatus,
 )
-from app.commerce.domain.enums import CaseSeverity, CaseStatus, SemanticStatus
+from app.commerce.domain.enums import (
+    CaseSeverity,
+    CaseStatus,
+    PathType,
+    SemanticStatus,
+)
 from app.commerce.domain.ids import (
+    AgentTaskId,
     AnomalyId,
     CaseId,
     DatasetId,
@@ -27,17 +33,12 @@ from app.commerce.domain.ids import (
     FactId,
     HypothesisId,
     MetricObservationId,
+    RunId,
     WorkspaceId,
 )
 from app.commerce.domain.models import CommerceModel
 from app.commerce.metrics.anomaly import AnomalyDirection, AnomalySeverity
 from app.commerce.metrics.registry import MetricName, MetricWindow, PeerCohortPolicy
-
-
-class PathType(StrEnum):
-    FULFILLMENT = "fulfillment"
-    SELLER_PEER = "seller_peer"
-    REVIEW_EXPERIENCE = "review_experience"
 
 
 class CaseTriggerType(StrEnum):
@@ -179,8 +180,9 @@ class CaseAnalysisDigest(CommerceModel):
     seller_external_key: str = Field(min_length=1)
     baseline_window: MetricWindow
     current_window: MetricWindow
-    baseline_metrics: tuple[MetricObservationDigest, ...] = Field(min_length=1)
-    current_metrics: tuple[MetricObservationDigest, ...] = Field(min_length=1)
+    baseline_metrics: tuple[MetricObservationDigest, ...] = ()
+    current_metrics: tuple[MetricObservationDigest, ...] = ()
+    supplemental_metrics: tuple[MetricObservationDigest, ...] = ()
     anomalies: tuple[AnomalyDigest, ...] = ()
     trigger: CaseTriggerDigest = Field(
         default_factory=lambda: CaseTriggerDigest(
@@ -191,8 +193,14 @@ class CaseAnalysisDigest(CommerceModel):
     def keep_analysis_references_unique(self) -> Self:
         metric_ids = tuple(
             item.metric_observation_id
-            for item in (*self.baseline_metrics, *self.current_metrics)
+            for item in (
+                *self.baseline_metrics,
+                *self.current_metrics,
+                *self.supplemental_metrics,
+            )
         )
+        if not metric_ids:
+            raise ValueError("Case analysis requires at least one MetricObservation")
         if len(metric_ids) != len(set(metric_ids)):
             raise ValueError("Analysis metric observation IDs must be unique")
         anomaly_ids = tuple(item.anomaly_id for item in self.anomalies)
@@ -226,6 +234,65 @@ class ContextManifest(CommerceModel):
             if len(values) != len(set(values)):
                 raise ValueError(f"ContextManifest {label} IDs must be unique")
         return self
+
+
+class PathEvidenceScope(CommerceModel):
+    """Persistable ID-only boundary for one terminal Path execution."""
+
+    schema_version: str = "commerce.path-evidence-scope@1.0.0"
+    workspace_id: WorkspaceId
+    case_id: CaseId
+    run_id: RunId
+    task_id: AgentTaskId
+    path_type: PathType
+    dataset_id: DatasetId
+    context_version: str = Field(min_length=1)
+    context_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    source_artifact_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    evidence_ids: tuple[EvidenceId, ...] = ()
+    included_fact_ids: tuple[FactId, ...] = ()
+    included_metric_observation_ids: tuple[MetricObservationId, ...] = ()
+    included_anomaly_ids: tuple[AnomalyId, ...] = ()
+
+    @model_validator(mode="after")
+    def keep_scope_references_unique(self) -> Self:
+        for label, values in (
+            ("Evidence", self.evidence_ids),
+            ("Fact", self.included_fact_ids),
+            ("MetricObservation", self.included_metric_observation_ids),
+            ("Anomaly", self.included_anomaly_ids),
+        ):
+            if len(values) != len(set(values)):
+                raise ValueError(f"PathEvidenceScope {label} IDs must be unique")
+        return self
+
+    @classmethod
+    def from_manifest(
+        cls,
+        manifest: ContextManifest,
+        *,
+        run_id: RunId,
+        task_id: AgentTaskId,
+        path_type: PathType,
+        evidence_ids: tuple[EvidenceId, ...],
+    ) -> Self:
+        return cls(
+            workspace_id=manifest.workspace_id,
+            case_id=manifest.case_id,
+            run_id=run_id,
+            task_id=task_id,
+            path_type=path_type,
+            dataset_id=manifest.dataset_id,
+            context_version=manifest.context_version,
+            context_sha256=manifest.context_sha256,
+            source_artifact_sha256=manifest.source_artifact_sha256,
+            evidence_ids=evidence_ids,
+            included_fact_ids=manifest.included_fact_ids,
+            included_metric_observation_ids=(
+                manifest.included_metric_observation_ids
+            ),
+            included_anomaly_ids=manifest.included_anomaly_ids,
+        )
 
 
 _HIDDEN_LABEL_KEYS = frozenset(
@@ -296,6 +363,10 @@ class LeadContextPacket(ContextPacket):
             raise ValueError("Capability Profile Dataset must match ContextManifest")
         if self.analysis.dataset_id != self.manifest.dataset_id:
             raise ValueError("Analysis Dataset must match ContextManifest")
+        if not self.analysis.baseline_metrics or not self.analysis.current_metrics:
+            raise ValueError(
+                "Lead context requires baseline and current deterministic metrics"
+            )
         routable = frozenset(
             assessment.name
             for assessment in self.capability_profile.capabilities
@@ -325,6 +396,10 @@ class PathContextPacket(ContextPacket):
             raise ValueError("Path Capability Profile Dataset must match ContextManifest")
         if self.analysis.dataset_id != self.manifest.dataset_id:
             raise ValueError("Path Analysis Dataset must match ContextManifest")
+        if not self.analysis.baseline_metrics or not self.analysis.current_metrics:
+            raise ValueError(
+                "Path context requires baseline and current deterministic metrics"
+            )
         unavailable = tuple(
             name
             for name in self.required_capabilities
@@ -337,8 +412,76 @@ class PathContextPacket(ContextPacket):
         return self
 
 
+def bind_context_to_case[ContextPacketT: ContextPacket](
+    packet: ContextPacketT,
+    case: CaseHeader,
+    *,
+    source_artifact_sha256: str | None = None,
+) -> ContextPacketT:
+    """Bind a prepared Path packet to one persisted Case lineage and rehash it."""
+
+    if case.workspace_id != packet.case.workspace_id:
+        raise ValueError("Context can only bind to a Case in the same Workspace")
+    manifest = packet.manifest.model_copy(
+        update={
+            "workspace_id": case.workspace_id,
+            "case_id": case.case_id,
+            "source_artifact_sha256": (
+                source_artifact_sha256
+                or packet.manifest.source_artifact_sha256
+            ),
+            "context_sha256": "0" * 64,
+            "estimated_tokens": 0,
+        }
+    )
+    rebound = type(packet).model_validate(
+        packet.model_copy(
+            update={"case": case, "manifest": manifest}
+        ).model_dump(mode="python")
+    )
+    estimated_tokens = estimate_context_tokens(rebound)
+    if estimated_tokens > rebound.budget.max_tokens:
+        raise ValueError(
+            f"Rebound Context {estimated_tokens} exceeds token budget"
+        )
+    final = rebound.model_copy(
+        update={
+            "manifest": rebound.manifest.model_copy(
+                update={
+                    "estimated_tokens": estimated_tokens,
+                    "context_sha256": canonical_context_sha256(rebound),
+                }
+            )
+        }
+    )
+    return cast(ContextPacketT, type(packet).model_validate(final.model_dump(mode="python")))
+
+
+class VerificationReferenceKind(StrEnum):
+    FACT = "fact"
+    METRIC_OBSERVATION = "metric_observation"
+
+
+class VerificationClaimInput(CommerceModel):
+    """One Lead claim bound to its original persisted supporting Evidence."""
+
+    schema_version: str = "commerce.verification-claim-input@1.0.0"
+    claim_index: int = Field(ge=0)
+    statement: str = Field(min_length=1)
+    evidence_ids: tuple[EvidenceId, ...] = Field(min_length=1)
+    required_reference_kinds: frozenset[VerificationReferenceKind] = Field(
+        min_length=1
+    )
+
+    @model_validator(mode="after")
+    def keep_evidence_unique(self) -> Self:
+        if len(self.evidence_ids) != len(set(self.evidence_ids)):
+            raise ValueError("Verification Claim Evidence IDs must be unique")
+        return self
+
+
 class VerificationPacket(ContextPacket):
-    claims: tuple[str, ...] = Field(min_length=1)
+    claims: tuple[VerificationClaimInput, ...] = Field(min_length=1)
     capability_profile: CapabilityProfile
     analysis: CaseAnalysisDigest
     evidence: tuple[EvidenceDigest, ...] = ()
@@ -353,6 +496,44 @@ class VerificationPacket(ContextPacket):
             raise ValueError("Verification Capability Dataset must match Manifest")
         if self.analysis.dataset_id != self.manifest.dataset_id:
             raise ValueError("Verification Analysis Dataset must match Manifest")
+
+        indices = tuple(item.claim_index for item in self.claims)
+        if indices != tuple(range(len(self.claims))):
+            raise ValueError(
+                "Verification Claim indices must be unique, ordered, and contiguous"
+            )
+        evidence_by_id = {item.evidence_id: item for item in self.evidence}
+        if len(evidence_by_id) != len(self.evidence):
+            raise ValueError("Verification Evidence IDs must be unique")
+        manifest_evidence_ids = set(self.manifest.included_evidence_ids)
+        for claim in self.claims:
+            missing = set(claim.evidence_ids) - set(evidence_by_id)
+            if missing or not set(claim.evidence_ids).issubset(
+                manifest_evidence_ids
+            ):
+                raise ValueError(
+                    "Verification Claim references Evidence outside fresh context"
+                )
+            referenced = tuple(evidence_by_id[value] for value in claim.evidence_ids)
+            expected_kinds = frozenset(
+                kind
+                for kind, present in (
+                    (
+                        VerificationReferenceKind.FACT,
+                        any(item.fact_ids for item in referenced),
+                    ),
+                    (
+                        VerificationReferenceKind.METRIC_OBSERVATION,
+                        any(item.metric_observation_ids for item in referenced),
+                    ),
+                )
+                if present
+            )
+            if claim.required_reference_kinds != expected_kinds:
+                raise ValueError(
+                    "Verification Claim reference requirements must be derived "
+                    "from its supporting Evidence"
+                )
         return self
 
 

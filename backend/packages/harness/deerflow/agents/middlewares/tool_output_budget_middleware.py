@@ -9,6 +9,7 @@ model context is never blown by a single large tool return.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import shlex
@@ -37,6 +38,27 @@ logger = logging.getLogger(__name__)
 # same path is written directly into the sandbox filesystem so the model's
 # ``read_file`` tool can read it back (issue #3416).
 _VIRTUAL_OUTPUTS_BASE = "/mnt/user-data/outputs"
+_DURABLE_TASK_CONTROL_TOOLS = {
+    "task",
+    "spawn_task",
+    "wait_task",
+    "follow_up_task",
+    "cancel_task",
+    "resume_task",
+}
+_DURABLE_TASK_SNAPSHOT_KEYS = {
+    "task_id",
+    "thread_id",
+    "run_id",
+    "subagent_type",
+    "status",
+    "source_refs",
+    "parent_task_id",
+    "depends_on",
+    "created_at",
+    "started_at",
+    "completed_at",
+}
 
 
 def _default_config() -> ToolOutputConfig:
@@ -69,6 +91,55 @@ def _message_text(content: Any) -> str | None:
                 return None
         return "\n".join(pieces) if pieces else None
     return None
+
+
+def _durable_task_control_payload(
+    *,
+    tool_name: str,
+    content: str,
+) -> dict[str, Any] | None:
+    """Keep compact lifecycle state when a large durable result is externalized."""
+
+    if tool_name not in _DURABLE_TASK_CONTROL_TOOLS:
+        return None
+    try:
+        payload = json.loads(content)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+
+    compact: dict[str, Any] = {
+        key: payload[key]
+        for key in ("ok", "ready", "has_more", "next_after_seq")
+        if key in payload
+    }
+
+    def compact_task(value: Any) -> dict[str, Any] | None:
+        if not isinstance(value, dict):
+            return None
+        snapshot = {
+            key: value[key]
+            for key in _DURABLE_TASK_SNAPSHOT_KEYS
+            if key in value
+        }
+        return snapshot if snapshot.get("task_id") else None
+
+    task = compact_task(payload.get("task"))
+    if task is not None:
+        compact["task"] = task
+    for key in ("tasks", "known_tasks"):
+        values = payload.get(key)
+        if not isinstance(values, list):
+            continue
+        snapshots = [
+            snapshot
+            for value in values
+            if (snapshot := compact_task(value)) is not None
+        ]
+        if snapshots:
+            compact[key] = snapshots
+    return compact if any(key in compact for key in ("task", "tasks", "known_tasks")) else None
 
 
 def _snap_to_line_boundary(text: str, pos: int) -> int:
@@ -449,8 +520,15 @@ def _patch_tool_message(
     update: dict[str, Any] = {"content": replacement}
     if getattr(msg, "response_metadata", None):
         update["response_metadata"] = dict(msg.response_metadata)
-    if getattr(msg, "additional_kwargs", None):
-        update["additional_kwargs"] = dict(msg.additional_kwargs)
+    additional_kwargs = dict(getattr(msg, "additional_kwargs", None) or {})
+    control_payload = _durable_task_control_payload(
+        tool_name=tool_name,
+        content=text,
+    )
+    if control_payload is not None:
+        additional_kwargs["durable_task_control"] = control_payload
+    if additional_kwargs:
+        update["additional_kwargs"] = additional_kwargs
     return msg.model_copy(update=update)
 
 

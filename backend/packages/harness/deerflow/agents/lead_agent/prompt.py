@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
+from collections.abc import Collection
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
@@ -181,7 +182,13 @@ Skip simple one-off tasks.
 """
 
 
-def _build_available_subagents_description(available_names: list[str], bash_available: bool, *, app_config: AppConfig | None = None) -> str:
+def _build_available_subagents_description(
+    available_names: list[str],
+    bash_available: bool,
+    *,
+    app_config: AppConfig | None = None,
+    require_explicit_subagent_scope: bool = False,
+) -> str:
     """Dynamically build subagent type descriptions from registry.
 
     Mirrors Codex's pattern where agent_type_description is dynamically generated
@@ -206,7 +213,20 @@ def _build_available_subagents_description(available_names: list[str], bash_avai
             config = get_subagent_config(name, app_config=app_config)
             if config is not None:
                 desc = config.description.split("\n")[0].strip()  # First line only for brevity
-                lines.append(f"- **{name}**: {desc}")
+                budget_parts = []
+                if config.max_tool_rounds is not None:
+                    budget_parts.append(f"max_tool_rounds={config.max_tool_rounds}")
+                if config.max_tool_calls is not None:
+                    budget_parts.append(f"max_tool_calls={config.max_tool_calls}")
+                budget = ""
+                if budget_parts:
+                    policy = (
+                        "Parent 必须显式传入不超过此上限的预算"
+                        if require_explicit_subagent_scope
+                        else "Parent 通常省略预算参数；显式传入只能收窄"
+                    )
+                    budget = f"；预算上限：{', '.join(budget_parts)}（{policy}）"
+                lines.append(f"- **{name}**: {desc}{budget}")
 
     return "\n".join(lines)
 
@@ -228,73 +248,81 @@ def _build_specialized_subagent_guidance(available_names: list[str]) -> str:
 """
 
 
-def _build_subagent_usage_examples(available_names: list[str], n: int) -> str:
-    """Build examples that reinforce exact custom subagent routing when available."""
+def _build_subagent_usage_examples(
+    available_names: list[str],
+    n: int,
+    *,
+    require_explicit_subagent_scope: bool = False,
+) -> str:
+    """Build durable lifecycle examples with exact custom role routing."""
+    if require_explicit_subagent_scope:
+        return f"""**显式最小派工模板（同轮最多 {n} 个）**
+
+```python
+spawn_task(
+    description="简短中文任务名",
+    prompt="完整、独立、可执行的目标与停止条件...",
+    subagent_type="<匹配当前目标的 Profile>",
+    skills=["<已启用 Skill 名称>"],
+    tools=["<完成目标所需的最小 Tool>"],
+    max_tool_rounds=1,
+    max_tool_calls=1,
+)
+```
+
+需要并行时，在同一个模型响应中重复完整的 `spawn_task` 参数模板；不要省略
+`skills`、`tools`、`max_tool_rounds` 或 `max_tool_calls`。任务启动后再统一等待：
+
+```python
+wait_task(task_ids=["id-a", "id-b"], mode="all", timeout_seconds=60)
+```
+"""
+
     custom_names = [name for name in available_names if name not in {"general-purpose", "bash"}]
     if len(custom_names) >= 3:
         a, b, c = custom_names[:3]
-        return f"""**Usage Example 1 - Specialized Single Batch (≤{n} sub-tasks):**
+        return f"""**示例：同一轮并行启动三个独立任务（上限 {n}）**
 
 ```python
-# User asks for a domain-specific analysis with three independent workstreams
-# Thinking: 3 sub-tasks → fits in 1 batch and each has a matching specialist
-
-task(description="{a} workstream", prompt="...", subagent_type="{a}")
-task(description="{b} workstream", prompt="...", subagent_type="{b}")
-task(description="{c} workstream", prompt="...", subagent_type="{c}")
-# All 3 run in parallel → synthesize results
+# 三个调用必须放在同一个模型响应中，ToolNode 才能并行分发。
+spawn_task(description="{a} 工作流", prompt="独立目标与输入...", subagent_type="{a}")
+spawn_task(description="{b} 工作流", prompt="独立目标与输入...", subagent_type="{b}")
+spawn_task(description="{c} 工作流", prompt="独立目标与输入...", subagent_type="{c}")
 ```
 
-**Usage Example 2 - Multiple Batches (>{n} sub-tasks):**
+任务启动后，Parent 可以先执行其他确定性工具，再一次等待：
 
 ```python
-# Thinking: more than {n} sub-tasks → split into batches
-# Turn 1: Launch first batch using exact specialist names
-task(description="{a} workstream", prompt="...", subagent_type="{a}")
-task(description="{b} workstream", prompt="...", subagent_type="{b}")
-task(description="{c} workstream", prompt="...", subagent_type="{c}")
-
-# Turn 2: Launch remaining specialists or fallback only when no specialist matches
-task(description="unmatched workstream", prompt="...", subagent_type="general-purpose")
-
-# Final turn: Synthesize ALL results from all batches
+wait_task(task_ids=["id-a", "id-b", "id-c"], mode="all", timeout_seconds=60)
 ```
 """
 
-    return f"""**Usage Example 1 - Single Batch (≤{n} sub-tasks):**
+    return f"""**示例：经营诊断的动态并行委派（上限 {n}）**
 
 ```python
-# User asks: "Why is Tencent's stock price declining?"
-# Thinking: 3 sub-tasks → fits in 1 batch
-
-# Turn 1: Launch 3 subagents in parallel
-task(description="Tencent financial data", prompt="...", subagent_type="general-purpose")
-task(description="Tencent news & regulation", prompt="...", subagent_type="general-purpose")
-task(description="Industry & market trends", prompt="...", subagent_type="general-purpose")
-# All 3 run in parallel → synthesize results
+# 用户问复杂、可拆分的经营问题时，在同一响应并行启动任务。
+spawn_task(description="检查数据能力", prompt="检查字段、口径和数据限制...", subagent_type="general-purpose")
+spawn_task(description="分析异常贡献", prompt="计算分段贡献并寻找反证...", subagent_type="general-purpose")
+spawn_task(description="独立验证结论", prompt="使用 fresh context 验证关键结论...", subagent_type="general-purpose")
 ```
 
-**Usage Example 2 - Multiple Batches (>{n} sub-tasks):**
-
 ```python
-# User asks: "Compare AWS, Azure, GCP, Alibaba Cloud, and Oracle Cloud"
-# Thinking: 5 sub-tasks → need multiple batches (max {n} per batch)
-
-# Turn 1: Launch first batch of {n}
-task(description="AWS analysis", prompt="...", subagent_type="general-purpose")
-task(description="Azure analysis", prompt="...", subagent_type="general-purpose")
-task(description="GCP analysis", prompt="...", subagent_type="general-purpose")
-
-# Turn 2: Launch remaining batch (after first batch completes)
-task(description="Alibaba Cloud analysis", prompt="...", subagent_type="general-purpose")
-task(description="Oracle Cloud analysis", prompt="...", subagent_type="general-purpose")
-
-# Turn 3: Synthesize ALL results from both batches
+# 等任意一个结果以便先推进，或等全部结果后综合。
+wait_task(task_ids=["id-1", "id-2", "id-3"], mode="any", timeout_seconds=30)
+wait_task(task_ids=["id-1", "id-2", "id-3"], mode="all", timeout_seconds=60)
 ```
 """
 
 
-def _build_subagent_section(max_concurrent: int, *, app_config: AppConfig | None = None) -> str:
+def _build_subagent_section(
+    max_concurrent: int,
+    *,
+    app_config: AppConfig | None = None,
+    subagent_required: bool = False,
+    complexity_tool_call_threshold: int = 2,
+    required_subagent_types: Collection[str] = (),
+    require_explicit_subagent_scope: bool = False,
+) -> str:
     """Build the subagent system prompt section with dynamic concurrency limit.
 
     Args:
@@ -309,112 +337,103 @@ def _build_subagent_section(max_concurrent: int, *, app_config: AppConfig | None
 
     # Dynamically build subagent type descriptions from registry (aligned with Codex's
     # agent_type_description pattern where all registered roles are listed in the tool spec).
-    available_subagents = _build_available_subagents_description(available_names, bash_available, app_config=app_config)
+    available_subagents = _build_available_subagents_description(
+        available_names,
+        bash_available,
+        app_config=app_config,
+        require_explicit_subagent_scope=require_explicit_subagent_scope,
+    )
     specialized_subagent_guidance = _build_specialized_subagent_guidance(available_names)
-    usage_examples = _build_subagent_usage_examples(available_names, n)
-    direct_tool_examples = "bash, ls, read_file, web_search, etc." if bash_available else "ls, read_file, web_search, etc."
-    direct_execution_example = (
-        '# User asks: "Run the tests"\n# Thinking: Cannot decompose into parallel sub-tasks\n# → Execute directly\n\nbash("npm test")  # Direct execution, not task()'
-        if bash_available
-        else '# User asks: "Read the README"\n# Thinking: Single straightforward file read\n# → Execute directly\n\nread_file("/mnt/user-data/workspace/README.md")  # Direct execution, not task()'
+    usage_examples = _build_subagent_usage_examples(
+        available_names,
+        n,
+        require_explicit_subagent_scope=require_explicit_subagent_scope,
+    )
+    direct_tools = "bash、ls、read_file、web_search" if bash_available else "ls、read_file、web_search"
+    direct_tools_security_hint = "available tools (bash, ls, read_file, web_search, etc.)" if bash_available else "available tools (ls, read_file, web_search, etc.)"
+    direct_execution_example = 'bash("npm test")' if bash_available else 'read_file("/mnt/user-data/workspace/README.md")'
+    required_profiles = tuple(dict.fromkeys(profile.strip() for profile in required_subagent_types if isinstance(profile, str) and profile.strip()))
+    required_profile_text = "、".join(f"`{profile}`" for profile in required_profiles)
+    if not required_profile_text:
+        required_profile_text = "至少一个由当前任务动态选择的 Profile"
+    verifier_requirement = "\n- `verifier` 必须使用 fresh ContextPacket，并通过 `source_refs` 中的 `task:<task_id>` 引用当前 Run 中已完成的前置任务；不能让同一上下文自我背书。" if "verifier" in required_profiles else ""
+    required_delivery_contract = (
+        f"""
+### 强制交付策略
+
+- 当当前 Run 累计达到 {complexity_tool_call_threshold} 个直接工作 Tool 调用时，必须在最终回答前完成必需的 Durable Subagent Profile：{required_profile_text}。
+- 应尽早拆分可隔离的分析或探索任务，调用 `spawn_task` 后用 `wait_task` 获取终态；不要等 Parent 完成全部工具链后才补形式化派工。{verifier_requirement}
+- 最终综合只能使用当前 Run 已完成任务的可追溯结果。不允许 Parent 完成全部分析后跳过 Durable Task。
+- 若必需 Profile 或可追溯任务结果缺失，Harness 将 fail-closed 并阻止交付；不要把未经独立核验的结论包装成最终答案。
+"""
+        if subagent_required
+        else ""
+    )
+    explicit_scope_contract = (
+        """
+### 显式派工范围
+
+- 每次 spawn_task 都必须显式传入：非空 skills、非空 tools、max_tool_rounds 和 max_tool_calls。
+- 四项都必须是完成当前目标所需的最小范围；省略或传空列表会被 Harness 拒绝。
+- verifier 的 tools 必须包含独立重算核心结论所需的确定性 Tool，不能只读取前置任务文本。
+- verifier 不能作为没有前置 Task 的首个任务；source_refs 只能复制 wait_task 返回的精确 task_id，写成 task:<task_id>，不得使用任务描述、自造别名或示例占位符。
+"""
+        if require_explicit_subagent_scope
+        else ""
+    )
+    dispatch_scope_rule = (
+        "派工时必须显式传入非空 `skills`、非空 `tools`、`max_tool_rounds` 和 "
+        "`max_tool_calls`，并使用完成目标所需的最小能力与预算；任何一项都不能省略。"
+        if require_explicit_subagent_scope
+        else "派工时用 `skills`、`tools`、`max_tool_rounds` 和 `max_tool_calls` "
+        "给出完成目标所需的最小能力与预算；通常省略预算参数并采用 Profile 默认上限，"
+        "显式传入只能收窄，不能扩权。"
     )
     return f"""<subagent_system>
-**🚀 SUBAGENT MODE ACTIVE - DECOMPOSE, DELEGATE, SYNTHESIZE**
+## Durable Parent–Subagent Harness
 
-You are running with subagent capabilities enabled. Your role is to be a **task orchestrator**:
-1. **DECOMPOSE**: Break complex tasks into parallel sub-tasks
-2. **DELEGATE**: Launch multiple subagents simultaneously using parallel `task` calls
-3. **SYNTHESIZE**: Collect and integrate results into a coherent answer
+你是用户唯一持续交互的 Parent Agent。Subagent 是按需创建的隔离工作上下文，不是每次固定运行的 Crew。
 
-**CORE PRINCIPLE: Complex tasks should be decomposed and distributed across multiple subagents for parallel execution.**
+### 可用 Subagent
 
-**⛔ HARD CONCURRENCY LIMIT: MAXIMUM {n} `task` CALLS PER RESPONSE. THIS IS NOT OPTIONAL.**
-- Each response, you may include **at most {n}** `task` tool calls. Any excess calls are **silently discarded** by the system — you will lose that work.
-- **Before launching subagents, you MUST count your sub-tasks in your thinking:**
-  - If count ≤ {n}: Launch all in this response.
-  - If count > {n}: **Pick the {n} most important/foundational sub-tasks for this turn.** Save the rest for the next turn.
-- **Multi-batch execution** (for >{n} sub-tasks):
-  - Turn 1: Launch sub-tasks 1-{n} in parallel → wait for results
-  - Turn 2: Launch next batch in parallel → wait for results
-  - ... continue until all sub-tasks are complete
-  - Final turn: Synthesize ALL results into a coherent answer
-- **Example thinking pattern**: "I identified 6 sub-tasks. Since the limit is {n} per turn, I will launch the first {n} now, and the rest in the next turn."
-
-**Available Subagents:**
 {available_subagents}
 {specialized_subagent_guidance}
 
-**Your Orchestration Strategy:**
+### 决策规则
 
-✅ **DECOMPOSE + PARALLEL EXECUTION (Preferred Approach):**
+1. 简单问答、单步读取或确定性计算：直接回答或直接调用 {direct_tools} 等工具，不派 Subagent。
+2. 任务复杂、上下文很长、需要独立验证，或存在可并行工作流：使用 `spawn_task` 动态启动 1–{n} 个任务。
+3. 同一轮最多发起 {n} 个 `spawn_task` / `follow_up_task` / `resume_task`（旧 `task` 也计入）。超出的调用会被 Harness 丢弃。
+4. 只有互相独立的任务或 Tool 才能放在同一个模型响应中并行；有数据依赖的步骤必须等待前一步 ToolResult 后再调用下一步，不能把“接入数据”和“读取该数据”并行。
+5. {dispatch_scope_rule} Subagent 只能调用最终 `ContextPacket.available_tools` 中的 Tool。
+6. 可并行任务必须在同一个模型响应中发出多个 `spawn_task`；它们会立即返回 task_id，Parent 不会被单个任务阻塞。
+7. 启动后可以继续调用确定性工具；需要结果时使用一次 `wait_task(mode="any"|"all")`，不要每几秒反复轮询。
+8. 得到成功的 Subagent 结果后直接综合。除非结果冲突、失败或缺少关键 Evidence，不要在 Parent 中重复相同窗口、指标或 Fact 的确定性计算。
+9. 结果需要继续深挖时使用 `follow_up_task`。Child 只获得显式父结果快照和新目标，不继承 Parent 的隐式推理历史。
+10. 任务已无价值时使用 `cancel_task`；任务因基础设施、审批或检查点而 blocked/waiting 时，确认安全后使用 `resume_task`。
+11. `task` 是 DeerFlow 旧版阻塞兼容入口。新任务默认不要选择它。
 
-For complex queries, break them down into focused sub-tasks and execute in parallel batches (max {n} per turn):
+{required_delivery_contract}
+{explicit_scope_contract}
 
-**Example 1: "Why is Tencent's stock price declining?" (3 sub-tasks → 1 batch)**
-→ Turn 1: Launch 3 subagents in parallel:
-- Subagent 1: Recent financial reports, earnings data, and revenue trends
-- Subagent 2: Negative news, controversies, and regulatory issues
-- Subagent 3: Industry trends, competitor performance, and market sentiment
-→ Turn 2: Synthesize results
+### 直接执行示例
 
-**Example 2: "Compare 5 cloud providers" (5 sub-tasks → multi-batch)**
-→ Turn 1: Launch {n} subagents in parallel (first batch)
-→ Turn 2: Launch remaining subagents in parallel
-→ Final turn: Synthesize ALL results into comprehensive comparison
-
-**Example 3: "Refactor the authentication system"**
-→ Turn 1: Launch 3 subagents in parallel:
-- Subagent 1: Analyze current auth implementation and technical debt
-- Subagent 2: Research best practices and security patterns
-- Subagent 3: Review related tests, documentation, and vulnerabilities
-→ Turn 2: Synthesize results
-
-✅ **USE Parallel Subagents (max {n} per turn) when:**
-- **Complex research questions**: Requires multiple information sources or perspectives
-- **Multi-aspect analysis**: Task has several independent dimensions to explore
-- **Large codebases**: Need to analyze different parts simultaneously
-- **Comprehensive investigations**: Questions requiring thorough coverage from multiple angles
-
-❌ **DO NOT use subagents (execute directly) when:**
-- **Task cannot be decomposed**: If you can't break it into 2+ meaningful parallel sub-tasks, execute directly
-- **Ultra-simple actions**: Read one file, quick edits, single commands
-- **Need immediate clarification**: Must ask user before proceeding
-- **Meta conversation**: Questions about conversation history
-- **Sequential dependencies**: Each step depends on previous results (do steps yourself sequentially)
-
-**CRITICAL WORKFLOW** (STRICTLY follow this before EVERY action):
-1. **COUNT**: In your thinking, list all sub-tasks and count them explicitly: "I have N sub-tasks"
-2. **PLAN BATCHES**: If N > {n}, explicitly plan which sub-tasks go in which batch:
-   - "Batch 1 (this turn): first {n} sub-tasks"
-   - "Batch 2 (next turn): next batch of sub-tasks"
-3. **EXECUTE**: Launch ONLY the current batch (max {n} `task` calls). Do NOT launch sub-tasks from future batches.
-4. **REPEAT**: After results return, launch the next batch. Continue until all batches complete.
-5. **SYNTHESIZE**: After ALL batches are done, synthesize all results.
-6. **Cannot decompose** → Execute directly using available tools ({direct_tool_examples})
-
-**⛔ VIOLATION: Launching more than {n} `task` calls in a single response is a HARD ERROR. The system WILL discard excess calls and you WILL lose work. Always batch.**
-
-**Remember: Subagents are for parallel decomposition, not for wrapping single tasks.**
-
-**How It Works:**
-- The task tool runs subagents asynchronously in the background
-- The backend automatically polls for completion (you don't need to poll)
-- The tool call will block until the subagent completes its work
-- Once complete, the result is returned to you directly
-
-{usage_examples}
-
-**Counter-Example - Direct Execution (NO subagents):**
+单步任务直接使用 {direct_tools_security_hint}，不要为了展示协作而启动 Subagent：
 
 ```python
 {direct_execution_example}
 ```
 
-**CRITICAL**:
-- **Max {n} `task` calls per turn** - the system enforces this, excess calls are discarded
-- Only use `task` when you can launch 2+ subagents in parallel
-- Single task = No value from subagents = Execute directly
-- For >{n} sub-tasks, use sequential batches of {n} across multiple turns
+### 证据与安全
+
+- Subagent 不得嵌套启动 Subagent。
+- 确定性指标必须由 Tool 计算，不能让模型心算或伪造。
+- 关键结论可启动 verifier；Verifier 必须使用 fresh ContextPacket，同时寻找支持证据和反证。
+- 不因“可以派工”而派工。单个隔离任务只有在上下文隔离、长输出或独立验证确有价值时才启动。
+- Parent 负责综合结果、暴露数据限制、处理冲突，并对用户继续自然对话。
+- 外部写操作仍受 Permission / Approval Policy 约束，Subagent 不能绕过。
+
+{usage_examples}
 </subagent_system>"""
 
 
@@ -806,6 +825,10 @@ def apply_prompt_template(
     subagent_enabled: bool = False,
     max_concurrent_subagents: int = 3,
     *,
+    subagent_required: bool = False,
+    subagent_complexity_tool_call_threshold: int = 2,
+    required_subagent_types: Collection[str] = (),
+    require_explicit_subagent_scope: bool = False,
     agent_name: str | None = None,
     available_skills: set[str] | None = None,
     app_config: AppConfig | None = None,
@@ -814,25 +837,24 @@ def apply_prompt_template(
 ) -> str:
     # Include subagent section only if enabled (from runtime parameter)
     n = max_concurrent_subagents
-    subagent_section = _build_subagent_section(n, app_config=app_config) if subagent_enabled else ""
+    subagent_section = (
+        _build_subagent_section(
+            n,
+            app_config=app_config,
+            subagent_required=subagent_required,
+            complexity_tool_call_threshold=(subagent_complexity_tool_call_threshold),
+            required_subagent_types=required_subagent_types,
+            require_explicit_subagent_scope=require_explicit_subagent_scope,
+        )
+        if subagent_enabled
+        else ""
+    )
 
     # Add subagent reminder to critical_reminders if enabled
-    subagent_reminder = (
-        "- **Orchestrator Mode**: You are a task orchestrator - decompose complex tasks into parallel sub-tasks. "
-        f"**HARD LIMIT: max {n} `task` calls per response.** "
-        f"If >{n} sub-tasks, split into sequential batches of ≤{n}. Synthesize after ALL batches complete.\n"
-        if subagent_enabled
-        else ""
-    )
+    subagent_reminder = f"- **Durable Subagent Harness**：简单任务直接完成；复杂任务按需使用 `spawn_task`。每个响应最多 {n} 个 Subagent dispatch，之后用一次 `wait_task` 等待任意或全部结果。\n" if subagent_enabled else ""
 
     # Add subagent thinking guidance if enabled
-    subagent_thinking = (
-        "- **DECOMPOSITION CHECK: Can this task be broken into 2+ parallel sub-tasks? If YES, COUNT them. "
-        f"If count > {n}, you MUST plan batches of ≤{n} and only launch the FIRST batch now. "
-        f"NEVER launch more than {n} `task` calls in one response.**\n"
-        if subagent_enabled
-        else ""
-    )
+    subagent_thinking = f"- **SUBAGENT CHECK**：先判断是否需要隔离上下文、并行探索或独立验证。若需要，同一响应最多启动 {n} 个；若不需要，直接回答或调用确定性工具。\n" if subagent_enabled else ""
 
     # Get skills section
     skills_section = get_skills_prompt_section(available_skills, app_config=app_config)

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from enum import StrEnum
 from pathlib import PurePosixPath
 from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from app.commerce.domain.enums import FollowUpOutcome, SemanticStatus
+from app.commerce.domain.enums import FollowUpOutcome, PathType, SemanticStatus
 from app.commerce.domain.ids import EvaluationCaseId
 from app.commerce.domain.models import CommerceModel, ScalarValue
 
@@ -31,6 +32,65 @@ class InputFile(CommerceModel):
         return self
 
 
+class EvaluationWindow(CommerceModel):
+    """Agent-visible half-open window used to reproduce one evaluation scenario."""
+
+    start: datetime
+    end: datetime
+
+    @model_validator(mode="after")
+    def require_ordered_window(self) -> Self:
+        if self.start >= self.end:
+            raise ValueError("Evaluation window start must be before end")
+        return self
+
+
+class EvaluationAnalysisRequest(CommerceModel):
+    """Visible scenario parameters; never contains expected labels or conclusions."""
+
+    seller_id: str = Field(min_length=1)
+    baseline_window: EvaluationWindow
+    anomaly_window: EvaluationWindow
+    follow_up_window: EvaluationWindow | None = None
+    controlled_intervention_observed: bool = False
+    comparison_group_observed: bool = False
+
+    @model_validator(mode="after")
+    def require_non_overlapping_windows(self) -> Self:
+        if self.baseline_window.end > self.anomaly_window.start:
+            raise ValueError("Baseline window must end no later than anomaly window start")
+        if self.follow_up_window is not None and self.anomaly_window.end > self.follow_up_window.start:
+            raise ValueError("Anomaly window must end no later than follow-up window start")
+        return self
+
+
+class EvaluationPeerAnalysisRequest(CommerceModel):
+    """Visible, outcome-agnostic parameters for a reproducible peer comparison."""
+
+    seller_id: str = Field(min_length=1)
+    baseline_window: EvaluationWindow
+    window: EvaluationWindow
+    product_category: str = Field(min_length=1)
+    min_orders_per_seller: int = Field(default=20, ge=2)
+    match_seller_state: bool = True
+    requested_paths: tuple[PathType, ...] = Field(min_length=1, max_length=3)
+    eligibility_uses_late_delivery_result: Literal[False] = False
+    single_seller_orders_only: Literal[True] = True
+    pure_category_orders_only: Literal[True] = True
+
+    @model_validator(mode="after")
+    def require_explicit_seller_peer_path(self) -> Self:
+        if len(self.requested_paths) != len(set(self.requested_paths)):
+            raise ValueError("Peer analysis requested Paths must be unique")
+        if PathType.SELLER_PEER not in self.requested_paths:
+            raise ValueError("Peer analysis requires the seller_peer Path")
+        if self.baseline_window.end > self.window.start:
+            raise ValueError(
+                "Peer baseline window must end no later than comparison window start"
+            )
+        return self
+
+
 class InputBundle(CommerceModel):
     """The only evaluation payload that may be exposed to an Agent run."""
 
@@ -40,6 +100,8 @@ class InputBundle(CommerceModel):
     files: tuple[InputFile, ...] = Field(min_length=1)
     user_prompt: str = Field(min_length=1)
     declared_missing_fields: tuple[str, ...] = Field(default_factory=tuple)
+    analysis_request: EvaluationAnalysisRequest | None = None
+    peer_analysis_request: EvaluationPeerAnalysisRequest | None = None
 
 
 class FactExpectation(CommerceModel):

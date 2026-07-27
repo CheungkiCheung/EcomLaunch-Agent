@@ -1,9 +1,10 @@
 "use client";
 
-import { BotIcon, ShoppingBagIcon } from "lucide-react";
+import { BotIcon, BriefcaseBusinessIcon, ShoppingBagIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { type Agent } from "@/core/agents";
+import { isCommerceAgentName } from "@/core/commerce/agent-ui";
 import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
 
@@ -18,13 +19,27 @@ export function AgentWelcome({
 }) {
   const { t } = useI18n();
   const isEcomLaunch = agentName === "ecom-launch";
+  const isCommerceAgent = isCommerceAgentName(agentName);
   const displayName = isEcomLaunch
     ? t.agents.ecomLaunchName
-    : (agent?.name ?? agentName);
+    : isCommerceAgent
+      ? t.agents.commerceAgentName
+      : (agent?.name ?? agentName);
   const description = isEcomLaunch
     ? t.agents.ecomLaunchWelcomeDescription
-    : agent?.description;
-  const Icon = isEcomLaunch ? ShoppingBagIcon : BotIcon;
+    : isCommerceAgent
+      ? t.agents.commerceWelcomeDescription
+      : agent?.description;
+  const Icon = isEcomLaunch
+    ? ShoppingBagIcon
+    : isCommerceAgent
+      ? BriefcaseBusinessIcon
+      : BotIcon;
+  const badges = isEcomLaunch
+    ? t.agents.ecomLaunchWelcomeBadges
+    : isCommerceAgent
+      ? t.agents.commerceWelcomeBadges
+      : [];
 
   return (
     <div
@@ -36,13 +51,13 @@ export function AgentWelcome({
       <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-full">
         <Icon className="text-primary h-6 w-6" />
       </div>
-      <div className="text-2xl font-bold">{displayName}</div>
+      <h1 className="text-2xl font-bold">{displayName}</h1>
       {description && (
         <p className="text-muted-foreground max-w-sm text-sm">{description}</p>
       )}
-      {isEcomLaunch && (
+      {badges.length > 0 && (
         <div className="mt-1 flex max-w-md flex-wrap justify-center gap-1.5">
-          {t.agents.ecomLaunchWelcomeBadges.map((badge) => (
+          {badges.map((badge) => (
             <Badge key={badge} variant="secondary" className="font-normal">
               {badge}
             </Badge>

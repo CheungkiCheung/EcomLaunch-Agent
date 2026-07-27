@@ -74,7 +74,11 @@ def _resolve_model_name(requested_model_name: str | None = None, *, app_config: 
     return default_model_name
 
 
-def _create_summarization_middleware(*, app_config: AppConfig | None = None) -> DeerFlowSummarizationMiddleware | None:
+def _create_summarization_middleware(
+    *,
+    app_config: AppConfig | None = None,
+    memory_enabled: bool = True,
+) -> DeerFlowSummarizationMiddleware | None:
     """Create and configure the summarization middleware from config."""
     resolved_app_config = app_config or get_app_config()
     config = resolved_app_config.summarization
@@ -121,7 +125,7 @@ def _create_summarization_middleware(*, app_config: AppConfig | None = None) -> 
         kwargs["summary_prompt"] = config.summary_prompt
 
     hooks: list[BeforeSummarizationHook] = []
-    if resolved_app_config.memory.enabled:
+    if memory_enabled and resolved_app_config.memory.enabled:
         hooks.append(memory_flush_hook)
 
     # The logic below relies on two assumptions holding true: this factory is
@@ -294,23 +298,33 @@ def build_middlewares(
         List of middleware instances.
     """
     resolved_app_config = app_config or get_app_config()
+    cfg = _get_runtime_config(config)
+    memory_enabled = bool(cfg.get("memory_enabled", True))
     middlewares = build_lead_runtime_middlewares(app_config=resolved_app_config, lazy_init=True)
 
     # Always inject current date (and optionally memory) as <system-reminder> into the
     # first HumanMessage to keep the system prompt fully static for prefix-cache reuse.
     from deerflow.agents.middlewares.dynamic_context_middleware import DynamicContextMiddleware
 
-    middlewares.append(DynamicContextMiddleware(agent_name=agent_name, app_config=resolved_app_config))
+    middlewares.append(
+        DynamicContextMiddleware(
+            agent_name=agent_name,
+            app_config=resolved_app_config,
+            memory_enabled=memory_enabled,
+        )
+    )
 
     # Add summarization middleware if enabled
-    summarization_middleware = _create_summarization_middleware(app_config=resolved_app_config)
+    summarization_middleware = _create_summarization_middleware(
+        app_config=resolved_app_config,
+        memory_enabled=memory_enabled,
+    )
     if summarization_middleware is not None:
         middlewares.append(summarization_middleware)
 
     # Add TodoList middleware if plan mode is enabled
-    cfg = _get_runtime_config(config)
     is_plan_mode = cfg.get("is_plan_mode", False)
-    todo_list_middleware = _create_todo_list_middleware(is_plan_mode)
+    todo_list_middleware = _create_todo_list_middleware(is_plan_mode and bool(cfg.get("todo_list_enabled", True)))
     if todo_list_middleware is not None:
         middlewares.append(todo_list_middleware)
 
@@ -319,10 +333,23 @@ def build_middlewares(
         middlewares.append(TokenUsageMiddleware())
 
     # Add TitleMiddleware
-    middlewares.append(TitleMiddleware(app_config=resolved_app_config))
+    middlewares.append(
+        TitleMiddleware(
+            app_config=resolved_app_config,
+            use_model=bool(cfg.get("model_generated_title", True)),
+            local_title_rules=cfg.get("local_title_rules") or (),
+            local_title_fallback=cfg.get("local_title_fallback"),
+        )
+    )
 
     # Add MemoryMiddleware (after TitleMiddleware)
-    middlewares.append(MemoryMiddleware(agent_name=agent_name, memory_config=resolved_app_config.memory))
+    if memory_enabled:
+        middlewares.append(
+            MemoryMiddleware(
+                agent_name=agent_name,
+                memory_config=resolved_app_config.memory,
+            )
+        )
 
     # Add ViewImageMiddleware only if the current model supports vision.
     # Use the resolved runtime model_name from make_lead_agent to avoid stale config values.
@@ -343,6 +370,72 @@ def build_middlewares(
     if subagent_enabled:
         max_concurrent_subagents = cfg.get("max_concurrent_subagents", 3)
         middlewares.append(SubagentLimitMiddleware(max_concurrent=max_concurrent_subagents))
+
+    # LangChain executes after_model hooks in reverse registration order.
+    # Register dispatch normalization before requirement recovery so every
+    # forced control attempt is counted before an invalid or over-budget spawn
+    # is removed. Otherwise guarded spawn attempts can bypass the configured
+    # recovery limit and consume model calls indefinitely.
+    subagent_scope_rules = cfg.get("subagent_scope_rules") or ()
+    if subagent_enabled and (
+        "verifier" in set(cfg.get("required_subagent_types") or ())
+        or subagent_scope_rules
+    ):
+        from deerflow.agents.middlewares.subagent_dispatch_policy_middleware import (
+            SubagentDispatchPolicyMiddleware,
+        )
+
+        middlewares.append(
+            SubagentDispatchPolicyMiddleware(
+                scope_rules=subagent_scope_rules,
+                max_tasks_per_run=cfg.get("max_subagent_tasks_per_run"),
+                max_failed_tasks_per_run=cfg.get(
+                    "max_failed_subagent_tasks_per_run"
+                ),
+            )
+        )
+
+    final_answer_forbidden_phrases = cfg.get("final_answer_forbidden_phrases") or ()
+    if final_answer_forbidden_phrases:
+        from deerflow.agents.middlewares.final_answer_policy_middleware import (
+            FinalAnswerPolicyMiddleware,
+        )
+
+        middlewares.append(
+            FinalAnswerPolicyMiddleware(
+                forbidden_phrases=final_answer_forbidden_phrases,
+                max_repairs=int(cfg.get("max_final_answer_repairs", 1)),
+            )
+        )
+
+    if cfg.get("subagent_required", False):
+        from deerflow.agents.middlewares.subagent_requirement_middleware import (
+            SubagentRequirementMiddleware,
+        )
+
+        middlewares.append(
+            SubagentRequirementMiddleware(
+                complexity_tool_call_threshold=int(cfg.get("subagent_complexity_tool_call_threshold", 2)),
+                required_subagent_types=cfg.get("required_subagent_types") or (),
+                recovery_mode=str(cfg.get("subagent_requirement_recovery_mode", "remind")),
+                max_recovery_attempts=int(cfg.get("max_subagent_requirement_recovery_attempts", 8)),
+            )
+        )
+
+    max_parent_direct_tool_calls = cfg.get("max_parent_direct_tool_calls")
+    max_parent_direct_tool_rounds = cfg.get("max_parent_direct_tool_rounds")
+    if max_parent_direct_tool_calls is not None or max_parent_direct_tool_rounds is not None:
+        from deerflow.agents.middlewares.parent_direct_tool_budget_middleware import (
+            ParentDirectToolBudgetMiddleware,
+        )
+
+        middlewares.append(
+            ParentDirectToolBudgetMiddleware(
+                max_direct_tool_calls=max_parent_direct_tool_calls,
+                max_direct_tool_rounds=max_parent_direct_tool_rounds,
+                required_subagent_types=cfg.get("required_subagent_types") or (),
+            )
+        )
 
     # LoopDetectionMiddleware — detect and break repetitive tool call loops
     loop_detection_config = resolved_app_config.loop_detection
@@ -373,6 +466,99 @@ def _available_skill_names(agent_config, is_bootstrap: bool) -> set[str] | None:
     if agent_config and agent_config.skills is not None:
         return set(agent_config.skills)
     return None
+
+
+def _write_effective_subagent_runtime(
+    config: RunnableConfig,
+    *,
+    subagent_enabled: bool,
+    subagent_required: bool,
+    subagent_complexity_tool_call_threshold: int,
+    required_subagent_types: list[str],
+    subagent_requirement_recovery_mode: str,
+    max_subagent_requirement_recovery_attempts: int,
+    max_concurrent_subagents: int,
+    max_subagent_tasks_per_run: int | None,
+    max_failed_subagent_tasks_per_run: int | None,
+    max_parent_direct_tool_calls: int | None,
+    max_parent_direct_tool_rounds: int | None,
+    require_explicit_subagent_scope: bool,
+    todo_list_enabled: bool,
+    memory_enabled: bool,
+    model_generated_title: bool,
+    local_title_rules: list[dict[str, object]],
+    local_title_fallback: str | None,
+    subagent_scope_rules: list[dict[str, object]],
+    final_answer_forbidden_phrases: list[str],
+    max_final_answer_repairs: int,
+) -> None:
+    """Keep middleware and Tool assembly on one effective runtime policy.
+
+    LangGraph requests may use either ``configurable`` or ``context`` (and the
+    Gateway compatibility layer can populate both).  A built-in Agent that
+    requires the Durable Subagent Harness must override a client-side
+    ``subagent_enabled=false`` consistently in every active container.
+    """
+    updated = False
+    for container_name in ("configurable", "context"):
+        container = config.get(container_name)
+        if isinstance(container, dict):
+            container["subagent_enabled"] = subagent_enabled
+            container["subagent_required"] = subagent_required
+            container["subagent_complexity_tool_call_threshold"] = subagent_complexity_tool_call_threshold
+            container["required_subagent_types"] = list(required_subagent_types)
+            container["subagent_requirement_recovery_mode"] = subagent_requirement_recovery_mode
+            container["max_subagent_requirement_recovery_attempts"] = max_subagent_requirement_recovery_attempts
+            container["max_concurrent_subagents"] = max_concurrent_subagents
+            if max_subagent_tasks_per_run is not None:
+                container["max_subagent_tasks_per_run"] = max_subagent_tasks_per_run
+            if max_failed_subagent_tasks_per_run is not None:
+                container["max_failed_subagent_tasks_per_run"] = max_failed_subagent_tasks_per_run
+            if max_parent_direct_tool_calls is not None:
+                container["max_parent_direct_tool_calls"] = max_parent_direct_tool_calls
+            if max_parent_direct_tool_rounds is not None:
+                container["max_parent_direct_tool_rounds"] = max_parent_direct_tool_rounds
+            container["require_explicit_subagent_scope"] = require_explicit_subagent_scope
+            container["todo_list_enabled"] = todo_list_enabled
+            container["memory_enabled"] = memory_enabled
+            container["model_generated_title"] = model_generated_title
+            container["local_title_rules"] = list(local_title_rules)
+            if local_title_fallback is not None:
+                container["local_title_fallback"] = local_title_fallback
+            container["subagent_scope_rules"] = list(subagent_scope_rules)
+            if final_answer_forbidden_phrases:
+                container["final_answer_forbidden_phrases"] = list(final_answer_forbidden_phrases)
+                container["max_final_answer_repairs"] = max_final_answer_repairs
+            updated = True
+    if not updated:
+        config["configurable"] = {
+            "subagent_enabled": subagent_enabled,
+            "subagent_required": subagent_required,
+            "subagent_complexity_tool_call_threshold": (subagent_complexity_tool_call_threshold),
+            "required_subagent_types": list(required_subagent_types),
+            "subagent_requirement_recovery_mode": (subagent_requirement_recovery_mode),
+            "max_subagent_requirement_recovery_attempts": (max_subagent_requirement_recovery_attempts),
+            "max_concurrent_subagents": max_concurrent_subagents,
+        }
+        if max_subagent_tasks_per_run is not None:
+            config["configurable"]["max_subagent_tasks_per_run"] = max_subagent_tasks_per_run
+        if max_failed_subagent_tasks_per_run is not None:
+            config["configurable"]["max_failed_subagent_tasks_per_run"] = max_failed_subagent_tasks_per_run
+        if max_parent_direct_tool_calls is not None:
+            config["configurable"]["max_parent_direct_tool_calls"] = max_parent_direct_tool_calls
+        if max_parent_direct_tool_rounds is not None:
+            config["configurable"]["max_parent_direct_tool_rounds"] = max_parent_direct_tool_rounds
+        config["configurable"]["require_explicit_subagent_scope"] = require_explicit_subagent_scope
+        config["configurable"]["todo_list_enabled"] = todo_list_enabled
+        config["configurable"]["memory_enabled"] = memory_enabled
+        config["configurable"]["model_generated_title"] = model_generated_title
+        config["configurable"]["local_title_rules"] = list(local_title_rules)
+        if local_title_fallback is not None:
+            config["configurable"]["local_title_fallback"] = local_title_fallback
+        config["configurable"]["subagent_scope_rules"] = list(subagent_scope_rules)
+        if final_answer_forbidden_phrases:
+            config["configurable"]["final_answer_forbidden_phrases"] = list(final_answer_forbidden_phrases)
+            config["configurable"]["max_final_answer_repairs"] = max_final_answer_repairs
 
 
 def _load_enabled_skills_for_tool_policy(available_skills: set[str] | None, *, app_config: AppConfig) -> list[Skill]:
@@ -409,8 +595,6 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
     reasoning_effort = cfg.get("reasoning_effort", None)
     requested_model_name: str | None = cfg.get("model_name") or cfg.get("model")
     is_plan_mode = cfg.get("is_plan_mode", False)
-    subagent_enabled = cfg.get("subagent_enabled", False)
-    max_concurrent_subagents = cfg.get("max_concurrent_subagents", 3)
     is_bootstrap = cfg.get("is_bootstrap", False)
     agent_name = validate_agent_name(cfg.get("agent_name"))
     user_id = cfg.get("user_id")
@@ -424,6 +608,55 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
     else:
         agent_config = load_agent_config(agent_name)
         agent_is_builtin = bool(agent_name and is_builtin_agent(agent_name))
+
+    subagent_required = bool(agent_config and agent_config.subagent_required)
+    subagent_enabled = bool(cfg.get("subagent_enabled", False) or subagent_required)
+    subagent_complexity_tool_call_threshold = agent_config.subagent_complexity_tool_call_threshold if agent_config else 2
+    required_subagent_types = list(agent_config.required_subagent_types if agent_config else ())
+    subagent_requirement_recovery_mode = agent_config.subagent_requirement_recovery_mode if agent_config else "remind"
+    max_subagent_requirement_recovery_attempts = agent_config.max_subagent_requirement_recovery_attempts if agent_config else 8
+    max_concurrent_subagents = int(
+        cfg.get(
+            "max_concurrent_subagents",
+            agent_config.max_concurrent_subagents if agent_config else 3,
+        )
+    )
+    max_subagent_tasks_per_run = agent_config.max_subagent_tasks_per_run if agent_config else None
+    max_failed_subagent_tasks_per_run = agent_config.max_failed_subagent_tasks_per_run if agent_config else None
+    max_parent_direct_tool_calls = agent_config.max_parent_direct_tool_calls if agent_config else None
+    max_parent_direct_tool_rounds = agent_config.max_parent_direct_tool_rounds if agent_config else None
+    require_explicit_subagent_scope = bool(agent_config and agent_config.require_explicit_subagent_scope)
+    todo_list_enabled = bool(agent_config.todo_list_enabled if agent_config else True)
+    memory_enabled = bool(agent_config.memory_enabled if agent_config else True)
+    model_generated_title = bool(agent_config.model_generated_title if agent_config else True)
+    local_title_rules = [rule.model_dump() for rule in (agent_config.local_title_rules if agent_config else ())]
+    local_title_fallback = agent_config.local_title_fallback if agent_config else None
+    subagent_scope_rules = [rule.model_dump() for rule in (agent_config.subagent_scope_rules if agent_config else ())]
+    final_answer_forbidden_phrases = list(agent_config.final_answer_forbidden_phrases if agent_config else ())
+    max_final_answer_repairs = agent_config.max_final_answer_repairs if agent_config else 1
+    _write_effective_subagent_runtime(
+        config,
+        subagent_enabled=subagent_enabled,
+        subagent_required=subagent_required,
+        subagent_complexity_tool_call_threshold=(subagent_complexity_tool_call_threshold),
+        required_subagent_types=required_subagent_types,
+        subagent_requirement_recovery_mode=(subagent_requirement_recovery_mode),
+        max_subagent_requirement_recovery_attempts=(max_subagent_requirement_recovery_attempts),
+        max_concurrent_subagents=max_concurrent_subagents,
+        max_subagent_tasks_per_run=max_subagent_tasks_per_run,
+        max_failed_subagent_tasks_per_run=max_failed_subagent_tasks_per_run,
+        max_parent_direct_tool_calls=max_parent_direct_tool_calls,
+        max_parent_direct_tool_rounds=max_parent_direct_tool_rounds,
+        require_explicit_subagent_scope=require_explicit_subagent_scope,
+        todo_list_enabled=todo_list_enabled,
+        memory_enabled=memory_enabled,
+        model_generated_title=model_generated_title,
+        local_title_rules=local_title_rules,
+        local_title_fallback=local_title_fallback,
+        subagent_scope_rules=subagent_scope_rules,
+        final_answer_forbidden_phrases=final_answer_forbidden_phrases,
+        max_final_answer_repairs=max_final_answer_repairs,
+    )
     available_skills = _available_skill_names(agent_config, is_bootstrap)
     # Custom agent model from agent config (if any), or None to let _resolve_model_name pick the default
     agent_model_name = agent_config.model if agent_config and agent_config.model else None
@@ -462,6 +695,18 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
             "reasoning_effort": reasoning_effort,
             "is_plan_mode": is_plan_mode,
             "subagent_enabled": subagent_enabled,
+            "subagent_required": subagent_required,
+            "subagent_complexity_tool_call_threshold": (subagent_complexity_tool_call_threshold),
+            "required_subagent_types": required_subagent_types,
+            "subagent_requirement_recovery_mode": (subagent_requirement_recovery_mode),
+            "max_subagent_requirement_recovery_attempts": (max_subagent_requirement_recovery_attempts),
+            "max_subagent_tasks_per_run": max_subagent_tasks_per_run,
+            "max_failed_subagent_tasks_per_run": (max_failed_subagent_tasks_per_run),
+            "require_explicit_subagent_scope": require_explicit_subagent_scope,
+            "todo_list_enabled": todo_list_enabled,
+            "memory_enabled": memory_enabled,
+            "model_generated_title": model_generated_title,
+            "subagent_scope_rule_count": len(subagent_scope_rules),
             "disable_external_search": runtime_disables_external_search(cfg),
             "opensku_benchmark_fixture_mode": bool(cfg.get("opensku_benchmark_fixture_mode")),
             "tool_groups": agent_config.tool_groups if agent_config else None,
@@ -511,6 +756,12 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
     raw_tools = get_available_tools(model_name=model_name, groups=agent_config.tool_groups if agent_config else None, subagent_enabled=subagent_enabled, app_config=resolved_app_config)
     filtered = filter_tools_by_skill_allowed_tools(raw_tools + extra_tools, skills_for_tool_policy)
     filtered = filter_tools_by_runtime_constraints(filtered, cfg)
+    if require_explicit_subagent_scope:
+        from deerflow.tools.builtins.durable_task_tools import (
+            with_explicit_subagent_scope_schema,
+        )
+
+        filtered = [with_explicit_subagent_scope_schema(tool) for tool in filtered]
     final_tools, setup = assemble_deferred_tools(filtered, enabled=resolved_app_config.tool_search.enabled)
     return create_agent(
         model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, reasoning_effort=reasoning_effort, app_config=resolved_app_config, attach_tracing=False),
@@ -519,6 +770,10 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
         system_prompt=apply_prompt_template(
             subagent_enabled=subagent_enabled,
             max_concurrent_subagents=max_concurrent_subagents,
+            subagent_required=subagent_required,
+            subagent_complexity_tool_call_threshold=(subagent_complexity_tool_call_threshold),
+            required_subagent_types=required_subagent_types,
+            require_explicit_subagent_scope=require_explicit_subagent_scope,
             agent_name=agent_name,
             available_skills=set(agent_config.skills) if agent_config and agent_config.skills is not None else None,
             app_config=resolved_app_config,

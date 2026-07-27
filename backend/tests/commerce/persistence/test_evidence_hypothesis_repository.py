@@ -182,6 +182,101 @@ async def test_evidence_uow_updates_case_and_event_stream_atomically(tmp_path):
 
 
 @pytest.mark.anyio
+async def test_evidence_batch_uow_updates_case_once_and_emits_one_event_per_record(
+    tmp_path,
+):
+    engine, factory = await _storage(tmp_path)
+    workspace_id = WorkspaceId.new()
+    case = _case(workspace_id)
+    first = _evidence(workspace_id, case.id)
+    second = _evidence(workspace_id, case.id)
+    trace_id = TraceId.new()
+    correlation_id = CorrelationId.new()
+    uow = SqlCommerceUnitOfWork(factory)
+    await uow.create_case(
+        case,
+        trace_id=trace_id,
+        correlation_id=correlation_id,
+        actor=DomainEventActor.SYSTEM,
+    )
+    updated_case = case.model_copy(
+        update={
+            "evidence_ids": (first.id, second.id),
+            "version": case.version + 1,
+            "updated_at": datetime(2026, 7, 18, 12, 5, tzinfo=UTC),
+        }
+    )
+
+    appended = await uow.append_evidence_batch(
+        updated_case,
+        (first, second),
+        expected_version=case.version,
+        trace_id=trace_id,
+        correlation_id=correlation_id,
+        actor=DomainEventActor.AGENT,
+    )
+
+    assert [event.event_type for event in appended] == [
+        "evidence.appended",
+        "evidence.appended",
+    ]
+    assert [event.payload["evidence_id"] for event in appended] == [
+        str(first.id),
+        str(second.id),
+    ]
+    assert {event.payload["case_version"] for event in appended} == {
+        updated_case.version
+    }
+    assert await SqlCaseRepository(factory).get(workspace_id, case.id) == updated_case
+    assert await SqlEvidenceRepository(factory).list_case(workspace_id, case.id) == (
+        first,
+        second,
+    )
+    events = await SqlDomainEventStore(factory).list_case(workspace_id, case.id)
+    assert replay_case_projection(events).version == updated_case.version
+    await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_evidence_batch_uow_rolls_back_every_record_on_case_conflict(tmp_path):
+    engine, factory = await _storage(tmp_path)
+    workspace_id = WorkspaceId.new()
+    case = _case(workspace_id)
+    first = _evidence(workspace_id, case.id)
+    second = _evidence(workspace_id, case.id)
+    trace_id = TraceId.new()
+    correlation_id = CorrelationId.new()
+    uow = SqlCommerceUnitOfWork(factory)
+    await uow.create_case(
+        case,
+        trace_id=trace_id,
+        correlation_id=correlation_id,
+        actor=DomainEventActor.SYSTEM,
+    )
+    invalid_update = case.model_copy(
+        update={
+            "evidence_ids": (first.id, second.id),
+            "version": case.version + 2,
+        }
+    )
+
+    with pytest.raises(ValueError, match="expected_version \+ 1"):
+        await uow.append_evidence_batch(
+            invalid_update,
+            (first, second),
+            expected_version=case.version,
+            trace_id=trace_id,
+            correlation_id=correlation_id,
+            actor=DomainEventActor.AGENT,
+        )
+
+    assert await SqlEvidenceRepository(factory).list_case(workspace_id, case.id) == ()
+    assert await SqlCaseRepository(factory).get(workspace_id, case.id) == case
+    assert len(await SqlDomainEventStore(factory).list_case(workspace_id, case.id)) == 1
+    await engine.dispose()
+
+
+@pytest.mark.anyio
 async def test_hypothesis_uow_appends_versions_and_preserves_case_membership(tmp_path):
     engine, factory = await _storage(tmp_path)
     workspace_id = WorkspaceId.new()

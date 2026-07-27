@@ -26,7 +26,7 @@ export function ThreadTitle({
       _title = t.pages.newChat;
     }
     if (thread.isThreadLoading) {
-      document.title = `Loading... - ${t.pages.appName}`;
+      document.title = `${t.common.loading} - ${t.pages.appName}`;
     } else {
       document.title = `${_title} - ${t.pages.appName}`;
     }
@@ -35,6 +35,7 @@ export function ThreadTitle({
     t.pages.newChat,
     t.pages.untitled,
     t.pages.appName,
+    t.common.loading,
     thread.isThreadLoading,
     thread.values,
   ]);
@@ -44,7 +45,7 @@ export function ThreadTitle({
   }
   return (
     <FlipDisplay uniqueKey={threadId}>
-      {thread.values.title ?? "Untitled"}
+      {thread.values.title ?? t.pages.untitled}
     </FlipDisplay>
   );
 }

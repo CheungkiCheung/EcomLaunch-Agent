@@ -162,6 +162,13 @@ def test_subagent_injects_task_tool(mock_create_agent):
     call_kwargs = mock_create_agent.call_args[1]
     tool_names = [t.name for t in call_kwargs["tools"]]
     assert "task" in tool_names
+    assert {
+        "spawn_task",
+        "wait_task",
+        "follow_up_task",
+        "cancel_task",
+        "resume_task",
+    }.issubset(tool_names)
 
 
 # ---------------------------------------------------------------------------

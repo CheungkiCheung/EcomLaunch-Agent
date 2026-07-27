@@ -713,7 +713,7 @@ function extractDecision(text: string | undefined) {
   if (!text) {
     return null;
   }
-  const match = text.match(/\b(go|pivot|hold|kill|scale)\b/i);
+  const match = /\b(go|pivot|hold|kill|scale)\b/i.exec(text);
   if (!match) {
     return null;
   }

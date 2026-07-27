@@ -18,6 +18,7 @@ from fastapi import HTTPException, Request
 from langchain_core.messages import BaseMessage
 from langchain_core.messages.utils import convert_to_messages
 
+from app.gateway.config import GatewayConfig, get_gateway_config
 from app.gateway.deps import get_run_context, get_run_manager, get_stream_bridge
 from app.gateway.internal_auth import INTERNAL_SYSTEM_ROLE
 from app.gateway.utils import sanitize_log_param
@@ -114,6 +115,48 @@ def normalize_input(raw_input: dict[str, Any] | None) -> dict[str, Any]:
 
 
 _DEFAULT_ASSISTANT_ID = "lead_agent"
+_COMMERCE_ASSISTANT_ID = "commerce-agent"
+
+
+def ensure_assistant_feature_enabled(
+    assistant_id: str | None,
+    *,
+    context: Mapping[str, Any] | None = None,
+    request_config: Mapping[str, Any] | None = None,
+    gateway_config: GatewayConfig | None = None,
+) -> None:
+    """Fail closed before a disabled application Agent creates a Run record.
+
+    Custom DeerFlow agents can be selected either through ``assistant_id`` or
+    through the runtime ``agent_name`` carried by ``body.context`` / request
+    config.  Treat every supported selector as authoritative so a caller
+    cannot bypass an application feature gate by keeping ``assistant_id`` at
+    ``lead_agent`` while asking the runtime to load the Commerce agent.
+    """
+
+    requested_names: set[str] = set()
+
+    def add_agent_name(value: object) -> None:
+        if not isinstance(value, str):
+            return
+        normalized = value.strip().lower().replace("_", "-")
+        if normalized:
+            requested_names.add(normalized)
+
+    add_agent_name(assistant_id)
+    if isinstance(context, Mapping):
+        add_agent_name(context.get("agent_name"))
+    if isinstance(request_config, Mapping):
+        for container_name in ("context", "configurable"):
+            container = request_config.get(container_name)
+            if isinstance(container, Mapping):
+                add_agent_name(container.get("agent_name"))
+
+    if _COMMERCE_ASSISTANT_ID not in requested_names:
+        return
+    config = gateway_config or get_gateway_config()
+    if not config.commerce_case_agent_enabled:
+        raise HTTPException(status_code=404, detail="Commerce Agent is disabled")
 
 
 # Whitelist of run-context keys that the langgraph-compat layer forwards from
@@ -294,6 +337,12 @@ async def start_run(
     request : Request
         FastAPI request — used to retrieve singletons from ``app.state``.
     """
+    ensure_assistant_feature_enabled(
+        body.assistant_id,
+        context=getattr(body, "context", None),
+        request_config=getattr(body, "config", None),
+    )
+
     bridge = get_stream_bridge(request)
     run_mgr = get_run_manager(request)
     run_ctx = get_run_context(request)

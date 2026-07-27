@@ -1,6 +1,10 @@
-# Commerce Case Agent
+# Commerce Agent
 
-> 工作名：面向电商运营的异构数据诊断与行动 Agent。
+> 工作名：面向电商经营人员的 Chat-first 异构数据诊断与行动 Agent。
+>
+> 2026-07-27 已完成 **Chat-first Commerce Agent + Parent 原生动态 Subagent Harness** 的面试交付：中文 DeerFlow Chat、真实六文件持久化 Thread/Run、Explore/Analyst 并行、fresh Verifier、Task/Event 驱动协作空间、SQLite 重启恢复、fresh DeepSeek V4 身份/Token/Request ID 审计及桌面/移动端浏览器 Gate 均已通过。旧 Case-first / 固定 Path 主链只读保留，作为历史能力、差异分析和迁移回退依据。
+
+重定向 Phase 0–3 Release 已完成：Thread/Workspace/Dataset 隔离、11 个确定性 Commerce Tool、4 个 Commerce Skill、`spawn/wait/follow-up/cancel/resume` Durable 生命周期、动态 Skill/Tool 能力包、fresh-context Verifier、显式用户身份传播、`max_tool_rounds + max_tool_calls` 双预算和有界 Response Guard 均已落地。Fulfillment、Review、Capability Ablation、Peer 四条统一动态 Gate 已使用 fresh `deepseek-v4-flash` 全部通过；每条 15 个唯一请求、retry=0，且模型身份、Provider Request ID、Token 和 Stop Reason 全部进入 secret-free 审计。
 
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](./backend/pyproject.toml)
 [![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white)](./Makefile)
@@ -9,16 +13,67 @@
 
 ## 当前状态
 
-项目正在从旧 OpenSKU / EcomLaunch 方案改造为 Commerce Case Agent。
+项目正在从旧 OpenSKU / EcomLaunch 方案改造为可真实使用、可审计、可持续跟进的 Commerce Agent。当前动态主链可以概括为：
 
-Phase 0 与 Phase 1 已完成并提交。Phase 2 的确定性 Data Intake、Profiler、Semantic Rules、Capability、Normalized Facts、Metric、Anomaly、多卖家 Peer Cohort 与 Geographic Segment 主干已经完成；真实 DeepSeek V4 Preflight 和“只生成候选、不自动确认”的 Semantic Candidate 层也已实现，并通过 fresh、身份核验的真实请求验证，服务端返回身份为 `deepseek-v4-flash`。Phase 3 已完成 Case、显式 Case→Dataset/Analysis Lineage、Domain Event、append-only Evidence、versioned Hypothesis、bounded Investigation Run 与 append-only Goal Loop Checkpoint 持久化，以及 Data Intake、Profile、Capability、Semantic Candidate、Anomaly-to-Case、Investigation Start、Case Lineage、Run Detail/Checkpoint/Event Stream API。Phase 4 的确定性编排内核现已包括 ContextPacket、可信初始 Context Loader、PathAgentSpec、Capability-first DynamicPathRouter、并发安全 BudgetManager、规则型 ModelRouter、结构化 PathResult、GoalLoopController、Stop Condition、安全 Checkpoint，以及带 heartbeat 和 fencing token 的 Worker Lease。Loader 从持久化 Case/Lineage 出发校验 Dataset Manifest、只读分析 Artifact SHA-256、Workspace/Case/Dataset/Seller 身份、Capability 一致性、Evidence/Hypothesis 归属、隐藏评测字段和上下文预算；它只输出压缩的指标摘要、引用 ID 和初始零消耗 Checkpoint，不把原始 CSV 或完整 source Fact 列表塞进模型上下文。首个 `FulfillmentPathAgent` 已连接这条可信上下文链，并在 `GC-FULFILLMENT-001` 上通过 fresh、身份核验的真实 DeepSeek V4 行为测试：系统确认处理时长未恶化、运输时长显著恶化，输出全部引用真实 MetricObservation ID，未虚构私有经营指标或因果结论。首个 fenced Worker step 也已通过真实 E2E：它持久化 phase、`model.assigned`、`path.started`、前后 Checkpoint、Path Evidence、预算和 `path.completed`；Agent Evidence 写入必须携带当前 lease。重启判定器把 exactly-once 风险显式化，阻止已有 Checkpoint 的盲目外部重试。`LeadSynthesisAgent` 现在可从新鲜加载的 Path Evidence 生成结构化诊断 claims、unknowns 与建议后续路径；claim 只能引用当前 Case Evidence，Hypothesis ID 由系统确定性生成，Critical Case 会从 `balanced_tool_user` 升级为 `strong_synthesizer / high`。Fresh-context `VerificationEngine` 不继承 Lead reasoning，能通过受支持诊断并拒绝指标矛盾与因果过度陈述。首条完整 fenced diagnosis Loop 现已通过真实 V4 E2E：`Fulfillment Path → Path-scoped Lead → proposed Hypothesis v1 → fresh Verification → supported Hypothesis v2 → Goal achieved → completed Run`。Lead 的 Evidence、Analysis 与 Manifest 被收敛到同一 completed Path scope；`anom_* / mobs_*` 不能冒充 Evidence ID，`caused / driven / attributable / indicating` 等因果或推断性过度陈述会 fail-closed。每个模型调用前均有 `model.assigned + started + Checkpoint`，模型结果、Hypothesis 批量写入、Verification verdict、GoalLoop decision 和最终 Run 状态都受同一 fencing lease 保护；Verifier reject/repair 会消耗 repair 预算并显式停止为 `verification_replan_required`，不会被改写成 pass。第二条 `SellerPeerPathAgent` 已完成独立真实 V4 行为门禁：它先执行 outcome-agnostic `peer_cohort_query` 与 `geographic_order_count_query`，再解释目标卖家 `27.12%`、5 个 peer/257 个 pooled peer orders 的 `7.39%`、约 `19.73pp` 差距和 SP/MG/RJ 分布；所有观察引用真实 MetricObservation ID，并明确 peer gap 只是诊断证据而非因果结论。两条 Tool 调用都记录 request/response hash、latency 和 succeeded 状态。模型逻辑选型、实际调用上限、Provider Request ID、Token、Latency、Retry、Stop Reason、Prompt/Context/Router/Skill 版本和内容哈希均进入本地不可覆盖审计。Action/Approval/Follow-up 持久化、真正的用户决策/自动 reconciliation、跨进程 post-Path continuation、SellerPeer Worker 集成、完整多 Path Goal Loop、ReviewExperience Path Agent 和完整四 Gold Case E2E 尚未完成；新建调查在 Worker 获取 lease 前仍诚实保持 `queued`。旧 OpenSKU 演示结果不得被当作新系统已经可用的证明。
+```text
+用户在 Thread 上传 CSV / JSON / JSONL / XLSX / ZIP
+→ (user_id, thread_id) 映射隔离 Workspace 与 active Dataset
+→ Parent 调用确定性 Commerce Tool 检查 Capability
+→ 简单问题直接回答，复杂问题动态派遣 0–N 通用 Subagent
+→ ContextPacket 冻结 Goal / Skill / Tool / Budget / SourceRefs
+→ 独立任务并行执行，依赖任务按序等待
+→ fresh-context Verifier 独立重算并抽查 Evidence
+→ Parent 用中文自然综合，必要时升级 Case / Action / Follow-up
+→ Trace 进入 Eval / Experiment / Skill Candidate / Shadow
+```
 
-补充状态：`ReviewExperiencePathAgent` 已完成独立真实 DeepSeek V4 门禁；当前未完成项以 `CommerceSubagentAdapter`、SellerPeer/Review Worker 集成、多 Path fan-out/Evidence Barrier、持续 Lead Loop、Action/Follow-up 和四 Gold Case E2E 为准。运行时选型已固定为 DeerFlow Harness + bounded Subagents + Commerce Domain：DeerFlow 负责 Agent Loop、Subagent、Tool、Skill、Streaming 和底层 LangGraph 执行，Commerce Run/Event/Checkpoint/Lease/Fencing 仍是业务权威状态。
+新动态主线已经完成并有测试证据的部分包括：
+
+- `(user_id, thread_id) → WorkspaceId → active DatasetId` 的确定性隔离，支持上传幂等、数据集选择、损坏状态 fail closed 和 CSV/JSON/JSONL/XLSX/ZIP；
+- 11 个 Parent/Subagent 共用的确定性 Commerce Tool，覆盖接入、数据集、Profile、Capability、实体、窗口、同类、地域和 Evidence；
+- `fulfillment-investigation`、`seller-peer-analysis`、`review-experience-diagnosis`、`commerce-diagnostic-synthesis` 四个动态 Skill；
+- 通用 `explore / analyst / verifier / operator` Profile，不使用固定业务 Crew；Parent 每次派工只加载最小 Skill 和 Tool 白名单；
+- Durable `spawn_task / wait_task / follow_up_task / cancel_task / resume_task`，包含 ContextPacket、Parent–Child lineage、append-only Event、Lease/Fencing 和恢复语义；
+- Subagent Tool 双预算中间件：`max_tool_rounds` 限制循环轮次，`max_tool_calls` 限制单轮并行爆发和总调用数；预算耗尽后卸载 Tool 并强制基于已有证据综合，避免开放式 ReAct 漫游；
+- Verifier 必须显式引用终态 `task:<task_id>`，Harness 注入只读 source snapshot，不继承 Parent 隐式历史；
+- DeepSeek streaming Provider Request ID 修复、Gateway checkpointer Thread identity 修复、Subagent `user_id` 显式传播和 secret-free Token/Model/Stop telemetry；
+- 四条动态 fresh Gate：上传 → ingest → capability → 同轮并行 Explore/Analyst → wait-all → fresh Verifier → 中文 Evidence 回答；最新统一运行 `4 passed in 253.05s`，单 Case 15 请求、179,430–190,004 Tokens，全部模型身份为 `deepseek-v4-flash`、Request ID 唯一、Parent Tool 错误为 0；最终回答只有在所有执行证据已通过时才允许一次无 Tool 的 fresh Response Guard 改写，改写仍重新执行完整确定性门禁。
+- 持久化 Chat 浏览器 Gate v7：真实本地账号与 CSRF、六个公开 CSV、同一 Thread/Run 的 Parent–Subagent 执行和协作空间全部通过；Run 使用 170,394 Token，Lead 124,966、Subagent 45,428，13 个去重 Provider Request ID、retry 0，并在 Gateway 重启后恢复 3 个 Task、104 条 Run Event、15 条消息和最终中文答案。
+
+此前 Case-first / 固定 Path 主链仍保留以下已验证能力，后续作为 Chat 内 Case、Evidence、Action 和高级详情的业务底座：
+
+- 确定性 Data Intake、Profiler、Semantic Confirmation、Capability、Normalized Facts、Metric、Anomaly、Peer Cohort 和 Geographic Segment；
+- Case、Lineage、append-only Evidence、versioned Hypothesis、Run、Checkpoint、Lease/Fencing 与权威 Domain Event Stream；
+- `Fulfillment`、`SellerPeer`、`ReviewExperience` 三条 versioned DeerFlow Subagent Path，Capability 驱动的 0–3 Path 并行 fan-out、Evidence Barrier 与 fenced Committer；
+- 持续 `CommerceLeadTurnService`，包括 persisted Observe、multi-Path synthesis、只读追问、bounded structured repair、WAIT/Resume/CANCEL、独立 Replan Run 与 fresh Verification Subagent；
+- 四条 Gold Case 统一完整 Agent Investigation Release Gate：真实上传数据进入后，按期望执行 Fulfillment / ReviewExperience / SellerPeer Path，经过 Evidence Barrier、Lead、Fact/Metric-aware Fresh Verification、Run completion 与 Lease release；v11 使用 14 条唯一 fresh `deepseek-v4-flash` Agent 请求、全部 retry `0`，四个 scorecard 均可进入 release gate；
+- Action/Approval HTTP 合同、服务端 Policy、真实内部 Artifact Connector、fenced Execution Run、失败释放、幂等重放和可验证 Rollback；
+- Follow-up 对新数据重新计算 Signal，并在没有可靠对照时保持 `inconclusive`、禁止声称 Action 造成改善；
+- Mapping Confirmation Resume、WAIT/Approval fencing Resume、Tool Failure 独立 Replan，以及 unknown-external-outcome reconciliation：旧 Task 不盲重试，未知远端结果会被持久化为 `path.blocked + post-checkpoint`，旧 Run 结束后才能显式创建新 Replan Run；
+- Fresh DeepSeek V4 Action Planner：模型只能从固定内部 Action Catalog 选择，Risk、Policy、Approval、Connector、阈值和 Rollback 均由服务端确定；相同幂等 Key 重放不再调用模型；
+- Semantic Evaluator、Experiment/Pareto Comparator、Holdout、Skill Candidate、Security Scan 与真实 Shadow。一次四 Case 实验通过旧门禁后，人工审计发现模型自造 `15% / 2×` Action 阈值，推动 `commerce-semantic-evaluator@1.3.0` 和确定性 `unsupported-action-threshold` 门禁；本轮真实 Holdout 还捕获并修复了 Semantic Evaluator 超长自由文本导致的 Schema 解析失败。当前有效 Candidate 为 `commerce-diagnostic-synthesis@1.3.0`：四条 Gold Case × 2 repetitions 的 Candidate `8/8`、零 hard-gate failure，并已通过两个真实 Shadow Run；Human Review / Promotion / Active Pointer / Rollback API 和故障恢复合同已经完成，但该真实 Candidate 仍停在 `shadow`，没有用户授权的人审就不会修改 Active Pointer。历史 `1.2.0` Candidate 保持不可变，不再作为当前晋级对象。
+
+运行时选型已经固定为 **DeerFlow Harness + bounded Subagents + Commerce Domain**：DeerFlow 负责 Subagent、Tool、Skill、Streaming 和底层 LangGraph 执行；Commerce Run/Event/Checkpoint/Lease/Fencing 是业务权威状态，不从聊天文案推断 Case 状态。
+
+真实模型配置使用官方 `https://api.deepseek.com/v1`、本地别名 `deepseek-reasoner`、Provider `deerflow.models.patched_deepseek:PatchedChatDeepSeek` 和 `max_retries=0`。2026-07-26 fresh Preflight 仍返回服务端身份 `deepseek-v4-flash`、HTTP 200、Provider Request ID、74 Total Tokens、`stop`、retry `0`；所有 Key 只存在于 Git 忽略的本地 `.env`，不会写入代码、文档或审计正文。
+
+最新 Harness / Dynamic Release / Commerce Tool 聚焦回归为 `452 passed`，变更集 Ruff、前端 Prettier、ESLint 和 TypeScript 全部通过。前端为 `62 files / 334 tests`、6 条 Commerce Chat/协作空间 Playwright，Next.js production build 完成 `79/79` 静态页面。统一四 Gold fresh Gate 为 `4 passed in 253.05s`；独立 Response Guard smoke 也由真实 `deepseek-v4-flash` 完成，具备 Provider Request ID、Token 和 `stop` 证据。真实 Skill Evolution Holdout 为 Candidate `8/8`，32 个唯一模型请求，两个 Shadow Run 继续通过；本地 PostgreSQL 16 迁移、连接重启恢复和 fencing takeover 也已通过。历史固定 Path 的完整 Agent Gate 为 14 个唯一请求、71,478 Token；它用于迁移对照，不代替新动态主链门禁。详细过程见 [`docs/progress/2026-07-26-commerce-dynamic-release-hardening.md`](./docs/progress/2026-07-26-commerce-dynamic-release-hardening.md)、[`docs/progress/2026-07-26-commerce-dynamic-tool-skill-chain.md`](./docs/progress/2026-07-26-commerce-dynamic-tool-skill-chain.md) 和 [`docs/progress/2026-07-26-commerce-postgres-skill-evolution-release.md`](./docs/progress/2026-07-26-commerce-postgres-skill-evolution-release.md)。
+
+要求级完成审计见 [`docs/progress/2026-07-26-commerce-phase7-completion-audit.md`](./docs/progress/2026-07-26-commerce-phase7-completion-audit.md)。它逐项记录已证明能力、真实调优过程和主动保留的生产边界；本轮面试交付已经完成，Skill Promotion 与外部 Connector 仍需用户授权，不能被当作自动完成项。
+
+真实持久化浏览器 Release Gate 已通过：六文件上传、同一 Chat Thread/Run、Parent、Explore/Analyst、fresh Verifier、最终中文答案、协作空间、Drawer、桌面/390px/reduced-motion、模型身份、Provider Request ID、Token、retry 以及 Gateway 重启恢复均有直接证据。审计见 [`docs/progress/runs/2026-07-27-commerce-chat-browser-gate-v7/`](./docs/progress/runs/2026-07-27-commerce-chat-browser-gate-v7/)。此前隔离 Chat Dynamic v7 仍保留作为 Response Guard 的失败→根因→TDD→PASS 调优证据；它使用过一次受限改写，因此不能描述为 repair-free。中文求职材料包和基于原模板局部替换、原生渲染校验的单页 DOCX/PDF 已完成；内部 Artifact Connector 已通过真实可逆执行、读回和归档回滚门禁；本地 PostgreSQL 16 的完整迁移、连接重启恢复和 fencing takeover 也已通过。外部商家 Connector 继续 fail closed，Shadow Candidate 保持待人审。Master Shell、Case Detail v2、Data Inbox、Capability Report、Case Queue、Evidence Explorer、Action Center、Agent Run 与 Skills & Evals 作为 Chat 详情、Drawer 或高级页面复用，不再作为默认产品入口。
+
+Phase 4A 已冻结 Task Event → Visual State 合同并接入 authenticated Durable Task/Event API：Chat 紧凑任务状态和协作空间共用同一纯 ViewModel，未知/乱序/重复 Event 显式处理，不从聊天文本或计时器推断活动。增量 Hook 按每个 Task 的 `next_after_seq` 串行轮询，游标只前进、重复序号不重放，并在 Run 切换或组件卸载时取消请求。`failed`、`cancelled` 和 `timed_out` 保持独立终态，Lease 释放不会把失败、取消、超时、阻塞或等待错误标成 idle；延迟到达的 Tool、Message 或 Lease Event 只能补充脱敏审计摘要，不能让非 working Actor 重新显示为忙碌。renderer-neutral Collaboration Scene ViewModel、DeerFlow Chat 紧凑任务状态和可选游戏化协作空间均已实现：一个唯一 `task_id` 最多产生一个原创角色精灵和一个生成工位，没有 Task 时只显示空房间，不生成固定 Crew 或假忙碌。内置 `commerce-agent` 已固定使用 `deepseek-reasoner` 别名、`commerce` Tool 组、四个 Commerce Skill 和强制 Durable Subagent Harness；客户端即使选择非 Ultra 模式也不能关闭其 Subagent 能力。11 个 Commerce Tool 默认不会泄漏给普通 DeerFlow Agent，并同时受 `COMMERCE_CASE_AGENT_ENABLED` 环境开关保护；Gateway 在创建 Run 前也会拒绝关闭状态下的 Commerce Agent。原创角色、空场景和工位的完整 Prompt、去底参数、SHA-256 和机械浏览器截图见 [`docs/design/commerce-collaboration-imagegen-assets-v1.md`](./docs/design/commerce-collaboration-imagegen-assets-v1.md)。当前前端单元门禁为 `62 files / 334 tests`，Prettier、ESLint、TypeScript、6 条 Commerce Chat/协作空间 Chromium 机械交互和真实持久化 DeepSeek V4 浏览器 Gate 均通过。
 
 完整设计与实施计划：
 
+- [`docs/plans/2026-07-24-commerce-chat-subagent-harness-plan.md`](./docs/plans/2026-07-24-commerce-chat-subagent-harness-plan.md)
+- [`docs/adr/0006-commerce-agent-is-chat-first-with-dynamic-subagents.md`](./docs/adr/0006-commerce-agent-is-chat-first-with-dynamic-subagents.md)
 - [`docs/plans/2026-07-18-commerce-case-agent-complete-design-and-implementation-plan.md`](./docs/plans/2026-07-18-commerce-case-agent-complete-design-and-implementation-plan.md)
 - [`docs/adr/0005-commerce-uses-deerflow-subagent-runtime.md`](./docs/adr/0005-commerce-uses-deerflow-subagent-runtime.md)
+- [`docs/portfolio/commerce-case-agent-architecture.md`](./docs/portfolio/commerce-case-agent-architecture.md)
+- [`docs/portfolio/commerce-case-agent-demo-script.md`](./docs/portfolio/commerce-case-agent-demo-script.md)
+- [`docs/portfolio/commerce-case-agent-interview-guide.md`](./docs/portfolio/commerce-case-agent-interview-guide.md)
 
 Phase 0 基线与迁移清单：
 
@@ -46,6 +101,14 @@ Phase 0 基线与迁移清单：
 - [`docs/progress/2026-07-19-commerce-lead-synthesis-real-deepseek-v4.md`](./docs/progress/2026-07-19-commerce-lead-synthesis-real-deepseek-v4.md)
 - [`docs/progress/2026-07-19-commerce-worker-lead-verification-loop.md`](./docs/progress/2026-07-19-commerce-worker-lead-verification-loop.md)
 - [`docs/progress/2026-07-19-commerce-seller-peer-path-real-deepseek-v4.md`](./docs/progress/2026-07-19-commerce-seller-peer-path-real-deepseek-v4.md)
+- [`docs/progress/2026-07-19-commerce-action-api.md`](./docs/progress/2026-07-19-commerce-action-api.md)
+- [`docs/progress/2026-07-19-commerce-action-execution-rollback.md`](./docs/progress/2026-07-19-commerce-action-execution-rollback.md)
+- [`docs/progress/2026-07-19-commerce-follow-up-loop.md`](./docs/progress/2026-07-19-commerce-follow-up-loop.md)
+- [`docs/progress/2026-07-19-commerce-eval-experiment-skill-evolution.md`](./docs/progress/2026-07-19-commerce-eval-experiment-skill-evolution.md)
+- [`docs/progress/2026-07-19-commerce-action-planner.md`](./docs/progress/2026-07-19-commerce-action-planner.md)
+- [`docs/progress/2026-07-19-commerce-skill-shadow.md`](./docs/progress/2026-07-19-commerce-skill-shadow.md)
+- [`docs/progress/2026-07-19-commerce-four-gold-threshold-tuning-skill-v1.3.md`](./docs/progress/2026-07-19-commerce-four-gold-threshold-tuning-skill-v1.3.md)
+- [`docs/progress/2026-07-26-commerce-dynamic-release-hardening.md`](./docs/progress/2026-07-26-commerce-dynamic-release-hardening.md)
 
 ## 解决什么问题
 
@@ -60,16 +123,16 @@ Phase 0 基线与迁移清单：
 做完以后有没有改善？
 ```
 
-Commerce Case Agent 把一次对话升级为一个长期存在、可审计、可跟进的 `Case`：
+Commerce Agent 让用户从自然对话开始，并在任务需要长期调查、行动或 Follow-up 时，自动升级为可审计、可恢复的 `Case`：
 
 ```text
-上传 CSV / Excel / 数据目录
+上传 CSV / Excel / 数据目录并自然提问
 → 识别字段、实体、时间和可用能力
-→ 确定性扫描异常
-→ 创建 Case
-→ 动态调查必要证据路径
+→ Parent 直接回答 / 调用确定性 Tool / 动态派遣 0–N Subagent
+→ 复杂任务升级为 Case
+→ 持久化 Evidence 与任务状态
 → 独立验证结论
-→ 生成可审批 Action
+→ Chat 内生成可审批 Action
 → 新数据到来后 Follow-up
 → Close / Reopen / Inconclusive / Blocked
 ```
@@ -83,23 +146,25 @@ Commerce Case Agent 把一次对话升级为一个长期存在、可审计、可
 - 拖入一个或多个 CSV / Excel 文件；
 - 上传一个包含多张表的数据目录或压缩包；
 - 说明“最近评分突然下降，帮我找到原因”；
-- 让系统在新数据到来时重新检查已有 Case；
-- 查看 Evidence、Hypothesis、Action、Approval 和 Follow-up；
-- 在 Timeline、Graph 与 War Room 之间切换同一个真实 Run。
+- 在同一对话中持续追问，不强制每次重新运行完整流程；
+- 展开查看 Subagent、Evidence、Artifact 和模型运行详情；
+- 在 Chat 中批准、拒绝或修改受控 Action；
+- 让系统在新数据到来时重新检查已有任务；
+- 点击“查看协作空间”，观察真实任务事件驱动的游戏化 Subagent 场景。
 
 当上传数据缺少曝光、点击、加购、广告消耗、库存或利润时，系统不会假装拥有这些字段。它会完成当前数据允许的诊断，明确 `unknown`，并给出精确补数建议。
 
 ## 首批聚焦范围
 
-首批只打穿三条证据路径：
+首批保留三条已经打穿的业务能力，并逐步迁移为 Skill、Tool 和 Gold Case：
 
-| Path Agent | 关注问题 | 典型证据 |
+| 已验证能力 | 关注问题 | 目标形态 |
 |---|---|---|
-| `FulfillmentPathAgent` | 延迟来自卖家处理还是承运运输 | 下单、批准、发货、送达、预计送达时间 |
-| `SellerPeerPathAgent` | 某卖家或实体是否偏离同类基线 | 卖家、品类、区域、订单与评价聚合 |
-| `ReviewExperiencePathAgent` | 评分下降是否与商品体验问题有关 | 评分、低分率、评论文本与时间窗口 |
+| 履约与承运调查 | 延迟来自卖家处理还是承运运输 | Commerce Skill + Metric Tool + Gold Case |
+| 卖家或实体对标 | 某卖家或实体是否偏离同类基线 | Commerce Skill + Segment Tool + Gold Case |
+| 评价体验诊断 | 评分下降是否与商品体验问题有关 | Commerce Skill + Text/Evidence Tool + Gold Case |
 
-系统按照数据 Capability 动态启动 0–3 个 Path Agent，不使用固定五 Agent Crew。
+Parent 使用通用 `explore`、`analyst`、`verifier`、`operator` Profile，根据问题、数据 Capability 和历史 Evidence 动态启动 0–N 个任务，不使用固定 Crew。
 
 本轮不做：
 
@@ -114,21 +179,22 @@ Commerce Case Agent 把一次对话升级为一个长期存在、可审计、可
 
 ```mermaid
 flowchart LR
-  Upload["异构数据上传"] --> Profile["Schema + Entity + Capability Profile"]
-  Profile --> Metrics["确定性 Metric 与异常扫描"]
-  Metrics --> Case["Case"]
-  Case --> Lead["Lead Agent / Goal Loop"]
-  Lead --> Router["Capability-driven Router"]
-  Router --> Fulfillment["Fulfillment Path"]
-  Router --> Peer["Seller Peer Path"]
-  Router --> Review["Review Experience Path"]
-  Fulfillment --> Evidence["Structured Evidence"]
-  Peer --> Evidence
-  Review --> Evidence
-  Evidence --> Verify["Fresh-context Verification"]
-  Verify --> Action["Action + Approval"]
-  Action --> Followup["Follow-up"]
-  Followup --> Outcome["Close / Reopen / Inconclusive / Blocked"]
+  Chat["中文 Chat + 数据上传"] --> Parent["Parent Agent"]
+  Parent --> Direct["直接回答"]
+  Parent --> Tools["确定性 Commerce Tools"]
+  Parent --> Tasks["动态派遣 0–N Subagent"]
+  Tasks --> Explore["Explore"]
+  Tasks --> Analyst["Analyst"]
+  Tasks --> Verify["Fresh-context Verifier"]
+  Tasks --> Operator["Approved Operator"]
+  Tools --> Evidence["Evidence / Artifact / Case"]
+  Explore --> Evidence
+  Analyst --> Evidence
+  Verify --> Evidence
+  Evidence --> Answer["自然回答 + 引用"]
+  Answer --> Action["Chat 内 Action Approval"]
+  Action --> Followup["Follow-up / Close / Reopen"]
+  Tasks -.真实 Task Event.-> Studio["可选游戏化协作空间"]
 ```
 
 ### Harness 与业务边界
@@ -202,7 +268,7 @@ Skill Candidate
 
 纯确定性测试保持无模型，例如 Domain、Metric、State Transition、Repository、Event、Budget、Policy 和数据质量。
 
-任何触达 LLM 或验证 Agent 行为的测试，都必须向真实 DeepSeek V4 发起当次新请求，包括 Lead、Path Agent、Router 模型判断、Tool Selection、Verification、Semantic Evaluator、Skill Candidate、Agent Integration、Gold Case E2E、Experiment 和 Release Gate。
+任何触达 LLM 或验证 Agent 行为的测试，都必须向真实 DeepSeek V4 发起当次新请求，包括 Parent、Subagent、Router 模型判断、Tool Selection、Verification、Semantic Evaluator、Skill Candidate、Agent Integration、Gold Case E2E、Experiment 和 Release Gate。
 
 禁止用以下方式作为通过证据：
 
@@ -223,28 +289,62 @@ Skill Candidate
 ```bash
 COMMERCE_CASE_AGENT_ENABLED=false
 NEXT_PUBLIC_COMMERCE_CASE_AGENT_ENABLED=false
+NEXT_PUBLIC_COMMERCE_WORKSPACE_ID=wsp_<32 lowercase hex chars>
 ```
 
-后端 Flag 控制 Commerce Router 是否挂载；前端 Flag 控制 Commerce Workspace 入口是否显示。两个 Flag 都开启后，新系统入口才完整可用。
+后端 Flag 控制 Commerce Router 是否挂载；前端 Flag 控制 Commerce Workspace 入口和 `/commerce` 路由是否显示。两个 Flag 都开启，并显式配置合法 Workspace ID 后，新系统入口才完整可用。前端不会猜测 Workspace，也不会在缺少上下文时跨 Workspace 读取 Case。
 
 旧 OpenSKU / EcomLaunch 不会自动接入新系统。
 
 ## 前端方向
 
-前端采用 Case-first、Codex-inspired Workspace：
+目标前端采用 Chat-first、Codex-inspired Workspace：
 
-- Case Inbox；
-- Dataset 与 Capability；
-- Investigation Timeline；
-- Evidence / Hypothesis；
-- Action / Approval；
-- Follow-up；
-- Run Graph；
-- War Room。
+- 左侧只保留新建任务和历史对话；
+- 中央是中文自然对话、文件上传和持续追问；
+- Subagent、Evidence、Artifact 和 Action Approval 在 Chat 中紧凑呈现并按需展开；
+- 高级 Run、模型遥测、Skill 与 Eval 进入详情或开发者入口；
+- 点击“查看协作空间”后，中央切换为原创游戏小人构成的微缩工作场景；
+- 固定 War Room 不再作为默认页面。
 
-所有视图读取同一个 Domain Event Stream。War Room 不播放预设动画；没有真实事件时显示等待、空闲或阻塞。
+Chat、任务详情和游戏化协作空间读取同一个 Task / Domain Event Stream。场景不播放预设忙碌动画；没有真实事件时显示等待、空闲或阻塞。
 
-每个正式页面，包括 War Room，都必须先生成高保真视觉稿并完成选择，再实现 React 页面。
+Chat 主界面和游戏化协作空间必须先生成高保真视觉稿并完成选择，再实现 React / Canvas。游戏资产在任务状态合同冻结后使用图像生成制作。
+
+已完成的中文 Case-first Master Shell 与 Case Detail v2 保留为迁移素材和高级详情实现，当前位于：
+
+```text
+frontend/src/app/commerce/
+frontend/src/components/commerce/master-shell.tsx
+frontend/src/core/commerce/
+```
+
+当前页面支持真实 Commerce Read API、Case 切换、Domain Event 排序与中文投影、未知事件显式降级、Evidence / Run 视图、子智能体与 Runtime 状态、空状态、错误状态、窄屏侧滑导航和对象级检查面板。Case Detail v2 的默认概览只回答“发生了什么、当前判断、证据边界、下一步”；确定性 Analysis Artifact 和 Action Summary 来自后端读模型，不由前端硬编码。Data Inbox 支持 Workspace-scoped Dataset List/Detail、只读来源与 SHA-256 校验、multipart 上传、Dataset-scoped 语义确认和“未观察”字段边界。Capability Report 读取同一 Dataset Detail、Capability Profile 与 Semantic Mapping Profile，明确投影“可直接分析 / 部分可分析 / 当前不可分析”。Case Queue 读取真实 Case List，按状态和风险分组、筛选与搜索；可用能力路径会预选进入 Explicit Case 表单，补齐数据批次、经营主体和两个分析窗口后调用真实创建合同，同一内容重复提交返回同一 Case。Evidence Explorer 将支持、矛盾和未知证据同级展示，恢复 Metric 窗口与 Hypothesis 关系；Fact 详情尚未开放时只展示审计编号，不伪造事实正文。Action Center 从严格 Action Record 投影参数、策略、审批、执行工具和回滚方案，支持批准、拒绝、稳定幂等执行和可验证回滚；外部商家写操作仍由后端 Policy fail closed。顶层“运行记录”读取严格 Run Detail、Domain Event 与 Goal Loop Checkpoint 合同，展示同级 Path fan-out、可审计证据屏障、主智能体综合、新鲜上下文验证、模型请求遥测、预算和恢复检查点；缺失遥测保持“未观察”，不从动画或聊天推断运行状态。“技能与评测”读取不可变 Candidate、绑定的 Experiment Definition/Report 和可选 Active Pointer，展示 hard gate、Control/Candidate Pareto、Shadow Run ID、人工审查、激活与回滚；Shadow 请求遥测未开放时不从 Run 数量推断请求数量，运行中智能体也不能修改 Active Pointer。无异常信号的用户请求显示为“用户发起的履约诊断”等诊断标题，不伪造“异常”。Metric Window 可以保留上传数据中的严格 source-local datetime，Event/Run/审计时间仍要求 offset。Case Composer 只在概览页显示；案例问答等尚未接线的入口会诚实提示“未发送”，不会伪造 Agent 运行。
+
+实现截图：
+
+- `docs/design/commerce/implementation/master-shell-react-desktop-v1.png`；
+- `docs/design/commerce/implementation/master-shell-react-mobile-v1.png`。
+- `docs/design/commerce/implementation/case-detail-react-desktop-v1.png`；
+- `docs/design/commerce/implementation/case-detail-react-evidence-inspector-v1.png`；
+- `docs/design/commerce/implementation/case-detail-react-mobile-v1.png`；
+- `docs/design/commerce/implementation/data-inbox-react-empty-v1.png`；
+- `docs/design/commerce/implementation/data-inbox-react-review-v1.png`；
+- `docs/design/commerce/implementation/capability-report-react-desktop-v1.png`；
+- `docs/design/commerce/implementation/capability-report-react-mobile-v1.png`；
+- `docs/design/commerce/implementation/case-queue-react-desktop-v1.png`；
+- `docs/design/commerce/implementation/case-queue-react-mobile-v1.png`；
+- `docs/design/commerce/implementation/case-queue-react-create-v1.png`。
+- `docs/design/commerce/implementation/evidence-explorer-react-desktop-v1.png`；
+- `docs/design/commerce/implementation/evidence-explorer-react-mobile-v1.png`。
+- `docs/design/commerce/implementation/action-center-react-desktop-v1.png`；
+- `docs/design/commerce/implementation/action-center-react-mobile-v1.png`。
+- `docs/design/commerce/implementation/agent-run-react-desktop-v1.png`；
+- `docs/design/commerce/implementation/agent-run-react-mobile-v1.png`。
+- `docs/design/commerce/implementation/skills-evals-react-desktop-v1.png`；
+- `docs/design/commerce/implementation/skills-evals-react-mobile-v1.png`。
+
+Case Detail 已额外通过真实本地注册/登录、Commerce 独立迁移、冻结 Olist `GC-FULFILLMENT-001` Data Intake / Analyze 和真实浏览器读取：生成 1 个 Case、5 个确定性异常信号和 5 条 Evidence，页面展示 `3.5% → 35.1%` 并保留“尚未完成独立验证 / 尚无候选行动”。结构化 mock API Playwright 仍只验证 UI 机械行为；真实 Olist 验收验证确定性数据与读取链路，但本次没有启动 Agent Run，不能作为 DeepSeek V4 Agent Release Gate。
 
 ## Legacy
 
@@ -302,7 +402,12 @@ PYTHONPATH=. uv run pytest tests/commerce \
   --ignore=tests/commerce/agents/test_lead_synthesis_live.py \
   --ignore=tests/commerce/agents/test_worker_lead_verification_loop_live.py \
   --ignore=tests/commerce/agents/test_seller_peer_path_agent_live.py \
-  --ignore=tests/commerce/agents/test_review_experience_path_agent_live.py -v
+  --ignore=tests/commerce/agents/test_review_experience_path_agent_live.py \
+  --ignore=tests/commerce/agents/test_fulfillment_subagent_live.py \
+  --ignore=tests/commerce/agents/test_fulfillment_subagent_parity_live.py \
+  --ignore=tests/commerce/agents/test_fulfillment_subagent_supervisor_live.py \
+  --ignore=tests/commerce/agents/test_seller_peer_subagent_live.py \
+  --ignore=tests/commerce/agents/test_review_experience_subagent_live.py -v
 
 cd ../frontend
 pnpm typecheck
@@ -318,7 +423,7 @@ cd backend
 PYTHONPATH=. uv run pytest -m real_model tests/commerce -v
 ```
 
-截至 2026-07-19，最终加固版预检持续返回 `deepseek-v4-flash`。首个 `FulfillmentPathAgent`、fenced Worker、独立 Lead 和 fresh-context Verifier 均已使用新鲜请求验收。最终完整 Worker Loop 重新发起了三条 preflight 和 Path/Lead/Verifier 三条 Agent 请求：Agent 侧分别消耗 `4,314`、`4,456`、`4,708` Tokens，共 `13,478` Tokens；preflight 另消耗 `212` Tokens。三条 Agent 请求均为单次请求、零重试，约 `3.73s / 3.83s / 4.86s`，服务端身份均为 `deepseek-v4-flash`。Run Event Stream 共 32 个事件、5 个 Checkpoint、4 个 Hypothesis 各两版；最终预算为两次 Loop iteration、一次 Path、一次模型升级、零 repair，Run 以 `goal_achieved` 完成。SellerPeer 最终门禁另使用一条 71-token preflight 和一条 `3,206`-token Agent 请求，约 `4.03s`、单次请求、零重试，并保留两条真实 deterministic Tool trace。ReviewExperience 最终门禁使用一条 71-token preflight 和一条 `4,370`-token Agent 请求，约 `9.98s`、单次请求、零重试，并保留 `metric_query` 与 `review_signal_query` 两条真实 Tool trace。它把 8 条低分评价中的 7 条脱敏文本作为 VOC 信号，明确区分未核验的商品真实性/少发/未收到投诉与两窗口均为 0 的延迟交付率。这证明首条真实 `Path→Lead→Verification` 诊断闭环以及独立 SellerPeer、ReviewExperience Path，但不代表两条新 Path 的 Worker 集成、Action/Follow-up、跨进程 continuation 或四条 Gold Case Release Gate 已经通过。
+截至 2026-07-20，四条 Gold Case 已通过统一完整 Agent Investigation Gate。`GC-FULFILLMENT-001` 执行 Fulfillment + ReviewExperience，`GC-REVIEW-002` 只执行 ReviewExperience，`GC-CAPABILITY-003` 只执行 Fulfillment，`GC-PEER-004` 执行 Fulfillment + SellerPeer；每个 Case 的实际 Paths 与预期一致，所有选中 Path completed，Fresh Verification pass，Run 以 `goal_achieved` completed，Lease 最终释放。v11 共持久化 14 个唯一 Agent Provider Request ID、`71,478` Agent Tokens、约 `85.68s` 累计 Agent Latency，全部服务端身份为 `deepseek-v4-flash`、retry `0`。v1–v10 的真实失败没有删除，包括 Review schema/JSON/引用、Verification Fact 合同与输出预算、显式 Fulfillment 无 Anomaly、以及模型客户端生命周期问题；完整演进见 [`docs/progress/2026-07-20-commerce-four-gold-agent-release.md`](./docs/progress/2026-07-20-commerce-four-gold-agent-release.md)。该门禁只证明 Investigation，不声称四个 Run 内执行了 Action/Approval/Follow-up。
 
 ### Commerce 数据库迁移
 

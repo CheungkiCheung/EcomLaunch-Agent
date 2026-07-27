@@ -129,6 +129,7 @@ def replay_case_projection(events: tuple[DomainEventEnvelope, ...]) -> CaseProje
         elif event.event_type in {
             "evidence.appended",
             "hypothesis.version_appended",
+            "action.created",
         }:
             if "case_version" not in event.payload:
                 raise ValueError(

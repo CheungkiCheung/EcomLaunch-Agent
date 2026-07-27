@@ -60,6 +60,27 @@ class TestSubagentConfigSkills:
         )
         assert config.skills == []
 
+    def test_tool_round_budget_is_optional(self):
+        config = SubagentConfig(
+            name="test",
+            description="test",
+            max_tool_rounds=3,
+        )
+        assert config.max_tool_rounds == 3
+
+    def test_total_tool_call_budget_is_optional(self):
+        config = SubagentConfig(
+            name="test",
+            description="test",
+            max_tool_calls=5,
+        )
+        assert config.max_tool_calls == 5
+
+    def test_successful_tool_completion_contract_defaults_to_disabled(self):
+        config = SubagentConfig(name="test", description="test")
+
+        assert config.min_successful_tool_calls == 0
+
 
 # ---------------------------------------------------------------------------
 # SubagentOverrideConfig.skills field
@@ -104,10 +125,22 @@ class TestCustomSubagentConfig:
         assert config.description == "A test agent"
         assert config.system_prompt == "You are a test agent."
         assert config.tools is None
-        assert config.disallowed_tools == ["task", "ask_clarification", "present_files"]
+        assert config.disallowed_tools == [
+            "task",
+            "spawn_task",
+            "wait_task",
+            "follow_up_task",
+            "cancel_task",
+            "resume_task",
+            "ask_clarification",
+            "present_files",
+        ]
         assert config.skills is None
         assert config.model == "inherit"
         assert config.max_turns == 50
+        assert config.max_tool_rounds is None
+        assert config.max_tool_calls is None
+        assert config.min_successful_tool_calls == 0
         assert config.timeout_seconds == 900
 
     def test_full_configuration(self):
@@ -119,12 +152,18 @@ class TestCustomSubagentConfig:
             skills=["data-analysis", "visualization"],
             model="qwen3:32b",
             max_turns=80,
+            max_tool_rounds=4,
+            max_tool_calls=6,
+            min_successful_tool_calls=1,
             timeout_seconds=600,
         )
         assert config.tools == ["bash", "read_file", "write_file"]
         assert config.skills == ["data-analysis", "visualization"]
         assert config.model == "qwen3:32b"
         assert config.max_turns == 80
+        assert config.max_tool_rounds == 4
+        assert config.max_tool_calls == 6
+        assert config.min_successful_tool_calls == 1
         assert config.timeout_seconds == 600
 
     def test_skills_empty_list_no_skills(self):
@@ -149,6 +188,22 @@ class TestCustomSubagentConfig:
                 description="test",
                 system_prompt="test",
                 timeout_seconds=0,
+            )
+
+    def test_rejects_zero_tool_round_budget(self):
+        with pytest.raises(ValueError):
+            CustomSubagentConfig(
+                description="test",
+                system_prompt="test",
+                max_tool_rounds=0,
+            )
+
+    def test_rejects_zero_total_tool_call_budget(self):
+        with pytest.raises(ValueError):
+            CustomSubagentConfig(
+                description="test",
+                system_prompt="test",
+                max_tool_calls=0,
             )
 
 
@@ -276,6 +331,7 @@ class TestLoadSubagentsConfigWithSkills:
                         "skills": ["data-analysis", "visualization"],
                         "tools": ["bash", "read_file"],
                         "max_turns": 80,
+                        "min_successful_tool_calls": 1,
                         "timeout_seconds": 600,
                     },
                 },
@@ -287,6 +343,7 @@ class TestLoadSubagentsConfigWithSkills:
         assert custom.skills == ["data-analysis", "visualization"]
         assert custom.tools == ["bash", "read_file"]
         assert custom.max_turns == 80
+        assert custom.min_successful_tool_calls == 1
         assert custom.timeout_seconds == 600
 
     def test_load_with_both_overrides_and_custom(self):
@@ -331,6 +388,7 @@ class TestRegistryCustomAgentLookup:
                         "skills": ["data-analysis"],
                         "tools": ["bash", "read_file"],
                         "max_turns": 80,
+                        "min_successful_tool_calls": 1,
                         "timeout_seconds": 600,
                     },
                 },
@@ -342,6 +400,7 @@ class TestRegistryCustomAgentLookup:
         assert config.skills == ["data-analysis"]
         assert config.tools == ["bash", "read_file"]
         assert config.max_turns == 80
+        assert config.min_successful_tool_calls == 1
         assert config.timeout_seconds == 600
         assert config.model == "inherit"
 

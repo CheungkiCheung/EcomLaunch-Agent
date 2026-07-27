@@ -11,10 +11,10 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from deerflow.config.paths import get_paths
 from deerflow.config.runtime_paths import project_root
@@ -87,6 +87,28 @@ def is_builtin_agent(name: str, *, user_id: str | None = None) -> bool:
     return resolve_agent_dir(name, user_id=user_id).resolve() == builtin_agent_dir(name).resolve()
 
 
+class AgentLocalTitleRule(BaseModel):
+    """Deterministic, agent-configured title rule used without an LLM call."""
+
+    keywords: list[str] = Field(min_length=1)
+    title: str = Field(min_length=1)
+
+
+class AgentSubagentScopeRule(BaseModel):
+    """Config-driven least-privilege normalization for matching spawn_task calls."""
+
+    name: str = Field(min_length=1)
+    subagent_type: str = Field(min_length=1)
+    match_skills_all: list[str] = Field(default_factory=list)
+    prompt_keywords_any: list[str] = Field(default_factory=list)
+    enforced_skills: list[str] = Field(min_length=1)
+    enforced_tools: list[str] = Field(min_length=1)
+    inherit_source_tools: bool = False
+    prompt_suffix: str | None = Field(default=None, min_length=1)
+    max_tool_rounds: int = Field(ge=1, le=64)
+    max_tool_calls: int = Field(ge=1, le=256)
+
+
 class AgentConfig(BaseModel):
     """Configuration for a custom agent."""
 
@@ -94,6 +116,45 @@ class AgentConfig(BaseModel):
     description: str = ""
     model: str | None = None
     tool_groups: list[str] | None = None
+    subagent_required: bool = False
+    subagent_complexity_tool_call_threshold: int = Field(default=2, ge=1, le=100)
+    required_subagent_types: list[str] = Field(default_factory=list)
+    subagent_requirement_recovery_mode: Literal["remind", "force_dispatch"] = "remind"
+    max_subagent_requirement_recovery_attempts: int = Field(
+        default=8,
+        ge=1,
+        le=32,
+    )
+    max_concurrent_subagents: int = Field(default=3, ge=1, le=20)
+    max_subagent_tasks_per_run: int | None = Field(
+        default=None,
+        ge=1,
+        le=256,
+    )
+    max_failed_subagent_tasks_per_run: int | None = Field(
+        default=None,
+        ge=1,
+        le=256,
+    )
+    max_parent_direct_tool_calls: int | None = Field(
+        default=None,
+        ge=1,
+        le=256,
+    )
+    max_parent_direct_tool_rounds: int | None = Field(
+        default=None,
+        ge=1,
+        le=64,
+    )
+    require_explicit_subagent_scope: bool = False
+    todo_list_enabled: bool = True
+    memory_enabled: bool = True
+    model_generated_title: bool = True
+    local_title_rules: list[AgentLocalTitleRule] = Field(default_factory=list)
+    local_title_fallback: str | None = None
+    subagent_scope_rules: list[AgentSubagentScopeRule] = Field(default_factory=list)
+    final_answer_forbidden_phrases: list[str] = Field(default_factory=list)
+    max_final_answer_repairs: int = Field(default=1, ge=1, le=3)
     # skills controls which skills are loaded into the agent's prompt:
     # - None (or omitted): load all enabled skills (default fallback behavior)
     # - [] (explicit empty list): disable all skills

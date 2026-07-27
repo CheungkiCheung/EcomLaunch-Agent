@@ -29,10 +29,12 @@ MODEL_ROUTER_VERSION = "commerce-model-router@1.0.0"
 
 class ModelRole(StrEnum):
     LEAD = "lead"
+    ANSWER = "answer"
     PATH = "path"
     VERIFIER = "verifier"
     STRUCTURED_REPAIR = "structured_repair"
     OFFLINE_CANDIDATE = "offline_candidate"
+    ACTION_PLANNER = "action_planner"
 
 
 class ModelEffort(StrEnum):
@@ -49,9 +51,11 @@ class OutputSchemaComplexity(StrEnum):
 
 class ModelRouteReasonCode(StrEnum):
     PROFILE_BINDING = "profile_binding"
+    ROLE_READ_ONLY_ANSWER = "role_read_only_answer"
     ROLE_VERIFIER = "role_verifier"
     ROLE_STRUCTURED_REPAIR = "role_structured_repair"
     ROLE_OFFLINE_CANDIDATE = "role_offline_candidate"
+    ROLE_ACTION_PLANNER = "role_action_planner"
     TOOL_USE_REQUIRED = "tool_use_required"
     CRITICAL_CASE = "critical_case"
     CONTRADICTIONS_PRESENT = "contradictions_present"
@@ -193,11 +197,7 @@ class ModelRouter:
         if output_tokens < binding.max_output_tokens:
             reasons.add(ModelRouteReasonCode.TOKEN_BUDGET_CAPPED)
 
-        is_escalation = (
-            not role_binding
-            and profile != request.base_profile
-            and _PROFILE_RANK[profile] > _PROFILE_RANK[request.base_profile]
-        )
+        is_escalation = not role_binding and profile != request.base_profile and _PROFILE_RANK[profile] > _PROFILE_RANK[request.base_profile]
         if is_escalation:
             await budget.consume(BudgetDelta(model_escalations=1))
             reasons.add(ModelRouteReasonCode.PROFILE_ESCALATED)
@@ -222,12 +222,18 @@ class ModelRouter:
         if request.role is ModelRole.VERIFIER:
             reasons.add(ModelRouteReasonCode.ROLE_VERIFIER)
             return ModelProfile.STRONG_VERIFIER, reasons, True
+        if request.role is ModelRole.ANSWER:
+            reasons.add(ModelRouteReasonCode.ROLE_READ_ONLY_ANSWER)
+            return ModelProfile.FAST_STRUCTURED, reasons, True
         if request.role is ModelRole.STRUCTURED_REPAIR:
             reasons.add(ModelRouteReasonCode.ROLE_STRUCTURED_REPAIR)
             return ModelProfile.FAST_STRUCTURED, reasons, True
         if request.role is ModelRole.OFFLINE_CANDIDATE:
             reasons.add(ModelRouteReasonCode.ROLE_OFFLINE_CANDIDATE)
             return ModelProfile.OFFLINE_CANDIDATE_BUILDER, reasons, True
+        if request.role is ModelRole.ACTION_PLANNER:
+            reasons.add(ModelRouteReasonCode.ROLE_ACTION_PLANNER)
+            return ModelProfile.FAST_STRUCTURED, reasons, True
 
         profile = request.base_profile
         if request.needs_tool_use:
@@ -242,10 +248,7 @@ class ModelRouter:
         if request.contradiction_count >= 2:
             reasons.add(ModelRouteReasonCode.CONTRADICTIONS_PRESENT)
             synthesis_upgrade = True
-        if (
-            request.evidence_path_count >= 3
-            and request.schema_complexity is OutputSchemaComplexity.HIGH
-        ):
+        if request.evidence_path_count >= 3 and request.schema_complexity is OutputSchemaComplexity.HIGH:
             reasons.add(ModelRouteReasonCode.COMPLEX_SYNTHESIS)
             synthesis_upgrade = True
         if request.verification_failure_count > 0:
@@ -259,9 +262,7 @@ class ModelRouter:
         try:
             return self._bindings[profile]
         except KeyError as exc:
-            raise ModelCapabilityError(
-                f"No model binding is configured for profile {profile.value}"
-            ) from exc
+            raise ModelCapabilityError(f"No model binding is configured for profile {profile.value}") from exc
 
     @staticmethod
     def _require_capabilities(
@@ -269,13 +270,9 @@ class ModelRouter:
         binding: ModelBinding,
     ) -> None:
         if request.needs_vision and not binding.supports_vision:
-            raise ModelCapabilityError(
-                f"Model profile {binding.profile.value} does not support vision"
-            )
+            raise ModelCapabilityError(f"Model profile {binding.profile.value} does not support vision")
         if request.needs_tool_use and not binding.supports_tool_use:
-            raise ModelCapabilityError(
-                f"Model profile {binding.profile.value} does not support tool use"
-            )
+            raise ModelCapabilityError(f"Model profile {binding.profile.value} does not support tool use")
 
 
 def build_model_assignment_event(

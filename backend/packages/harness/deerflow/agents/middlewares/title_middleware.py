@@ -19,6 +19,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_UPLOADED_FILES_RE = re.compile(
+    r"<uploaded_files>[\s\S]*?</uploaded_files>",
+    flags=re.IGNORECASE,
+)
+
 
 class TitleMiddlewareState(AgentState):
     """Compatible with the `ThreadState` schema."""
@@ -31,10 +36,21 @@ class TitleMiddleware(AgentMiddleware[TitleMiddlewareState]):
 
     state_schema = TitleMiddlewareState
 
-    def __init__(self, *, app_config: "AppConfig | None" = None, title_config: "TitleConfig | None" = None):
+    def __init__(
+        self,
+        *,
+        app_config: "AppConfig | None" = None,
+        title_config: "TitleConfig | None" = None,
+        use_model: bool = True,
+        local_title_rules: list[dict[str, Any]] | None = None,
+        local_title_fallback: str | None = None,
+    ):
         super().__init__()
         self._app_config = app_config
         self._title_config = title_config
+        self._use_model = use_model
+        self._local_title_rules = tuple(local_title_rules or ())
+        self._local_title_fallback = local_title_fallback
 
     def _get_title_config(self):
         if self._title_config is not None:
@@ -123,10 +139,32 @@ class TitleMiddleware(AgentMiddleware[TitleMiddlewareState]):
 
     def _fallback_title(self, user_msg: str) -> str:
         config = self._get_title_config()
+        cleaned_user_msg = self._clean_local_title_input(user_msg)
+        for rule in self._local_title_rules:
+            keywords = rule.get("keywords")
+            title = rule.get("title")
+            if not isinstance(keywords, list) or not isinstance(title, str):
+                continue
+            if any(
+                isinstance(keyword, str)
+                and keyword.strip()
+                and keyword.strip() in cleaned_user_msg
+                for keyword in keywords
+            ):
+                return title[: config.max_chars]
+
+        if self._local_title_fallback:
+            return self._local_title_fallback[: config.max_chars]
+
         fallback_chars = min(config.max_chars, 50)
-        if len(user_msg) > fallback_chars:
-            return user_msg[:fallback_chars].rstrip() + "..."
-        return user_msg if user_msg else "New Conversation"
+        if len(cleaned_user_msg) > fallback_chars:
+            return cleaned_user_msg[:fallback_chars].rstrip() + "..."
+        return cleaned_user_msg if cleaned_user_msg else "New Conversation"
+
+    @staticmethod
+    def _clean_local_title_input(user_msg: str) -> str:
+        without_uploaded_files = _UPLOADED_FILES_RE.sub(" ", user_msg)
+        return re.sub(r"\s+", " ", without_uploaded_files).strip()
 
     def _get_runnable_config(self) -> dict[str, Any]:
         """Inherit the parent RunnableConfig and add middleware tag.
@@ -158,6 +196,9 @@ class TitleMiddleware(AgentMiddleware[TitleMiddlewareState]):
 
         config = self._get_title_config()
         prompt, user_msg = self._build_title_prompt(state)
+
+        if not self._use_model:
+            return {"title": self._fallback_title(user_msg)}
 
         try:
             # attach_tracing=False because ``_get_runnable_config()`` inherits

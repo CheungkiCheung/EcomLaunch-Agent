@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.commerce.domain.enums import RunPhase, RunType
+from app.commerce.domain.enums import PathType, RunPhase, RunStatus, RunType
 from app.commerce.domain.events import DomainEventActor, DomainEventEnvelope
 from app.commerce.domain.ids import CaseId, CorrelationId, RunId, TraceId, WorkspaceId
 from app.commerce.domain.models import CommerceModel
@@ -28,6 +28,14 @@ class InvestigationCaseNotFoundError(LookupError):
 
 
 class InvestigationIdempotencyConflictError(ValueError):
+    pass
+
+
+class ReplanParentNotFoundError(LookupError):
+    pass
+
+
+class ReplanParentStateError(ValueError):
     pass
 
 
@@ -70,7 +78,11 @@ class CommerceRunService:
             key_sha256,
         )
         if existing is not None:
-            return self._resolve_idempotent(existing, goal)
+            return self._resolve_idempotent(
+                existing,
+                goal=goal,
+                run_type=RunType.CASE_INVESTIGATION,
+            )
 
         now = self._clock()
         run = CommerceRun(
@@ -99,17 +111,106 @@ class CommerceRunService:
             )
             if concurrent is None:
                 raise
-            return self._resolve_idempotent(concurrent, goal)
+            return self._resolve_idempotent(
+                concurrent,
+                goal=goal,
+                run_type=RunType.CASE_INVESTIGATION,
+            )
+
+    async def start_replan(
+        self,
+        workspace_id: WorkspaceId,
+        parent_run_id: RunId,
+        *,
+        goal: str,
+        requested_paths: tuple[PathType, ...],
+        idempotency_key: str,
+    ) -> InvestigationStartResult:
+        parent = await self._runs.get(workspace_id, parent_run_id)
+        if parent is None:
+            raise ReplanParentNotFoundError(str(parent_run_id))
+        resumable_tool_failure = (
+            parent.status is RunStatus.FAILED
+            and parent.stop_reason == "tool_failure"
+        )
+        if parent.run_type not in {
+            RunType.CASE_INVESTIGATION,
+            RunType.REPLAN,
+        } or (
+            parent.status not in {RunStatus.COMPLETED, RunStatus.BLOCKED}
+            and not resumable_tool_failure
+        ):
+            raise ReplanParentStateError(
+                "Replan parent must be a completed, blocked, or a tool failure Investigation Run"
+            )
+        key_sha256 = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()
+        existing = await self._runs.get_by_idempotency_key(
+            workspace_id,
+            parent.case_id,
+            key_sha256,
+        )
+        if existing is not None:
+            return self._resolve_idempotent(
+                existing,
+                goal=goal,
+                run_type=RunType.REPLAN,
+                parent_run_id=parent.id,
+                requested_paths=requested_paths,
+            )
+
+        now = self._clock()
+        run = CommerceRun(
+            workspace_id=workspace_id,
+            case_id=parent.case_id,
+            run_type=RunType.REPLAN,
+            phase=RunPhase.PLANNING,
+            goal=goal,
+            idempotency_key_sha256=key_sha256,
+            parent_run_id=parent.id,
+            requested_paths=requested_paths,
+            created_at=now,
+            updated_at=now,
+        )
+        parent_events = await self._events.list_run(workspace_id, parent.id)
+        causation_event_id = parent_events[-1].id if parent_events else None
+        try:
+            await self._uow.create_run(
+                run,
+                trace_id=TraceId.new(),
+                correlation_id=CorrelationId.new(),
+                actor=DomainEventActor.USER,
+                causation_event_id=causation_event_id,
+            )
+            return InvestigationStartResult(run=run, created=True)
+        except DuplicateEntityError:
+            concurrent = await self._runs.get_by_idempotency_key(
+                workspace_id,
+                parent.case_id,
+                key_sha256,
+            )
+            if concurrent is None:
+                raise
+            return self._resolve_idempotent(
+                concurrent,
+                goal=goal,
+                run_type=RunType.REPLAN,
+                parent_run_id=parent.id,
+                requested_paths=requested_paths,
+            )
 
     @staticmethod
     def _resolve_idempotent(
         existing: CommerceRun,
+        *,
         goal: str,
+        run_type: RunType,
+        parent_run_id: RunId | None = None,
+        requested_paths: tuple[PathType, ...] = (),
     ) -> InvestigationStartResult:
-        if existing.goal != goal:
-            raise InvestigationIdempotencyConflictError(
-                "Idempotency key was reused for another goal"
-            )
+        if existing.goal != goal and existing.run_type is run_type:
+            raise InvestigationIdempotencyConflictError("Idempotency key was reused for another goal")
+        if existing.run_type is not run_type or existing.parent_run_id != parent_run_id or existing.requested_paths != requested_paths:
+            raise InvestigationIdempotencyConflictError("Idempotency key was reused for another Run request")
         return InvestigationStartResult(run=existing, created=False)
 
     async def get_run(

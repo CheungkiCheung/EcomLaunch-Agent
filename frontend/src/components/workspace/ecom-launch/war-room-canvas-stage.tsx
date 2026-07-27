@@ -7,7 +7,7 @@ import {
   Graphics,
   Sprite,
   Text,
-  Texture,
+  type Texture,
 } from "pixi.js";
 import { useEffect, useMemo, useRef } from "react";
 
@@ -182,11 +182,9 @@ function artifactItemFor(artifact: LaunchCrewArtifact, index: number) {
   if (!fallbackItem) {
     throw new Error("War room artifact item assets are not configured.");
   }
-  const itemId =
-    ARTIFACT_ITEM_BY_ROLE[artifact.role] ?? fallbackItem.id;
+  const itemId = ARTIFACT_ITEM_BY_ROLE[artifact.role] ?? fallbackItem.id;
   return (
-    WAR_ROOM_ARTIFACT_ITEMS.find((item) => item.id === itemId) ??
-    fallbackItem
+    WAR_ROOM_ARTIFACT_ITEMS.find((item) => item.id === itemId) ?? fallbackItem
   );
 }
 
@@ -210,10 +208,7 @@ function createArtifactDrop(
   return container;
 }
 
-function createCarriedPackage(
-  artifact: LaunchCrewArtifact,
-  texture: Texture,
-) {
+function createCarriedPackage(artifact: LaunchCrewArtifact, texture: Texture) {
   const container = new Container();
   container.alpha = 0.96;
 
@@ -481,15 +476,17 @@ async function renderStaticProps(state: PixiStageState) {
         y: prop.offsetY + (prop.shadow.offsetY ?? 0),
       });
       const shadow = new Graphics();
-      shadow.ellipse(
-        position.x,
-        position.y - prop.shadow.height / 2,
-        prop.shadow.width / 2,
-        prop.shadow.height / 2,
-      ).fill({
-        color: 0x5f4a32,
-        alpha: prop.shadow.alpha ?? 0.12,
-      });
+      shadow
+        .ellipse(
+          position.x,
+          position.y - prop.shadow.height / 2,
+          prop.shadow.width / 2,
+          prop.shadow.height / 2,
+        )
+        .fill({
+          color: 0x5f4a32,
+          alpha: prop.shadow.alpha ?? 0.12,
+        });
       shadow.zIndex = Math.round(position.y) - 42;
       state.propLayer.addChild(shadow);
     }
@@ -527,7 +524,7 @@ async function syncArtifactDrops(
     const texture = await loadTexture(state.textureCache, item.src);
     if (state.destroyed) return;
     let drop = state.artifacts.get(artifact.filepath);
-    if (!drop || drop.itemId !== item.id) {
+    if (drop?.itemId !== item.id) {
       drop?.container.destroy({ children: true });
       const container = createArtifactDrop(artifact, index, texture);
       drop = { container, baseY: container.y, itemId: item.id };
@@ -579,7 +576,7 @@ async function syncCarriedPackages(
     const texture = await loadTexture(state.textureCache, item.src);
     if (state.destroyed) return;
     let node = state.carriedPackages.get(agentId);
-    if (!node || node.itemId !== item.id) {
+    if (node?.itemId !== item.id) {
       node?.container.destroy({ children: true });
       const container = createCarriedPackage(artifact, texture);
       node = {
@@ -969,7 +966,9 @@ function StaticWarRoomFallback({
               ...style,
               width: percentX(prop.width),
               height: percentY(prop.height),
-              zIndex: Math.round(stagePoint(WAR_ROOM_WAYPOINTS[prop.waypoint]).y),
+              zIndex: Math.round(
+                stagePoint(WAR_ROOM_WAYPOINTS[prop.waypoint]).y,
+              ),
             }}
           />
         );
@@ -1028,6 +1027,22 @@ export function WarRoomCanvasStage({
   const hoveredAgentIdRef = useRef<LaunchCrewRole | null>(null);
   const renderedAgents = useRenderedAgents(agents, motions);
   const focusAgentId = hoveredAgentIdRef.current ?? selectedAgentId;
+  const syncInputRef = useRef({
+    renderedAgents,
+    artifacts,
+    motions,
+    selectedAgentId,
+    focusAgentId,
+    onSelectAgent,
+  });
+  syncInputRef.current = {
+    renderedAgents,
+    artifacts,
+    motions,
+    selectedAgentId,
+    focusAgentId,
+    onSelectAgent,
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -1104,16 +1119,11 @@ export function WarRoomCanvasStage({
 
       void syncPixiStage({
         state: stageRef.current,
-        renderedAgents,
-        artifacts,
-        motions,
-        selectedAgentId,
-        focusAgentId,
-        onSelectAgent,
+        ...syncInputRef.current,
       });
     }
 
-    setup(mountNode);
+    void setup(mountNode);
 
     return () => {
       cancelled = true;
