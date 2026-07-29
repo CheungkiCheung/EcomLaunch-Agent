@@ -1,42 +1,72 @@
-# EcomLaunch Artifact-First MVP
+# EcomLaunch Manual MVP
 
-This folder contains the manual MVP materials for EcomLaunch Agent.
+This folder contains the current manual test materials for the DeerFlow-based
+EcomLaunch agent.
 
-The goal is to prove the core DeerFlow-based workflow before building a dedicated conversational EcomLaunch entry:
+The runtime path is:
 
 ```text
-existing DeerFlow chat
--> Ultra mode
+EcomLaunch chat
+-> Flash by default
+-> task delegation remains enabled; todo-plan tracking is disabled
 -> ecom-launch skill
--> ask_clarification when the launch brief is too incomplete
--> ecommerce custom subagents
--> public web search/fetch
--> files under /mnt/user-data/outputs
--> present_files artifacts
+-> the smallest useful set of four custom specialists
+-> public web evidence and/or uploaded material
+-> direct answer or files under /mnt/user-data/outputs
 ```
+
+EcomLaunch does not call every specialist for every question. It answers short
+questions directly and delegates only when research, offer design, asset
+creation, or evidence review is independently useful. The frontend caps useful
+parallel delegation at two specialists.
 
 ## Files
 
-- `demo-brief.portable-coffee-tumbler.json`: recommended demo input.
-- `demo-run-2026-06-09.md`: first local smoke-run record and validation notes.
-- `manual-run-prompt.md`: prompt to paste into an Ultra-mode DeerFlow chat.
-- `subagents.ecom-launch.yaml`: copyable `subagents:` config block for local `config.yaml`.
+- `demo-brief.portable-coffee-tumbler.json`: example launch brief.
+- `demo-run-2026-06-09.md`: historical smoke-run notes; it may describe an
+  earlier runtime and is not the current product contract.
+- `manual-run-prompt.md`: prompt for an explicit complete Launch Validation Pack.
+- `subagents.ecom-launch.yaml`: current four-specialist `subagents:` config.
+- `USER_MANUAL.md`: current user-facing guide for EcomLaunch and Growth Analyst.
 
-## Local Setup
+## Current specialists
 
-1. Copy `config.example.yaml` to `config.yaml` if you have not already.
-2. Copy the contents of `subagents.ecom-launch.yaml` into `config.yaml`.
-3. Ensure `skills/custom/ecom-launch/SKILL.md` exists.
-4. Install the local browser runtime once if you use the default local `web_fetch`: `cd backend && uv run playwright install chromium`.
-5. Restart the backend if it is already running.
-6. Start a new chat in Ultra mode so `subagent_enabled=true`.
-7. Paste `manual-run-prompt.md`.
+- `market-voc-researcher`
+- `offer-architect`
+- `asset-studio`
+- `evidence-checker`
 
-The default `web_fetch` provider is local and free: it uses fast `httpx` fetching first, then falls back to local Playwright/Chromium rendering for public JavaScript pages. It does not use paid crawler APIs and must not be used to bypass login walls, CAPTCHA, anti-bot systems, or private ecommerce dashboards.
+Growth Analyst is an independent top-level agent with compatibility ID
+`data-inspector`; it is not an EcomLaunch specialist.
 
-## Expected Artifacts
+## Local setup
 
-The run should create and present:
+1. Copy `config.example.yaml` to `config.yaml` if needed.
+2. Ensure the four specialist definitions from `subagents.ecom-launch.yaml`
+   exist under `subagents.custom_agents` in `config.yaml`.
+3. Ensure `skills/custom/ecom-launch/SKILL.md` and
+   `skills/custom/pm-skills/` exist.
+4. Install local Chromium once if the configured `web_fetch` provider needs it:
+   `cd backend && uv run playwright install chromium`.
+5. Start or restart the application when infrastructure configuration changed.
+6. Open `/workspace/agents/ecom-launch/chats/new`.
+7. Ask a short question, or paste `manual-run-prompt.md` for a complete-pack run.
+
+New EcomLaunch chats default to Flash. The route adds `is_plan_mode=false`,
+`subagent_enabled=true`, and `max_concurrent_subagents=2` to the run context.
+This keeps specialists available without spending extra model turns on todo-plan
+creation and updates.
+
+`agents/ecom-launch/config.yaml` also applies a per-request run budget: at most
+16 lead-model responses may continue into tool work, at most four subagent runs
+may start, each specialist type runs once, observed lead + subagent usage is
+bounded at 500,000 tokens, and remaining wall time clamps specialist timeouts.
+Each specialist also receives a smaller model-call/token finalization budget so
+it returns partial structured findings before LangGraph recursion exhaustion.
+
+## Complete-pack artifacts
+
+An explicitly requested complete Launch Validation Pack may create:
 
 ```text
 launch-war-room.html
@@ -48,30 +78,23 @@ content-pack.md
 launch-calendar.csv
 ```
 
-Optional but useful:
+Ordinary requests should return only the answer or artifacts that are useful for
+that request.
 
-```text
-review-insights.json
-risk-notes.md
-source-list.md
-```
+## Acceptance criteria
 
-## Acceptance Criteria
+- the agent reads and follows the `ecom-launch` skill
+- short questions do not start all specialists
+- specialist names and tool boundaries match `subagents.ecom-launch.yaml`
+- no more than two independent specialists run concurrently
+- no specialist type runs twice in one user request
+- a complete run stops after presenting the requested Pack
+- failed or timed-out research lowers confidence instead of being replaced by unsupported claims
+- the final answer distinguishes evidence, estimates, assumptions, and unknowns
+- private merchant metrics and unverified product claims are not invented
+- any generated JSON or CSV artifact is parseable
+- complete-pack files are written under `/mnt/user-data/outputs` and presented
 
-The artifact-first MVP is successful when:
-
-- the agent reads or follows the `ecom-launch` skill
-- Ultra mode exposes the ecommerce subagents through the `task` tool
-- the final deliverables are saved under `/mnt/user-data/outputs`
-- `present_files` is called
-- `evidence-ledger.json` distinguishes observed public evidence from estimates
-- no private merchant metrics are invented
-- `evidence-ledger.json` is parseable JSON
-- CSV artifacts are parseable and every row has the declared column count
-- validation plans use lightweight no-backend signals by default, not private platform metrics
-
-## Notes
-
-Use public data only. Do not bypass login walls, CAPTCHA, anti-bot systems, or private ecommerce dashboards.
-
-If a source cannot provide a private metric such as GMV, CTR, CVR, ROI, ad spend, refund rate, or repeat purchase rate, mark the metric as unavailable. For users without backend data, default to validation signals such as sample feedback, comment/save/share intent, inquiry count, preorder interest, creator response quality, repeated objections, and manual price-acceptance checks.
+The default local `web_fetch` provider may use HTTP fetching and local browser
+rendering for public pages. It must not bypass login walls, CAPTCHA, anti-bot
+systems, or private ecommerce dashboards.

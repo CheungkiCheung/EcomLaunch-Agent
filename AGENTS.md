@@ -2,9 +2,12 @@
 
 ## Project Identity
 
-DeerFlow 2.0 is a LangGraph-based AI super agent harness. This repo has been forked and extended with **EcomLaunch Agent** — a vertical ecommerce growth experiment engine covering pre-launch validation and post-launch content calibration.
+DeerFlow 2.0 is a LangGraph-based AI super agent harness. This repo has been forked and extended with two independent top-level agents: **EcomLaunch Agent** for ecommerce research/content workflows and **Growth Analyst** for conversational analysis of uploaded CSV/XLSX business and content-performance data. Growth Analyst keeps the compatibility ID `data-inspector`.
 
-**Key custom addition**: `agents/ecom-launch/` + `skills/custom/ecom-launch/` + `frontend/src/components/workspace/ecom-launch/`
+**Key custom additions**:
+
+- EcomLaunch: `agents/ecom-launch/` + `skills/custom/ecom-launch/` + `frontend/src/components/workspace/ecom-launch/`
+- Growth Analyst: `agents/data-inspector/` + `skills/custom/{sql-queries,cohort-analysis,ab-test-analysis}/` + `backend/app/data_inspector/`
 
 ## Quick Commands
 
@@ -39,16 +42,21 @@ deer-flow/
 ├── backend/                    # Python backend (FastAPI + LangGraph)
 │   ├── packages/harness/       # deerflow-harness (core agent framework)
 │   ├── app/gateway/            # FastAPI Gateway API
+│   ├── app/data_inspector/     # Deterministic CSV/XLSX analysis tools
 │   └── tests/                  # Backend tests
 ├── frontend/                   # Next.js frontend
 │   └── src/components/workspace/ecom-launch/  # Launch Crew panel
-├── agents/                     # Custom agent definitions
-│   └── ecom-launch/            # EcomLaunch Agent (SOUL.md + config.yaml)
+├── agents/                     # Repository-defined top-level agents
+│   ├── ecom-launch/            # EcomLaunch Agent (SOUL.md + config.yaml)
+│   └── data-inspector/         # Growth Analyst compatibility ID (SOUL.md + config.yaml)
 ├── skills/                     # Agent skills
 │   ├── public/                 # Built-in skills (22 total)
 │   └── custom/
 │       ├── ecom-launch/         # EcomLaunch skill (validate-launch workflow)
-│       └── content-calibration/ # Content calibration skill (calibrate-content workflow)
+│       ├── content-calibration/ # Legacy skill retained in the tree; not loaded by the current top-level agents
+│       ├── sql-queries/         # PM Skills SQL analysis workflow
+│       ├── cohort-analysis/     # Cohort retention/repeat/adoption method
+│       └── ab-test-analysis/    # Binary-conversion experiment method
 ├── config.yaml                 # Main configuration (generate from config.example.yaml)
 └── extensions_config.json      # MCP servers + skills config
 ```
@@ -59,11 +67,10 @@ Multi-agent system using **Orchestrator-subagent** pattern:
 
 ```
 Launch Director (lead agent)
-├── market-scout       # Public market signals, competitors, pricing
-├── voc-miner          # Customer voice, reviews, pain points
-├── offer-architect    # Positioning, validation hypotheses
-├── asset-studio       # Listing copy, content hooks, scripts
-└── evidence-checker   # Evidence audit, claim validation
+├── market-voc-researcher  # Market signals, competitors, pricing, reviews, VOC
+├── offer-architect        # Positioning, pricing hypotheses, validation experiments
+├── asset-studio           # Listing copy, content hooks, scripts
+└── evidence-checker       # Evidence audit, claim validation
 ```
 
 **Subagent config location**: `config.yaml → subagents.custom_agents`
@@ -114,5 +121,9 @@ Default `validate-launch` workflow outputs:
 - `config.yaml` must be in project root, not `backend/`
 - Custom agents go in `agents/<name>/`, not `backend/packages/`
 - Skills go in `skills/custom/`, not `skills/public/`
+- Growth Analyst tools stay in `backend/app/data_inspector/` and are registered through `config.yaml`; do not add an app import to the Harness.
+- Keep the Growth Analyst SOUL short and use the original `pm-data-analytics` Skills for SQL, cohort, and A/B analysis.
+- Keep deterministic file inspection, read-only SQL execution, and A/B statistics in `backend/app/data_inspector/`; retain the upstream MIT attribution and license files.
+- Growth Analyst currently analyzes CSV/XLSX only; its application tools remain bounded to uploaded data and read-only queries.
 - Subagent prompts must include evidence labeling rules and forbidden metrics
 - Frontend Launch Crew panel reads from `ThreadState.artifacts` and `Subtask` context

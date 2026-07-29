@@ -342,6 +342,21 @@ class SubagentExecutor:
 
         # Reuse shared middleware composition with lead agent.
         middlewares = build_subagent_runtime_middlewares(app_config=app_config, model_name=self.model_name, lazy_init=True, deferred_setup=deferred_setup)
+        if self.config.max_model_calls is not None or self.config.max_total_tokens is not None:
+            from deerflow.agents.middlewares.run_budget_middleware import RunBudgetMiddleware
+            from deerflow.config.agent_run_budget_config import AgentRunBudgetConfig
+
+            middlewares.append(
+                RunBudgetMiddleware(
+                    AgentRunBudgetConfig(
+                        max_lead_model_calls=self.config.max_model_calls or self.config.max_turns,
+                        max_subagent_calls=0,
+                        max_total_tokens=self.config.max_total_tokens or 2_000_000_000,
+                        max_execution_seconds=self.config.timeout_seconds,
+                        stop_message="Specialist execution budget reached. Return only the findings already collected and clearly state the remaining evidence gaps.",
+                    )
+                )
+            )
 
         # system_prompt is included in initial state messages (see _build_initial_state)
         # to avoid multiple SystemMessages which some LLM APIs don't support.

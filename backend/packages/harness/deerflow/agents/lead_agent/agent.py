@@ -31,6 +31,7 @@ from deerflow.agents.memory.summarization_hook import memory_flush_hook
 from deerflow.agents.middlewares.clarification_middleware import ClarificationMiddleware
 from deerflow.agents.middlewares.loop_detection_middleware import LoopDetectionMiddleware
 from deerflow.agents.middlewares.memory_middleware import MemoryMiddleware
+from deerflow.agents.middlewares.run_budget_middleware import RunBudgetMiddleware
 from deerflow.agents.middlewares.safety_finish_reason_middleware import SafetyFinishReasonMiddleware
 from deerflow.agents.middlewares.subagent_limit_middleware import SubagentLimitMiddleware
 from deerflow.agents.middlewares.summarization_middleware import BeforeSummarizationHook, DeerFlowSummarizationMiddleware
@@ -40,7 +41,7 @@ from deerflow.agents.middlewares.token_usage_middleware import TokenUsageMiddlew
 from deerflow.agents.middlewares.tool_error_handling_middleware import build_lead_runtime_middlewares
 from deerflow.agents.middlewares.view_image_middleware import ViewImageMiddleware
 from deerflow.agents.thread_state import ThreadState
-from deerflow.config.agents_config import is_builtin_agent, load_agent_config, validate_agent_name
+from deerflow.config.agents_config import AgentConfig, is_builtin_agent, load_agent_config, validate_agent_name
 from deerflow.config.app_config import AppConfig, get_app_config
 from deerflow.models import create_chat_model
 from deerflow.skills.tool_policy import filter_tools_by_skill_allowed_tools
@@ -272,6 +273,7 @@ def build_middlewares(
     custom_middlewares: list[AgentMiddleware] | None = None,
     *,
     app_config: AppConfig | None = None,
+    agent_config: AgentConfig | None = None,
     deferred_setup=None,
 ):
     """Build the lead-agent middleware chain based on runtime configuration.
@@ -287,6 +289,7 @@ def build_middlewares(
         agent_name: If provided, MemoryMiddleware will use per-agent memory storage.
         custom_middlewares: Optional list of custom middlewares to inject into the chain.
         app_config: Explicit AppConfig; falls back to ``get_app_config()`` when omitted.
+        agent_config: Resolved agent configuration for per-agent runtime overrides.
         deferred_setup: Optional deferred-MCP-tool setup that attaches
             ``DeferredToolFilterMiddleware`` when ``tool_search`` is enabled.
 
@@ -294,6 +297,16 @@ def build_middlewares(
         List of middleware instances.
     """
     resolved_app_config = app_config or get_app_config()
+    if agent_config is None and agent_name:
+        cfg = _get_runtime_config(config)
+        try:
+            agent_config = load_agent_config(agent_name, user_id=cfg.get("user_id"))
+        except (FileNotFoundError, ValueError):
+            logger.debug("Could not load agent config for middleware overrides: %s", agent_name)
+
+    if agent_config is not None and agent_config.memory_enabled is False:
+        memory_config = resolved_app_config.memory.model_copy(update={"enabled": False, "injection_enabled": False})
+        resolved_app_config = resolved_app_config.model_copy(update={"memory": memory_config})
     middlewares = build_lead_runtime_middlewares(app_config=resolved_app_config, lazy_init=True)
 
     # Always inject current date (and optionally memory) as <system-reminder> into the
@@ -313,6 +326,12 @@ def build_middlewares(
     todo_list_middleware = _create_todo_list_middleware(is_plan_mode)
     if todo_list_middleware is not None:
         middlewares.append(todo_list_middleware)
+
+    # Add an optional per-agent run budget before TokenUsageMiddleware. LangChain
+    # dispatches after_model hooks in reverse order, so token attribution is
+    # applied before the budget evaluates the updated state.
+    if agent_config is not None and agent_config.run_budget is not None:
+        middlewares.append(RunBudgetMiddleware(agent_config.run_budget))
 
     # Add TokenUsageMiddleware when token_usage tracking is enabled
     if resolved_app_config.token_usage.enabled:
@@ -511,7 +530,14 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
     return create_agent(
         model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, reasoning_effort=reasoning_effort, app_config=resolved_app_config, attach_tracing=False),
         tools=final_tools,
-        middleware=build_middlewares(config, model_name=model_name, agent_name=agent_name, app_config=resolved_app_config, deferred_setup=setup),
+        middleware=build_middlewares(
+            config,
+            model_name=model_name,
+            agent_name=agent_name,
+            app_config=resolved_app_config,
+            agent_config=agent_config,
+            deferred_setup=setup,
+        ),
         system_prompt=apply_prompt_template(
             subagent_enabled=subagent_enabled,
             max_concurrent_subagents=max_concurrent_subagents,

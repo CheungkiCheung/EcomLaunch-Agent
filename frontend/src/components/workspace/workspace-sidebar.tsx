@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import { RecentChatList } from "./recent-chat-list";
+import { WarRoomNavItem } from "./war-room/war-room-nav-item";
 import { WorkspaceHeader } from "./workspace-header";
 import { WorkspaceNavChatList } from "./workspace-nav-chat-list";
 import { WorkspaceNavMenu } from "./workspace-nav-menu";
@@ -25,6 +26,7 @@ export function WorkspaceSidebar({
           <WorkspaceHeader />
         </SidebarHeader>
         <SidebarContent>
+          <WarRoomNavItem />
           <WorkspaceNavChatList />
           {isSidebarOpen && <RecentChatList />}
         </SidebarContent>

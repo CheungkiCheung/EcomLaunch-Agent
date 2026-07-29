@@ -1,4 +1,8 @@
-# GrowthEngine 前端评估报告
+# 历史前端评估报告（已归档）
+
+> 本文件记录早期 GrowthEngine/五角色原型的评估，不代表当前产品合同。
+> 当前实现以 `docs/ecom-launch/USER_MANUAL.md`、`docs/war-room.md` 和实际配置为准：
+> EcomLaunch 有四个按需子智能体，Growth Analyst 是独立顶层 Agent。
 
 ## 一、项目概况
 

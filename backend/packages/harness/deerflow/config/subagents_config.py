@@ -66,6 +66,16 @@ class CustomSubagentConfig(BaseModel):
         ge=1,
         description="Maximum execution time in seconds",
     )
+    max_model_calls: int | None = Field(
+        default=None,
+        ge=1,
+        description="Soft-finalization and hard tool-work limit for subagent model responses",
+    )
+    max_total_tokens: int | None = Field(
+        default=None,
+        ge=1,
+        description="Observed token budget before the subagent is instructed to finalize",
+    )
 
 
 class SubagentsAppConfig(BaseModel):

@@ -21,6 +21,8 @@ dependencies = [
     "bcrypt>=4.0.0",
     "pyjwt>=2.9.0",
     "email-validator>=2.0.0",
+    "openpyxl>=3.1.5",
+    "pandas>=2.2.0",
 ]
 
 [project.optional-dependencies]

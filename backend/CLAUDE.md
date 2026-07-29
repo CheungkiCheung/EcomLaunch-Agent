@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 DeerFlow is a LangGraph-based AI super agent system with a full-stack architecture. The backend provides a "super agent" with sandbox execution, persistent memory, subagent delegation, and extensible tool integration - all operating in per-thread isolated environments.
 
+The application layer currently ships two independent repository-defined top-level agents: EcomLaunch for research/content workflows and Growth Analyst for conversational analysis of uploaded CSV/XLSX files. Growth Analyst keeps the compatibility ID `data-inspector`; the two top-level agents are not automatically chained.
+
 **Architecture**:
 - **Gateway API** (port 8001): REST API plus embedded LangGraph-compatible agent runtime
 - **Frontend** (port 3000): Next.js web interface
@@ -55,7 +57,8 @@ deer-flow/
 │   │   ├── gateway/           # FastAPI Gateway API
 │   │   │   ├── app.py         # FastAPI application
 │   │   │   └── routers/       # FastAPI route modules (models, mcp, memory, skills, uploads, threads, artifacts, agents, suggestions, channels)
-│   │   └── channels/          # IM platform integrations
+│   │   ├── channels/          # IM platform integrations
+│   │   └── data_inspector/    # Bounded CSV/XLSX inspection and read-only query tools
 │   ├── tests/                 # Test suite
 │   └── docs/                  # Documentation
 ├── frontend/                   # Next.js frontend application
@@ -155,6 +158,8 @@ The backend is split into two layers with a strict dependency direction:
 
 **Dependency rule**: App imports deerflow, but deerflow never imports app. This boundary is enforced by `tests/test_harness_boundary.py` which runs in CI.
 
+`app/data_inspector/` is intentionally an application-layer extension. The repository-defined `data-inspector` agent reaches it through `config.yaml` tool reflection, so the DeerFlow Harness remains unchanged and reusable.
+
 **Import conventions**:
 ```python
 # Harness internal
@@ -190,6 +195,19 @@ from deerflow.config import get_app_config
 - `is_plan_mode` - Enable TodoList middleware
 - `subagent_enabled` - Enable task delegation tool
 
+Repository-defined agent configs may also set `run_budget` with
+`max_lead_model_calls`, `max_subagent_calls`, `max_total_tokens`,
+`max_execution_seconds`, and `deduplicate_subagents`. The budget applies to the
+latest user turn, preserves an already-completed final answer, permits
+`present_files` as terminal delivery, and clamps specialist timeouts to the
+whole request's remaining wall time.
+
+Subagent Skill inheritance distinguishes an omitted child list from an explicit
+child list: `skills: null` inherits the lead agent's available Skills, while an
+explicit custom-subagent list is the configured specialist boundary and is kept
+as-is. This allows a router-only lead agent such as EcomLaunch to delegate to PM
+Skills without loading those Skills into the lead prompt.
+
 ### Middleware Chain
 
 Lead-agent middlewares are assembled in strict append order across `packages/harness/deerflow/agents/middlewares/tool_error_handling_middleware.py` (`build_lead_runtime_middlewares`) and `packages/harness/deerflow/agents/lead_agent/agent.py` (`build_middlewares`):
@@ -204,14 +222,15 @@ Lead-agent middlewares are assembled in strict append order across `packages/har
 8. **ToolErrorHandlingMiddleware** - Converts tool exceptions into error `ToolMessage`s so the run can continue instead of aborting
 9. **SummarizationMiddleware** - Context reduction when approaching token limits (optional, if enabled)
 10. **TodoListMiddleware** - Task tracking with `write_todos` tool (optional, if plan_mode)
-11. **TokenUsageMiddleware** - Records token usage metrics when token tracking is enabled (optional); subagent usage is cached by `tool_call_id` only while token usage is enabled and merged back into the dispatching AIMessage by message position rather than message id
-12. **TitleMiddleware** - Auto-generates thread title after first complete exchange and normalizes structured message content before prompting the title model
-13. **MemoryMiddleware** - Queues conversations for async memory update (filters to user + final AI responses)
-14. **ViewImageMiddleware** - Injects base64 image data before LLM call (conditional on vision support)
-15. **DeferredToolFilterMiddleware** - Hides deferred (MCP) tool schemas from the bound model using a build-time deferred-name set + catalog hash, reading per-thread promotions from `ThreadState.promoted` (hash-scoped, no ContextVar); a tool becomes bound on subsequent turns after `tool_search` returns its schema (optional, if `tool_search.enabled`)
-16. **SubagentLimitMiddleware** - Truncates excess `task` tool calls from model response to enforce `MAX_CONCURRENT_SUBAGENTS` limit (optional, if `subagent_enabled`)
-17. **LoopDetectionMiddleware** - Detects repeated tool-call loops; hard-stop responses clear both structured `tool_calls` and raw provider tool-call metadata before forcing a final text answer
-18. **ClarificationMiddleware** - Intercepts `ask_clarification` tool calls, interrupts via `Command(goto=END)` (must be last)
+11. **RunBudgetMiddleware** - Optional per-agent whole-request boundary. Stops additional non-terminal tool work after configured lead-model calls, observed lead + subagent tokens, or wall time; initializes the run-scoped subagent counter/deadline consumed by `task_tool`
+12. **TokenUsageMiddleware** - Records token usage metrics when token tracking is enabled (optional); subagent usage is cached by `tool_call_id` only while token usage is enabled and merged back into the dispatching AIMessage by message position rather than message id
+13. **TitleMiddleware** - Auto-generates thread title after first complete exchange and normalizes structured message content before prompting the title model
+14. **MemoryMiddleware** - Queues conversations for async memory update (filters to user + final AI responses)
+15. **ViewImageMiddleware** - Injects base64 image data before LLM call (conditional on vision support)
+16. **DeferredToolFilterMiddleware** - Hides deferred (MCP) tool schemas from the bound model using a build-time deferred-name set + catalog hash, reading per-thread promotions from `ThreadState.promoted` (hash-scoped, no ContextVar); a tool becomes bound on subsequent turns after `tool_search` returns its schema (optional, if `tool_search.enabled`)
+17. **SubagentLimitMiddleware** - Truncates excess `task` tool calls from model response to enforce `MAX_CONCURRENT_SUBAGENTS` limit (optional, if `subagent_enabled`)
+18. **LoopDetectionMiddleware** - Detects repeated tool-call loops; hard-stop responses clear both structured `tool_calls` and raw provider tool-call metadata before forcing a final text answer
+19. **ClarificationMiddleware** - Intercepts `ask_clarification` tool calls, interrupts via `Command(goto=END)` (must be last)
 
 ### Configuration System
 
@@ -325,6 +344,16 @@ Proxied through nginx: `/api/langgraph/*` → Gateway LangGraph-compatible runti
 - `tavily/` - Web search (5 results default) and web fetch (4KB limit)
 - `jina_ai/` - Web fetch via Jina reader API with readability extraction
 - `firecrawl/` - Web scraping via Firecrawl API
+
+**Growth Analyst application tools** (`app/data_inspector/`):
+
+- `inspect_data` profiles files from the current thread's `uploads_path`: table aliases, sheets, row/column counts, duplicate rows, nulls, field types, numeric summaries, date ranges, and small samples.
+- `query_data` registers the uploaded tables as in-memory Pandas DataFrames and runs bounded read-only DuckDB `SELECT`/`WITH` queries. DuckDB external access is disabled and external scans, writes, comments, and multiple statements are rejected.
+- `analyze_ab_test` deterministically evaluates one control-versus-variant binary conversion experiment with a two-sided two-proportion z-test, an unpooled confidence interval for the absolute difference, and a two-group sample-ratio mismatch check. It does not support continuous metrics, multiple variants, or sequential inference.
+- Supported inputs are `.csv` and `.xlsx`; each file is limited to 50 MB, each table to 300,000 rows and 120 columns, and query output to 200 rows.
+- The agent is defined by `agents/data-inspector/` and uses the original `sql-queries`, `cohort-analysis`, and `ab-test-analysis` Skills from `phuryn/pm-skills`, with MIT license files retained.
+- The final tool allowlist contains the three analysis tools, read-only skill access, and clarification; SQL execution remains bounded to in-memory uploaded tables.
+- `agents/data-inspector/config.yaml` sets `memory_enabled: false`: thread history still supports follow-ups, while cross-thread memory injection and updates are disabled so metrics from one upload set cannot leak into another.
 
 **ACP agent tools**:
 - `invoke_acp_agent` - Invokes external ACP-compatible agents from `config.yaml`

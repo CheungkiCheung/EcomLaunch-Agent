@@ -319,6 +319,51 @@ class TestAgentConstruction:
         assert captured["agent"]["tools"] == []
         assert captured["agent"]["system_prompt"] is None  # system_prompt is merged into initial state messages
 
+    def test_create_agent_adds_subagent_finalization_budget_middleware(
+        self,
+        classes,
+        base_config,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        from dataclasses import replace
+
+        from deerflow.agents.middlewares.run_budget_middleware import RunBudgetMiddleware
+        from deerflow.subagents import executor as executor_module
+
+        SubagentExecutor = classes["SubagentExecutor"]
+        bounded_config = replace(
+            base_config,
+            max_model_calls=5,
+            max_total_tokens=60_000,
+        )
+        app_config = SimpleNamespace(models=[SimpleNamespace(name="default-model")])
+        fake_model = object()
+        captured = {}
+
+        monkeypatch.setattr(executor_module, "create_chat_model", lambda **_: fake_model)
+        monkeypatch.setattr(executor_module, "create_agent", lambda **kwargs: captured.setdefault("agent", kwargs))
+        monkeypatch.setitem(
+            sys.modules,
+            "deerflow.agents.middlewares.tool_error_handling_middleware",
+            _module(
+                "deerflow.agents.middlewares.tool_error_handling_middleware",
+                build_subagent_runtime_middlewares=lambda **_: [],
+            ),
+        )
+
+        executor = SubagentExecutor(
+            config=bounded_config,
+            tools=[],
+            app_config=app_config,
+            parent_model="parent-model",
+        )
+        executor._create_agent()
+
+        middleware = captured["agent"]["middleware"]
+        budget = next(item for item in middleware if isinstance(item, RunBudgetMiddleware))
+        assert budget.config.max_lead_model_calls == 5
+        assert budget.config.max_total_tokens == 60_000
+
     @pytest.mark.anyio
     async def test_load_skill_messages_uses_explicit_app_config_for_skill_storage(
         self,

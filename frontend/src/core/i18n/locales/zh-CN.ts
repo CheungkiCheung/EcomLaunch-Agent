@@ -1,9 +1,12 @@
 ﻿import {
+  ChartNoAxesCombinedIcon,
   CompassIcon,
   GraduationCapIcon,
   ImageIcon,
+  ListChecksIcon,
   MicroscopeIcon,
   PenLineIcon,
+  SearchIcon,
   ShapesIcon,
   SparklesIcon,
   VideoIcon,
@@ -167,7 +170,10 @@ export const zhCN: Translations = {
     recentChats: "最近的对话",
     demoChats: "演示对话",
     agents: "智能体",
+    primaryAgents: "核心智能体",
+    warRoom: "作战室",
     ecomLaunch: "EcomLaunch 验证台",
+    dataInspector: "Growth Analyst",
   },
 
   // Agents
@@ -213,8 +219,11 @@ export const zhCN: Translations = {
     startChatting: "开始对话",
     backToGallery: "返回 Gallery",
     ecomLaunchName: "EcomLaunch 验证台",
+    dataInspectorName: "Growth Analyst",
     ecomLaunchWelcomeDescription:
       "用公开信号、上传材料和明确假设，把模糊新品想法变成 7 天电商上新验证包。",
+    dataInspectorWelcomeDescription:
+      "上传 CSV 或 XLSX，发现经营和内容数据中的变化、异常、原因与增长机会。",
     ecomLaunchWelcomeBadges: [
       "公开信号",
       "无后台数据可用",
@@ -245,6 +254,23 @@ export const zhCN: Translations = {
         prompt:
           "我只有一个很粗糙的新品想法。请先问我一个最关键的问题；如果信息仍然不足，就用明确标注的假设继续生成轻量验证方案。",
         icon: SparklesIcon,
+      },
+    ],
+    dataInspectorSuggestions: [
+      {
+        suggestion: "数据概览",
+        prompt: "分析一下这个数据。",
+        icon: ChartNoAxesCombinedIcon,
+      },
+      {
+        suggestion: "查找异常",
+        prompt: "找出这个数据里最值得关注的异常和变化。",
+        icon: SearchIcon,
+      },
+      {
+        suggestion: "改进方向",
+        prompt: "根据这个数据，哪些地方最值得优先改进？",
+        icon: ListChecksIcon,
       },
     ],
   },

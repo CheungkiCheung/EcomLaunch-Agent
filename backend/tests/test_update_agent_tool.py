@@ -376,7 +376,7 @@ def test_update_agent_only_writes_under_current_user(tmp_path, patched_paths):
 
 def test_update_agent_round_trips_known_fields(tmp_path, patched_paths):
     """update_agent reads through load_agent_config so all fields the loader
-    knows about (name, description, model, tool_groups, skills) round-trip
+    knows about (name, description, model, tool_groups, skills, memory_enabled) round-trip
     on a partial update.
 
     Note: ``load_agent_config`` strips unknown fields before constructing
@@ -385,7 +385,7 @@ def test_update_agent_round_trips_known_fields(tmp_path, patched_paths):
     """
     _seed_agent(tmp_path, description="legacy")
 
-    fake_cfg = AgentConfig(name="test-agent", description="legacy", skills=["s1"], tool_groups=["g1"], model="m1")
+    fake_cfg = AgentConfig(name="test-agent", description="legacy", skills=["s1"], tool_groups=["g1"], model="m1", memory_enabled=False)
     fake_app_config = MagicMock()
     fake_app_config.get_model_config.return_value = object()
     with patch("deerflow.tools.builtins.update_agent_tool.load_agent_config", return_value=fake_cfg):
@@ -397,3 +397,4 @@ def test_update_agent_round_trips_known_fields(tmp_path, patched_paths):
     assert cfg["skills"] == ["s1"]
     assert cfg["tool_groups"] == ["g1"]
     assert cfg["model"] == "m1"
+    assert cfg["memory_enabled"] is False

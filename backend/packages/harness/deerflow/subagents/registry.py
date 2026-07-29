@@ -44,6 +44,8 @@ def _build_custom_subagent_config(name: str, *, app_config: Any | None = None) -
         model=custom.model,
         max_turns=custom.max_turns,
         timeout_seconds=custom.timeout_seconds,
+        max_model_calls=custom.max_model_calls,
+        max_total_tokens=custom.max_total_tokens,
     )
 
 

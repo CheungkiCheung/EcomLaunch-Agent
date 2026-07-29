@@ -104,6 +104,8 @@ class TestAgentConfig:
         assert cfg.description == ""
         assert cfg.model is None
         assert cfg.tool_groups is None
+        assert cfg.memory_enabled is None
+        assert cfg.run_budget is None
 
     def test_full_config(self):
         from deerflow.config.agents_config import AgentConfig
@@ -113,10 +115,22 @@ class TestAgentConfig:
             description="Specialized for code review",
             model="deepseek-v3",
             tool_groups=["file:read", "bash"],
+            memory_enabled=False,
+            run_budget={
+                "max_lead_model_calls": 12,
+                "max_subagent_calls": 4,
+                "max_total_tokens": 240_000,
+                "max_execution_seconds": 240,
+                "deduplicate_subagents": True,
+            },
         )
         assert cfg.name == "code-reviewer"
         assert cfg.model == "deepseek-v3"
         assert cfg.tool_groups == ["file:read", "bash"]
+        assert cfg.memory_enabled is False
+        assert cfg.run_budget is not None
+        assert cfg.run_budget.max_lead_model_calls == 12
+        assert cfg.run_budget.max_subagent_calls == 4
 
     def test_config_from_dict(self):
         from deerflow.config.agents_config import AgentConfig

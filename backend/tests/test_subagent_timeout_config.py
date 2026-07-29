@@ -319,6 +319,30 @@ class TestRegistryGetSubagentConfig:
         assert get_subagent_config("general-purpose") is not None
         assert get_subagent_config("bash") is not None
 
+    def test_custom_agent_carries_model_and_token_finalization_budgets(self):
+        from deerflow.subagents.registry import get_subagent_config
+
+        load_subagents_config_from_dict(
+            {
+                "custom_agents": {
+                    "bounded-researcher": {
+                        "description": "Bounded research",
+                        "system_prompt": "Research and summarize",
+                        "max_turns": 16,
+                        "timeout_seconds": 90,
+                        "max_model_calls": 5,
+                        "max_total_tokens": 60_000,
+                    }
+                }
+            }
+        )
+
+        config = get_subagent_config("bounded-researcher")
+
+        assert config is not None
+        assert config.max_model_calls == 5
+        assert config.max_total_tokens == 60_000
+
     def test_default_timeout_preserved_when_no_config(self):
         from deerflow.subagents.registry import get_subagent_config
 

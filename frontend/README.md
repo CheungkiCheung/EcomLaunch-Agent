@@ -59,6 +59,9 @@ pnpm exec playwright install chromium
 # Run E2E tests (builds and starts production server automatically)
 pnpm test:e2e
 
+# If port 3000 is already running with real authentication, use an isolated test server
+PLAYWRIGHT_PORT=3100 pnpm test:e2e
+
 # Build for production
 pnpm build
 
@@ -76,6 +79,14 @@ pnpm start
 ```
 
 ## Configuration
+
+### Primary-agent runtime
+
+New EcomLaunch and Growth Analyst chats default to Flash reasoning. EcomLaunch
+keeps subagent delegation enabled with at most two concurrent specialists, but
+sets `is_plan_mode=false` so complete-pack runs do not spend extra model calls on
+todo-list creation and updates. Whole-request execution budgets are owned by the
+backend EcomLaunch agent configuration.
 
 ### Environment Variables
 

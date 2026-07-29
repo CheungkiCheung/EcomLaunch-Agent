@@ -1,5 +1,11 @@
 name: ecom-launch
-description: Conversational ecommerce new-product launch copilot that uses public evidence, subagents, and artifact deliverables.
+description: 用公开证据、专业子智能体和轻量实验帮助用户验证电商新品并生成上市资产。
+memory_enabled: false
 skills:
   - ecom-launch
-  - content-calibration
+run_budget:
+  max_lead_model_calls: 16
+  max_subagent_calls: 4
+  max_total_tokens: 500000
+  max_execution_seconds: 240
+  deduplicate_subagents: true

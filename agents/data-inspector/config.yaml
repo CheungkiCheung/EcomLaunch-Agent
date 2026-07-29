@@ -1,0 +1,10 @@
+name: data-inspector
+description: Growth Analyst：上传 CSV 或 XLSX 后，分析经营、商品、用户、内容和增长数据并给出改进建议。
+memory_enabled: false
+tool_groups:
+  - data
+  - file:read
+skills:
+  - sql-queries
+  - cohort-analysis
+  - ab-test-analysis

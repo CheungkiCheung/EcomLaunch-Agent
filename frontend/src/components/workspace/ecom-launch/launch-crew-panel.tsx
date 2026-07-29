@@ -40,8 +40,7 @@ type LaunchCrewRole =
   | "market-voc-researcher"
   | "offer-architect"
   | "asset-studio"
-  | "evidence-checker"
-  | "growth-analyst";
+  | "evidence-checker";
 
 type LaunchCrewStatus =
   | "idle"
@@ -98,7 +97,7 @@ const ROLE_CONFIGS: LaunchCrewRoleConfig[] = [
   {
     id: "asset-studio",
     name: "Asset Studio",
-    desk: "内容资产与校准",
+    desk: "内容与上市资产",
     accent: "bg-fuchsia-500",
     icon: FileTextIcon,
   },
@@ -119,9 +118,6 @@ const ARTIFACT_TO_ROLE: Array<[string, LaunchCrewRole]> = [
   ["launch-calendar.csv", "offer-architect"],
   ["listing-pack.md", "asset-studio"],
   ["content-pack.md", "asset-studio"],
-  ["content-scorecard.md", "asset-studio"],
-  ["rubric.md", "evidence-checker"],
-  ["calibration-ledger.json", "evidence-checker"],
   ["evidence-ledger.json", "evidence-checker"],
   ["launch-war-room.html", "evidence-checker"],
 ];
@@ -134,9 +130,6 @@ const REQUIRED_DELIVERABLES: RequiredDeliverable[] = [
   { filepath: "content-pack.md", label: "内容包" },
   { filepath: "launch-calendar.csv", label: "7 天计划" },
   { filepath: "launch-war-room.html", label: "War room 页面" },
-  { filepath: "calibration-ledger.json", label: "校准账本" },
-  { filepath: "rubric.md", label: "评分公式" },
-  { filepath: "content-scorecard.md", label: "内容评分卡" },
 ];
 
 const WORKFLOW_STAGES: WorkflowStage[] = [
@@ -202,22 +195,6 @@ const WORKFLOW_STAGES: WorkflowStage[] = [
     artifactNames: ["evidence-ledger.json"],
   },
   {
-    id: "calibrate",
-    label: "校准",
-    matchers: [
-      "calibrate",
-      "score",
-      "predict",
-      "retro",
-      "rubric",
-      "校准",
-      "评分",
-      "回顾",
-      "预测",
-    ],
-    artifactNames: ["calibration-ledger.json", "rubric.md"],
-  },
-  {
     id: "pack",
     label: "交付",
     matchers: ["present", "artifact", "deliver", "输出", "交付"],
@@ -227,7 +204,9 @@ const WORKFLOW_STAGES: WorkflowStage[] = [
 
 function roleForArtifact(filepath: string): LaunchCrewRole | "launch-director" {
   const name = getFileName(filepath);
-  const match = ARTIFACT_TO_ROLE.find(([artifactName]) => name === artifactName);
+  const match = ARTIFACT_TO_ROLE.find(
+    ([artifactName]) => name === artifactName,
+  );
   return match?.[1] ?? "launch-director";
 }
 
@@ -417,7 +396,9 @@ function bubbleForTask(
     return task.error ?? "这个工作流遇到阻塞。";
   }
   if (status === "done") {
-    return task.result ? "结构化发现已回传给 Launch Director。" : "子任务已完成。";
+    return task.result
+      ? "结构化发现已回传给 Launch Director。"
+      : "子任务已完成。";
   }
 
   const toolName = getToolName(task);
@@ -575,7 +556,9 @@ export function LaunchCrewPanel({
   const completedCount = roleViews.filter(
     (role) => role.status === "done" || role.status === "delivered",
   ).length;
-  const assignedCount = roleViews.filter((role) => role.status !== "idle").length;
+  const assignedCount = roleViews.filter(
+    (role) => role.status !== "idle",
+  ).length;
   const progress =
     assignedCount === 0
       ? 0
@@ -658,7 +641,8 @@ export function LaunchCrewPanel({
             agentStatuses={{
               "launch-director": isStreaming ? "working" : "idle",
               "market-voc-researcher": visibleRoles.some(
-                (r) => r.id === "market-voc-researcher" && isWorkingStatus(r.status),
+                (r) =>
+                  r.id === "market-voc-researcher" && isWorkingStatus(r.status),
               )
                 ? "working"
                 : visibleRoles.some(
@@ -675,17 +659,6 @@ export function LaunchCrewPanel({
                 : visibleRoles.some(
                       (r) =>
                         r.id === "offer-architect" &&
-                        (r.status === "done" || r.status === "delivered"),
-                    )
-                  ? "done"
-                  : "idle",
-              "growth-analyst": visibleRoles.some(
-                (r) => r.id === "growth-analyst" && isWorkingStatus(r.status),
-              )
-                ? "working"
-                : visibleRoles.some(
-                      (r) =>
-                        r.id === "growth-analyst" &&
                         (r.status === "done" || r.status === "delivered"),
                     )
                   ? "done"
@@ -720,19 +693,23 @@ export function LaunchCrewPanel({
 
         <Separator />
 
-        {(visibleRoles.length > 0 || mappedArtifacts.length > 0 || isStreaming) && (
+        {(visibleRoles.length > 0 ||
+          mappedArtifacts.length > 0 ||
+          isStreaming) && (
           <section className="border-border/80 bg-muted/10 shrink-0 border-b px-4 py-3">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <div className="text-muted-foreground text-xs font-medium">
                   交付清单
                 </div>
-                <div className="text-[11px] text-muted-foreground/80">
+                <div className="text-muted-foreground/80 text-[11px]">
                   {completedDeliverableCount}/{requiredDeliverables.length}
                   个核心文件已落地
                 </div>
               </div>
-              <Badge variant={deliverableProgress === 100 ? "secondary" : "outline"}>
+              <Badge
+                variant={deliverableProgress === 100 ? "secondary" : "outline"}
+              >
                 {deliverableProgress === 100 ? "已齐" : "推进中"}
               </Badge>
             </div>
@@ -775,8 +752,8 @@ export function LaunchCrewPanel({
               <div className="border-border/80 bg-muted/20 rounded-lg border p-4 text-sm">
                 <div className="font-medium">等待第一条上新验证任务</div>
                 <p className="text-muted-foreground mt-1 text-xs leading-5">
-                  开启 Ultra 后，Market & VOC Researcher 和 Offer Architect
-                  会在这里显示真实分工状态。
+                  默认 Flash
+                  已保留子智能体能力并关闭额外计划追踪；四个专业角色会按需在这里显示真实分工状态。
                 </p>
               </div>
             ) : (
@@ -794,7 +771,7 @@ export function LaunchCrewPanel({
                         </div>
                         <span
                           className={cn(
-                            "absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-background",
+                            "ring-background absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2",
                             role.accent,
                             isWorkingStatus(role.status) && "animate-pulse",
                           )}
@@ -887,7 +864,7 @@ export function LaunchCrewPanel({
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="h-7 min-w-0 max-w-full px-2 text-xs"
+                                className="h-7 max-w-full min-w-0 px-2 text-xs"
                                 onClick={() => openArtifact(artifact.filepath)}
                               >
                                 <PackageCheckIcon className="size-3.5" />

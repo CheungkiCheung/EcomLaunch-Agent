@@ -29,6 +29,17 @@ def generate_csrf_token() -> str:
     return secrets.token_urlsafe(CSRF_TOKEN_LENGTH)
 
 
+def _set_csrf_cookie(response: Response, request: Request) -> None:
+    """Attach a browser-readable CSRF cookie using the gateway policy."""
+    response.set_cookie(
+        key=CSRF_COOKIE_NAME,
+        value=generate_csrf_token(),
+        httponly=False,  # Must be JS-readable for Double Submit Cookie pattern
+        secure=is_secure_request(request),
+        samesite="strict",
+    )
+
+
 def should_check_csrf(request: Request) -> bool:
     """Determine if a request needs CSRF validation.
 
@@ -179,6 +190,8 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         _is_auth = is_auth_endpoint(request)
+        access_token = request.cookies.get("access_token")
+        csrf_cookie = request.cookies.get(CSRF_COOKIE_NAME)
 
         if should_check_csrf(request) and _is_auth and not is_allowed_auth_origin(request):
             return JSONResponse(
@@ -187,16 +200,21 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             )
 
         if should_check_csrf(request) and not _is_auth:
-            cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
             header_token = request.headers.get(CSRF_HEADER_NAME)
 
-            if not cookie_token or not header_token:
-                return JSONResponse(
+            if not csrf_cookie or not header_token:
+                response = JSONResponse(
                     status_code=403,
                     content={"detail": "CSRF token missing. Include X-CSRF-Token header."},
                 )
+                # Existing sessions may outlive a missing CSRF cookie after an
+                # upgrade or browser cleanup. Bootstrap a new cookie on the
+                # rejection so the normal frontend request hook can retry.
+                if access_token and not csrf_cookie:
+                    _set_csrf_cookie(response, request)
+                return response
 
-            if not secrets.compare_digest(cookie_token, header_token):
+            if not secrets.compare_digest(csrf_cookie, header_token):
                 return JSONResponse(
                     status_code=403,
                     content={"detail": "CSRF token mismatch."},
@@ -206,16 +224,12 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
         # For auth endpoints that set up session, also set CSRF cookie
         if _is_auth and request.method == "POST":
-            # Generate a new CSRF token for the session
-            csrf_token = generate_csrf_token()
-            is_https = is_secure_request(request)
-            response.set_cookie(
-                key=CSRF_COOKIE_NAME,
-                value=csrf_token,
-                httponly=False,  # Must be JS-readable for Double Submit Cookie pattern
-                secure=is_https,
-                samesite="strict",
-            )
+            _set_csrf_cookie(response, request)
+        elif access_token and not csrf_cookie:
+            # A successful safe request (normally auth/me during bootstrap)
+            # restores CSRF protection for a still-valid browser session.
+            # Authentication remains the responsibility of AuthMiddleware.
+            _set_csrf_cookie(response, request)
 
         return response
 

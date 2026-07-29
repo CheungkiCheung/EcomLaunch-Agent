@@ -24,6 +24,10 @@ import type { UploadedFileInfo } from "../uploads";
 import { promptInputFilePartToFile, uploadFiles } from "../uploads";
 
 import { fetchThreadTokenUsage } from "./api";
+import {
+  buildThreadRunContext,
+  type ThreadRuntimeContextOverrides,
+} from "./runtime-context";
 import { threadTokenUsageQueryKey } from "./token-usage";
 import type {
   AgentThread,
@@ -40,6 +44,7 @@ export type ToolEndEvent = {
 export type ThreadStreamOptions = {
   threadId?: string | null | undefined;
   context: LocalSettings["context"];
+  runtimeContext?: ThreadRuntimeContextOverrides;
   isMock?: boolean;
   onSend?: (threadId: string) => void;
   onStart?: (threadId: string, runId: string) => void;
@@ -337,6 +342,7 @@ function getStreamErrorMessage(error: unknown): string {
 export function useThreadStream({
   threadId,
   context,
+  runtimeContext,
   isMock,
   onSend,
   onStart,
@@ -781,23 +787,12 @@ export function useThreadStream({
             config: {
               recursion_limit: 1000,
             },
-            context: {
-              ...extraContext,
-              ...context,
-              thinking_enabled: context.mode !== "flash",
-              is_plan_mode: context.mode === "pro" || context.mode === "ultra",
-              subagent_enabled: context.mode === "ultra",
-              reasoning_effort:
-                context.reasoning_effort ??
-                (context.mode === "ultra"
-                  ? "high"
-                  : context.mode === "pro"
-                    ? "medium"
-                    : context.mode === "thinking"
-                      ? "low"
-                      : undefined),
-              thread_id: threadId,
-            },
+            context: buildThreadRunContext({
+              context,
+              extraContext,
+              runtimeContext,
+              threadId,
+            }),
           },
         );
         void queryClient.invalidateQueries({ queryKey: ["threads", "search"] });
@@ -809,7 +804,14 @@ export function useThreadStream({
         sendInFlightRef.current = false;
       }
     },
-    [thread, t.uploads.uploadingFiles, context, queryClient, humanMessageCount],
+    [
+      thread,
+      t.uploads.uploadingFiles,
+      context,
+      runtimeContext,
+      queryClient,
+      humanMessageCount,
+    ],
   );
 
   // Cache the latest thread messages in a ref to compare against incoming history messages for deduplication,

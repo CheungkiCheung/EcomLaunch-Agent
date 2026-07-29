@@ -54,7 +54,9 @@ export function mockLangGraphAPI(page: Page, options?: MockAPIOptions) {
   const agents = options?.agents ?? [];
 
   // Thread search — sidebar thread list & chats list page
-  void page.route("**/api/langgraph/threads/search", (route) => {
+  // Match both the same-origin gateway (`/api/langgraph`) and a configured
+  // LangGraph base URL such as `http://localhost:8001/api`.
+  void page.route("**/threads/search", (route) => {
     const body = threads.map((t) => ({
       thread_id: t.thread_id,
       created_at: "2025-01-01T00:00:00Z",
@@ -71,7 +73,7 @@ export function mockLangGraphAPI(page: Page, options?: MockAPIOptions) {
   });
 
   // Thread create — called when user sends first message in a new chat
-  void page.route("**/api/langgraph/threads", (route) => {
+  void page.route("**/threads", (route) => {
     if (route.request().method() === "POST") {
       return route.fulfill({
         status: 200,
@@ -90,7 +92,7 @@ export function mockLangGraphAPI(page: Page, options?: MockAPIOptions) {
   });
 
   // Thread update (PATCH) — metadata update after creation
-  void page.route("**/api/langgraph/threads/*", (route) => {
+  void page.route("**/threads/*", (route) => {
     if (route.request().method() === "PATCH") {
       return route.fulfill({
         status: 200,
@@ -102,7 +104,7 @@ export function mockLangGraphAPI(page: Page, options?: MockAPIOptions) {
   });
 
   // Thread history — useStream fetches state history on mount
-  void page.route("**/api/langgraph/threads/*/history", (route) => {
+  void page.route("**/threads/*/history", (route) => {
     const url = route.request().url();
 
     // For threads that exist in our mock data, return history with messages
@@ -147,7 +149,7 @@ export function mockLangGraphAPI(page: Page, options?: MockAPIOptions) {
   });
 
   // Thread state — getState for individual thread
-  void page.route("**/api/langgraph/threads/*/state", (route) => {
+  void page.route("**/threads/*/state", (route) => {
     if (route.request().method() === "GET") {
       const url = route.request().url();
       const matchingThread = threads.find((t) => url.includes(t.thread_id));
@@ -185,7 +187,7 @@ export function mockLangGraphAPI(page: Page, options?: MockAPIOptions) {
   // The URL carries a query string (e.g. `?limit=10&offset=0`), which Playwright
   // glob `*` does NOT cross, so we match with a regex anchored to `/runs`
   // followed by `?` or end-of-string.  This must NOT match `/runs/stream`.
-  void page.route(/\/api\/langgraph\/threads\/[^/]+\/runs(\?|$)/, (route) => {
+  void page.route(/\/threads\/[^/]+\/runs(\?|$)/, (route) => {
     if (route.request().method() === "GET") {
       const url = route.request().url();
       const matchingThread = threads.find((t) => url.includes(t.thread_id));
@@ -241,8 +243,8 @@ export function mockLangGraphAPI(page: Page, options?: MockAPIOptions) {
   );
 
   // Run stream — returns a minimal SSE response with an AI message
-  void page.route("**/api/langgraph/runs/stream", handleRunStream);
-  void page.route("**/api/langgraph/threads/*/runs/stream", handleRunStream);
+  void page.route("**/runs/stream", handleRunStream);
+  void page.route("**/threads/*/runs/stream", handleRunStream);
 
   // Models list — model picker dropdown
   void page.route("**/api/models", (route) => {

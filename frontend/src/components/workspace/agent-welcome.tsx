@@ -1,6 +1,6 @@
 "use client";
 
-import { BotIcon, ShoppingBagIcon } from "lucide-react";
+import { BotIcon, DatabaseIcon, ShoppingBagIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { type Agent } from "@/core/agents";
@@ -18,13 +18,22 @@ export function AgentWelcome({
 }) {
   const { t } = useI18n();
   const isEcomLaunch = agentName === "ecom-launch";
+  const isDataInspector = agentName === "data-inspector";
   const displayName = isEcomLaunch
     ? t.agents.ecomLaunchName
-    : (agent?.name ?? agentName);
+    : isDataInspector
+      ? t.agents.dataInspectorName
+      : (agent?.name ?? agentName);
   const description = isEcomLaunch
     ? t.agents.ecomLaunchWelcomeDescription
-    : agent?.description;
-  const Icon = isEcomLaunch ? ShoppingBagIcon : BotIcon;
+    : isDataInspector
+      ? t.agents.dataInspectorWelcomeDescription
+      : agent?.description;
+  const Icon = isEcomLaunch
+    ? ShoppingBagIcon
+    : isDataInspector
+      ? DatabaseIcon
+      : BotIcon;
 
   return (
     <div

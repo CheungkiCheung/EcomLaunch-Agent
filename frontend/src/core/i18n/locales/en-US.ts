@@ -1,9 +1,12 @@
 import {
+  ChartNoAxesCombinedIcon,
   CompassIcon,
   GraduationCapIcon,
   ImageIcon,
+  ListChecksIcon,
   MicroscopeIcon,
   PenLineIcon,
+  SearchIcon,
   ShapesIcon,
   SparklesIcon,
   VideoIcon,
@@ -173,7 +176,10 @@ export const enUS: Translations = {
     recentChats: "Recent chats",
     demoChats: "Demo chats",
     agents: "Agents",
+    primaryAgents: "Primary agents",
+    warRoom: "War Room",
     ecomLaunch: "EcomLaunch Validation",
+    dataInspector: "Growth Analyst",
   },
 
   // Agents
@@ -225,8 +231,11 @@ export const enUS: Translations = {
     startChatting: "Start chatting",
     backToGallery: "Back to Gallery",
     ecomLaunchName: "EcomLaunch Validation",
+    dataInspectorName: "Growth Analyst",
     ecomLaunchWelcomeDescription:
       "Turn a rough product idea into a 7-day ecommerce launch validation pack using public signals, uploaded context, and labeled assumptions.",
+    dataInspectorWelcomeDescription:
+      "Upload CSV or XLSX data to find changes, anomalies, causes, and practical growth opportunities.",
     ecomLaunchWelcomeBadges: [
       "Public signals",
       "No backend data needed",
@@ -257,6 +266,23 @@ export const enUS: Translations = {
         prompt:
           "I only have a rough new-product idea. Ask me the single most important clarifying question first; if information is still missing, continue with clearly labeled assumptions and build a lightweight validation plan.",
         icon: SparklesIcon,
+      },
+    ],
+    dataInspectorSuggestions: [
+      {
+        suggestion: "Data overview",
+        prompt: "Analyze this data.",
+        icon: ChartNoAxesCombinedIcon,
+      },
+      {
+        suggestion: "Find anomalies",
+        prompt: "Find the most important anomalies and changes in this data.",
+        icon: SearchIcon,
+      },
+      {
+        suggestion: "Improvement areas",
+        prompt: "Based on this data, what should be improved first?",
+        icon: ListChecksIcon,
       },
     ],
   },

@@ -42,6 +42,14 @@ coverage/
 skills/custom/*
 !skills/custom/ecom-launch/
 !skills/custom/ecom-launch/**
+!skills/custom/cohort-analysis/
+!skills/custom/cohort-analysis/**
+!skills/custom/ab-test-analysis/
+!skills/custom/ab-test-analysis/**
+!skills/custom/sql-queries/
+!skills/custom/sql-queries/**
+!skills/custom/pm-skills/
+!skills/custom/pm-skills/**
 logs/
 log/
 debug.log

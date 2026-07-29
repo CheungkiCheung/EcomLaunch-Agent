@@ -194,6 +194,9 @@ def update_agent(
     if skills is not None and skills != existing_cfg.skills:
         updated_fields.append("skills")
 
+    if existing_cfg.memory_enabled is not None:
+        config_data["memory_enabled"] = existing_cfg.memory_enabled
+
     config_changed = bool({"description", "model", "tool_groups", "skills"} & set(updated_fields))
 
     # Stage every file we intend to rewrite into a temp sibling. Only after

@@ -18,6 +18,10 @@ def _make_app() -> FastAPI:
     async def register():
         return {"ok": True}
 
+    @app.get("/api/v1/auth/me")
+    async def auth_me():
+        return {"ok": True}
+
     @app.post("/api/threads/abc/runs/stream")
     async def protected_mutation():
         return {"ok": True}
@@ -204,6 +208,47 @@ def test_non_auth_mutation_still_requires_double_submit_token():
     assert response.json()["detail"] == "CSRF token missing. Include X-CSRF-Token header."
 
 
+def test_existing_session_recovers_missing_csrf_cookie_on_safe_request():
+    client = TestClient(_make_app(), base_url="https://deerflow.example")
+    client.cookies.set("access_token", "existing-session")
+
+    response = client.get("/api/v1/auth/me")
+
+    assert response.status_code == 200
+    assert response.cookies.get("csrf_token")
+    set_cookie = response.headers["set-cookie"].lower()
+    assert "samesite=strict" in set_cookie
+    assert "secure" in set_cookie
+
+
+def test_safe_request_without_session_does_not_set_csrf_cookie():
+    client = TestClient(_make_app(), base_url="https://deerflow.example")
+
+    response = client.get("/api/v1/auth/me")
+
+    assert response.status_code == 200
+    assert response.cookies.get("csrf_token") is None
+
+
+def test_missing_csrf_rejection_bootstraps_existing_session_for_retry():
+    client = TestClient(_make_app(), base_url="https://deerflow.example")
+    client.cookies.set("access_token", "existing-session")
+
+    rejected = client.post("/api/threads/abc/runs/stream")
+
+    assert rejected.status_code == 403
+    assert rejected.json()["detail"] == "CSRF token missing. Include X-CSRF-Token header."
+    recovered_token = rejected.cookies.get("csrf_token")
+    assert recovered_token
+
+    retried = client.post(
+        "/api/threads/abc/runs/stream",
+        headers={"X-CSRF-Token": recovered_token},
+    )
+
+    assert retried.status_code == 200
+
+
 def test_non_auth_mutation_allows_valid_double_submit_token():
     client = TestClient(_make_app(), base_url="https://deerflow.example")
     client.cookies.set("csrf_token", "known-token")
@@ -233,3 +278,4 @@ def test_non_auth_mutation_rejects_mismatched_double_submit_token():
 
     assert response.status_code == 403
     assert response.json()["detail"] == "CSRF token mismatch."
+    assert response.cookies.get("csrf_token") is None

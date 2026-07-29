@@ -2,13 +2,27 @@ import type { Message } from "@langchain/langgraph-sdk";
 
 import type { AgentThread, AgentThreadContext } from "./types";
 
+type ThreadAgentSource = {
+  context?: Pick<AgentThreadContext, "agent_name"> | null;
+  metadata?: Record<string, unknown> | null;
+};
+
 type ThreadRouteTarget =
   | string
-  | {
+  | (ThreadAgentSource & {
       thread_id: string;
-      context?: Pick<AgentThreadContext, "agent_name"> | null;
-      metadata?: Record<string, unknown> | null;
-    };
+    });
+
+export function agentNameOfThread(
+  thread: ThreadAgentSource,
+): string | undefined {
+  const contextAgent = thread.context?.agent_name;
+  if (contextAgent) {
+    return contextAgent;
+  }
+  const metadataAgent = thread.metadata?.agent_name;
+  return typeof metadataAgent === "string" ? metadataAgent : undefined;
+}
 
 export function pathOfThread(
   thread: ThreadRouteTarget,
@@ -19,13 +33,7 @@ export function pathOfThread(
   if (typeof thread === "string") {
     agentName = context?.agent_name;
   } else {
-    agentName = thread.context?.agent_name;
-    if (!agentName) {
-      const metaAgent = thread.metadata?.agent_name;
-      if (typeof metaAgent === "string") {
-        agentName = metaAgent;
-      }
-    }
+    agentName = agentNameOfThread(thread);
   }
 
   return agentName

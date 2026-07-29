@@ -6,7 +6,6 @@ type AgentRole =
   | "launch-director"
   | "market-voc-researcher"
   | "offer-architect"
-  | "growth-analyst"
   | "asset-studio"
   | "evidence-checker";
 
@@ -29,7 +28,7 @@ const AGENT_CONFIG: Record<
   }
 > = {
   "launch-director": {
-    name: "首席研究员",
+    name: "EcomLaunch",
     position: "center",
     color: "bg-blue-500",
     animation: "animate-director",
@@ -41,25 +40,19 @@ const AGENT_CONFIG: Record<
     animation: "animate-researcher",
   },
   "offer-architect": {
-    name: "策略架构师",
+    name: "方案架构师",
     position: "left-bottom",
     color: "bg-purple-500",
     animation: "animate-architect",
   },
-  "growth-analyst": {
-    name: "数据分析师",
-    position: "right-top",
-    color: "bg-orange-500",
-    animation: "animate-analyst",
-  },
   "asset-studio": {
-    name: "内容创作者",
+    name: "素材工作室",
     position: "right-bottom",
     color: "bg-pink-500",
     animation: "animate-creator",
   },
   "evidence-checker": {
-    name: "证据审计员",
+    name: "证据检查员",
     position: "center-bottom",
     color: "bg-red-500",
     animation: "animate-checker",
@@ -103,7 +96,7 @@ function PixelCharacter({
         )}
       >
         {/* 像素角色简化表示 */}
-        <div className="absolute inset-0 flex items-center justify-center text-white text-lg">
+        <div className="absolute inset-0 flex items-center justify-center text-lg text-white">
           {statusConfig.icon}
         </div>
       </div>
@@ -119,7 +112,7 @@ function PixelCharacter({
       </div>
 
       {/* 角色名称 */}
-      <div className="mt-1 text-[10px] text-muted-foreground">
+      <div className="text-muted-foreground mt-1 text-[10px]">
         {agentConfig.name}
       </div>
     </div>
@@ -144,38 +137,45 @@ function WhiteBoard({
 
       {/* 任务进度 */}
       <div className="space-y-1">
-        {["需求澄清", "市场研究", "增长策略", "内容创作", "数据分析", "证据审计", "内容校准"].map(
-          (task, index) => {
-            const taskProgress = Math.min(100, Math.max(0, progress - index * 15));
-            const status =
-              taskProgress >= 100
-                ? "done"
-                : taskProgress > 0
-                  ? "working"
-                  : "idle";
+        {[
+          "需求澄清",
+          "市场与用户研究",
+          "定位与验证",
+          "内容资产",
+          "证据审计",
+        ].map((task, index) => {
+          const taskProgress = Math.min(
+            100,
+            Math.max(0, progress - index * 15),
+          );
+          const status =
+            taskProgress >= 100
+              ? "done"
+              : taskProgress > 0
+                ? "working"
+                : "idle";
 
-            return (
-              <div key={task} className="flex items-center gap-2">
-                <div
-                  className={cn(
-                    "h-2 w-2 rounded-full",
-                    status === "done"
-                      ? "bg-green-500"
-                      : status === "working"
-                        ? "bg-yellow-500"
-                        : "bg-gray-300",
-                  )}
-                />
-                <span className="text-[10px] text-gray-600">{task}</span>
-              </div>
-            );
-          },
-        )}
+          return (
+            <div key={task} className="flex items-center gap-2">
+              <div
+                className={cn(
+                  "h-2 w-2 rounded-full",
+                  status === "done"
+                    ? "bg-green-500"
+                    : status === "working"
+                      ? "bg-yellow-500"
+                      : "bg-gray-300",
+                )}
+              />
+              <span className="text-[10px] text-gray-600">{task}</span>
+            </div>
+          );
+        })}
       </div>
 
       {/* 当前阶段 */}
       <div className="mt-2 border-t pt-2">
-        <div className="text-[10px] text-muted-foreground">当前阶段</div>
+        <div className="text-muted-foreground text-[10px]">当前阶段</div>
         <div className="text-xs font-medium">{currentStage || "等待中"}</div>
       </div>
     </div>
@@ -188,7 +188,6 @@ export function PixelOffice({
     "launch-director": "idle",
     "market-voc-researcher": "idle",
     "offer-architect": "idle",
-    "growth-analyst": "idle",
     "asset-studio": "idle",
     "evidence-checker": "idle",
   },
@@ -243,10 +242,6 @@ export function PixelOffice({
           {/* 右侧 */}
           <div className="space-y-4">
             <PixelCharacter
-              role="growth-analyst"
-              status={agentStatuses["growth-analyst"]}
-            />
-            <PixelCharacter
               role="asset-studio"
               status={agentStatuses["asset-studio"]}
             />
@@ -256,7 +251,7 @@ export function PixelOffice({
         {/* 状态栏 */}
         <div className="mt-4 rounded-lg border bg-white/80 p-3">
           <div className="flex items-center justify-between">
-            <div className="text-xs text-muted-foreground">协作进度</div>
+            <div className="text-muted-foreground text-xs">协作进度</div>
             <div className="text-xs font-medium">{progress}%</div>
           </div>
           <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-200">

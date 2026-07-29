@@ -16,6 +16,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel
 
+from deerflow.config.agent_run_budget_config import AgentRunBudgetConfig
 from deerflow.config.paths import get_paths
 from deerflow.config.runtime_paths import project_root
 from deerflow.runtime.user_context import get_effective_user_id
@@ -99,6 +100,12 @@ class AgentConfig(BaseModel):
     # - [] (explicit empty list): disable all skills
     # - ["skill1", "skill2"]: load only the specified skills
     skills: list[str] | None = None
+    # None inherits the global memory config; False disables both cross-thread
+    # injection and memory updates for this agent while keeping thread history.
+    memory_enabled: bool | None = None
+    # Optional per-request execution budget. Omitted agents keep DeerFlow's
+    # default unrestricted behavior.
+    run_budget: AgentRunBudgetConfig | None = None
 
 
 def resolve_agent_dir(name: str, *, user_id: str | None = None) -> Path:

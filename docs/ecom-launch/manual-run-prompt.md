@@ -1,179 +1,52 @@
-# EcomLaunch Manual Run Prompt
+# EcomLaunch Complete-Pack Test Prompt
 
-You are EcomLaunch, a public-data-driven ecommerce new-product launch copilot built on DeerFlow.
+请为下面的产品生成一个完整的 Launch Validation Pack。先读取并遵循
+`ecom-launch` Skill；根据需要调用最少数量的专业子智能体，不要为了展示
+多智能体而重复研究。最多同时运行两个互相独立的子任务。
 
-First, load and follow the `ecom-launch` skill from the available skills list. If the skill is available, read its `SKILL.md` before doing the work.
+可用专业角色：
 
-Use Ultra-mode subagents if the `task` tool is available. Recommended delegation:
+- `market-voc-researcher`：公开竞品、价格、评论和用户声音
+- `offer-architect`：人群切口、价值主张、价格假设和验证实验
+- `asset-studio`：商品页、短视频、小红书/抖音和直播资产
+- `evidence-checker`：对最终草稿做独立证据审计
 
-- `market-scout`: public competitor, price-band, claim, and content-pattern scan
-- `voc-miner`: public review/VOC pain points, praise, objections, scenarios, and customer wording
-- `offer-architect`: target segment, core promise, differentiators, risks, hypotheses, and 7-day launch tests
-- `asset-studio`: ecommerce listing copy, short-video scripts, livestream talk tracks, social posts, and creator brief
-- `evidence-checker`: evidence ledger and unsupported-claim cleanup
+## 产品信息
 
-If custom ecommerce subagents are not available, complete the same workflow sequentially with your available tools.
+- 产品：面向办公室通勤和轻户外场景的便携防漏咖啡杯
+- 品类：coffee tumbler / travel mug / portable insulated cup
+- 平台：淘宝、小红书、抖音
+- 人群：通勤携带咖啡的上班族，以及在意防漏、清洁、异味、保温和便携性的轻户外用户
+- 价格：人民币 99～199 元
+- 已确认限制：不带电子元件；其他材质、容量、保温时长、检测、认证和售后政策均待确认
+- 私有数据：没有商家后台数据
 
-## Launch Brief
+## 证据要求
 
-Product idea:
+仅使用可公开访问的网页和明确提供的材料，不绕过登录墙、验证码、反爬机制或私有后台。
 
-```text
-Portable leak-proof coffee tumbler for office commute and light outdoor use.
-```
-
-Category:
-
-```text
-coffee tumbler / travel mug / portable insulated cup
-```
-
-Target platforms:
-
-```text
-Taobao, Xiaohongshu, Douyin
-```
-
-Target customers:
-
-```text
-Office workers who carry coffee during commute; light outdoor users who want a simple durable cup; users who care about leakage, cleaning, odor, insulation, and portability.
-```
-
-Target price range:
-
-```text
-RMB 99-199
-```
-
-Supply/product constraints:
-
-```text
-Stainless steel body; easy to clean; no electronics; must fit office commute and light outdoor scenarios.
-```
-
-Private data status:
-
-```text
-No merchant backend data is available.
-```
-
-## Evidence Rules
-
-Use public web search/fetch and any available public pages only.
-
-Do not bypass login walls, CAPTCHA, anti-bot systems, or private ecommerce dashboards.
-
-Use the current runtime date for report timestamps. Do not invent source dates or report dates.
-
-Do not invent:
-
-- GMV
-- CTR
-- CVR
-- ROI
-- ad spend
-- actual sales volume
-- refund rate
-- repeat purchase rate
-- exact market share
-- verified uplift percentages
-
-If those metrics are unavailable, write `unavailable` and propose a launch test to collect them.
-
-When no merchant backend data is available, do not use private platform metrics as default final-artifact KPIs. Prefer lightweight validation signals such as target-user sample feedback, share/save/comment intent, inquiry count, preorder interest, creator response quality, and repeated objections. Mention CTR, CVR, ROI, refund rate, or repeat purchase rate only as unavailable metrics, uploaded evidence, or future metrics to collect after platform access exists.
-
-Every major recommendation must be tied to one of:
+区分并标注：
 
 - `observed_public`
-- `public_dataset`
 - `uploaded_real`
 - `estimated`
-- `synthetic_demo`
+- `assumption`
 - `unavailable`
 
-## Required Output Files
+不得虚构 GMV、CTR、CVR、ROI、广告消耗、销量、退款率、复购率、市场份额、产品规格、检测结果、认证、用户证言或售后政策。缺失内容使用待确认占位，并给出低成本验证方式。
 
-Create all final files under `/mnt/user-data/outputs` and call `present_files` for them.
+## 输出
 
-Required:
-
-```text
-/mnt/user-data/outputs/launch-war-room.html
-/mnt/user-data/outputs/evidence-ledger.json
-/mnt/user-data/outputs/competitor-table.csv
-/mnt/user-data/outputs/positioning-brief.md
-/mnt/user-data/outputs/listing-pack.md
-/mnt/user-data/outputs/content-pack.md
-/mnt/user-data/outputs/launch-calendar.csv
-```
-
-Optional if useful:
+将有价值的最终文件写入 `/mnt/user-data/outputs` 并调用 `present_files`：
 
 ```text
-/mnt/user-data/outputs/review-insights.json
-/mnt/user-data/outputs/risk-notes.md
-/mnt/user-data/outputs/source-list.md
+launch-war-room.html
+evidence-ledger.json
+competitor-table.csv
+positioning-brief.md
+listing-pack.md
+content-pack.md
+launch-calendar.csv
 ```
 
-## Artifact Requirements
-
-`launch-war-room.html` must be a self-contained dashboard with:
-
-- product brief
-- target platform and user segment
-- estimated opportunity score with evidence labels
-- top public market findings
-- top customer pain points
-- competitor price-band table
-- positioning recommendation
-- listing preview
-- content hooks
-- 7-day launch plan
-- evidence confidence summary
-- limitations
-
-`evidence-ledger.json` must be valid JSON and use this object shape:
-
-```json
-{
-  "id": "ev_001",
-  "claim": "A concise claim supported by evidence or marked as an estimate.",
-  "evidence_type": "observed_public",
-  "source_title": "Source title if available",
-  "source_url": "https://example.com/source-if-available",
-  "source_quote_or_summary": "Short summary, not a long copied passage.",
-  "confidence": "medium",
-  "used_in": ["positioning-brief.md"],
-  "limitations": "Known limitations of the source or inference."
-}
-```
-
-Before presenting files, ensure `evidence-ledger.json` is a JSON array, not a Markdown code block, and contains no unescaped line breaks inside string values.
-
-`competitor-table.csv` columns:
-
-```csv
-competitor_name,platform,product_url,price_low,price_high,key_claims,visible_strengths,visible_weaknesses,evidence_type,source_type,confidence,notes
-```
-
-Before presenting files, ensure CSV files are parseable by a standard CSV reader and every row has the declared column count.
-
-`launch-calendar.csv` columns:
-
-```csv
-day,objective,experiment,asset,channel,validation_signal_to_collect,decision_rule,owner,expected_output
-```
-
-## Language
-
-Write user-facing Markdown and HTML content in Chinese. Keep file names and JSON keys in English.
-
-## Final Chat Response
-
-After creating and presenting files, give a short Chinese summary:
-
-1. recommended launch direction
-2. note that private merchant metrics were unavailable
-3. list the presented artifacts
-4. do not paste every artifact into chat
+`evidence-ledger.json` 必须是可解析的 JSON 数组；CSV 必须能被标准 CSV 解析器读取。最终回复先给出上市方向、主要风险和下一步，再展示文件，不要把所有文件内容重复粘贴到聊天中。

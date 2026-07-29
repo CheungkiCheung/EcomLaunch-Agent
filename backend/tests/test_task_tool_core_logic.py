@@ -43,6 +43,26 @@ def _make_runtime(*, app_config=None) -> SimpleNamespace:
     )
 
 
+def _install_run_budget(
+    runtime: SimpleNamespace,
+    *,
+    max_subagent_calls: int = 4,
+    deduplicate_subagents: bool = True,
+    remaining_seconds: float = 120,
+) -> None:
+    now = task_tool_module.time.monotonic()
+    runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY] = {
+        "config": {
+            "max_subagent_calls": max_subagent_calls,
+            "deduplicate_subagents": deduplicate_subagents,
+        },
+        "started_at_monotonic": now,
+        "deadline_monotonic": now + remaining_seconds,
+        "subagent_calls_started": 0,
+        "subagent_types_started": set(),
+    }
+
+
 def _make_subagent_config(name: str = "general-purpose") -> SubagentConfig:
     return SubagentConfig(
         name=name,
@@ -116,6 +136,99 @@ def test_task_tool_rejects_bash_subagent_when_host_bash_disabled(monkeypatch):
     )
 
     assert result.startswith("Error: Bash subagent is disabled")
+
+
+def test_run_budget_rejects_a_duplicate_specialist_without_starting_it(monkeypatch):
+    runtime = _make_runtime()
+    _install_run_budget(runtime)
+    runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]["subagent_calls_started"] = 1
+    runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]["subagent_types_started"] = {"market-voc-researcher"}
+    monkeypatch.setattr(
+        task_tool_module,
+        "get_subagent_config",
+        lambda _: _make_subagent_config(name="market-voc-researcher"),
+    )
+    monkeypatch.setattr(
+        task_tool_module,
+        "get_available_subagent_names",
+        lambda: ["market-voc-researcher"],
+    )
+
+    result = _run_task_tool(
+        runtime=runtime,
+        description="重复研究",
+        prompt="search again",
+        subagent_type="market-voc-researcher",
+        tool_call_id="tc-duplicate",
+    )
+
+    assert "already ran" in result
+    assert runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]["subagent_calls_started"] == 1
+
+
+def test_run_budget_rejects_subagents_after_the_whole_run_limit(monkeypatch):
+    runtime = _make_runtime()
+    _install_run_budget(runtime, max_subagent_calls=1, deduplicate_subagents=False)
+    runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]["subagent_calls_started"] = 1
+    monkeypatch.setattr(
+        task_tool_module,
+        "get_subagent_config",
+        lambda _: _make_subagent_config(name="offer-architect"),
+    )
+    monkeypatch.setattr(
+        task_tool_module,
+        "get_available_subagent_names",
+        lambda: ["offer-architect"],
+    )
+
+    result = _run_task_tool(
+        runtime=runtime,
+        description="额外策略",
+        prompt="design another offer",
+        subagent_type="offer-architect",
+        tool_call_id="tc-over-budget",
+    )
+
+    assert "run budget allows at most 1 subagent call" in result
+
+
+def test_run_budget_clamps_specialist_timeout_to_remaining_wall_time(monkeypatch):
+    runtime = _make_runtime()
+    _install_run_budget(runtime, remaining_seconds=3.2)
+    config = _make_subagent_config(name="offer-architect")
+    captured = {}
+    events = []
+
+    class DummyExecutor:
+        def __init__(self, **kwargs):
+            captured["config"] = kwargs["config"]
+
+        def execute_async(self, prompt, task_id=None):
+            return task_id
+
+    monkeypatch.setattr(task_tool_module, "SubagentStatus", FakeSubagentStatus)
+    monkeypatch.setattr(task_tool_module, "SubagentExecutor", DummyExecutor)
+    monkeypatch.setattr(task_tool_module, "get_subagent_config", lambda _: config)
+    monkeypatch.setattr(task_tool_module, "get_available_subagent_names", lambda: ["offer-architect"])
+    monkeypatch.setattr(
+        task_tool_module,
+        "get_background_task_result",
+        lambda _: _make_result(FakeSubagentStatus.COMPLETED, result="done"),
+    )
+    monkeypatch.setattr(task_tool_module, "get_stream_writer", lambda: events.append)
+    monkeypatch.setattr(task_tool_module.asyncio, "sleep", _no_sleep)
+    monkeypatch.setattr("deerflow.tools.get_available_tools", lambda **_: [])
+
+    result = _run_task_tool(
+        runtime=runtime,
+        description="策略设计",
+        prompt="design offer",
+        subagent_type="offer-architect",
+        tool_call_id="tc-clamped",
+    )
+
+    assert result == "Task Succeeded. Result: done"
+    assert 1 <= captured["config"].timeout_seconds <= 3
 
 
 def test_task_tool_threads_runtime_app_config_to_subagent_dependencies(monkeypatch):
@@ -378,7 +491,7 @@ def test_task_tool_inherits_parent_skill_allowlist_for_default_subagent(monkeypa
     assert captured["config"].skills == ["safe-skill"]
 
 
-def test_task_tool_intersects_parent_and_subagent_skill_allowlists(monkeypatch):
+def test_task_tool_keeps_explicit_subagent_skills_instead_of_intersecting_with_router_skills(monkeypatch):
     config = _make_subagent_config()
     config = SubagentConfig(
         name=config.name,
@@ -421,7 +534,7 @@ def test_task_tool_intersects_parent_and_subagent_skill_allowlists(monkeypatch):
     )
 
     assert output == "Task Succeeded. Result: done"
-    assert captured["config"].skills == ["safe-skill"]
+    assert captured["config"].skills == ["safe-skill", "other-skill"]
 
 
 def test_task_tool_no_tool_groups_passes_none(monkeypatch):

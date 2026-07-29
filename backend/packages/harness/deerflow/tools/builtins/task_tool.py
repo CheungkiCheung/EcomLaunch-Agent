@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import time
 import uuid
 from dataclasses import replace
 from typing import TYPE_CHECKING, Annotated, Any, cast
@@ -10,6 +11,7 @@ from langchain.tools import InjectedToolCallId, tool
 from langchain_core.callbacks import BaseCallbackManager
 from langgraph.config import get_stream_writer
 
+from deerflow.agents.middlewares.run_budget_middleware import RUN_BUDGET_CONTEXT_KEY
 from deerflow.config import get_app_config
 from deerflow.sandbox.security import LOCAL_BASH_SUBAGENT_DISABLED_MESSAGE, is_host_bash_allowed
 from deerflow.subagents import SubagentExecutor, get_available_subagent_names, get_subagent_config
@@ -173,14 +175,64 @@ def _get_runtime_app_config(runtime: Any) -> "AppConfig | None":
 
 
 def _merge_skill_allowlists(parent: list[str] | None, child: list[str] | None) -> list[str] | None:
-    """Return the effective subagent skill allowlist under the parent policy."""
-    if parent is None:
-        return child
-    if child is None:
-        return list(parent)
+    """Return the effective subagent skill allowlist.
 
-    parent_set = set(parent)
-    return [skill for skill in child if skill in parent_set]
+    An explicit subagent list is an administrator-defined capability boundary
+    and must not be intersected with the lead agent's router-only skills. When
+    the subagent omits its own list, it inherits the lead agent's allowlist.
+    """
+    if child is not None:
+        return list(child)
+    if parent is not None:
+        return list(parent)
+    return None
+
+
+def _apply_run_budget_to_subagent(runtime: Any, config: Any, subagent_type: str) -> tuple[Any, str | None]:
+    """Reserve one run-scoped subagent slot and clamp its timeout.
+
+    The reservation happens before the first await in ``task_tool``. Parallel
+    async task calls therefore observe the updated counter/type set before a
+    second call of the same type can start.
+    """
+    context = getattr(runtime, "context", None)
+    if not isinstance(context, dict):
+        return config, None
+
+    budget_state = context.get(RUN_BUDGET_CONTEXT_KEY)
+    if not isinstance(budget_state, dict):
+        return config, None
+
+    budget_config = budget_state.get("config")
+    if not isinstance(budget_config, dict):
+        return config, None
+
+    deadline = budget_state.get("deadline_monotonic")
+    if isinstance(deadline, (int, float)):
+        remaining_seconds = int(deadline - time.monotonic())
+        if remaining_seconds < 1:
+            return config, "Task skipped: the whole-run wall-time budget has expired. Use the evidence already collected and finish with explicit limitations."
+    else:
+        remaining_seconds = config.timeout_seconds
+
+    started_types = budget_state.setdefault("subagent_types_started", set())
+    if not isinstance(started_types, set):
+        started_types = set(started_types) if isinstance(started_types, (list, tuple)) else set()
+        budget_state["subagent_types_started"] = started_types
+
+    if budget_config.get("deduplicate_subagents", True) and subagent_type in started_types:
+        return config, f"Task skipped: specialist '{subagent_type}' already ran in this user request. Reuse its earlier result instead of starting duplicate research."
+
+    calls_started = budget_state.get("subagent_calls_started", 0)
+    calls_started = calls_started if isinstance(calls_started, int) and calls_started >= 0 else 0
+    max_subagent_calls = budget_config.get("max_subagent_calls")
+    if isinstance(max_subagent_calls, int) and calls_started >= max_subagent_calls:
+        return config, f"Task skipped: the whole-run budget allows at most {max_subagent_calls} subagent call(s). Use the results already available and finish the response."
+
+    budget_state["subagent_calls_started"] = calls_started + 1
+    started_types.add(subagent_type)
+    clamped_timeout = max(1, min(config.timeout_seconds, remaining_seconds))
+    return replace(config, timeout_seconds=clamped_timeout), None
 
 
 @tool("task", parse_docstring=True)
@@ -275,6 +327,11 @@ async def task_tool(
 
     if overrides:
         config = replace(config, **overrides)
+
+    config, budget_error = _apply_run_budget_to_subagent(runtime, config, subagent_type)
+    if budget_error is not None:
+        logger.info("Skipped subagent %s because of the parent run budget: %s", subagent_type, budget_error)
+        return budget_error
 
     # Get available tools (excluding task tool to prevent nesting)
     # Lazy import to avoid circular dependency

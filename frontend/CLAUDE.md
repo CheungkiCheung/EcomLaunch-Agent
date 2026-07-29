@@ -26,6 +26,8 @@ Unit tests live under `tests/unit/` and mirror the `src/` layout (e.g., `tests/u
 
 E2E tests live under `tests/e2e/` and use Playwright with Chromium. They mock all backend APIs via `page.route()` network interception and test real page interactions (navigation, chat input, streaming responses). Config: `playwright.config.ts`.
 
+When a real authenticated development server is already using port 3000, run E2E on an isolated unauthenticated server with `PLAYWRIGHT_PORT=3100 pnpm test:e2e`. Supplying `PLAYWRIGHT_PORT` disables reuse of the existing server so the Playwright web-server environment is applied.
+
 ## Architecture
 
 ```
@@ -38,7 +40,7 @@ The frontend is a stateful chat application. Users create **threads** (conversat
 
 ### Source Layout (`src/`)
 
-- **`app/`** — Next.js App Router. Routes: `/` (landing), `/workspace/chats/[thread_id]` (chat).
+- **`app/`** — Next.js App Router. Routes: `/` (landing), `/workspace/chats/[thread_id]` (general chat), and `/workspace/agents/[agent_name]/chats/[thread_id]` (agent-owned chat).
 - **`components/`** — React components split into:
   - `ui/` — Shadcn UI primitives (auto-generated, ESLint-ignored)
   - `ai-elements/` — Vercel AI SDK elements (auto-generated, ESLint-ignored)
@@ -66,6 +68,14 @@ The frontend is a stateful chat application. Users create **threads** (conversat
 2. Stream events update thread state (messages, artifacts, todos)
 3. TanStack Query manages server state; localStorage stores user settings
 4. Components subscribe to thread state and render updates
+
+### Primary Agents
+
+The workspace sidebar provides two primary agent entry points: `EcomLaunch` and `Growth Analyst`. Growth Analyst keeps the compatibility route and `agent_name` value `data-inspector`. They share the standard chat composer, file upload, and thread APIs; recent-chat lists use the internal value to keep each agent's conversations separate from the other agent and from general chats.
+
+Growth Analyst's route provides its own user-facing name, database icon, and data-analysis quick actions. Keep this route as a chat experience; reusable analysis behavior is configured by the backend agent, tools, and skills.
+
+Primary-agent chats default to Flash reasoning. EcomLaunch additionally overrides the run context with `is_plan_mode=false`, `subagent_enabled=true`, and `max_concurrent_subagents=2`: specialists stay available while todo-plan creation/update calls remain disabled. Whole-request call, token, duplicate-specialist, and wall-time budgets are enforced by the backend agent config.
 
 ### Key Patterns
 

@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { pathOfThread } from "@/core/threads/utils";
+import { agentNameOfThread, pathOfThread } from "@/core/threads/utils";
 
 test("uses standard chat route when thread has no agent context", () => {
   expect(pathOfThread("thread-123")).toBe("/workspace/chats/thread-123");
@@ -43,4 +43,17 @@ test("prefers context.agent_name over metadata.agent_name", () => {
       metadata: { agent_name: "from-metadata" },
     }),
   ).toBe("/workspace/agents/from-context/chats/thread-789");
+});
+
+test("reads the owning agent for thread list filtering", () => {
+  expect(
+    agentNameOfThread({
+      context: { agent_name: "data-inspector" },
+      metadata: { agent_name: "ecom-launch" },
+    }),
+  ).toBe("data-inspector");
+  expect(agentNameOfThread({ metadata: { agent_name: "ecom-launch" } })).toBe(
+    "ecom-launch",
+  );
+  expect(agentNameOfThread({ metadata: {} })).toBeUndefined();
 });

@@ -22,6 +22,8 @@ class SubagentConfig:
         model: Model to use - 'inherit' uses parent's model.
         max_turns: Maximum number of agent turns before stopping.
         timeout_seconds: Maximum execution time in seconds (default: 900 = 15 minutes).
+        max_model_calls: Optional model-response budget that forces a final text response before recursion exhaustion.
+        max_total_tokens: Optional observed token budget that forces a final text response.
     """
 
     name: str
@@ -33,6 +35,8 @@ class SubagentConfig:
     model: str = "inherit"
     max_turns: int = 50
     timeout_seconds: int = 900
+    max_model_calls: int | None = None
+    max_total_tokens: int | None = None
 
 
 def _default_model_name(app_config: "AppConfig") -> str:

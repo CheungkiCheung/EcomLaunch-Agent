@@ -9,6 +9,9 @@ import pytest
 
 from deerflow.agents.lead_agent import agent as lead_agent_module
 from deerflow.agents.middlewares.loop_detection_middleware import LoopDetectionMiddleware
+from deerflow.agents.middlewares.run_budget_middleware import RunBudgetMiddleware
+from deerflow.config.agent_run_budget_config import AgentRunBudgetConfig
+from deerflow.config.agents_config import AgentConfig
 from deerflow.config.app_config import AppConfig
 from deerflow.config.loop_detection_config import LoopDetectionConfig
 from deerflow.config.memory_config import MemoryConfig
@@ -389,6 +392,31 @@ def test_build_middlewares_passes_explicit_app_config_to_shared_factory(monkeypa
     assert middlewares[0] == "base-middleware"
 
 
+def test_build_middlewares_disables_memory_for_agent_override(monkeypatch):
+    app_config = _make_app_config([_make_model("safe-model", supports_thinking=False)])
+    app_config.memory = MemoryConfig(enabled=True, injection_enabled=True)
+
+    monkeypatch.setattr(lead_agent_module, "build_lead_runtime_middlewares", lambda *, app_config, lazy_init=True: [])
+    monkeypatch.setattr(lead_agent_module, "_create_summarization_middleware", lambda *, app_config=None: None)
+    monkeypatch.setattr(lead_agent_module, "_create_todo_list_middleware", lambda is_plan_mode: None)
+
+    middlewares = lead_agent_module.build_middlewares(
+        {"configurable": {"is_plan_mode": False, "subagent_enabled": False}},
+        model_name="safe-model",
+        agent_name="data-inspector",
+        app_config=app_config,
+        agent_config=AgentConfig(name="data-inspector", memory_enabled=False),
+    )
+
+    dynamic_context = next(m for m in middlewares if m.__class__.__name__ == "DynamicContextMiddleware")
+    memory_middleware = next(m for m in middlewares if isinstance(m, lead_agent_module.MemoryMiddleware))
+    assert dynamic_context._app_config.memory.enabled is False
+    assert dynamic_context._app_config.memory.injection_enabled is False
+    assert memory_middleware._memory_config.enabled is False
+    assert app_config.memory.enabled is True
+    assert app_config.memory.injection_enabled is True
+
+
 def test_build_middlewares_uses_loop_detection_config(monkeypatch):
     app_config = _make_app_config(
         [_make_model("safe-model", supports_thinking=False)],
@@ -420,6 +448,34 @@ def test_build_middlewares_uses_loop_detection_config(monkeypatch):
     assert loop_detection.max_tracked_threads == 40
     assert loop_detection.tool_freq_warn == 50
     assert loop_detection.tool_freq_hard_limit == 60
+
+
+def test_build_middlewares_adds_agent_run_budget_before_token_usage(monkeypatch):
+    app_config = _make_app_config([_make_model("safe-model", supports_thinking=False)])
+    app_config.token_usage.enabled = True
+    budget = AgentRunBudgetConfig(
+        max_lead_model_calls=12,
+        max_subagent_calls=4,
+        max_total_tokens=240_000,
+        max_execution_seconds=240,
+    )
+
+    monkeypatch.setattr(lead_agent_module, "get_app_config", lambda: app_config)
+    monkeypatch.setattr(lead_agent_module, "build_lead_runtime_middlewares", lambda *, app_config, lazy_init=True: [])
+    monkeypatch.setattr(lead_agent_module, "_create_summarization_middleware", lambda *, app_config=None: None)
+    monkeypatch.setattr(lead_agent_module, "_create_todo_list_middleware", lambda is_plan_mode: None)
+
+    middlewares = lead_agent_module.build_middlewares(
+        {"configurable": {"is_plan_mode": False, "subagent_enabled": True}},
+        model_name="safe-model",
+        agent_name="ecom-launch",
+        app_config=app_config,
+        agent_config=AgentConfig(name="ecom-launch", run_budget=budget),
+    )
+
+    budget_index = next(i for i, middleware in enumerate(middlewares) if isinstance(middleware, RunBudgetMiddleware))
+    token_index = next(i for i, middleware in enumerate(middlewares) if isinstance(middleware, lead_agent_module.TokenUsageMiddleware))
+    assert budget_index < token_index
 
 
 def test_build_middlewares_omits_loop_detection_when_disabled(monkeypatch):
