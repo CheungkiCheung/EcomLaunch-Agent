@@ -100,6 +100,9 @@ class AgentConfig(BaseModel):
     # - [] (explicit empty list): disable all skills
     # - ["skill1", "skill2"]: load only the specified skills
     skills: list[str] | None = None
+    # flash_skills is used when mode="flash" — single-agent fast response with
+    # broader PM skills.  Replaces the regular skills list at runtime.
+    flash_skills: list[str] | None = None
     # None inherits the global memory config; False disables both cross-thread
     # injection and memory updates for this agent while keeping thread history.
     memory_enabled: bool | None = None

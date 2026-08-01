@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { mockLangGraphAPI } from "./utils/mock-api";
 
 test.describe("Sidebar navigation", () => {
-  test("sidebar contains all primary agent links", async ({ page }) => {
+  test("sidebar contains both primary agent links", async ({ page }) => {
     mockLangGraphAPI(page);
 
     await page.goto("/workspace/chats/new");
@@ -19,9 +19,6 @@ test.describe("Sidebar navigation", () => {
     ).toBeVisible();
     await expect(
       sidebar.locator("a[href='/workspace/agents/data-inspector/chats/new']"),
-    ).toBeVisible();
-    await expect(
-      sidebar.locator("a[href='/workspace/agents/openskufast/chats/new']"),
     ).toBeVisible();
     await expect(
       sidebar.locator("a[href='/workspace/war-room']"),

@@ -120,6 +120,7 @@ export function InputBox({
   threadId,
   initialValue,
   welcomeSuggestions,
+  availableModes,
   onContextChange,
   onFollowupsVisibilityChange,
   onSubmit,
@@ -140,6 +141,7 @@ export function InputBox({
   threadId: string;
   initialValue?: string;
   welcomeSuggestions?: WelcomeSuggestion[];
+  availableModes?: InputMode[];
   onContextChange?: (context: InputBoxContext) => void;
   onFollowupsVisibilityChange?: (visible: boolean) => void;
   onSubmit?: (message: PromptInputMessage) => void | Promise<void>;
@@ -591,7 +593,7 @@ export function InputBox({
                         <div className="ml-auto size-4" />
                       )}
                     </PromptInputActionMenuItem>
-                    {supportThinking && (
+                    {(!availableModes || availableModes.includes("thinking")) && supportThinking && (
                       <PromptInputActionMenuItem
                         className={cn(
                           context.mode === "thinking"
@@ -622,69 +624,73 @@ export function InputBox({
                         )}
                       </PromptInputActionMenuItem>
                     )}
-                    <PromptInputActionMenuItem
-                      className={cn(
-                        context.mode === "pro"
-                          ? "text-accent-foreground"
-                          : "text-muted-foreground/65",
-                      )}
-                      onSelect={() => handleModeSelect("pro")}
-                    >
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-1 font-bold">
-                          <GraduationCapIcon
-                            className={cn(
-                              "mr-2 size-4",
-                              context.mode === "pro" &&
-                                "text-accent-foreground",
-                            )}
-                          />
-                          {t.inputBox.proMode}
-                        </div>
-                        <div className="pl-7 text-xs">
-                          {t.inputBox.proModeDescription}
-                        </div>
-                      </div>
-                      {context.mode === "pro" ? (
-                        <CheckIcon className="ml-auto size-4" />
-                      ) : (
-                        <div className="ml-auto size-4" />
-                      )}
-                    </PromptInputActionMenuItem>
-                    <PromptInputActionMenuItem
-                      className={cn(
-                        context.mode === "ultra"
-                          ? "text-accent-foreground"
-                          : "text-muted-foreground/65",
-                      )}
-                      onSelect={() => handleModeSelect("ultra")}
-                    >
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-1 font-bold">
-                          <RocketIcon
-                            className={cn(
-                              "mr-2 size-4",
-                              context.mode === "ultra" && "text-[#dabb5e]",
-                            )}
-                          />
-                          <div
-                            className={cn(
-                              context.mode === "ultra" && "golden-text",
-                            )}
-                          >
-                            {t.inputBox.ultraMode}
+                    {(!availableModes || availableModes.includes("pro")) && (
+                      <PromptInputActionMenuItem
+                        className={cn(
+                          context.mode === "pro"
+                            ? "text-accent-foreground"
+                            : "text-muted-foreground/65",
+                        )}
+                        onSelect={() => handleModeSelect("pro")}
+                      >
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-1 font-bold">
+                            <GraduationCapIcon
+                              className={cn(
+                                "mr-2 size-4",
+                                context.mode === "pro" &&
+                                  "text-accent-foreground",
+                              )}
+                            />
+                            {t.inputBox.proMode}
+                          </div>
+                          <div className="pl-7 text-xs">
+                            {t.inputBox.proModeDescription}
                           </div>
                         </div>
-                        <div className="pl-7 text-xs">
-                          {t.inputBox.ultraModeDescription}
+                        {context.mode === "pro" ? (
+                          <CheckIcon className="ml-auto size-4" />
+                        ) : (
+                          <div className="ml-auto size-4" />
+                        )}
+                      </PromptInputActionMenuItem>
+                    )}
+                    {(!availableModes || availableModes.includes("ultra")) && (
+                      <PromptInputActionMenuItem
+                        className={cn(
+                          context.mode === "ultra"
+                            ? "text-accent-foreground"
+                            : "text-muted-foreground/65",
+                        )}
+                        onSelect={() => handleModeSelect("ultra")}
+                      >
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-1 font-bold">
+                            <RocketIcon
+                              className={cn(
+                                "mr-2 size-4",
+                                context.mode === "ultra" && "text-[#dabb5e]",
+                              )}
+                            />
+                            <div
+                              className={cn(
+                                context.mode === "ultra" && "golden-text",
+                              )}
+                            >
+                              {t.inputBox.ultraMode}
+                            </div>
+                          </div>
+                          <div className="pl-7 text-xs">
+                            {t.inputBox.ultraModeDescription}
+                          </div>
                         </div>
-                      </div>
-                      {context.mode === "ultra" ? (
-                        <CheckIcon className="ml-auto size-4" />
-                      ) : (
-                        <div className="ml-auto size-4" />
-                      )}
-                    </PromptInputActionMenuItem>
+                        {context.mode === "ultra" ? (
+                          <CheckIcon className="ml-auto size-4" />
+                        ) : (
+                          <div className="ml-auto size-4" />
+                        )}
+                      </PromptInputActionMenuItem>
+                    )}
                   </PromptInputActionMenu>
                 </DropdownMenuGroup>
               </PromptInputActionMenuContent>

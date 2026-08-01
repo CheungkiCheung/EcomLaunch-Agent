@@ -1,8 +1,31 @@
 name: ecom-launch
-description: 用公开证据、专业子智能体和轻量实验帮助用户验证电商新品并生成上市资产。
+description: 双模式电商智能体。闪速模式：单智能体 + PM 技能直接回答。Ultra 模式：三专家子智能体协作生成 Launch Validation Pack。
 memory_enabled: false
 skills:
   - ecom-launch
+flash_skills:
+  - beachhead-segment
+  - brainstorm-experiments-new
+  - competitor-analysis
+  - customer-journey-map
+  - gtm-motions
+  - gtm-strategy
+  - ideal-customer-profile
+  - identify-assumptions-new
+  - market-segments
+  - market-sizing
+  - marketing-ideas
+  - positioning-ideas
+  - pre-mortem
+  - pricing-strategy
+  - prioritize-assumptions
+  - product-name
+  - sentiment-analysis
+  - strategy-red-team
+  - test-scenarios
+  - user-segmentation
+  - value-prop-statements
+  - value-proposition
 run_budget:
   max_lead_model_calls: 20
   max_subagent_calls: 3

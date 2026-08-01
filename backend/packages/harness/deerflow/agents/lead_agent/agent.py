@@ -386,11 +386,15 @@ def build_middlewares(
     return middlewares
 
 
-def _available_skill_names(agent_config, is_bootstrap: bool) -> set[str] | None:
+def _available_skill_names(agent_config, is_bootstrap: bool, *, runtime_config: dict | None = None) -> set[str] | None:
     if is_bootstrap:
         return {"bootstrap"}
     if agent_config and agent_config.skills is not None:
-        return set(agent_config.skills)
+        skills = set(agent_config.skills)
+        mode = (runtime_config or {}).get("mode")
+        if mode == "flash" and agent_config.flash_skills:
+            skills = set(agent_config.flash_skills)
+        return skills
     return None
 
 
@@ -443,7 +447,7 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
     else:
         agent_config = load_agent_config(agent_name)
         agent_is_builtin = bool(agent_name and is_builtin_agent(agent_name))
-    available_skills = _available_skill_names(agent_config, is_bootstrap)
+    available_skills = _available_skill_names(agent_config, is_bootstrap, runtime_config=cfg)
     # Custom agent model from agent config (if any), or None to let _resolve_model_name pick the default
     agent_model_name = agent_config.model if agent_config and agent_config.model else None
 

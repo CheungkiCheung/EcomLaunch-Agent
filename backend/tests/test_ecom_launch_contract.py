@@ -246,3 +246,53 @@ def test_example_and_documented_subagent_configs_match_the_four_role_contract() 
 
     assert "growth-analyst" not in example_text
     assert set(documented["subagents"]["custom_agents"]) == set(EXPECTED_SUBAGENTS)
+
+
+# ── flash_skills / openskufast contracts ──────────────────────────
+
+
+def test_ecom_launch_has_flash_skills() -> None:
+    config = yaml.safe_load((REPO_ROOT / "agents" / "ecom-launch" / "config.yaml").read_text(encoding="utf-8"))
+    assert config["flash_skills"] is not None
+    assert len(config["flash_skills"]) == 22
+
+
+def test_flash_skills_match_pm_skills_dir() -> None:
+    config = yaml.safe_load((REPO_ROOT / "agents" / "ecom-launch" / "config.yaml").read_text(encoding="utf-8"))
+    existing = {d.name for d in PM_SKILLS_ROOT.iterdir() if d.is_dir()}
+    assert set(config["flash_skills"]) == existing
+
+
+def test_openskufast_agent_config_loads() -> None:
+    openskufast_dir = REPO_ROOT / "agents" / "openskufast"
+    cfg_file = openskufast_dir / "config.yaml"
+    assert cfg_file.is_file()
+    cfg = yaml.safe_load(cfg_file.read_text(encoding="utf-8"))
+    assert cfg["name"] == "openskufast"
+    assert cfg["tool_groups"] == ["web", "file:read", "file:write"]
+    assert len(cfg["skills"]) == 22
+    assert set(cfg["skills"]) == {d.name for d in PM_SKILLS_ROOT.iterdir() if d.is_dir()}
+    rb = cfg["run_budget"]
+    assert rb["max_lead_model_calls"] == 12
+    assert rb["max_total_tokens"] == 250000
+
+
+def test_openskufast_soul_exists() -> None:
+    soul = (REPO_ROOT / "agents" / "openskufast" / "SOUL.md").read_text(encoding="utf-8")
+    assert len(soul) > 50
+    assert "OpenSKU" in soul
+
+
+def test_flash_skills_runtime_swap() -> None:
+    from deerflow.config.agents_config import AgentConfig
+
+    cfg = AgentConfig(
+        name="ecom-launch",
+        skills=["ecom-launch"],
+        flash_skills=["beachhead-segment", "competitor-analysis"],
+    )
+    assert cfg.flash_skills is not None
+    # The runtime swap is tested via _available_skill_names in agent.py;
+    # here we verify the config carries both fields.
+    assert cfg.skills == ["ecom-launch"]
+    assert cfg.flash_skills == ["beachhead-segment", "competitor-analysis"]

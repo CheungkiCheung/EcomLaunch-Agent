@@ -5,7 +5,6 @@ import {
   DatabaseIcon,
   MessagesSquare,
   ShoppingBagIcon,
-  ZapIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -25,9 +24,6 @@ export function WorkspaceNavChatList() {
   const ecomLaunchActive = pathname.startsWith("/workspace/agents/ecom-launch");
   const dataInspectorActive = pathname.startsWith(
     "/workspace/agents/data-inspector",
-  );
-  const openskufastActive = pathname.startsWith(
-    "/workspace/agents/openskufast",
   );
   return (
     <>
@@ -66,22 +62,6 @@ export function WorkspaceNavChatList() {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              tooltip={t.sidebar.openskufast}
-              isActive={openskufastActive}
-              asChild
-            >
-              <Link
-                className="text-muted-foreground"
-                href="/workspace/agents/openskufast/chats/new"
-              >
-                <ZapIcon />
-                <span>{t.sidebar.openskufast}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarGroup>
       <SidebarGroup className="pt-0">
@@ -104,8 +84,7 @@ export function WorkspaceNavChatList() {
               isActive={
                 pathname.startsWith("/workspace/agents") &&
                 !ecomLaunchActive &&
-                !dataInspectorActive &&
-                !openskufastActive
+                !dataInspectorActive
               }
               asChild
             >

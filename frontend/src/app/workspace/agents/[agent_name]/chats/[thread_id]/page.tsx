@@ -5,7 +5,6 @@ import {
   DatabaseIcon,
   PlusSquare,
   ShoppingBagIcon,
-  ZapIcon,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -51,8 +50,7 @@ export default function AgentChatPage() {
   }>();
   const isEcomLaunch = agent_name === "ecom-launch";
   const isDataInspector = agent_name === "data-inspector";
-  const isOpenskufast = agent_name === "openskufast";
-  const isPrimaryAgent = isEcomLaunch || isDataInspector || isOpenskufast;
+  const isPrimaryAgent = isEcomLaunch || isDataInspector;
 
   const { agent } = useAgent(isPrimaryAgent ? null : agent_name);
 
@@ -135,7 +133,8 @@ export default function AgentChatPage() {
     runtimeContext: isEcomLaunch
       ? {
           is_plan_mode: false,
-          subagent_enabled: true,
+          subagent_enabled:
+            effectiveContext.mode !== "flash",
           max_concurrent_subagents: 2,
         }
       : undefined,
@@ -194,23 +193,17 @@ export default function AgentChatPage() {
     ? ShoppingBagIcon
     : isDataInspector
       ? DatabaseIcon
-      : isOpenskufast
-        ? ZapIcon
-        : BotIcon;
+      : BotIcon;
   const agentDisplayName = isEcomLaunch
     ? t.agents.ecomLaunchName
     : isDataInspector
       ? t.agents.dataInspectorName
-      : isOpenskufast
-        ? t.agents.openskufastName
-        : (agent?.name ?? agent_name);
+      : (agent?.name ?? agent_name);
   const welcomeSuggestions = isEcomLaunch
     ? t.agents.ecomLaunchSuggestions
     : isDataInspector
       ? t.agents.dataInspectorSuggestions
-      : isOpenskufast
-        ? t.agents.openskufastSuggestions
-        : undefined;
+      : undefined;
 
   return (
     <ThreadContext.Provider value={{ thread }}>
@@ -332,6 +325,9 @@ export default function AgentChatPage() {
                         : "ready"
                   }
                   context={effectiveContext}
+                  availableModes={
+                    isEcomLaunch ? ["flash", "ultra"] : undefined
+                  }
                   extraHeader={
                     isWelcomeMode && (
                       <AgentWelcome agent={agent} agentName={agent_name} />

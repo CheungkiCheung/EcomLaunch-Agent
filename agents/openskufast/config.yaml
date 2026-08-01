@@ -1,5 +1,5 @@
 name: openskufast
-description: OpenSKU Fast：单智能体快速商品研究与决策，支持 Web Search、Web Fetch 和全部 PM 技能，默认直接返回结果。
+description: 内部闪速配置。单智能体快速电商研究，EWFnFWeb Search + PM 技能，无子智能体。
 memory_enabled: false
 tool_groups:
   - web
@@ -31,6 +31,4 @@ skills:
 run_budget:
   max_lead_model_calls: 12
   max_total_tokens: 250000
-  direct_answer_patterns:
-  - '(?:是什么|定义|解释|什么是|how|what is).{0,64}(?:pmf|PMF|product-market fit|痛点|假设|ab test)'
-  - '(?:怎么|如何|how).{0,32}(?:定价|定位|GTM|go.to.market|细分|竞品)'
+  max_execution_seconds: 120

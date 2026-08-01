@@ -1,6 +1,6 @@
 "use client";
 
-import { BotIcon, DatabaseIcon, ShoppingBagIcon, ZapIcon } from "lucide-react";
+import { BotIcon, DatabaseIcon, ShoppingBagIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { type Agent } from "@/core/agents";
@@ -19,28 +19,21 @@ export function AgentWelcome({
   const { t } = useI18n();
   const isEcomLaunch = agentName === "ecom-launch";
   const isDataInspector = agentName === "data-inspector";
-  const isOpenskufast = agentName === "openskufast";
   const displayName = isEcomLaunch
     ? t.agents.ecomLaunchName
     : isDataInspector
       ? t.agents.dataInspectorName
-      : isOpenskufast
-        ? t.agents.openskufastName
-        : (agent?.name ?? agentName);
+      : (agent?.name ?? agentName);
   const description = isEcomLaunch
     ? t.agents.ecomLaunchWelcomeDescription
     : isDataInspector
       ? t.agents.dataInspectorWelcomeDescription
-      : isOpenskufast
-        ? t.agents.openskufastWelcomeDescription
-        : agent?.description;
+      : agent?.description;
   const Icon = isEcomLaunch
     ? ShoppingBagIcon
     : isDataInspector
       ? DatabaseIcon
-      : isOpenskufast
-        ? ZapIcon
-        : BotIcon;
+      : BotIcon;
 
   return (
     <div
@@ -59,15 +52,6 @@ export function AgentWelcome({
       {isEcomLaunch && (
         <div className="mt-1 flex max-w-md flex-wrap justify-center gap-1.5">
           {t.agents.ecomLaunchWelcomeBadges.map((badge) => (
-            <Badge key={badge} variant="secondary" className="font-normal">
-              {badge}
-            </Badge>
-          ))}
-        </div>
-      )}
-      {isOpenskufast && (
-        <div className="mt-1 flex max-w-md flex-wrap justify-center gap-1.5">
-          {t.agents.openskufastWelcomeBadges.map((badge) => (
             <Badge key={badge} variant="secondary" className="font-normal">
               {badge}
             </Badge>
