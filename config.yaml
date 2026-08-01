@@ -3,6 +3,17 @@ log_level: info
 token_usage:
   enabled: true
 models:
+- name: deepseek-chat
+  display_name: DeepSeek V4 Flash
+  use: deerflow.models.patched_deepseek:PatchedChatDeepSeek
+  model: deepseek-chat
+  api_base: https://api.deepseek.com/v1
+  api_key: $DEEPSEEK_API_KEY
+  timeout: 600.0
+  max_retries: 2
+  max_tokens: 8192
+  supports_thinking: false
+  supports_vision: false
 - name: deepseek-reasoner
   display_name: DeepSeek Reasoner
   use: deerflow.models.patched_deepseek:PatchedChatDeepSeek
