@@ -29,7 +29,7 @@ skills:
   - value-prop-statements
   - value-proposition
 run_budget:
-  max_lead_model_calls: 12
+  max_lead_model_calls: 4
   max_subagent_calls: 0
-  max_total_tokens: 250000
-  max_execution_seconds: 120
+  max_total_tokens: 120000
+  max_execution_seconds: 60

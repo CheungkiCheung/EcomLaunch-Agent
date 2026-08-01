@@ -4,27 +4,10 @@ memory_enabled: false
 skills:
   - ecom-launch
 flash_skills:
-  - beachhead-segment
-  - brainstorm-experiments-new
   - competitor-analysis
-  - customer-journey-map
-  - gtm-motions
-  - gtm-strategy
-  - ideal-customer-profile
-  - identify-assumptions-new
   - market-segments
-  - market-sizing
-  - marketing-ideas
-  - positioning-ideas
-  - pre-mortem
   - pricing-strategy
-  - prioritize-assumptions
-  - product-name
-  - sentiment-analysis
-  - strategy-red-team
-  - test-scenarios
-  - user-segmentation
-  - value-prop-statements
+  - positioning-ideas
   - value-proposition
 run_budget:
   max_lead_model_calls: 20

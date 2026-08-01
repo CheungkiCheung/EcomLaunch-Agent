@@ -782,6 +782,7 @@ export function useThreadStream({
           },
           {
             threadId: threadId,
+            streamMode: ["values", "updates"],
             streamSubgraphs: true,
             streamResumable: true,
             config: {
