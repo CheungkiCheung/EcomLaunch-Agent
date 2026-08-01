@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "gate": "commerce-persistent-chat-browser",
+  "configured_alias": "deepseek-reasoner",
+  "expected_actual_model_identity": "deepseek-v4-flash",
+  "retry_policy": 0,
+  "prompt_sha256": "67480681048547da996433a61c67c0637147ebc98ae81e0addd7befcae83a548",
+  "input_files": [
+    "orders.csv",
+    "order_items.csv",
+    "order_reviews.csv",
+    "customers.csv",
+    "products.csv",
+    "sellers.csv"
+  ],
+  "started_at": "2026-07-27T12:04:06.446Z",
+  "passed": false,
+  "auth": {
+    "account_sha256": "5871cd5eab5fa4d75fec66d1f132d359978871d28152bb38a67a8aaf5b862ea2",
+    "access_token_cookie_present": true,
+    "csrf_token_cookie_present": true,
+    "auth_me_status": 200,
+    "models_status": 200
+  },
+  "completed_at": "2026-07-27T12:06:07.469Z",
+  "error": "\u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/workspace\\/agents\\/commerce-agent\\/chats\\/[0-9a-f-]{36}$/u\u001b[39m\nReceived string:  \u001b[31m\"http://localhost:3000/workspace/agents/commerce-agent/chats/new\"\u001b[39m\nTimeout: 120000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 120000ms\u001b[22m\n\u001b[2m    123 × unexpected value \"http://localhost:3000/workspace/agents/commerce-agent/chats/new\"\u001b[22m\n",
+  "network": [
+    {
+      "method": "POST",
+      "path": "/api/threads/91e2980c-0fc9-43c4-92f9-870a0c65533f/uploads",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/langgraph/threads/91e2980c-0fc9-43c4-92f9-870a0c65533f/runs/stream",
+      "status": 404
+    }
+  ],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "HTTPError: HTTP 404: {\"detail\":\"Commerce Agent is disabled\"}\n    at HTTPError.fromResponse (http://localhost:3000/_next/static/chunks/0ht9_%40langchain_langgraph-sdk_dist_0.k7.b~._.js:77:20)\n    at async http://localhost:3000/_next/static/chunks/0ht9_%40langchain_langgraph-sdk_dist_0.k7.b~._.js:117:55\n    at async pRetry (http://localhost:3000/_next/static/chunks/node_modules__pnpm_0vzkztf._.js:59019:28)\n    at async http://localhost:3000/_next/static/chunks/node_modules__pnpm_0vzkztf._.js:60225:36"
+  ]
+}

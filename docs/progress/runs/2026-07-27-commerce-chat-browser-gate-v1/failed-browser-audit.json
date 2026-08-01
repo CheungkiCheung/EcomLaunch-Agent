@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "gate": "commerce-persistent-chat-browser",
+  "configured_alias": "deepseek-reasoner",
+  "expected_actual_model_identity": "deepseek-v4-flash",
+  "retry_policy": 0,
+  "prompt_sha256": "67480681048547da996433a61c67c0637147ebc98ae81e0addd7befcae83a548",
+  "input_files": [
+    "orders.csv",
+    "order_items.csv",
+    "order_reviews.csv",
+    "customers.csv",
+    "products.csv",
+    "sellers.csv"
+  ],
+  "started_at": "2026-07-27T11:32:12.454Z",
+  "passed": false,
+  "completed_at": "2026-07-27T11:34:13.321Z",
+  "error": "\u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/workspace\\/agents\\/commerce-agent\\/chats\\/[0-9a-f-]{36}$/u\u001b[39m\nReceived string:  \u001b[31m\"http://localhost:3000/workspace/agents/commerce-agent/chats/new\"\u001b[39m\nTimeout: 120000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 120000ms\u001b[22m\n\u001b[2m    123 × unexpected value \"http://localhost:3000/workspace/agents/commerce-agent/chats/new\"\u001b[22m\n",
+  "network": [
+    {
+      "method": "POST",
+      "path": "/api/threads/ac88690e-c916-45c6-9119-de6059ce45c9/uploads",
+      "status": 403
+    }
+  ],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+  ]
+}

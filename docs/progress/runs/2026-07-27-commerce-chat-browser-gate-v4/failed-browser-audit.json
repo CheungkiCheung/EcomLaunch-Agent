@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "gate": "commerce-persistent-chat-browser",
+  "configured_alias": "deepseek-reasoner",
+  "expected_actual_model_identity": "deepseek-v4-flash",
+  "retry_policy": 0,
+  "prompt_sha256": "67480681048547da996433a61c67c0637147ebc98ae81e0addd7befcae83a548",
+  "input_files": [
+    "orders.csv",
+    "order_items.csv",
+    "order_reviews.csv",
+    "customers.csv",
+    "products.csv",
+    "sellers.csv"
+  ],
+  "started_at": "2026-07-27T12:11:35.807Z",
+  "passed": false,
+  "completed_at": "2026-07-27T12:11:36.009Z",
+  "error": "/api/commerce/cases preflight failed: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"header\",\"X-Commerce-Workspace-Id\"],\"msg\":\"Field required\",\"input\":null}]}\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m200\u001b[39m\nReceived: \u001b[31m422\u001b[39m",
+  "network": [],
+  "console_errors": []
+}

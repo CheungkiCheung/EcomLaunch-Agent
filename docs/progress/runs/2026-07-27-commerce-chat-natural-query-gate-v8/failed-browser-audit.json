@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "gate": "commerce-natural-query-chat-browser",
+  "natural_query": true,
+  "output_directory": "docs/progress/runs/2026-07-27-commerce-chat-natural-query-gate-v8",
+  "configured_alias": "deepseek-reasoner",
+  "expected_actual_model_identity": "deepseek-v4-flash",
+  "retry_policy": 0,
+  "prompt_sha256": "13fe0d366a6f041229950425e10605609f272d9418cf6f60f49339d6f0cd2d71",
+  "input_files": [
+    "orders.csv",
+    "order_items.csv",
+    "order_reviews.csv",
+    "customers.csv",
+    "products.csv",
+    "sellers.csv"
+  ],
+  "started_at": "2026-07-27T15:44:41.904Z",
+  "passed": false,
+  "auth": {
+    "account_sha256": "75a2ff5c3e6efcfd487d73191a1b9bc3deef78ba1eac0e2cf1899a0b10d8895b",
+    "access_token_cookie_present": true,
+    "csrf_token_cookie_present": true,
+    "auth_me_status": 200,
+    "models_status": 200,
+    "commerce_cases_status": 200,
+    "commerce_workspace_id": "wsp_d09e3a317ca75e6a89e84abc92bdb368",
+    "resumed_existing_run": false
+  },
+  "thread_id": "c18df3ac-31ba-41e8-88a6-bbcbe4265a9e",
+  "run_id": "9945fb4c-b322-4799-899c-6e869ee0b1f3",
+  "completed_at": "2026-07-27T15:45:36.409Z",
+  "error": "Run entered terminal failure status: error",
+  "network": [
+    {
+      "method": "POST",
+      "path": "/api/threads/c18df3ac-31ba-41e8-88a6-bbcbe4265a9e/uploads",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/langgraph/threads/c18df3ac-31ba-41e8-88a6-bbcbe4265a9e/runs/stream",
+      "status": 200
+    }
+  ],
+  "console_errors": []
+}

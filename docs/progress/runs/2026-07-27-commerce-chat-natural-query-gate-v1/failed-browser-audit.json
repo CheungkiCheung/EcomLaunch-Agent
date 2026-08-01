@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "gate": "commerce-natural-query-chat-browser",
+  "natural_query": true,
+  "configured_alias": "deepseek-reasoner",
+  "expected_actual_model_identity": "deepseek-v4-flash",
+  "retry_policy": 0,
+  "prompt_sha256": "13fe0d366a6f041229950425e10605609f272d9418cf6f60f49339d6f0cd2d71",
+  "input_files": [
+    "orders.csv",
+    "order_items.csv",
+    "order_reviews.csv",
+    "customers.csv",
+    "products.csv",
+    "sellers.csv"
+  ],
+  "started_at": "2026-07-27T14:30:43.170Z",
+  "passed": false,
+  "auth": {
+    "account_sha256": "127f750f14924b029e7a696a6b4bfbd5a32b6d56431cdd739e2a02510fb5378c",
+    "access_token_cookie_present": true,
+    "csrf_token_cookie_present": true,
+    "auth_me_status": 200,
+    "models_status": 200,
+    "commerce_cases_status": 200,
+    "commerce_workspace_id": "wsp_ae034d70c9d204ae36b154a114fec47b",
+    "resumed_existing_run": false
+  },
+  "thread_id": "c5c88bde-c430-4c23-a5cb-5270528638ba",
+  "run_id": "04ad1519-853b-4afc-86a3-c46ae7a94172",
+  "completed_at": "2026-07-27T14:33:11.958Z",
+  "error": "final AI answer must be persisted\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mnot\u001b[2m.\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: not \u001b[32m\"\"\u001b[39m",
+  "network": [
+    {
+      "method": "POST",
+      "path": "/api/threads/c5c88bde-c430-4c23-a5cb-5270528638ba/uploads",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/langgraph/threads/c5c88bde-c430-4c23-a5cb-5270528638ba/runs/stream",
+      "status": 200
+    }
+  ],
+  "console_errors": []
+}

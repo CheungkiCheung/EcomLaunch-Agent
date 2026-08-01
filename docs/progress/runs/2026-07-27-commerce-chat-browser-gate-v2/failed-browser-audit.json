@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "gate": "commerce-persistent-chat-browser",
+  "configured_alias": "deepseek-reasoner",
+  "expected_actual_model_identity": "deepseek-v4-flash",
+  "retry_policy": 0,
+  "prompt_sha256": "67480681048547da996433a61c67c0637147ebc98ae81e0addd7befcae83a548",
+  "input_files": [
+    "orders.csv",
+    "order_items.csv",
+    "order_reviews.csv",
+    "customers.csv",
+    "products.csv",
+    "sellers.csv"
+  ],
+  "started_at": "2026-07-27T11:53:37.542Z",
+  "passed": false,
+  "auth": {
+    "account_sha256": "0e74986e29cc74ece30bd1ceeefba727c9a591dadf1b921a6422a5c71a7f7326",
+    "access_token_cookie_present": true,
+    "csrf_token_cookie_present": true,
+    "auth_me_status": 200,
+    "models_status": 200
+  },
+  "thread_id": "cf1fbcfb-0487-4246-a257-8ec14a99d808",
+  "run_id": "c8dd7acb-88f3-4dbe-bdb4-c4630578513e",
+  "completed_at": "2026-07-27T11:54:07.553Z",
+  "error": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoContain\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // indexOf\u001b[22m\n\nExpected value: \u001b[32m\"deepseek-v4-flash\"\u001b[39m\nReceived array: \u001b[31m[\"deepseek-reasoner\"]\u001b[39m",
+  "network": [
+    {
+      "method": "POST",
+      "path": "/api/threads/cf1fbcfb-0487-4246-a257-8ec14a99d808/uploads",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/langgraph/threads/cf1fbcfb-0487-4246-a257-8ec14a99d808/runs/stream",
+      "status": 200
+    }
+  ],
+  "console_errors": []
+}

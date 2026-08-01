@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "gate": "commerce-natural-query-chat-browser",
+  "natural_query": true,
+  "output_directory": "docs/progress/runs/2026-07-27-commerce-chat-natural-query-gate-v3",
+  "configured_alias": "deepseek-reasoner",
+  "expected_actual_model_identity": "deepseek-v4-flash",
+  "retry_policy": 0,
+  "prompt_sha256": "13fe0d366a6f041229950425e10605609f272d9418cf6f60f49339d6f0cd2d71",
+  "input_files": [
+    "orders.csv",
+    "order_items.csv",
+    "order_reviews.csv",
+    "customers.csv",
+    "products.csv",
+    "sellers.csv"
+  ],
+  "started_at": "2026-07-27T15:19:16.417Z",
+  "passed": false,
+  "auth": {
+    "account_sha256": "8752b45f35fa5f640461cc462f51ecd56ae619021fb3c9e1706eb5de90316785",
+    "access_token_cookie_present": true,
+    "csrf_token_cookie_present": true,
+    "auth_me_status": 200,
+    "models_status": 200,
+    "commerce_cases_status": 200,
+    "commerce_workspace_id": "wsp_5e763f9f98c4a00979f9c399ee9a56ce",
+    "resumed_existing_run": false
+  },
+  "thread_id": "c1941b65-3b1e-4cc4-93ea-fdce56393271",
+  "run_id": "e628c8f4-ad16-48e3-b0ec-82e3f027214d",
+  "completed_at": "2026-07-27T15:20:50.492Z",
+  "error": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mtrue\u001b[39m\nReceived: \u001b[31mfalse\u001b[39m",
+  "network": [
+    {
+      "method": "POST",
+      "path": "/api/threads/c1941b65-3b1e-4cc4-93ea-fdce56393271/uploads",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/langgraph/threads/c1941b65-3b1e-4cc4-93ea-fdce56393271/runs/stream",
+      "status": 200
+    }
+  ],
+  "console_errors": []
+}

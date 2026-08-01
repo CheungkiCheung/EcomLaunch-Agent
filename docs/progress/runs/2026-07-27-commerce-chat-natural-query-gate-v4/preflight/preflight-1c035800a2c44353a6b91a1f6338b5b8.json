@@ -1,0 +1,37 @@
+{
+  "actual_model_identity": "deepseek-v4-flash",
+  "checked_at": "2026-07-27T15:24:25.205205Z",
+  "configured_alias": "deepseek-reasoner",
+  "configured_max_retries": 0,
+  "configured_model": "deepseek-v4-flash",
+  "endpoint": "https://api.deepseek.com/v1",
+  "error_code": null,
+  "error_message": null,
+  "http_status_code": 200,
+  "identity_evidence_source": "response_metadata.model_name",
+  "latency_ms": 875.0229579745792,
+  "provider_class": "deerflow.models.patched_deepseek:PatchedChatDeepSeek",
+  "provider_request_id": "24420e57-b015-432a-9d0a-39ee77ee508c",
+  "provider_request_id_source": "response_metadata.id",
+  "provider_response_id": "24420e57-b015-432a-9d0a-39ee77ee508c",
+  "request_attempt_count": 1,
+  "request_nonce_sha256": "a4d0eb362adb11ec6f66688633b2aad64471c4082d07a453395e70a9e8131c20",
+  "response_content_sha256": "03aceafe326e2cc8f8079a88363a6038af182cfd7928cd77ec0a2aa6707e7c91",
+  "retry_count": 0,
+  "run_id": "preflight-1c035800a2c44353a6b91a1f6338b5b8",
+  "schema_version": "1.0",
+  "status": "passed",
+  "stop_reason": "stop",
+  "system_fingerprint": "fp_8b330d02d0_prod0820_fp8_kvcache_20260402",
+  "token_usage": {
+    "input_tokens": 64,
+    "output_tokens": 11,
+    "total_tokens": 75
+  },
+  "versions": {
+    "context_version": "commerce-preflight-context@1.0.0",
+    "prompt_version": "commerce-real-model-preflight@1.0.0",
+    "router_version": "not-applicable@1.0.0",
+    "skill_version": "not-applicable@1.0.0"
+  }
+}

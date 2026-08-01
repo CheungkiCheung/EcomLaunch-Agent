@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "gate": "commerce-natural-query-chat-browser",
+  "natural_query": true,
+  "output_directory": "docs/progress/runs/2026-07-27-commerce-chat-natural-query-gate-v6",
+  "configured_alias": "deepseek-reasoner",
+  "expected_actual_model_identity": "deepseek-v4-flash",
+  "retry_policy": 0,
+  "prompt_sha256": "13fe0d366a6f041229950425e10605609f272d9418cf6f60f49339d6f0cd2d71",
+  "input_files": [
+    "orders.csv",
+    "order_items.csv",
+    "order_reviews.csv",
+    "customers.csv",
+    "products.csv",
+    "sellers.csv"
+  ],
+  "started_at": "2026-07-27T15:37:38.134Z",
+  "passed": false,
+  "auth": {
+    "account_sha256": "78a08f2ac662808d26a35abe66beb4d6498d379f0cd3640e1a5534018a2868e6",
+    "access_token_cookie_present": true,
+    "csrf_token_cookie_present": true,
+    "auth_me_status": 200,
+    "models_status": 200,
+    "commerce_cases_status": 200,
+    "commerce_workspace_id": "wsp_1b1080a30a2c49b5325920b81da2220b",
+    "resumed_existing_run": false
+  },
+  "thread_id": "bc5f0f25-a4f4-4e99-ac40-16a25966098c",
+  "run_id": "3fb5b0fa-137b-457e-8d8b-eeb74fa4fbdb",
+  "completed_at": "2026-07-27T15:38:55.791Z",
+  "error": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoContain\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // indexOf\u001b[22m\n\nExpected substring: \u001b[32m\"下一步\"\u001b[39m\nReceived string:    \u001b[31m\"## 诊断结果·\u001b[39m\n\u001b[31m**可确认的指标变化：** 对比系统默认的最近两个 60 天窗口（baseline [2018-02-01, 2018-04-02)、current [2018-04-02, 2018-06-01)，半开区间），延迟交付率从 34.98%（71/203 笔）下降至 5.31%（11/207 笔），降幅约 30 个百分点（mobs_23f7d90fa0ab5c9b8acdebbc6fbb75cd → mobs_2128be8a2dd35307b2e19479a0f7fd2d）。同一时期承运运输时长从 491.05 小时降至 249.46 小时（mobs_9a4eebd4742c5b759dc8e8719cef12d7 → mobs_18fc752f25885292b18f072c5657a27d），下降约 49%；卖家处理时长从 46.81 小时升至 64.21 小时（mobs_a01094157b7f5f02be25ca65943a35dd → mobs_1b81353421595b41b2c9b6638d4cd2ce），上升约 37%。两个窗口订单量基本持平（203 → 207），样本稳定。·\u001b[39m\n\u001b[31m**阶段定位：** 承运运输时长的下降与延迟率下降方向一致，是当前变化较为集中的阶段。卖家处理时长的上升方向与延迟率变化相反，从现有数据来看卖家处理阶段的变化方向与延迟率改善不匹配。两个阶段的指标变化方向不一致，可以分开讨论，但尚不能确认承运运输就是延迟率变化的唯一来源。·\u001b[39m\n\u001b[31m**支持证据：** 承运运输时长下降 49% 和延迟率下降在同一个时间窗口内同步发生，变化幅度大。关键履约字段覆盖率 100%、无缺失值。底层 Fact 抽查了 baseline 和 current 窗口的 delivered_at、carrier_handoff_at、approved_at 记录，均为有效时间戳，未发现数据质量问题。·\u001b[39m\n\u001b[31m**反证与替代解释：** 卖家处理时长上升但延迟率下降，说明如果存在卖家环节的影响，其方向与延迟率改善相反。样本量基本一致，排除了比率漂移。不排除承运运输改善来自订单结构变化（如配送区域移动）的可能性，当前窗口粒度无法区分区域差异。也不排除更早的 baseline 窗口（2018-02-01 之前）已有改善趋势，本次比较只是延续此前变化。·\u001b[39m\n\u001b[31m**未知项：** 承运运输时长下降的具体原因未记录——数据中不包含承运商 ID、配送路线或物流商多级字段，无法判断是承运商切换、线路优化还是运输优先级调整。卖家处理时长上升的原因同样未记录——不涉及库存、人员排班或订单复杂度的观测字段。当前未做地域分段分析，无法确认改善是否集中于某些区域或均匀分布。仅有一个卖家的数据，无法进行卖家间的横向对照。·\u001b[39m\n\u001b[31m**数据限制：** 商品以 relogios_presentes（手表礼品）为主（483/563 订单项），结论不必然适用于其他品类。窗口为系统默认的最近两个 60 天，更早的历史趋势未纳入比较。所有订单均已交付，未交付或取消订单的履约异常不可观测。·\u001b[39m\n\u001b[31m**建议：** 优先核查承运运输层面是否发生实质性变化（如更换物流合作方、发货方式从经济件升级为标准件），这比卖家自身流程调整更可能与当前指标变化模式一致。同时留意卖家处理时长上升的趋势，虽然在当前数据中它与延迟率变化方向不一致，但若承运运输指标回退至此前水平，处理环节的变化可能成为新的关注点。如需进一步判断改善的持续性，可以扩展时间窗口至 baseline 之前更长的历史数据。\"\u001b[39m",
+  "network": [
+    {
+      "method": "POST",
+      "path": "/api/threads/bc5f0f25-a4f4-4e99-ac40-16a25966098c/uploads",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/langgraph/threads/bc5f0f25-a4f4-4e99-ac40-16a25966098c/runs/stream",
+      "status": 200
+    }
+  ],
+  "console_errors": []
+}

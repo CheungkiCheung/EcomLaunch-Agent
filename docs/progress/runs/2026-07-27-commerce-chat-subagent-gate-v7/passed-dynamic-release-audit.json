@@ -1,0 +1,547 @@
+{
+  "bridge_ended": true,
+  "case_key": "GC-FULFILLMENT-001",
+  "configured_alias": "deepseek-reasoner",
+  "configured_max_retries": 0,
+  "configured_model": "deepseek-v4-flash",
+  "created_at": "2026-07-27T01:37:23.801836+00:00",
+  "execution_error": null,
+  "final_response_sha256": "43e8d0a14c841f40629db420ff0485675987ffc2ce1b3e1997c95f08799e7bea",
+  "issues": [],
+  "parent_model_calls": [
+    {
+      "actual_model_identity": "deepseek-v4-flash",
+      "input_tokens": 13089,
+      "output_tokens": 36,
+      "provider_request_id": "04964946-1f08-467b-9f84-7b8bdba8ec78",
+      "source_run_id": "019fa137-2adc-7811-a473-aa5c523e34df",
+      "stop_reason": "tool_calls",
+      "total_tokens": 13125
+    },
+    {
+      "actual_model_identity": "deepseek-v4-flash",
+      "input_tokens": 13668,
+      "output_tokens": 37,
+      "provider_request_id": "b88fa66b-2f7c-4f37-8cf2-c2855df2e07d",
+      "source_run_id": "019fa137-2eeb-73a1-afef-7663bfdf9fe9",
+      "stop_reason": "tool_calls",
+      "total_tokens": 13705
+    },
+    {
+      "actual_model_identity": "deepseek-v4-flash",
+      "input_tokens": 14109,
+      "output_tokens": 752,
+      "provider_request_id": "0cc75171-8042-4a51-b7f0-d52f9d5f8c3a",
+      "source_run_id": "019fa137-3371-7212-b596-52b17d218af6",
+      "stop_reason": "tool_calls",
+      "total_tokens": 14861
+    },
+    {
+      "actual_model_identity": "deepseek-v4-flash",
+      "input_tokens": 15496,
+      "output_tokens": 128,
+      "provider_request_id": "95beeae5-664d-4436-bb44-8089184da361",
+      "source_run_id": "019fa137-4b4a-7f43-b7d3-a59190030128",
+      "stop_reason": "tool_calls",
+      "total_tokens": 15624
+    },
+    {
+      "actual_model_identity": "deepseek-v4-flash",
+      "input_tokens": 19631,
+      "output_tokens": 782,
+      "provider_request_id": "3a7d81be-1427-471a-a1f8-3e1eccf0ede9",
+      "source_run_id": "019fa137-9142-7713-8028-d909a47dedac",
+      "stop_reason": "tool_calls",
+      "total_tokens": 20413
+    },
+    {
+      "actual_model_identity": "deepseek-v4-flash",
+      "input_tokens": 20837,
+      "output_tokens": 102,
+      "provider_request_id": "ae749b3e-a964-414b-9e8d-d1eb810f4939",
+      "source_run_id": "019fa137-ab9a-75f3-8dce-68f13b5358de",
+      "stop_reason": "tool_calls",
+      "total_tokens": 20939
+    },
+    {
+      "actual_model_identity": "deepseek-v4-flash",
+      "input_tokens": 23641,
+      "output_tokens": 780,
+      "provider_request_id": "e6a84c13-4628-4aa7-b72a-4863f9ff61a2",
+      "source_run_id": "019fa137-e41f-7211-8c97-77a8266bca1d",
+      "stop_reason": "stop",
+      "total_tokens": 24421
+    },
+    {
+      "actual_model_identity": "deepseek-v4-flash",
+      "input_tokens": 24368,
+      "output_tokens": 789,
+      "provider_request_id": "05b37872-5cb2-4507-a4ed-8a17e3c99613",
+      "source_run_id": "019fa138-05fe-7203-aecc-1366580aa209",
+      "stop_reason": "stop",
+      "total_tokens": 25157
+    },
+    {
+      "actual_model_identity": "deepseek-v4-flash",
+      "input_tokens": 1476,
+      "output_tokens": 790,
+      "provider_request_id": "825e3c3d-7157-48af-a1d3-2dd304492e2b",
+      "source_run_id": "019fa138-1fc0-7681-be1b-e20b4198b818",
+      "stop_reason": "stop",
+      "total_tokens": 2266
+    }
+  ],
+  "parent_tokens": 150511,
+  "parent_tool_call_batches": [
+    {
+      "batch_index": 0,
+      "calls": [
+        {
+          "args": {},
+          "name": "commerce_ingest_uploads",
+          "tool_call_id": "call_00_RlszqypMlzF4sMp23CGV1010"
+        }
+      ]
+    },
+    {
+      "batch_index": 1,
+      "calls": [
+        {
+          "args": {},
+          "name": "commerce_capabilities",
+          "tool_call_id": "call_00_ifMKyFB0uOifACUTPbBj2808"
+        }
+      ]
+    },
+    {
+      "batch_index": 2,
+      "calls": [
+        {
+          "args": {
+            "description": "卖家 4869f7a5dfa277a7dca6462dcf3b52b2 覆盖确认",
+            "max_tool_calls": 1,
+            "max_tool_rounds": 1,
+            "prompt": "使用 commerce_seller_coverage 确认卖家 4869f7a5dfa277a7dca6462dcf3b52b2 的精确 first_order_date、last_order_date、总订单数和关键履约字段（carrier_handoff_at、delivered_at、estimated_delivery_at）的覆盖情况。禁止从抽样记录推断时间范围，必须使用全量关联。只调用一次 commerce_seller_coverage，然后直接返回结果。",
+            "skills": [
+              "fulfillment-investigation"
+            ],
+            "subagent_type": "explore",
+            "tools": [
+              "commerce_seller_coverage"
+            ]
+          },
+          "name": "spawn_task",
+          "tool_call_id": "call_00_VUvad2ntExLZhzERtcDt0930"
+        },
+        {
+          "args": {
+            "description": "卖家履约窗口比较分析",
+            "max_tool_calls": 2,
+            "max_tool_rounds": 2,
+            "prompt": "卖家 ID: 4869f7a5dfa277a7dca6462dcf3b52b2\n基线窗口: [2017-12-02T00:00:00, 2018-01-31T00:00:00)\n当前窗口: [2018-01-31T00:00:00, 2018-04-01T00:00:00)\n两个窗口相邻，baseline_end == current_start。\n\n第一轮：调用 commerce_compare_windows，metric_names=[\"order_count\",\"late_delivery_rate\",\"handling_time_hours\",\"transit_time_hours\"]，比较四个指标。\n\n第二轮：根据第一轮结果，用一次 commerce_evidence_query 抽查来源记录，寻找支持证据和反证。\n\n然后综合回答：\n1. 现象：哪些指标变化了，变化方向与幅度\n2. 阶段定位：区分卖家处理阶段（handling_time_hours）与承运运输阶段（transit_time_hours），变化集中在哪个阶段\n3. 反证或替代解释\n4. 数据限制\n\n注意：handling_time 下降只能写\"未观察到处理时长恶化\"，不能据此排除卖家端其他因素。Evidence 抽查只能说明被抽查记录。禁止自行计算 Tool 未直接返回的贡献率。\n\n时间窗口权威合同：`commerce_compare_windows` 使用半开区间 `[start, end)`，结束时间是排他边界。本合同覆盖任务中“含两端”等冲突措辞。相邻窗口必须保持 `baseline_end == current_start`；精确传递 Parent 给出的 ISO-8601 边界，不得减一天、加一天、改成当天 `23:59:59` 或自行移动边界。",
+            "skills": [
+              "fulfillment-investigation"
+            ],
+            "subagent_type": "analyst",
+            "tools": [
+              "commerce_compare_windows",
+              "commerce_evidence_query"
+            ]
+          },
+          "name": "spawn_task",
+          "tool_call_id": "call_01_0ZQydcy2z1afPNG82kWM6539"
+        }
+      ]
+    },
+    {
+      "batch_index": 3,
+      "calls": [
+        {
+          "args": {
+            "mode": "all",
+            "task_ids": [
+              "call_00_VUvad2ntExLZhzERtcDt0930",
+              "call_01_0ZQydcy2z1afPNG82kWM6539"
+            ],
+            "timeout_seconds": 60
+          },
+          "name": "wait_task",
+          "tool_call_id": "call_00_lon8nOjpxfcsbDJrKaEn1432"
+        }
+      ]
+    },
+    {
+      "batch_index": 4,
+      "calls": [
+        {
+          "args": {
+            "description": "Verifier：独立核验卖家履约变化",
+            "max_tool_calls": 3,
+            "max_tool_rounds": 2,
+            "prompt": "你是一个独立核验 Agent。请使用 fresh context 对卖家 4869f7a5dfa277a7dca6462dcf3b52b2 的履约变化进行独立重算和核验。\n\n**窗口定义（半开区间，精确传递，不得修改边界）：**\n- 基线窗口：[2017-12-02T00:00:00, 2018-01-31T00:00:00)\n- 当前窗口：[2018-01-31T00:00:00, 2018-04-01T00:00:00)\n- 相邻窗口保持 baseline_end == current_start\n\n**第一轮（必须同时调用两个 Tool）：**\n1. 调用 commerce_seller_coverage 确认卖家覆盖信息（first_order_date、last_order_date、总订单数、关键字段覆盖）\n2. 调用 commerce_compare_windows，metric_names=[\"order_count\",\"late_delivery_rate\",\"handling_time_hours\",\"transit_time_hours\"]，独立重算四个指标的变化\n\n**第二轮：**\n根据第一轮结果，用一次 commerce_evidence_query 抽查来源记录，寻找支持证据和反证。\n\n**核验目标：**\n1. 确认覆盖信息是否与前置任务一致\n2. 独立重算窗口比较结果，确认延迟率、处理时长、运输时长的变化方向和幅度\n3. 抽查来源记录，验证延迟订单是否确实发生在承运运输阶段\n4. 寻找反证：是否存在与\"运输阶段恶化\"不一致的证据\n\n**约束：**\n- 不得继承 Parent 或前置任务的隐式推理\n- handling_time 下降只能写\"未观察到处理时长恶化\"，不能据此排除卖家端其他因素\n- Evidence 抽查只能说明被抽查记录\n- 禁止自行计算 Tool 未直接返回的贡献率\n- 禁止写\"核心来源是\"\"完全解释了\"\"排除了卖家自身原因\"等因果断言\n- 阶段结论只能写\"变化集中在运输时长指标\"或\"与承运阶段异常一致\"\n\n时间窗口权威合同：`commerce_compare_windows` 使用半开区间 `[start, end)`，结束时间是排他边界。本合同覆盖任务中\"含两端\"等冲突措辞。相邻窗口必须保持 `baseline_end == current_start`；精确传递 Parent 给出的 ISO-8601 边界，不得减一天、加一天、改成当天 `23:59:59` 或自行移动边界。\n\n时间窗口权威合同：`commerce_compare_windows` 使用半开区间 `[start, end)`，结束时间是排他边界。本合同覆盖任务和 source snapshot 中“含两端”等冲突措辞。相邻窗口必须保持 `baseline_end == current_start`；必须按 source_refs 对应任务的原始 ISO-8601 边界独立重算，不得继承其边界调整，也不得减一天、加一天、改成当天 `23:59:59` 或自行移动边界。",
+            "skills": [
+              "fulfillment-investigation"
+            ],
+            "source_refs": [
+              "task:call_00_VUvad2ntExLZhzERtcDt0930",
+              "task:call_01_0ZQydcy2z1afPNG82kWM6539"
+            ],
+            "subagent_type": "verifier",
+            "tools": [
+              "commerce_seller_coverage",
+              "commerce_compare_windows",
+              "commerce_evidence_query"
+            ]
+          },
+          "name": "spawn_task",
+          "tool_call_id": "call_00_SqgQkQl1GypduPJkVzQO6853"
+        }
+      ]
+    },
+    {
+      "batch_index": 5,
+      "calls": [
+        {
+          "args": {
+            "mode": "all",
+            "task_ids": [
+              "call_00_SqgQkQl1GypduPJkVzQO6853"
+            ],
+            "timeout_seconds": 60
+          },
+          "name": "wait_task",
+          "tool_call_id": "call_00_17cQ8pipOdVcTkO0WJKu6072"
+        }
+      ]
+    }
+  ],
+  "parent_tool_results": [
+    {
+      "content_sha256": "6ba6d6717dae5178c78256e7e9cd628904bd1d272663113e18e97386fffc7e5e",
+      "name": "commerce_ingest_uploads",
+      "status": "success",
+      "tool_call_id": "call_00_RlszqypMlzF4sMp23CGV1010"
+    },
+    {
+      "content_sha256": "6a34b1443a4c5dc3423b9a25c30f6e58eb219bd03467b0e009d28ba0a0d7be0b",
+      "name": "commerce_capabilities",
+      "status": "success",
+      "tool_call_id": "call_00_ifMKyFB0uOifACUTPbBj2808"
+    },
+    {
+      "content_sha256": "5ac23ffe0dfd8dafc13e16c15a5531eef2fa7f2f1b6f09e76d012773249afcdc",
+      "name": "spawn_task",
+      "status": "success",
+      "tool_call_id": "call_00_VUvad2ntExLZhzERtcDt0930"
+    },
+    {
+      "content_sha256": "9c17facac4e9d032519ad7cf723c9e68624894e8e96ddcea29051ebe08f1425b",
+      "name": "spawn_task",
+      "status": "success",
+      "tool_call_id": "call_01_0ZQydcy2z1afPNG82kWM6539"
+    },
+    {
+      "content_sha256": "8582f7eae663ea3969f8fc56274afd6645a07312fa8b39a364a01357c23fb1ac",
+      "name": "wait_task",
+      "status": "success",
+      "tool_call_id": "call_00_lon8nOjpxfcsbDJrKaEn1432"
+    },
+    {
+      "content_sha256": "e36d4dee643ef09260ef76eb2694511a4a468803553788680dea0cbc5c6ae635",
+      "name": "spawn_task",
+      "status": "success",
+      "tool_call_id": "call_00_SqgQkQl1GypduPJkVzQO6853"
+    },
+    {
+      "content_sha256": "60446bbc55e59b218f6c892868edf48c060a87a3d1a16ab148cf220be4722ba7",
+      "name": "wait_task",
+      "status": "success",
+      "tool_call_id": "call_00_17cQ8pipOdVcTkO0WJKu6072"
+    }
+  ],
+  "passed": true,
+  "preflight": {
+    "actual_model_identity": "deepseek-v4-flash",
+    "provider_request_id": "e64a6b13-90fa-4108-8048-d0cbcd161a86",
+    "retry_count": 0,
+    "run_id": "preflight-5855c03888824cf3bf1ebb4efe8e5726",
+    "status": "passed",
+    "total_tokens": 70
+  },
+  "request_count": 17,
+  "request_ids_unique": true,
+  "response_guard": {
+    "error_code": null,
+    "initial_issues": [
+      "最终回答包含禁止结论：计算可靠"
+    ],
+    "repair_count": 1
+  },
+  "run_id": "2233f98a-4dc5-4e29-b810-a8b457ab668d",
+  "run_status": "success",
+  "schema_version": "commerce.chat-dynamic-release@1.2.0",
+  "spec": {
+    "case_key": "GC-FULFILLMENT-001",
+    "final_forbidden": [
+      "真实GMV",
+      "实际转化率",
+      "库存已经改善",
+      "履约恶化的核心来源是",
+      "核心来源是承运运输阶段",
+      "排除了卖家自身原因",
+      "排除了卖家处理流程作为延迟主因",
+      "计算可靠",
+      "不存在数据缺失导致计算错误",
+      "足以排除低基数噪声",
+      "春节",
+      "无法全量追溯",
+      "几乎完全解释了",
+      "占总量涨幅"
+    ],
+    "final_required_all": [
+      "mobs_"
+    ],
+    "final_required_any": [
+      [
+        "反证",
+        "替代解释",
+        "不能证明"
+      ],
+      [
+        "数据限制",
+        "缺少",
+        "未包含"
+      ]
+    ],
+    "final_required_patterns": [
+      "(?:订单量|order_count).{0,160}(?<!\\d)141(?!\\d).{0,160}(?<!\\d)202(?!\\d)",
+      "(?:(?:晚发货率|晚到率|迟发率|延迟交付率|延迟率|late_delivery_rate).{0,180}(?:3\\.5(?:5|46\\d?)?%|0\\.035(?:46\\d?)?).{0,160}(?:35\\.1(?:5|48\\d?)?%|0\\.351(?:48\\d?)?)|(?:晚发货率|晚到率|迟发率|延迟交付率|延迟率|late_delivery_rate).{0,180}(?:35\\.1(?:5|48\\d?)?%|0\\.351(?:48\\d?)?).{0,240}(?:3\\.5(?:5|46\\d?)?%|0\\.035(?:46\\d?)?))",
+      "(?:处理时长|handling_time_hours).{0,180}46\\.8(?:[34])?",
+      "(?:运输时长|transit_time_hours).{0,180}494\\.8(?:[23])?"
+    ],
+    "first_wave": [
+      {
+        "expected_tool_names": [
+          "commerce_seller_coverage"
+        ],
+        "max_tool_calls": null,
+        "max_tool_rounds": 1,
+        "skills": [
+          "fulfillment-investigation"
+        ],
+        "subagent_type": "explore",
+        "task_key": null,
+        "tools": [
+          "commerce_seller_coverage"
+        ]
+      },
+      {
+        "expected_tool_names": [
+          "commerce_compare_windows",
+          "commerce_evidence_query"
+        ],
+        "max_tool_calls": null,
+        "max_tool_rounds": 2,
+        "skills": [
+          "fulfillment-investigation"
+        ],
+        "subagent_type": "analyst",
+        "task_key": null,
+        "tools": [
+          "commerce_compare_windows",
+          "commerce_evidence_query"
+        ]
+      }
+    ],
+    "max_parent_tool_errors": 2,
+    "max_requests": 24,
+    "max_tokens": 350000,
+    "parent_required_tools": [
+      "commerce_ingest_uploads",
+      "commerce_capabilities",
+      "spawn_task",
+      "wait_task"
+    ],
+    "prompt_sha256": "3897067d5b319f1aaa87e1840ab9ee388ce3998789a85ab01f46fc48d190ebbe",
+    "schema_version": "commerce.chat-dynamic-spec@1.0.0",
+    "verifier": {
+      "expected_tool_names": [
+        "commerce_seller_coverage",
+        "commerce_compare_windows",
+        "commerce_evidence_query"
+      ],
+      "max_tool_calls": 3,
+      "max_tool_rounds": 2,
+      "skills": [
+        "fulfillment-investigation"
+      ],
+      "subagent_type": "verifier",
+      "task_key": null,
+      "tools": [
+        "commerce_seller_coverage",
+        "commerce_compare_windows",
+        "commerce_evidence_query"
+      ]
+    }
+  },
+  "subagent_tokens": 49087,
+  "tasks": [
+    {
+      "available_skills": [
+        "fulfillment-investigation"
+      ],
+      "available_tools": [
+        "commerce_seller_coverage"
+      ],
+      "completed_at": "2026-07-27T01:36:29.381411Z",
+      "created_at": "2026-07-27T01:36:23.338758Z",
+      "error_code": null,
+      "input_tokens": 4599,
+      "max_tool_calls": 1,
+      "max_tool_rounds": 1,
+      "model_calls": [
+        {
+          "actual_model_identity": "deepseek-v4-flash",
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "provider_request_id": "22db894e-9607-422d-8e99-f4dbc0ca816a",
+          "source_run_id": "019fa137-4b72-77a3-92f4-0cb83c38de72",
+          "stop_reason": "tool_calls",
+          "total_tokens": 0
+        },
+        {
+          "actual_model_identity": "deepseek-v4-flash",
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "provider_request_id": "d2e39c6b-a510-4ed6-ab6b-32c98ea30be2",
+          "source_run_id": "019fa137-5005-7eb1-9ef7-44216d0a4b7d",
+          "stop_reason": "stop",
+          "total_tokens": 0
+        }
+      ],
+      "output_tokens": 466,
+      "source_refs": [],
+      "status": "completed",
+      "subagent_type": "explore",
+      "task_id": "call_00_VUvad2ntExLZhzERtcDt0930",
+      "tool_names": [
+        "commerce_seller_coverage"
+      ],
+      "total_tokens": 5065
+    },
+    {
+      "available_skills": [
+        "fulfillment-investigation"
+      ],
+      "available_tools": [
+        "commerce_compare_windows",
+        "commerce_evidence_query"
+      ],
+      "completed_at": "2026-07-27T01:36:41.238504Z",
+      "created_at": "2026-07-27T01:36:23.339773Z",
+      "error_code": null,
+      "input_tokens": 16740,
+      "max_tool_calls": 2,
+      "max_tool_rounds": 2,
+      "model_calls": [
+        {
+          "actual_model_identity": "deepseek-v4-flash",
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "provider_request_id": "24fbde1d-aa04-4767-9003-c6eaaa88991f",
+          "source_run_id": "019fa137-4b71-7a00-9239-634b6fd98167",
+          "stop_reason": "tool_calls",
+          "total_tokens": 0
+        },
+        {
+          "actual_model_identity": "deepseek-v4-flash",
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "provider_request_id": "8fc89bcc-072e-4d57-858e-57011371f7fd",
+          "source_run_id": "019fa137-5568-7330-9d1c-0dfd8b06294c",
+          "stop_reason": "tool_calls",
+          "total_tokens": 0
+        },
+        {
+          "actual_model_identity": "deepseek-v4-flash",
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "provider_request_id": "70f4b4fe-44c3-4376-bffa-571a432d3735",
+          "source_run_id": "019fa137-61a3-7a30-9861-49a0ba5f7c3c",
+          "stop_reason": "stop",
+          "total_tokens": 0
+        }
+      ],
+      "output_tokens": 1565,
+      "source_refs": [],
+      "status": "completed",
+      "subagent_type": "analyst",
+      "task_id": "call_01_0ZQydcy2z1afPNG82kWM6539",
+      "tool_names": [
+        "commerce_compare_windows",
+        "commerce_evidence_query"
+      ],
+      "total_tokens": 18305
+    },
+    {
+      "available_skills": [
+        "fulfillment-investigation"
+      ],
+      "available_tools": [
+        "commerce_seller_coverage",
+        "commerce_compare_windows",
+        "commerce_evidence_query"
+      ],
+      "completed_at": "2026-07-27T01:37:02.415456Z",
+      "created_at": "2026-07-27T01:36:47.991385Z",
+      "error_code": null,
+      "input_tokens": 24202,
+      "max_tool_calls": 3,
+      "max_tool_rounds": 2,
+      "model_calls": [
+        {
+          "actual_model_identity": "deepseek-v4-flash",
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "provider_request_id": "c0e79f8f-62c9-49da-b1ae-6687d7c67d4e",
+          "source_run_id": "019fa137-abb3-7902-85fb-4f01ad1f573a",
+          "stop_reason": "tool_calls",
+          "total_tokens": 0
+        },
+        {
+          "actual_model_identity": "deepseek-v4-flash",
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "provider_request_id": "a12ad66b-d5ed-494c-8807-58989c9d2d09",
+          "source_run_id": "019fa137-b8b0-73e1-b46d-7df751227d50",
+          "stop_reason": "tool_calls",
+          "total_tokens": 0
+        },
+        {
+          "actual_model_identity": "deepseek-v4-flash",
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "provider_request_id": "21f79511-a7ba-475b-96be-7d39a781aca8",
+          "source_run_id": "019fa137-c4a7-7d13-b357-41ab54b396c4",
+          "stop_reason": "stop",
+          "total_tokens": 0
+        }
+      ],
+      "output_tokens": 1515,
+      "source_refs": [
+        "task:call_00_VUvad2ntExLZhzERtcDt0930",
+        "task:call_01_0ZQydcy2z1afPNG82kWM6539"
+      ],
+      "status": "completed",
+      "subagent_type": "verifier",
+      "task_id": "call_00_SqgQkQl1GypduPJkVzQO6853",
+      "tool_names": [
+        "commerce_seller_coverage",
+        "commerce_compare_windows",
+        "commerce_evidence_query"
+      ],
+      "total_tokens": 25717
+    }
+  ],
+  "total_tokens": 199598
+}

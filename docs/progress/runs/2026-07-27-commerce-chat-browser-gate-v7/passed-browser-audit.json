@@ -1,0 +1,116 @@
+{
+  "schema_version": "1.0",
+  "gate": "commerce-persistent-chat-browser",
+  "configured_alias": "deepseek-reasoner",
+  "expected_actual_model_identity": "deepseek-v4-flash",
+  "retry_policy": 0,
+  "prompt_sha256": "67480681048547da996433a61c67c0637147ebc98ae81e0addd7befcae83a548",
+  "input_files": [
+    "orders.csv",
+    "order_items.csv",
+    "order_reviews.csv",
+    "customers.csv",
+    "products.csv",
+    "sellers.csv"
+  ],
+  "started_at": "2026-07-27T12:25:38.699Z",
+  "passed": true,
+  "auth": {
+    "account_sha256": "f82b7e2565f99d32e8954271b058e13b3f0e8596ae39fd71fc577637feb8abb7",
+    "access_token_cookie_present": true,
+    "csrf_token_cookie_present": true,
+    "auth_me_status": 200,
+    "models_status": 200,
+    "commerce_cases_status": 200,
+    "commerce_workspace_id": "wsp_355706d656a4531acc07ed5da2229c7a",
+    "resumed_existing_run": true
+  },
+  "thread_id": "63c65e2a-9dd2-4a2e-8cf5-c7484c0d1c48",
+  "run_id": "1c07e293-8f41-4213-b406-17c8c150f8d8",
+  "completed_at": "2026-07-27T12:25:39.999Z",
+  "run": {
+    "status": "success",
+    "llm_call_count": 6,
+    "total_input_tokens": 161301,
+    "total_output_tokens": 9093,
+    "total_tokens": 170394,
+    "lead_agent_tokens": 124966,
+    "subagent_tokens": 45428,
+    "middleware_tokens": 0
+  },
+  "actual_model_identities": [
+    "deepseek-v4-flash"
+  ],
+  "configured_model_aliases": [
+    "deepseek-reasoner"
+  ],
+  "provider_request_ids": [
+    "c723d81d-43e3-4e5a-86cb-a469e678d5c2",
+    "237996dd-aa88-44f7-9095-8068184fbb95",
+    "6503af15-f0c0-4d3a-9f1f-e90d6e86b768",
+    "d9d8db83-db71-42c9-a2df-32ddd8c553e9",
+    "330d164a-0756-4dd8-be42-671209ff7324",
+    "9e39efaf-fce0-4af2-8e52-b953ad8cecb7",
+    "e57a54e0-c1fc-4422-8dff-e5a10b4798bf",
+    "ddba49f4-a540-4f28-b295-428661048252",
+    "0292b0fd-e428-431a-bd4f-5973858e5efa",
+    "192e571b-5ad5-4e33-8643-f0ca7545a903",
+    "d9c73194-0a3e-42ea-8863-1f6d8af611d6",
+    "2c5005da-6cbd-45c0-b129-8618a5501797",
+    "d8c136e6-5632-405b-acf1-dc48c08c4064"
+  ],
+  "retry_counts": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "tasks": [
+    {
+      "task_id": "call_01_SNnXUw33idIi5UZkKqeq1591",
+      "profile": "analyst",
+      "status": "completed",
+      "created_at": "2026-07-27T12:19:33.716689Z",
+      "started_at": "2026-07-27T12:19:33.736219Z",
+      "completed_at": "2026-07-27T12:19:46.779120Z"
+    },
+    {
+      "task_id": "call_00_gX26Xb5IydEc6m0rdvrN6614",
+      "profile": "explore",
+      "status": "completed",
+      "created_at": "2026-07-27T12:19:33.717413Z",
+      "started_at": "2026-07-27T12:19:33.734260Z",
+      "completed_at": "2026-07-27T12:19:38.933551Z"
+    },
+    {
+      "task_id": "call_00_drX0M3JytWneADrlOnEY9440",
+      "profile": "verifier",
+      "status": "completed",
+      "created_at": "2026-07-27T12:19:59.704446Z",
+      "started_at": "2026-07-27T12:19:59.713240Z",
+      "completed_at": "2026-07-27T12:20:15.590502Z"
+    }
+  ],
+  "final_answer": "卖家 4869f7a5dfa277a7dca6462dcf3b52b2 的数据覆盖完整。全量关联确认该卖家在数据集中共有 554 笔订单，时间范围从 2017-12-02T06:32:02Z 至 2018-05-31T13:19:59Z，关键履约字段（下单时间、承运商交接时间、预计送达时间、实际送达时间）完整度均为 100%，所有订单状态均为 delivered。\n\n确定性窗口比较覆盖了基线窗口 [2017-12-02, 2018-01-31) 共 141 笔订单，和当前窗口 [2018-01-31, 2018-04-01) 共 202 笔订单。两个窗口严格相邻、无重叠。\n\n延迟交付率从基线窗口的 3.55%（5/141）上升到当前窗口的 35.15%（71/202），增加了 31.6 个百分点（mobs_c495c6506a675024ae00f402b2493705、mobs_6cf25353e466566ca9ed7ba22fe893df）。但卖家处理时长并没有同步恶化——从基线 50.06 小时降至当前 46.84 小时，反而缩短了 6.4%（mobs_e70be7f65c4b5abab69c961cab124889、mobs_58f442b46eaa54d98b63b4c5c1b50e2b）。承运运输时长则从 300.51 小时大幅增至 494.83 小时，增幅 64.7%（mobs_a29890da480a50b6a9e1e134dcf4b053、mobs_05ff3bc07a82595b9f974397bc996175）。总履约时长从 360.78 小时增至 550.16 小时，增幅 52.5%（mobs_fede56912fdf530baaa79b8901d9c3cc、mobs_64e34ee67d8558d4921391eaeacc7450）。运输时长的增量（+194.33 小时）与总时长的增量（+189.39 小时）高度一致。\n\n综合来看，当前变化集中在承运运输阶段，卖家处理阶段未观察到恶化。\n\n反证与替代解释方面：处理时长未上升，因此卖家自身处理流程恶化的假设在当前数据中不成立。订单量从 141 增至 202（+43.3%），但延迟率 3.55% 到 35.15% 的变化幅度远非样本量变化所能解释，延迟订单从 5 笔增加到 71 笔，基数变化充分。独立抽查的 10 笔当前窗口延迟记录均证实预计送达时间和实际送达时间存在且合理，数据质量可靠。不过，缺乏承运商字段，无法判断是否切换了承运商或运输路线发生变化；也缺少地域分段数据，尚不能确认运输时长增加是否集中在某些特定区域。本数据集仅有 1 个卖家，卖家同类对标能力不可用，无法与同行横向比较。\n\n数据限制方面：所有指标均为 derived 状态，无 unknown 缺失；source_fact_ids_truncated=true 仅表示 ID 预览截断，Fact 仍可分页查询，不影响指标可靠性。本次数据不含曝光、点击、加购、广告消耗、库存、利润或 GMV，不能推断这些指标。这些数据来自 2017–2018 年，时间距今较远，当前经营环境的适用性需谨慎对待。\n\n下一步最小行动：如果数据允许，建议检查订单的客户地域分布在两个窗口是否有显著变化，以判断运输时长恶化是否集中于特定区域；同时核查承运商信息（如果上游系统可补充），确认承运商是否发生变化。这些检查可以帮助缩小排查范围，但现有数据已能说明问题更可能出在运输环节而非卖家处理流程。",
+  "network": [],
+  "console_errors": [],
+  "viewport": {
+    "contentWidth": 390,
+    "prefersReducedMotion": true,
+    "viewportWidth": 390
+  },
+  "screenshots": [
+    "01-files-selected-desktop.png",
+    "02-final-chat-desktop.png",
+    "03-collaboration-desktop.png",
+    "04-collaboration-mobile-reduced-motion.png"
+  ]
+}
