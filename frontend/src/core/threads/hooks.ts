@@ -1097,7 +1097,12 @@ export function useThreadState(
   {
     enabled = true,
     isMock = false,
-  }: { enabled?: boolean; isMock?: boolean } = {},
+    refetchInterval = false,
+  }: {
+    enabled?: boolean;
+    isMock?: boolean;
+    refetchInterval?: number | false;
+  } = {},
 ) {
   const apiClient = getAPIClient(isMock);
   return useQuery<AgentThreadState | null>({
@@ -1111,6 +1116,7 @@ export function useThreadState(
       return response.values;
     },
     enabled: enabled && Boolean(threadId),
+    refetchInterval,
     refetchOnWindowFocus: false,
   });
 }

@@ -13,13 +13,108 @@ test.describe("Sidebar navigation", () => {
     await expect(sidebar.locator("a[href='/workspace/chats']")).toBeVisible({
       timeout: 15_000,
     });
+    await expect(sidebar.getByRole("link", { name: "验证对话" })).toBeVisible();
     await expect(
-      sidebar.getByRole("link", { name: "Chat", exact: true }),
+      sidebar
+        .locator("a[href='/workspace/agents/store-operator/chats/new']")
+        .first(),
+    ).toBeVisible();
+    await expect(
+      sidebar.locator("a[href='/workspace/agents/store-operator/war-room']"),
     ).toBeVisible();
     await expect(
       sidebar.locator("a[href='/workspace/agents/ecom-launch/war-room']"),
     ).toBeVisible();
     await expect(sidebar.locator("a[href='/workspace/agents']")).toBeVisible();
+  });
+
+  test("商铺运营作战室只同步真实 Task 状态", async ({ page }) => {
+    mockLangGraphAPI(page, {
+      threads: [
+        {
+          thread_id: MOCK_THREAD_ID,
+          title: "近期经营分析",
+          agent_name: "store-operator",
+          messages: [
+            {
+              type: "ai",
+              id: "store-task-call",
+              content: "",
+              tool_calls: [
+                {
+                  id: "store-task-analyst",
+                  name: "task",
+                  args: {
+                    subagent_type: "analyst",
+                    description: "比较最近十四天与此前十四天",
+                    prompt: "使用数据工具复算两个窗口。",
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    await page.goto(
+      `/workspace/agents/store-operator/war-room?threadId=${MOCK_THREAD_ID}`,
+    );
+
+    await expect(
+      page.getByRole("heading", { name: "商铺运营作战室" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator("[data-store-war-room-stage]")).toBeVisible();
+    await expect(page.locator("[data-store-agent='analyst']")).toHaveAttribute(
+      "data-store-agent-active",
+      "true",
+    );
+    await expect(page.locator("[data-store-agent='analyst']")).toHaveAttribute(
+      "data-store-agent-motion",
+      /returning_home|working/,
+    );
+    await expect(page.locator("[data-store-agent='explore']")).toHaveAttribute(
+      "data-store-agent-active",
+      "false",
+    );
+  });
+
+  test("商铺运营作战室在移动端和减少动态效果模式下可用", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    mockLangGraphAPI(page);
+
+    await page.goto("/workspace/agents/store-operator/war-room");
+
+    const stage = page.locator("[data-store-war-room-stage]");
+    await expect(stage).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.getByRole("button", { name: "切换侧边栏" }),
+    ).toBeVisible();
+    await expect(page.locator("[data-store-agent-label='lead']")).toBeVisible();
+    await expect(
+      page.locator("[data-store-agent-label='explore']"),
+    ).toBeHidden();
+    const initialExploreStyle = await page
+      .locator("[data-store-agent='explore']")
+      .getAttribute("style");
+    await page.waitForTimeout(4500);
+    await expect(page.locator("[data-store-agent='explore']")).toHaveAttribute(
+      "style",
+      initialExploreStyle ?? "",
+    );
+
+    const stageBox = await stage.boundingBox();
+    const asideBox = await page.locator("aside").boundingBox();
+    expect(stageBox).not.toBeNull();
+    expect(asideBox).not.toBeNull();
+    expect(stageBox!.width).toBeGreaterThan(300);
+    expect(asideBox!.y).toBeGreaterThan(stageBox!.y + stageBox!.height - 1);
+
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth,
+    );
+    expect(hasHorizontalOverflow).toBe(false);
   });
 
   test("Agents link navigates to agents page", async ({ page }) => {

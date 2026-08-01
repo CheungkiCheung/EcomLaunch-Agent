@@ -20,6 +20,11 @@ class SubagentOverrideConfig(BaseModel):
         ge=1,
         description="Maximum turns for this subagent (None = use global or builtin default)",
     )
+    max_tool_calls: int | None = Field(
+        default=None,
+        ge=1,
+        description="Hard tool-call budget for this subagent (None = use its own default)",
+    )
     model: str | None = Field(
         default=None,
         min_length=1,
@@ -60,6 +65,11 @@ class CustomSubagentConfig(BaseModel):
         default=50,
         ge=1,
         description="Maximum number of agent turns before stopping",
+    )
+    max_tool_calls: int | None = Field(
+        default=None,
+        ge=1,
+        description="Optional hard tool-call budget before the subagent must synthesize",
     )
     timeout_seconds: int = Field(
         default=900,
@@ -126,6 +136,13 @@ class SubagentsAppConfig(BaseModel):
         if self.max_turns is not None:
             return self.max_turns
         return builtin_default
+
+    def get_max_tool_calls_for(self, agent_name: str) -> int | None:
+        """Return a per-agent hard tool-call budget when configured."""
+        override = self.agents.get(agent_name)
+        if override is not None and override.max_tool_calls is not None:
+            return override.max_tool_calls
+        return None
 
     def get_skills_for(self, agent_name: str) -> list[str] | None:
         """Get the skills override for a specific agent.

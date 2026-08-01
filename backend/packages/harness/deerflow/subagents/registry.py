@@ -43,6 +43,7 @@ def _build_custom_subagent_config(name: str, *, app_config: Any | None = None) -
         skills=custom.skills,
         model=custom.model,
         max_turns=custom.max_turns,
+        max_tool_calls=custom.max_tool_calls,
         timeout_seconds=custom.timeout_seconds,
     )
 
@@ -103,6 +104,17 @@ def get_subagent_config(name: str, *, app_config: Any | None = None) -> Subagent
     if effective_model is not None and effective_model != config.model:
         logger.debug("Subagent '%s': model overridden (%s -> %s)", name, config.model, effective_model)
         overrides["model"] = effective_model
+
+    # Tool calls: per-agent override only; custom agents may define their own default.
+    effective_max_tool_calls = subagents_config.get_max_tool_calls_for(name)
+    if effective_max_tool_calls is not None and effective_max_tool_calls != config.max_tool_calls:
+        logger.debug(
+            "Subagent '%s': max_tool_calls overridden (%s -> %s)",
+            name,
+            config.max_tool_calls,
+            effective_max_tool_calls,
+        )
+        overrides["max_tool_calls"] = effective_max_tool_calls
 
     # Skills: per-agent override only (no global default for skills)
     effective_skills = subagents_config.get_skills_for(name)

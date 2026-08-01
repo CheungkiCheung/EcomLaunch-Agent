@@ -9,7 +9,9 @@ import { FlickeringGrid } from "@/components/ui/flickering-grid";
 import { Input } from "@/components/ui/input";
 import { getCsrfHeaders } from "@/core/api/fetcher";
 import { useAuth } from "@/core/auth/AuthProvider";
+import { getLocalizedAuthErrorMessage } from "@/core/auth/error-messages";
 import { parseAuthError } from "@/core/auth/types";
+import { useI18n } from "@/core/i18n/hooks";
 
 type SetupMode = "loading" | "init_admin" | "change_password";
 
@@ -17,6 +19,7 @@ export default function SetupPage() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
   const { theme, resolvedTheme } = useTheme();
+  const { t } = useI18n();
   const [mode, setMode] = useState<SetupMode>("loading");
 
   // --- Shared state ---
@@ -66,7 +69,7 @@ export default function SetupPage() {
     setError("");
 
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t.auth.passwordMismatch);
       return;
     }
 
@@ -85,13 +88,13 @@ export default function SetupPage() {
       if (!res.ok) {
         const data = await res.json();
         const authError = parseAuthError(data);
-        setError(authError.message);
+        setError(getLocalizedAuthErrorMessage(authError, t.auth.errors));
         return;
       }
 
       router.push("/workspace");
     } catch {
-      setError("Network error. Please try again.");
+      setError(t.auth.networkError);
     } finally {
       setLoading(false);
     }
@@ -103,11 +106,11 @@ export default function SetupPage() {
     setError("");
 
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t.auth.passwordMismatch);
       return;
     }
     if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError(t.auth.passwordTooShort);
       return;
     }
 
@@ -130,13 +133,13 @@ export default function SetupPage() {
       if (!res.ok) {
         const data = await res.json();
         const authError = parseAuthError(data);
-        setError(authError.message);
+        setError(getLocalizedAuthErrorMessage(authError, t.auth.errors));
         return;
       }
 
       router.push("/workspace");
     } catch {
-      setError("Network error. Please try again.");
+      setError(t.auth.networkError);
     } finally {
       setLoading(false);
     }
@@ -147,7 +150,7 @@ export default function SetupPage() {
   if (mode === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground text-sm">Loading…</p>
+        <p className="text-muted-foreground text-sm">{t.common.loading}</p>
       </div>
     );
   }
@@ -167,15 +170,17 @@ export default function SetupPage() {
         <div className="border-border/20 bg-background/5 w-full max-w-md space-y-6 rounded-3xl border p-8 backdrop-blur-sm">
           <div className="text-center">
             <h1 className="font-serif text-3xl">openGrowth</h1>
-            <p className="text-muted-foreground mt-2">Create admin account</p>
+            <p className="text-muted-foreground mt-2">
+              {t.auth.createAdminTitle}
+            </p>
             <p className="text-muted-foreground mt-1 text-xs">
-              Set up the administrator account to get started.
+              {t.auth.createAdminDescription}
             </p>
           </div>
           <form onSubmit={handleInitAdmin} className="space-y-2">
             <div className="flex flex-col space-y-1">
               <label htmlFor="email" className="text-sm font-medium">
-                Email
+                {t.auth.email}
               </label>
               <Input
                 id="email"
@@ -188,12 +193,12 @@ export default function SetupPage() {
             </div>
             <div className="flex flex-col space-y-1">
               <label htmlFor="password" className="text-sm font-medium">
-                Password
+                {t.auth.password}
               </label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Password (min. 8 characters)"
+                placeholder={t.auth.passwordMinPlaceholder}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
@@ -202,12 +207,12 @@ export default function SetupPage() {
             </div>
             <div className="flex flex-col space-y-1">
               <label htmlFor="confirmPassword" className="text-sm font-medium">
-                Confirm Password
+                {t.auth.confirmPassword}
               </label>
               <Input
                 id="confirmPassword"
                 type="password"
-                placeholder="Confirm password"
+                placeholder={t.auth.confirmPasswordPlaceholder}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
@@ -216,7 +221,7 @@ export default function SetupPage() {
             </div>
             {error && <p className="ms-1 text-sm text-red-500">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Creating account…" : "Create Admin Account"}
+              {loading ? t.auth.creatingAdmin : t.auth.createAdmin}
             </Button>
           </form>
         </div>
@@ -239,30 +244,30 @@ export default function SetupPage() {
         <div className="text-center">
           <h1 className="font-serif text-3xl">openGrowth</h1>
           <p className="text-muted-foreground mt-2">
-            Complete admin account setup
+            {t.auth.completeSetupTitle}
           </p>
           <p className="text-muted-foreground mt-1 text-xs">
-            Set your real email and a new password.
+            {t.auth.completeSetupDescription}
           </p>
         </div>
         <form onSubmit={handleChangePassword} className="space-y-4">
           <Input
             type="email"
-            placeholder="Your email"
+            placeholder={t.auth.email}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
           <Input
             type="password"
-            placeholder="Current password"
+            placeholder={t.auth.currentPassword}
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             required
           />
           <Input
             type="password"
-            placeholder="New password"
+            placeholder={t.auth.newPassword}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             required
@@ -270,7 +275,7 @@ export default function SetupPage() {
           />
           <Input
             type="password"
-            placeholder="Confirm new password"
+            placeholder={t.auth.confirmNewPassword}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
@@ -278,7 +283,7 @@ export default function SetupPage() {
           />
           {error && <p className="text-sm text-red-500">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Setting up…" : "Complete Setup"}
+            {loading ? t.auth.completingSetup : t.auth.completeSetup}
           </Button>
         </form>
       </div>

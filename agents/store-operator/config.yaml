@@ -1,0 +1,8 @@
+name: store-operator
+description: 上传 CSV 或 Excel 后，直接用中文分析店铺经营数据
+model: deepseek-reasoner
+tool_groups:
+  - store-data
+  - file:read
+skills:
+  - store-data-analysis

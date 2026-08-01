@@ -1,223 +1,231 @@
 # openGrowth
 
-> AI增长实验引擎 — 从公开信号到校准决策，建立你自己的判断公式
+> 面向电商经营的双 Agent 工作台：上架前验证方向，上架后用真实店铺数据持续分析。
 
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](./backend/pyproject.toml)
 [![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white)](./Makefile)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-## 简介
+openGrowth 基于 [DeerFlow](https://github.com/bytedance/deer-flow) 构建，保留其 LangGraph Agent Runtime、配置化 Agent、Skill、Tool、Subagent、文件上传和流式 Chat 能力。本仓库新增两个彼此独立的电商入口：
 
-openGrowth 是一个**开源的AI增长实验引擎**，采用 Orchestrator-Subagent 架构，5个专业Agent并行协作，覆盖从上线前验证到内容校准的完整增长实验链路。
+- **EcomLaunch**：上架前，利用公开市场信号、用户声音和竞品证据验证新品方向。
+- **商铺运营 Agent（Store Operator）**：上架后，上传 CSV/XLSX，直接用中文追问经营变化、商品贡献、退款、履约或其他数据问题。
 
-### 核心特性
+两者目前不做自动交接，也不要求用户建立共同 Case。这样可以先把每个入口的真实使用体验做扎实，再用实际需求决定是否需要跨阶段数据合同。
 
-- **多Agent协作** - 5个专业Agent并行工作
-- **证据驱动** - 基于公开信号，非主观判断
-- **实验校准** - Score → Predict → Retro → Evolve 闭环
-- **游戏化界面** - 像素艺术办公室
-- **渐进式模式** - Flash/Thinking/Pro/Ultra 4种模式
-- **两大工作流** - validate-launch + calibrate-content
+## 商铺运营怎么用
 
-## 架构
+1. 打开“商铺运营 → 数据对话”。
+2. 上传订单、商品、营销、退款、库存、履约或利润相关的 CSV/XLSX。
+3. 直接提问，例如：
 
-```
-┌─────────────────────────────────────────────────────┐
-│              openGrowth 架构                         │
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  ┌─────────────┐    ┌─────────────┐                │
-│  │  用户输入   │───▶│  模式选择   │                │
-│  └─────────────┘    └─────────────┘                │
-│                           │                         │
-│                           ▼                         │
-│  ┌─────────────────────────────────────┐           │
-│  │         Orchestrator Agent          │           │
-│  │    (任务分解 + 子Agent调度)         │           │
-│  └─────────────────────────────────────┘           │
-│                           │                         │
-│         ┌─────────────────┼─────────────────┐       │
-│         ▼                 ▼                 ▼       │
-│  ┌──────────┐      ┌──────────┐      ┌──────────┐ │
-│  │ Market   │      │ Offer    │      │ Growth   │ │
-│  │ Researcher│     │ Architect│      │ Analyst  │ │
-│  └──────────┘      └──────────┘      └──────────┘ │
-│         │                 │                 │       │
-│         ▼                 ▼                 ▼       │
-│  ┌─────────────────────────────────────┐           │
-│  │         工具层 (last30days等)       │           │
-│  └─────────────────────────────────────┘           │
-│                           │                         │
-│                           ▼                         │
-│  ┌─────────────────────────────────────┐           │
-│  │         产出物生成器                 │           │
-│  │    (7件套增长验证包)                │           │
-│  └─────────────────────────────────────┘           │
-│                                                     │
-└─────────────────────────────────────────────────────┘
+```text
+这份数据可以可靠分析什么？
 ```
 
-## 快速开始
+```text
+请比较最近 14 天和此前 14 天，店铺最明显的变化是什么？
+```
+
+```text
+哪些商品或类目对成交下降贡献最大？有没有其他解释？
+```
+
+用户不需要提供内部 ID、表名、SQL、Subagent 类型或精确字段名。第一次分析时，Agent 会先检查真实表结构、数据粒度、时间范围和质量风险；用户所说的“最近”以数据中的最新日期为锚点，而不是系统当天日期。
+
+## 核心设计
+
+```text
+中文 Chat
+   │
+   ▼
+Store Operator Parent
+   ├── store_inspect_data ── 表、字段、粒度、时间与质量检查
+   ├── store_query_data ───── DuckDB 只读确定性计算
+   └── task（按需）
+       ├── explore ────────── 多文件、字段和口径探索
+       ├── analyst ────────── 单一窗口比较或贡献拆解
+       └── verifier ───────── 关键数字独立复算
+```
+
+简单问题由 Parent 直接调用数据 Tool 回答。只有问题需要独立探索、并行拆解或高风险数字复核时，才临时委派 0-N 个 Subagent；系统没有固定的 `Explore → Analyst → Verifier` 流程。
+
+这套设计把职责分为三层：
+
+| 层 | 负责什么 | 不负责什么 |
+|---|---|---|
+| Agent / SOUL | 理解问题、选择行动、组织中文回答 | 心算指标、编造缺失数据 |
+| Skill / Subagent Profile | 领域规则和可选专业分工 | 强制所有请求走同一流程 |
+| Tool | 解析文件、执行确定性查询、返回事实 | 替用户做因果判断 |
+
+## 数据能力与边界
+
+`store_inspect_data` 支持：
+
+- CSV 与多 Sheet XLSX；
+- 表 alias、行列数、空值、重复行、样例和数字摘要；
+- 日期范围和常见电商语义字段候选；
+- 50 MB 单文件、30 万行/表、120 列/表的保护上限。
+
+`store_query_data` 使用内存 DuckDB，只接受单条 `SELECT` 或 `WITH` 查询，最大返回 200 行。工具关闭外部访问，并拒绝写操作、多语句、SQL 注释、`ATTACH`、`COPY`、`INSTALL`、`LOAD`、`PRAGMA` 和外部文件扫描函数。
+
+分析遵循以下证据边界：
+
+- 所有计数、聚合、趋势和贡献拆解必须来自数据 Tool；
+- 先判断一行是订单、商品明细还是事件，避免订单金额重复求和；
+- 当前文件没有曝光、点击、加购、广告消耗、库存、利润等字段时，明确说明无法判断；
+- 区分数据事实、可能解释、未知项和数据质量风险；
+- 相关性不能写成已证实因果。
+
+## 对话与作战室
+
+主界面保持 DeerFlow/Codex 风格的中文 Chat，不增加密集业务面板。作战室是一个辅助观察入口：
+
+- 四个小比例角色代表 Parent、Explore、Analyst 和 Verifier；
+- 空闲角色在场景中轻量走动；
+- 只有真实 `task` Tool Call 对应的角色才返回工位并进入工作状态；
+- Task 完成后角色恢复空闲；
+- `prefers-reduced-motion` 环境下停止走动并固定在工位；
+- 不模拟假任务，不做复杂碰撞、搬运、汇报动画或跨 Agent 联动。
+
+视觉决策见 [`docs/design/store-operator/war-room-visual-v1.md`](./docs/design/store-operator/war-room-visual-v1.md)。
+
+## EcomLaunch
+
+EcomLaunch 保留原有上架前验证能力：Parent 根据目标委派市场与用户声音研究、定位设计、内容资产和证据核验等 Subagent，使用公开信息输出有来源边界的验证结论。它不依赖 Store Operator，也不会自动读取店铺运营数据。
+
+主要配置位置：
+
+```text
+agents/ecom-launch/
+skills/custom/ecom-launch/
+frontend/src/components/workspace/ecom-launch/
+```
+
+## 项目结构
+
+```text
+openGrowth/
+├── agents/
+│   ├── ecom-launch/                 # 上架前 Agent 配置
+│   └── store-operator/              # 商铺运营 Agent 配置与 SOUL
+├── backend/
+│   ├── app/gateway/                 # DeerFlow API Gateway
+│   ├── app/store_operator/          # CSV/XLSX 与只读 SQL Tool
+│   ├── packages/harness/            # DeerFlow Agent Runtime
+│   └── tests/store_operator/        # 数据工具测试
+├── frontend/
+│   ├── src/components/workspace/ecom-launch/
+│   └── src/components/workspace/store-operator/
+├── skills/custom/
+│   ├── ecom-launch/
+│   └── store-data-analysis/
+├── config.yaml                      # 本地运行配置
+├── config.example.yaml              # 无密钥配置示例
+└── docs/design/store-operator/      # 视觉与设计记录
+```
+
+## 本地运行
 
 ### 环境要求
 
 - Python 3.12+
 - Node.js 22+
-- yt-dlp（YouTube搜索）
-- ffmpeg（YouTube转录）
+- pnpm
+- uv
 
 ### 安装
 
 ```bash
-# 克隆仓库
-git clone git@github.com:CheungkiCheung/openGrowth.git
-cd openGrowth
-
-# 安装依赖
 make install
+```
 
-# 启动服务
+在根目录 `.env` 配置模型密钥。密钥不能写入 `config.yaml`、日志、测试证据或 Git：
+
+```text
+DEEPSEEK_API_KEY=...
+```
+
+启动完整开发环境：
+
+```bash
 make dev
-
-# 访问前端
-open http://localhost:2026
 ```
 
-## 5个专业Agent
+也可以分别启动：
 
-| Agent | 职责 | 工具 |
-|-------|------|------|
-| **market-voc-researcher** | 市场研究 + 用户声音 | last30days + web_search |
-| **offer-architect** | 增长策略 + 假设验证 | web_search + PM Skills |
-| **growth-analyst** | 数据分析 + 指标设计 | market-sizing + north-star |
-| **asset-studio** | 内容创作 + 素材制作 | web_search |
-| **evidence-checker** | 证据审计 + 质量控制 | ab-test + cohort-analysis |
-
-## 4种模式
-
-| 模式 | 用途 | Agent | 产出物 |
-|------|------|-------|--------|
-| **Flash** | 快速查询 | 单Agent | 基础回答 |
-| **Thinking** | 深度分析 | 单Agent | 市场洞察 |
-| **Pro** | 详细报告 | 单Agent | 竞品分析 |
-| **Ultra** | 完整验证 | 5个Agent | 7件套验证包 |
-
-## 产出物
-
-### validate-launch（上线前验证）
-
-1. **launch-war-room.html** - 增长决策仪表板
-2. **evidence-ledger.json** - 证据账本
-3. **competitor-table.csv** - 竞品分析
-4. **positioning-brief.md** - 增长策略
-5. **listing-pack.md** - 产品文案
-6. **content-pack.md** - 增长内容
-7. **launch-calendar.csv** - 7天验证计划
-
-### calibrate-content（内容校准）
-
-1. **calibration-ledger.json** - 校准账本
-2. **rubric.md** - 评分公式
-3. **content-scorecard.md** - 内容评分卡
-
-## 技术栈
-
-| 技术 | 用途 |
-|------|------|
-| **Next.js 19** | 前端框架 |
-| **React 19** | UI库 |
-| **Tailwind CSS 4** | 样式系统 |
-| **Python 3.12+** | 后端引擎 |
-| **LangGraph** | Agent编排 |
-| **last30days** | 多平台数据聚合 |
-
-## 使用场景
-
-### 场景1：创业者验证idea
-
-```
-用户：我想做一个AI写作助手，帮我看看这个idea怎么样
-系统：自动搜索竞品、用户痛点、市场机会
-输出：初步市场洞察
+```bash
+cd backend
+uv run uvicorn app.gateway.app:app --host 127.0.0.1 --port 8001
 ```
 
-### 场景2：产品经理验证新方向
-
-```
-用户：帮我做一个完整的增长验证包
-系统：5个Agent并行执行
-输出：7件套增长验证包
+```bash
+cd frontend
+pnpm dev
 ```
 
-### 场景3：电商卖家上新品
+商铺运营对话地址：
 
-```
-用户：我想上一款便携咖啡杯，帮我分析一下市场
-系统：搜索用户讨论、竞品分析
-输出：市场洞察 + 产品文案
+```text
+http://127.0.0.1:3000/workspace/agents/store-operator/chats/new
 ```
 
-### 场景4：卖家校准内容表现
+作战室地址：
 
-```
-用户：帮我回顾上周发的5条短视频脚本，哪些预测准、哪些翻车了
-系统：对比 blind prediction vs 实际数据，输出校准账本
-输出：calibration-ledger.json + 更新后的评分公式
+```text
+http://127.0.0.1:3000/workspace/agents/store-operator/war-room
 ```
 
-## 项目结构
+## 模型验收规则
 
-```
-openGrowth/
-├── backend/                    # Python后端
-│   ├── packages/harness/       # 核心框架
-│   ├── app/gateway/            # API网关
-│   └── tests/                  # 测试
-├── frontend/                   # Next.js前端
-│   └── src/components/         # React组件
-├── agents/                     # Agent定义
-├── skills/                     # 技能定义
-├── config.yaml                 # 配置文件
-└── docs/                       # 文档
+本项目的 Agent/LLM 行为验收使用 fresh 真实 DeepSeek V4 请求：
+
+```text
+本地模型 alias：deepseek-reasoner
+服务端模型：deepseek-v4-flash
+max_retries：0
 ```
 
-## 核心能力
+Mock、Replay、缓存输出或模型回退不能作为 Agent Gate 通过证据。确定性数据工具和纯前端状态逻辑仍使用常规单元测试。真实模型门禁还必须记录实际模型身份、重试次数和 provider request ID，避免把错误路由或旧响应当成通过。
 
-### 1. 多平台数据聚合
+## 验证
 
-| 平台 | 数据类型 | 费用 |
-|------|----------|------|
-| Reddit | 用户讨论、痛点 | 免费 |
-| YouTube | 视频评测、转录 | 免费 |
-| Hacker News | 技术讨论 | 免费 |
-| Polymarket | 预测市场赔率 | 免费 |
+后端：
 
-### 2. 证据驱动决策
+```bash
+cd backend
+uv run pytest -q \
+  tests/store_operator \
+  tests/test_custom_agent.py \
+  tests/test_subagent_skills_config.py \
+  tests/test_tool_deduplication.py
+uv run ruff check app/store_operator tests/store_operator
+```
 
-- 所有私有指标标记为unavailable
-- 基于公开信号验证
-- 每个决策都有证据支持
+前端：
 
-### 3. 游戏化界面
+```bash
+cd frontend
+pnpm typecheck
+pnpm exec vitest run
+pnpm exec eslint \
+  'src/components/workspace/store-operator/**/*.{ts,tsx}' \
+  'src/app/workspace/agents/store-operator/**/*.tsx'
+```
 
-- 像素艺术办公室
-- 6个像素角色
-- 实时状态同步
-- 白板任务进度
+前端功能改动还需要真实浏览器检查上传、流式回答、作战室状态、390px 布局和 reduced-motion 行为。
 
-## 贡献
+## 上游与个人新增能力
 
-欢迎贡献！请查看 [CONTRIBUTING.md](CONTRIBUTING.md)。
+DeerFlow 提供 Agent Runtime、LangGraph 编排、配置系统、Skill/Tool/Subagent 机制、上传、线程消息和基础前端。本项目新增并负责验证的部分包括：
+
+- 两个电商垂直 Agent 的产品边界与配置；
+- Store Operator 中文 SOUL 和数据分析 Skill；
+- 安全 CSV/XLSX 检查与只读 DuckDB Tool；
+- Explore / Analyst / Verifier 按需 Subagent 策略；
+- 中文入口和真实 Task 驱动的轻量作战室；
+- DeepSeek V4 零重试真实模型门禁与电商公开数据验收。
 
 ## 许可证
 
-MIT License - 详见 [LICENSE](LICENSE)
-
-## 联系方式
-
-- **GitHub**: github.com/CheungkiCheung/openGrowth
-- **Issues**: GitHub Issues
-
----
-
-**openGrowth** - 让增长验证更简单、更客观、更高效。
+MIT License，详见 [LICENSE](./LICENSE)。

@@ -8,8 +8,8 @@ import { I18nProvider } from "@/core/i18n/context";
 import { detectLocaleServer } from "@/core/i18n/server";
 
 export const metadata: Metadata = {
-  title: "openGrowth - AI多Agent增长引擎",
-  description: "AI多Agent增长引擎 - 从公开信号自动生成增长验证包",
+  title: "openGrowth - 电商经营智能体工作台",
+  description: "上架前验证方向，上架后用真实店铺数据持续分析。",
 };
 
 export default async function RootLayout({

@@ -38,6 +38,21 @@ token_usage:
 # Configure available LLM models for the agent to use
 
 models:
+  # Store Operator 验收模型。DEEPSEEK_API_KEY 只放在根目录 .env，禁止写入配置或提交。
+  # Agent 行为验收要求 max_retries: 0，避免重试掩盖真实模型失败。
+  # - name: deepseek-reasoner
+  #   display_name: 深度求索 V4 极速版
+  #   use: deerflow.models.patched_deepseek:PatchedChatDeepSeek
+  #   model: deepseek-v4-flash
+  #   api_base: https://api.deepseek.com/v1
+  #   api_key: $DEEPSEEK_API_KEY
+  #   timeout: 600.0
+  #   max_retries: 0
+  #   max_tokens: 8192
+  #   temperature: 0
+  #   supports_thinking: true
+  #   supports_vision: false
+
   # Example: Volcengine (Doubao) model
   # - name: doubao-seed-1.8
   #   display_name: Doubao-Seed-1.8
@@ -494,6 +509,7 @@ tool_groups:
   - name: file:read
   - name: file:write
   - name: bash
+  - name: store-data
 
 # ============================================================================
 # Tools Configuration
@@ -501,6 +517,15 @@ tool_groups:
 # Configure available tools for the agent to use
 
 tools:
+  # Store Operator：检查用户上传的 CSV/XLSX，并通过只读 DuckDB SQL 计算指标。
+  - name: store_inspect_data
+    group: store-data
+    use: app.store_operator.tools:store_inspect_data_tool
+
+  - name: store_query_data
+    group: store-data
+    use: app.store_operator.tools:store_query_data_tool
+
   # Web search tool (uses DuckDuckGo, no API key required)
   - name: web_search
     group: web
@@ -687,6 +712,7 @@ tool_output:
   exempt_tools:
     - read_file
     - read_file_tool
+    - store_inspect_data # Store profiles intentionally do not receive read_file
   # tool_overrides:
   #   web_search: 8000
   #   bash: 20000
@@ -899,6 +925,62 @@ sandbox:
 #   # Set `model` to use a different model (e.g., a local Ollama model for cost savings).
 #   # The model name must match a name defined in the `models:` section above.
 #
+#   # Store Operator example: these are optional specialists selected by the parent
+#   # according to the user's question. Do not force a fixed explore -> analyst -> verifier flow.
+#   custom_agents:
+#     explore:
+#       description: "检查上传文件、字段、数据粒度、时间范围、数据质量和可分析能力"
+#       system_prompt: |
+#         你是只读数据探索 Subagent。围绕 Parent 给出的明确目标检查当前 CSV/XLSX。
+#         先调用 store_inspect_data；只在确认口径时调用少量 store_query_data。
+#         返回表 alias、关键字段、粒度、时间范围、质量风险、可分析指标和未知项。
+#         不修改文件，不向用户提问，不启动 Subagent，不生成最终用户回答。
+#         最多检查 1 次、查询 2 次；信息足够后立即返回。
+#       tools:
+#         - store_inspect_data
+#         - store_query_data
+#       skills:
+#         - store-data-analysis
+#       model: inherit
+#       max_turns: 24
+#       max_tool_calls: 3
+#       timeout_seconds: 240
+#
+#     analyst:
+#       description: "使用确定性 SQL 完成窗口比较、经营指标计算和异常贡献拆解"
+#       system_prompt: |
+#         你是只读经营分析 Subagent，只完成 Parent 委派的一个可验证计算目标。
+#         使用 store_inspect_data 理解字段和粒度，再用 store_query_data 计算。
+#         返回窗口、口径、关键数字、可能解释、替代解释和数据限制。
+#         不修改文件，不向用户提问，不启动 Subagent，不生成最终用户回答。
+#         最多检查 1 次、查询 4 次；优先合并相关指标，达到预算后立即返回。
+#       tools:
+#         - store_inspect_data
+#         - store_query_data
+#       skills:
+#         - store-data-analysis
+#       model: inherit
+#       max_turns: 30
+#       max_tool_calls: 5
+#       timeout_seconds: 300
+#
+#     verifier:
+#       description: "独立复算关键经营数字，检查时间边界、重复求和、粒度和结论边界"
+#       system_prompt: |
+#         你是只读核验 Subagent。把 Parent 的结论视为待验证假设并独立复算。
+#         明确返回 verified、not_verified 或 needs_more_data，并列出差异和限制。
+#         不修改文件，不向用户提问，不启动 Subagent，不生成最终用户回答。
+#         最多检查 1 次、查询 3 次；复算完成后立即返回核验状态。
+#       tools:
+#         - store_inspect_data
+#         - store_query_data
+#       skills:
+#         - store-data-analysis
+#       model: inherit
+#       max_turns: 24
+#       max_tool_calls: 4
+#       timeout_seconds: 240
+#
 #   # EcomLaunch example: public-data-driven ecommerce launch subagents.
 #   # Uncomment this block after creating/enabling skills/custom/ecom-launch/SKILL.md.
 #   # Based on Anthropic's context-centric decomposition principle, market research
@@ -1083,6 +1165,13 @@ title:
   max_words: 6
   max_chars: 60
   model_name: null # Use default model (first model in models list)
+  # Keep the generated title in the user's language.
+  prompt_template: |
+    请使用与用户相同的语言，为下面的对话生成一个不超过 {max_words} 个词的简洁标题。
+    用户：{user_msg}
+    助手：{assistant_msg}
+
+    只返回标题，不要引号或解释。用户使用中文时，标题必须是中文。
 
 # ============================================================================
 # Summarization Configuration

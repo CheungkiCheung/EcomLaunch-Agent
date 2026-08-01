@@ -1,6 +1,10 @@
 "use client";
 
-import { BotIcon, ShoppingBagIcon } from "lucide-react";
+import {
+  BotIcon,
+  ChartNoAxesCombinedIcon,
+  ShoppingBagIcon,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { type Agent } from "@/core/agents";
@@ -18,13 +22,27 @@ export function AgentWelcome({
 }) {
   const { t } = useI18n();
   const isEcomLaunch = agentName === "ecom-launch";
+  const isStoreOperator = agentName === "store-operator";
   const displayName = isEcomLaunch
     ? t.agents.ecomLaunchName
-    : (agent?.name ?? agentName);
+    : isStoreOperator
+      ? t.agents.storeOperatorName
+      : (agent?.name ?? agentName);
   const description = isEcomLaunch
     ? t.agents.ecomLaunchWelcomeDescription
-    : agent?.description;
-  const Icon = isEcomLaunch ? ShoppingBagIcon : BotIcon;
+    : isStoreOperator
+      ? t.agents.storeOperatorWelcomeDescription
+      : agent?.description;
+  const badges = isEcomLaunch
+    ? t.agents.ecomLaunchWelcomeBadges
+    : isStoreOperator
+      ? t.agents.storeOperatorWelcomeBadges
+      : [];
+  const Icon = isEcomLaunch
+    ? ShoppingBagIcon
+    : isStoreOperator
+      ? ChartNoAxesCombinedIcon
+      : BotIcon;
 
   return (
     <div
@@ -40,9 +58,9 @@ export function AgentWelcome({
       {description && (
         <p className="text-muted-foreground max-w-sm text-sm">{description}</p>
       )}
-      {isEcomLaunch && (
+      {badges.length > 0 && (
         <div className="mt-1 flex max-w-md flex-wrap justify-center gap-1.5">
-          {t.agents.ecomLaunchWelcomeBadges.map((badge) => (
+          {badges.map((badge) => (
             <Badge key={badge} variant="secondary" className="font-normal">
               {badge}
             </Badge>

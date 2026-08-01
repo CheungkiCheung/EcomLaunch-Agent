@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
 
 
 def _make_model(**kwargs):
@@ -69,6 +69,75 @@ def test_to_json_api_key_is_masked():
     result = model.to_json()
     api_key_value = result["kwargs"].get("api_key") or result["kwargs"].get("openai_api_key")
     assert api_key_value is None or isinstance(api_key_value, dict), f"API key must not be plain text, got: {api_key_value!r}"
+
+
+def test_stream_chunk_preserves_provider_response_id_for_release_telemetry():
+    model = _make_model(max_retries=0)
+
+    generation = model._convert_chunk_to_generation_chunk(
+        {
+            "id": "provider-request-123",
+            "model": "deepseek-v4-flash",
+            "system_fingerprint": "fp-test",
+            "choices": [
+                {
+                    "delta": {"role": "assistant", "content": "完成"},
+                    "finish_reason": "stop",
+                    "index": 0,
+                }
+            ],
+        },
+        AIMessageChunk,
+        None,
+    )
+
+    assert generation is not None
+    assert generation.message.response_metadata["id"] == "provider-request-123"
+    assert generation.message.response_metadata["actual_model_identity"] == "deepseek-v4-flash"
+    assert generation.message.response_metadata["provider_request_id"] == "provider-request-123"
+    assert generation.message.response_metadata["provider_request_id_source"] == "response.id"
+    assert generation.message.response_metadata["retry_count"] == 0
+
+
+def test_stream_telemetry_is_attached_only_once_when_chunks_are_merged():
+    model = _make_model(max_retries=0)
+    first = model._convert_chunk_to_generation_chunk(
+        {
+            "id": "provider-request-merged",
+            "model": "deepseek-v4-flash",
+            "choices": [
+                {
+                    "delta": {"role": "assistant", "content": "前"},
+                    "finish_reason": None,
+                    "index": 0,
+                }
+            ],
+        },
+        AIMessageChunk,
+        None,
+    )
+    terminal = model._convert_chunk_to_generation_chunk(
+        {
+            "id": "provider-request-merged",
+            "model": "deepseek-v4-flash",
+            "choices": [
+                {
+                    "delta": {"content": "后"},
+                    "finish_reason": "stop",
+                    "index": 0,
+                }
+            ],
+        },
+        AIMessageChunk,
+        None,
+    )
+
+    assert first is not None
+    assert terminal is not None
+    merged = first.message + terminal.message
+    assert merged.response_metadata["actual_model_identity"] == "deepseek-v4-flash"
+    assert merged.response_metadata["provider_request_id"] == "provider-request-merged"
+    assert merged.response_metadata["retry_count"] == 0
 
 
 # ---------------------------------------------------------------------------
@@ -129,6 +198,41 @@ def test_no_reasoning_content_is_noop():
             payload = model._get_request_payload([human, ai])
 
     assistant_msg = next(m for m in payload["messages"] if m["role"] == "assistant")
+    assert "reasoning_content" not in assistant_msg
+
+
+def test_reasoning_content_is_not_replayed_when_invocation_disables_thinking():
+    model = _make_model(
+        max_retries=0,
+        extra_body={"thinking": {"type": "enabled"}},
+    )
+    human = HumanMessage(content="hello")
+    ai = AIMessage(
+        content="hi",
+        additional_kwargs={"reasoning_content": "private prior reasoning"},
+    )
+    base_payload = {
+        "messages": [
+            _make_payload_message("user", "hello"),
+            _make_payload_message("assistant", "hi"),
+        ]
+    }
+
+    with patch.object(
+        type(model).__bases__[0],
+        "_get_request_payload",
+        return_value=base_payload,
+    ):
+        with patch.object(model, "_convert_input") as mock_convert:
+            mock_convert.return_value = MagicMock(to_messages=lambda: [human, ai])
+            payload = model._get_request_payload(
+                [human, ai],
+                extra_body={"thinking": {"type": "disabled"}},
+            )
+
+    assistant_msg = next(
+        message for message in payload["messages"] if message["role"] == "assistant"
+    )
     assert "reasoning_content" not in assistant_msg
 
 

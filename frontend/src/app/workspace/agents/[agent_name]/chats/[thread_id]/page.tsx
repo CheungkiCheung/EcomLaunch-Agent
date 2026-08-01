@@ -5,6 +5,7 @@ import {
   Gamepad2Icon,
   PlusSquare,
   ShoppingBagIcon,
+  StoreIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -49,8 +50,10 @@ export default function AgentChatPage() {
     agent_name: string;
   }>();
   const isEcomLaunch = agent_name === "ecom-launch";
+  const isStoreOperator = agent_name === "store-operator";
+  const usesOrchestratedDefault = isEcomLaunch || isStoreOperator;
 
-  const { agent } = useAgent(isEcomLaunch ? null : agent_name);
+  const { agent } = useAgent(usesOrchestratedDefault ? null : agent_name);
 
   const { threadId, setThreadId, isNewThread, setIsNewThread, isMock } =
     useThreadChat();
@@ -58,7 +61,8 @@ export default function AgentChatPage() {
   // the thread. `isWelcomeMode` controls only the centered welcome layout, so
   // it can flip immediately on submit without triggering eager history loads.
   const [isWelcomeMode, setIsWelcomeMode] = useState(isNewThread);
-  const [ecomLaunchContextEdited, setEcomLaunchContextEdited] = useState(false);
+  const [orchestratedContextEdited, setOrchestratedContextEdited] =
+    useState(false);
   const [settings, setSettings] = useThreadSettings(threadId);
   const [localSettings, setLocalSettings] = useLocalSettings();
   const { tokenUsageEnabled } = useModels();
@@ -76,12 +80,12 @@ export default function AgentChatPage() {
 
   useEffect(() => {
     if (isNewThread) {
-      setEcomLaunchContextEdited(false);
+      setOrchestratedContextEdited(false);
     }
   }, [agent_name, isNewThread, threadId]);
 
   const effectiveContext = useMemo(() => {
-    if (!isEcomLaunch || ecomLaunchContextEdited) {
+    if (!usesOrchestratedDefault || orchestratedContextEdited) {
       return settings.context;
     }
     return {
@@ -89,11 +93,11 @@ export default function AgentChatPage() {
       mode: "ultra" as const,
       reasoning_effort: "high" as const,
     };
-  }, [ecomLaunchContextEdited, isEcomLaunch, settings.context]);
+  }, [orchestratedContextEdited, settings.context, usesOrchestratedDefault]);
 
   const handleContextChange = useCallback(
     (context: InputBoxContext) => {
-      if (!isEcomLaunch) {
+      if (!usesOrchestratedDefault) {
         setSettings("context", context);
         return;
       }
@@ -103,17 +107,17 @@ export default function AgentChatPage() {
         (context.reasoning_effort !== undefined &&
           context.reasoning_effort !== "high");
       if (changedAwayFromDefault) {
-        setEcomLaunchContextEdited(true);
+        setOrchestratedContextEdited(true);
         setSettings("context", context);
         return;
       }
 
       // The input box auto-selects the model on mount. Keep that model
-      // preference, while keeping the EcomLaunch Ultra default scoped to this
-      // page until the user explicitly changes mode/effort.
+      // preference, while keeping the orchestrated-agent Ultra default scoped
+      // to this page until the user explicitly changes mode/effort.
       setSettings("context", { model_name: context.model_name });
     },
-    [isEcomLaunch, setSettings],
+    [setSettings, usesOrchestratedDefault],
   );
 
   const {
@@ -178,7 +182,11 @@ export default function AgentChatPage() {
     ? localSettings.tokenUsage.inlineMode
     : "off";
   const hasTodos = (thread.values.todos?.length ?? 0) > 0;
-  const AgentBadgeIcon = isEcomLaunch ? ShoppingBagIcon : BotIcon;
+  const AgentBadgeIcon = isEcomLaunch
+    ? ShoppingBagIcon
+    : isStoreOperator
+      ? StoreIcon
+      : BotIcon;
 
   const chatExperience = (
     <ChatBox threadId={threadId}>
@@ -197,7 +205,9 @@ export default function AgentChatPage() {
             <span className="text-xs font-medium">
               {isEcomLaunch
                 ? t.agents.ecomLaunchName
-                : (agent?.name ?? agent_name)}
+                : isStoreOperator
+                  ? t.agents.storeOperatorName
+                  : (agent?.name ?? agent_name)}
             </span>
           </div>
 
@@ -224,6 +234,18 @@ export default function AgentChatPage() {
                   >
                     <Gamepad2Icon />
                     War Room
+                  </Link>
+                </Button>
+              </Tooltip>
+            )}
+            {isStoreOperator && (
+              <Tooltip content="打开作战室">
+                <Button size="sm" variant="outline" asChild>
+                  <Link
+                    href={`/workspace/agents/store-operator/war-room?threadId=${encodeURIComponent(threadId)}${isMock ? "&mock=true" : ""}`}
+                  >
+                    <Gamepad2Icon />
+                    作战室
                   </Link>
                 </Button>
               </Tooltip>
@@ -317,7 +339,11 @@ export default function AgentChatPage() {
                   )
                 }
                 welcomeSuggestions={
-                  isEcomLaunch ? t.agents.ecomLaunchSuggestions : undefined
+                  isEcomLaunch
+                    ? t.agents.ecomLaunchSuggestions
+                    : isStoreOperator
+                      ? t.agents.storeOperatorSuggestions
+                      : undefined
                 }
                 disabled={
                   env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" || isUploading

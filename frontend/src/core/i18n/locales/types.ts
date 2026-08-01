@@ -1,5 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 
+import type { LocalizedAuthErrorMessages } from "@/core/auth/error-messages";
+
 export interface Translations {
   // Locale meta
   locale: {
@@ -46,6 +48,37 @@ export interface Translations {
     blog: string;
   };
 
+  auth: {
+    signInTitle: string;
+    createAccountTitle: string;
+    email: string;
+    password: string;
+    waiting: string;
+    signIn: string;
+    createAccount: string;
+    noAccount: string;
+    haveAccount: string;
+    backHome: string;
+    createAdminTitle: string;
+    createAdminDescription: string;
+    confirmPassword: string;
+    passwordMinPlaceholder: string;
+    confirmPasswordPlaceholder: string;
+    creatingAdmin: string;
+    createAdmin: string;
+    completeSetupTitle: string;
+    completeSetupDescription: string;
+    currentPassword: string;
+    newPassword: string;
+    confirmNewPassword: string;
+    completingSetup: string;
+    completeSetup: string;
+    passwordMismatch: string;
+    passwordTooShort: string;
+    networkError: string;
+    errors: LocalizedAuthErrorMessages;
+  };
+
   // Welcome
   welcome: {
     greeting: string;
@@ -65,6 +98,8 @@ export interface Translations {
   // Input Box
   inputBox: {
     placeholder: string;
+    submit: string;
+    stop: string;
     createSkillPrompt: string;
     addAttachments: string;
     mode: string;
@@ -120,6 +155,9 @@ export interface Translations {
     ecomLaunch: string;
     ecomLaunchChat: string;
     ecomLaunchWarRoom: string;
+    storeOperator: string;
+    storeOperatorChat: string;
+    storeOperatorWarRoom: string;
   };
 
   // Agents
@@ -161,6 +199,14 @@ export interface Translations {
     ecomLaunchWelcomeDescription: string;
     ecomLaunchWelcomeBadges: string[];
     ecomLaunchSuggestions: {
+      suggestion: string;
+      prompt: string;
+      icon: LucideIcon;
+    }[];
+    storeOperatorName: string;
+    storeOperatorWelcomeDescription: string;
+    storeOperatorWelcomeBadges: string[];
+    storeOperatorSuggestions: {
       suggestion: string;
       prompt: string;
       icon: LucideIcon;
@@ -230,6 +276,16 @@ export interface Translations {
   uploads: {
     uploading: string;
     uploadingFiles: string;
+    uploadFiles: string;
+    image: string;
+    attachment: string;
+    removeAttachment: string;
+  };
+
+  artifactsPanel: {
+    title: string;
+    emptyTitle: string;
+    emptyDescription: string;
   };
 
   // Subtasks

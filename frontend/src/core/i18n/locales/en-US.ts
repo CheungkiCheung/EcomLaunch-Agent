@@ -1,11 +1,15 @@
 import {
+  BarChart3Icon,
   CompassIcon,
+  FileSpreadsheetIcon,
   GraduationCapIcon,
   ImageIcon,
   MicroscopeIcon,
+  PackageSearchIcon,
   PenLineIcon,
   ShapesIcon,
   SparklesIcon,
+  TrendingDownIcon,
   VideoIcon,
 } from "lucide-react";
 
@@ -58,6 +62,47 @@ export const enUS: Translations = {
     blog: "Blog",
   },
 
+  auth: {
+    signInTitle: "Sign in to your account",
+    createAccountTitle: "Create a new account",
+    email: "Email",
+    password: "Password",
+    waiting: "Please wait...",
+    signIn: "Sign In",
+    createAccount: "Create Account",
+    noAccount: "Don't have an account? Sign up",
+    haveAccount: "Already have an account? Sign in",
+    backHome: "Back to home",
+    createAdminTitle: "Create admin account",
+    createAdminDescription: "Set up the administrator account to get started.",
+    confirmPassword: "Confirm Password",
+    passwordMinPlaceholder: "Password (min. 8 characters)",
+    confirmPasswordPlaceholder: "Confirm password",
+    creatingAdmin: "Creating account...",
+    createAdmin: "Create Admin Account",
+    completeSetupTitle: "Complete admin account setup",
+    completeSetupDescription: "Set your real email and a new password.",
+    currentPassword: "Current password",
+    newPassword: "New password",
+    confirmNewPassword: "Confirm new password",
+    completingSetup: "Setting up...",
+    completeSetup: "Complete Setup",
+    passwordMismatch: "Passwords do not match",
+    passwordTooShort: "Password must be at least 8 characters",
+    networkError: "Network error. Please try again.",
+    errors: {
+      invalid_credentials: "Incorrect email or password",
+      token_expired: "Your session has expired. Please sign in again.",
+      token_invalid: "Your session is invalid. Please sign in again.",
+      user_not_found: "Account not found",
+      email_already_exists: "This email is already registered",
+      provider_not_found: "This sign-in method is unavailable",
+      not_authenticated: "Please sign in first",
+      system_already_initialized: "The system has already been initialized",
+      fallback: "Authentication failed. Please try again.",
+    },
+  },
+
   // Welcome
   welcome: {
     greeting: "Hello, again!",
@@ -80,6 +125,8 @@ export const enUS: Translations = {
   // Input Box
   inputBox: {
     placeholder: "How can I assist you today?",
+    submit: "Submit",
+    stop: "Stop generating",
     createSkillPrompt:
       "We're going to build a new skill step by step with `skill-creator`. To start, what do you want this skill to do?",
     addAttachments: "Add attachments",
@@ -176,6 +223,9 @@ export const enUS: Translations = {
     ecomLaunch: "EcomLaunch Validation",
     ecomLaunchChat: "Chat",
     ecomLaunchWarRoom: "War Room",
+    storeOperator: "Store Operations",
+    storeOperatorChat: "Data chat",
+    storeOperatorWarRoom: "War Room",
   },
 
   // Agents
@@ -261,6 +311,41 @@ export const enUS: Translations = {
         icon: SparklesIcon,
       },
     ],
+    storeOperatorName: "Store Operations Agent",
+    storeOperatorWelcomeDescription:
+      "Upload order, product, marketing, refund, inventory, or fulfillment data and ask your question directly.",
+    storeOperatorWelcomeBadges: [
+      "CSV / Excel",
+      "Deterministic metrics",
+      "Chinese-first",
+      "Dynamic subagents",
+    ],
+    storeOperatorSuggestions: [
+      {
+        suggestion: "Inspect data",
+        prompt:
+          "Inspect the uploaded files, fields, date coverage, analysis capabilities, and important data-quality risks.",
+        icon: FileSpreadsheetIcon,
+      },
+      {
+        suggestion: "Recent changes",
+        prompt:
+          "Analyze the most important recent changes in this store data. Anchor the comparison to the latest date in the data and disclose the windows.",
+        icon: TrendingDownIcon,
+      },
+      {
+        suggestion: "Product contribution",
+        prompt:
+          "Compare the latest period with an equal prior period and identify which products or categories contributed most to the change.",
+        icon: PackageSearchIcon,
+      },
+      {
+        suggestion: "Custom question",
+        prompt:
+          "Answer the following store operations question from the uploaded data. Calculate every number with data tools and state what cannot be determined:",
+        icon: BarChart3Icon,
+      },
+    ],
   },
 
   // Breadcrumb
@@ -327,6 +412,16 @@ export const enUS: Translations = {
   uploads: {
     uploading: "Uploading...",
     uploadingFiles: "Uploading files, please wait...",
+    uploadFiles: "Upload files",
+    image: "Image",
+    attachment: "Attachment",
+    removeAttachment: "Remove attachment",
+  },
+
+  artifactsPanel: {
+    title: "Artifacts",
+    emptyTitle: "No artifact selected",
+    emptyDescription: "Select an artifact to view its details.",
   },
 
   subtasks: {

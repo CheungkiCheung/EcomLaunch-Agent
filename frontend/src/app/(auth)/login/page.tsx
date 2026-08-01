@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { FlickeringGrid } from "@/components/ui/flickering-grid";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/core/auth/AuthProvider";
+import { getLocalizedAuthErrorMessage } from "@/core/auth/error-messages";
 import { parseAuthError } from "@/core/auth/types";
+import { useI18n } from "@/core/i18n/hooks";
 
 /**
  * Validate next parameter
@@ -49,6 +51,7 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuth();
   const { theme, resolvedTheme } = useTheme();
+  const { t } = useI18n();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -114,14 +117,14 @@ export default function LoginPage() {
       if (!res.ok) {
         const data = await res.json();
         const authError = parseAuthError(data);
-        setError(authError.message);
+        setError(getLocalizedAuthErrorMessage(authError, t.auth.errors));
         return;
       }
 
       // Both login and register set a cookie — redirect to workspace
       router.push(redirectPath);
     } catch {
-      setError("Network error. Please try again.");
+      setError(t.auth.networkError);
     } finally {
       setLoading(false);
     }
@@ -143,14 +146,14 @@ export default function LoginPage() {
         <div className="text-center">
           <h1 className="text-foreground font-serif text-3xl">openGrowth</h1>
           <p className="text-muted-foreground mt-2">
-            {isLogin ? "Sign in to your account" : "Create a new account"}
+            {isLogin ? t.auth.signInTitle : t.auth.createAccountTitle}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-2">
           <div className="flex flex-col space-y-1">
             <label htmlFor="email" className="text-sm font-medium">
-              Email
+              {t.auth.email}
             </label>
             <Input
               id="email"
@@ -163,7 +166,7 @@ export default function LoginPage() {
           </div>
           <div className="flex flex-col space-y-1">
             <label htmlFor="password" className="text-sm font-medium">
-              Password
+              {t.auth.password}
             </label>
             <Input
               id="password"
@@ -180,10 +183,10 @@ export default function LoginPage() {
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading
-              ? "Please wait..."
+              ? t.auth.waiting
               : isLogin
-                ? "Sign In"
-                : "Create Account"}
+                ? t.auth.signIn
+                : t.auth.createAccount}
           </Button>
         </form>
 
@@ -196,15 +199,13 @@ export default function LoginPage() {
             }}
             className="text-blue-500 hover:underline"
           >
-            {isLogin
-              ? "Don't have an account? Sign up"
-              : "Already have an account? Sign in"}
+            {isLogin ? t.auth.noAccount : t.auth.haveAccount}
           </button>
         </div>
 
         <div className="text-muted-foreground text-center text-xs">
           <Link href="/" className="hover:underline">
-            ← Back to home
+            ← {t.auth.backHome}
           </Link>
         </div>
       </div>

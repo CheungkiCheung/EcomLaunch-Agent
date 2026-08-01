@@ -341,7 +341,13 @@ class SubagentExecutor:
         from deerflow.agents.middlewares.tool_error_handling_middleware import build_subagent_runtime_middlewares
 
         # Reuse shared middleware composition with lead agent.
-        middlewares = build_subagent_runtime_middlewares(app_config=app_config, model_name=self.model_name, lazy_init=True, deferred_setup=deferred_setup)
+        middlewares = build_subagent_runtime_middlewares(
+            app_config=app_config,
+            model_name=self.model_name,
+            lazy_init=True,
+            deferred_setup=deferred_setup,
+            max_tool_calls=self.config.max_tool_calls,
+        )
 
         # system_prompt is included in initial state messages (see _build_initial_state)
         # to avoid multiple SystemMessages which some LLM APIs don't support.

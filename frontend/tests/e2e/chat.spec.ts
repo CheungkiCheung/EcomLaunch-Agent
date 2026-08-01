@@ -10,14 +10,18 @@ test.describe("Chat workspace", () => {
   test("new chat page loads with input box", async ({ page }) => {
     await page.goto("/workspace/chats/new");
 
-    const textarea = page.getByPlaceholder(/how can i assist you/i);
+    const textarea = page.getByPlaceholder(
+      /今天我能为你做些什么|how can i assist you/i,
+    );
     await expect(textarea).toBeVisible({ timeout: 15_000 });
   });
 
   test("can type a message in the input box", async ({ page }) => {
     await page.goto("/workspace/chats/new");
 
-    const textarea = page.getByPlaceholder(/how can i assist you/i);
+    const textarea = page.getByPlaceholder(
+      /今天我能为你做些什么|how can i assist you/i,
+    );
     await expect(textarea).toBeVisible({ timeout: 15_000 });
 
     await textarea.fill("Hello, DeerFlow!");
@@ -35,7 +39,9 @@ test.describe("Chat workspace", () => {
 
     await page.goto("/workspace/chats/new");
 
-    const textarea = page.getByPlaceholder(/how can i assist you/i);
+    const textarea = page.getByPlaceholder(
+      /今天我能为你做些什么|how can i assist you/i,
+    );
     await expect(textarea).toBeVisible({ timeout: 15_000 });
 
     await textarea.fill("Hello");
@@ -86,11 +92,13 @@ test.describe("Chat workspace", () => {
 
     await page.goto("/workspace/chats/new");
 
-    const textarea = page.getByPlaceholder(/how can i assist you/i);
+    const textarea = page.getByPlaceholder(
+      /今天我能为你做些什么|how can i assist you/i,
+    );
     await expect(textarea).toBeVisible({ timeout: 15_000 });
     const promptForm = page.locator("form").filter({ has: textarea });
 
-    await page.getByLabel("Upload files").setInputFiles({
+    await page.getByLabel(/上传文件|Upload files/).setInputFiles({
       name: "report.docx",
       mimeType:
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

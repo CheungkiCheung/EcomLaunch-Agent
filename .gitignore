@@ -42,6 +42,8 @@ coverage/
 skills/custom/*
 !skills/custom/ecom-launch/
 !skills/custom/ecom-launch/**
+!skills/custom/store-data-analysis/
+!skills/custom/store-data-analysis/**
 logs/
 log/
 debug.log

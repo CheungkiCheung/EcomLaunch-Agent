@@ -16,13 +16,16 @@ const withNextra = nextra({});
 
 /** @type {import("next").NextConfig} */
 const config = {
+  // Keep the local development UI interactive when it is opened through the
+  // numeric loopback address used by Codex's in-app browser.
+  allowedDevOrigins: ["127.0.0.1"],
   output:
     process.env.NEXT_CONFIG_BUILD_OUTPUT === "standalone"
       ? "standalone"
       : undefined,
   i18n: {
     locales: ["en", "zh"],
-    defaultLocale: "en",
+    defaultLocale: "zh",
   },
   devIndicators: false,
   async rewrites() {

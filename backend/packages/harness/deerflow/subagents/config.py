@@ -21,6 +21,7 @@ class SubagentConfig:
                 If an empty list, no skills are loaded.
         model: Model to use - 'inherit' uses parent's model.
         max_turns: Maximum number of agent turns before stopping.
+        max_tool_calls: Optional deterministic tool-call budget.
         timeout_seconds: Maximum execution time in seconds (default: 900 = 15 minutes).
     """
 
@@ -32,6 +33,7 @@ class SubagentConfig:
     skills: list[str] | None = None
     model: str = "inherit"
     max_turns: int = 50
+    max_tool_calls: int | None = None
     timeout_seconds: int = 900
 
 

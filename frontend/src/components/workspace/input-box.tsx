@@ -889,7 +889,11 @@ export function InputBox({
   );
 }
 
-function SuggestionList({ suggestions }: { suggestions?: WelcomeSuggestion[] }) {
+function SuggestionList({
+  suggestions,
+}: {
+  suggestions?: WelcomeSuggestion[];
+}) {
   const { t } = useI18n();
   const { textInput } = usePromptInputController();
   const handleSuggestionClick = useCallback(
@@ -979,6 +983,7 @@ function AddAttachmentsButton({ className }: { className?: string }) {
   return (
     <Tooltip content={t.inputBox.addAttachments}>
       <PromptInputButton
+        aria-label={t.inputBox.addAttachments}
         className={cn("px-2!", className)}
         onClick={() => attachments.openFileDialog()}
       >

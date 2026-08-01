@@ -313,6 +313,7 @@ class TestAgentConstruction:
             "model_name": "parent-model",
             "lazy_init": True,
             "deferred_setup": None,
+            "max_tool_calls": None,
         }
         assert captured["agent"]["model"] is model
         assert captured["agent"]["middleware"] is middlewares
@@ -660,6 +661,7 @@ class TestAgentConstruction:
         executor._create_agent(tools=[], deferred_setup=deferred_setup)
 
         assert captured["middlewares"]["deferred_setup"] is deferred_setup
+        assert captured["middlewares"]["max_tool_calls"] is base_config.max_tool_calls
 
 
 # -----------------------------------------------------------------------------

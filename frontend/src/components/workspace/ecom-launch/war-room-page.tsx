@@ -13,9 +13,9 @@ import { buildLaunchCrewActivityModelFromThread } from "@/components/workspace/e
 import { buildWarRoomMotion } from "@/components/workspace/ecom-launch/war-room-motion";
 import { WarRoomStage } from "@/components/workspace/ecom-launch/war-room-stage";
 import { useI18n } from "@/core/i18n/hooks";
-import { explainLastToolCall } from "@/core/tools/utils";
 import { useThreadState } from "@/core/threads/hooks";
 import type { AgentThreadState } from "@/core/threads/types";
+import { explainLastToolCall } from "@/core/tools/utils";
 
 const EMPTY_THREAD_VALUES: AgentThreadState = {
   title: "Launch War Room",

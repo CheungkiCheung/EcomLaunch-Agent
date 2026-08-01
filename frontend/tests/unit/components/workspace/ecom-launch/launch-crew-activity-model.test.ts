@@ -34,9 +34,9 @@ describe("launch crew activity model", () => {
       "info",
       "pending",
     ]);
-    expect(model.artifactStatuses.every((artifact) => artifact.status === "pending")).toBe(
-      true,
-    );
+    expect(
+      model.artifactStatuses.every((artifact) => artifact.status === "pending"),
+    ).toBe(true);
   });
 
   it("marks active tasks, caps live comms, and selects the working agent", () => {
@@ -109,7 +109,9 @@ describe("launch crew activity model", () => {
 
     expect(model.selectedAgent.id).toBe("evidence-checker");
     expect(model.selectedAgent.status).toBe("error");
-    expect(model.selectedAgent.lastLine).toBe("Evidence ledger JSON parse failed");
+    expect(model.selectedAgent.lastLine).toBe(
+      "Evidence ledger JSON parse failed",
+    );
   });
 
   it("preserves a valid user-selected agent", () => {
@@ -134,9 +136,9 @@ describe("launch crew activity model", () => {
 
     expect(model.selectedAgent.id).toBe("asset-studio");
     expect(model.selectedAgent.status).toBe("done");
-    expect(model.selectedAgent.artifacts.map((artifact) => artifact.name)).toEqual([
-      "listing-pack.md",
-    ]);
+    expect(
+      model.selectedAgent.artifacts.map((artifact) => artifact.name),
+    ).toEqual(["listing-pack.md"]);
   });
 
   it("maps real artifacts and evidence badges without fake ready states", () => {
@@ -160,12 +162,13 @@ describe("launch crew activity model", () => {
       "evidence-ledger.json",
       "unknown-extra.md",
     ]);
-    expect(model.evidenceBadges.find((badge) => badge.id === "evidence-ledger")?.status).toBe(
-      "ready",
-    );
-    expect(model.evidenceBadges.find((badge) => badge.id === "claims-audit")?.status).toBe(
-      "ready",
-    );
+    expect(
+      model.evidenceBadges.find((badge) => badge.id === "evidence-ledger")
+        ?.status,
+    ).toBe("ready");
+    expect(
+      model.evidenceBadges.find((badge) => badge.id === "claims-audit")?.status,
+    ).toBe("ready");
   });
 
   it("builds non-linear active missions from todos, tasks, and artifacts", () => {

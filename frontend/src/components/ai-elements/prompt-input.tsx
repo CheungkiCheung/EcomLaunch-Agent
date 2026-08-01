@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import type { PromptInputFilePart } from "@/core/uploads";
 import { splitUnsupportedUploadFiles } from "@/core/uploads";
+import { useI18n } from "@/core/i18n/hooks";
 import { isIMEComposing } from "@/lib/ime";
 import { cn } from "@/lib/utils";
 import type { ChatStatus } from "ai";
@@ -296,6 +297,7 @@ export function PromptInputAttachment({
   className,
   ...props
 }: PromptInputAttachmentProps) {
+  const { t } = useI18n();
   const attachments = usePromptInputAttachments();
 
   const filename = data.filename || "";
@@ -304,7 +306,8 @@ export function PromptInputAttachment({
     data.mediaType?.startsWith("image/") && data.url ? "image" : "file";
   const isImage = mediaType === "image";
 
-  const attachmentLabel = filename || (isImage ? "Image" : "Attachment");
+  const attachmentLabel =
+    filename || (isImage ? t.uploads.image : t.uploads.attachment);
 
   return (
     <PromptInputHoverCard>
@@ -334,7 +337,7 @@ export function PromptInputAttachment({
               )}
             </div>
             <Button
-              aria-label="Remove attachment"
+              aria-label={t.uploads.removeAttachment}
               className="absolute inset-0 size-5 cursor-pointer rounded p-0 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 [&>svg]:size-2.5"
               onClick={(e) => {
                 e.stopPropagation();
@@ -344,7 +347,7 @@ export function PromptInputAttachment({
               variant="ghost"
             >
               <XIcon />
-              <span className="sr-only">Remove</span>
+              <span className="sr-only">{t.uploads.removeAttachment}</span>
             </Button>
           </div>
 
@@ -367,7 +370,7 @@ export function PromptInputAttachment({
           <div className="flex items-center gap-2.5">
             <div className="min-w-0 flex-1 space-y-1 px-0.5">
               <h4 className="truncate text-sm leading-none font-semibold">
-                {filename || (isImage ? "Image" : "Attachment")}
+                {filename || (isImage ? t.uploads.image : t.uploads.attachment)}
               </h4>
               {data.mediaType && (
                 <p className="text-muted-foreground truncate font-mono text-xs">
@@ -482,6 +485,7 @@ export const PromptInput = ({
   children,
   ...props
 }: PromptInputProps) => {
+  const { t } = useI18n();
   // Try to use a provider controller if present
   const controller = useOptionalPromptInputController();
   const usingProvider = !!controller;
@@ -838,12 +842,12 @@ export const PromptInput = ({
     <PromptInputValidationContext.Provider value={sanitizeIncomingFiles}>
       <input
         accept={accept}
-        aria-label="Upload files"
+        aria-label={t.uploads.uploadFiles}
         className="hidden"
         multiple={multiple}
         onChange={handleChange}
         ref={inputRef}
-        title="Upload files"
+        title={t.uploads.uploadFiles}
         type="file"
       />
       <form
@@ -1083,6 +1087,7 @@ export const PromptInputSubmit = ({
   children,
   ...props
 }: PromptInputSubmitProps) => {
+  const { t } = useI18n();
   let Icon = <ArrowUpIcon className="size-4" />;
 
   if (status === "submitted") {
@@ -1095,7 +1100,7 @@ export const PromptInputSubmit = ({
 
   return (
     <InputGroupButton
-      aria-label="Submit"
+      aria-label={status === "streaming" ? t.inputBox.stop : t.inputBox.submit}
       className={cn(className)}
       size={size}
       type="submit"

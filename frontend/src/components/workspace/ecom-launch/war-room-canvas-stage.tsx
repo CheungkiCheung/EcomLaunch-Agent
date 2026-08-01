@@ -7,8 +7,8 @@ import {
   Graphics,
   Sprite,
   Text,
-  Texture,
 } from "pixi.js";
+import type { Texture } from "pixi.js";
 import { useEffect, useMemo, useRef } from "react";
 
 import type {
@@ -311,14 +311,6 @@ function fitSprite(
   sprite.x = position.x + offsets.x;
   sprite.y = position.y + offsets.y;
   sprite.zIndex = Math.round(sprite.y);
-}
-
-function pointWithOffset(point: WarRoomPoint, offsets = { x: 0, y: 0 }) {
-  const position = stagePoint(point);
-  return {
-    x: position.x + offsets.x,
-    y: position.y + offsets.y,
-  };
 }
 
 function stagePath(points: WarRoomPoint[]) {
@@ -947,7 +939,7 @@ export function WarRoomCanvasStage({
       });
     }
 
-    setup(mountNode);
+    void setup(mountNode);
 
     return () => {
       cancelled = true;
@@ -958,6 +950,9 @@ export function WarRoomCanvasStage({
       state.app.destroy(true);
       stageRef.current = null;
     };
+    // Pixi owns one application per mount. Later prop changes are synchronized
+    // by the effect below instead of recreating the canvas application.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

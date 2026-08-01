@@ -4,14 +4,15 @@ token_usage:
   enabled: true
 models:
 - name: deepseek-reasoner
-  display_name: DeepSeek Reasoner
+  display_name: 深度求索 V4 极速版
   use: deerflow.models.patched_deepseek:PatchedChatDeepSeek
-  model: deepseek-reasoner
+  model: deepseek-v4-flash
   api_base: https://api.deepseek.com/v1
   api_key: $DEEPSEEK_API_KEY
   timeout: 600.0
-  max_retries: 2
+  max_retries: 0
   max_tokens: 8192
+  temperature: 0
   supports_thinking: true
   supports_vision: false
   when_thinking_enabled:
@@ -27,6 +28,7 @@ tool_groups:
 - name: file:read
 - name: file:write
 - name: bash
+- name: store-data
 tools:
 - name: web_search
   group: web
@@ -74,6 +76,12 @@ tools:
   group: web
   use: deerflow.community.last30days.tools:last30days_tool
   timeout: 150
+- name: store_inspect_data
+  group: store-data
+  use: app.store_operator.tools:store_inspect_data_tool
+- name: store_query_data
+  group: store-data
+  use: app.store_operator.tools:store_query_data_tool
 tool_search:
   enabled: false
 tool_output:
@@ -88,6 +96,7 @@ tool_output:
   exempt_tools:
   - read_file
   - read_file_tool
+  - store_inspect_data
 loop_detection:
   enabled: true
   warn_threshold: 3
@@ -117,6 +126,12 @@ title:
   max_words: 6
   max_chars: 60
   model_name: null
+  prompt_template: |
+    请使用与用户相同的语言，为下面的对话生成一个不超过 {max_words} 个词的简洁标题。
+    用户：{user_msg}
+    助手：{assistant_msg}
+
+    只返回标题，不要引号或解释。用户使用中文时，标题必须是中文。
 summarization:
   enabled: true
   model_name: null
@@ -168,6 +183,59 @@ subagents:
       timeout_seconds: 300
       max_turns: 80
   custom_agents:
+    explore:
+      description: 检查上传文件、字段、数据粒度、时间范围、数据质量和可分析能力
+      system_prompt: |
+        你是只读数据探索 Subagent。围绕 Parent 给出的一个明确目标检查当前上传的 CSV/XLSX。
+        先调用 store_inspect_data；只在需要确认口径时调用少量 store_query_data。
+        返回表 alias、关键字段、粒度、时间范围、质量风险、可分析指标和未知项。
+        不修改文件，不向用户提问，不启动 Subagent，不生成最终用户回答。
+        只保留影响当前目标的发现，数据足够或无法继续区分时立即停止。
+        执行预算：store_inspect_data 最多 1 次，store_query_data 最多 2 次；得到足够信息后下一轮必须直接返回结果。
+      tools:
+      - store_inspect_data
+      - store_query_data
+      skills:
+      - store-data-analysis
+      model: inherit
+      max_turns: 24
+      max_tool_calls: 3
+      timeout_seconds: 240
+    analyst:
+      description: 使用确定性 SQL 完成窗口比较、经营指标计算和异常贡献拆解
+      system_prompt: |
+        你是只读经营分析 Subagent。只完成 Parent 委派的一个可验证计算目标。
+        必须先理解 store_inspect_data 返回的 alias、列名和粒度，再使用 store_query_data 计算。
+        不心算指标，不重复查询相同结果，不把相关性写成因果。
+        返回精确窗口、计算口径、关键数字、可能解释、替代解释和数据限制。
+        不修改文件，不向用户提问，不启动 Subagent，不生成最终用户回答。
+        执行预算：store_inspect_data 最多 1 次，store_query_data 最多 4 次；优先用一条 SQL 同时计算两个窗口，达到预算后必须返回当前可验证结果。
+      tools:
+      - store_inspect_data
+      - store_query_data
+      skills:
+      - store-data-analysis
+      model: inherit
+      max_turns: 30
+      max_tool_calls: 5
+      timeout_seconds: 300
+    verifier:
+      description: 独立复算关键经营数字，检查时间边界、重复求和、数据粒度和结论边界
+      system_prompt: |
+        你是只读核验 Subagent。把 Parent 提供的结论视为待验证假设。
+        使用 store_inspect_data 和 store_query_data 独立复算最关键的数字，检查订单去重、时间窗口、字段含义和数据质量风险。
+        明确返回 verified、not_verified 或 needs_more_data，并列出差异和限制。
+        不修改文件，不向用户提问，不启动 Subagent，不生成最终用户回答。
+        执行预算：store_inspect_data 最多 1 次，store_query_data 最多 3 次；完成核心数字复算后下一轮必须直接返回核验状态。
+      tools:
+      - store_inspect_data
+      - store_query_data
+      skills:
+      - store-data-analysis
+      model: inherit
+      max_turns: 24
+      max_tool_calls: 4
+      timeout_seconds: 240
     market-voc-researcher:
       description: Research public market signals, competitors, pricing, and mine
         customer voice, reviews, pain points from public sources

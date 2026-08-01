@@ -108,6 +108,7 @@ class TestCustomSubagentConfig:
         assert config.skills is None
         assert config.model == "inherit"
         assert config.max_turns == 50
+        assert config.max_tool_calls is None
         assert config.timeout_seconds == 900
 
     def test_full_configuration(self):
@@ -119,12 +120,14 @@ class TestCustomSubagentConfig:
             skills=["data-analysis", "visualization"],
             model="qwen3:32b",
             max_turns=80,
+            max_tool_calls=6,
             timeout_seconds=600,
         )
         assert config.tools == ["bash", "read_file", "write_file"]
         assert config.skills == ["data-analysis", "visualization"]
         assert config.model == "qwen3:32b"
         assert config.max_turns == 80
+        assert config.max_tool_calls == 6
         assert config.timeout_seconds == 600
 
     def test_skills_empty_list_no_skills(self):
@@ -141,6 +144,14 @@ class TestCustomSubagentConfig:
                 description="test",
                 system_prompt="test",
                 max_turns=0,
+            )
+
+    def test_rejects_zero_max_tool_calls(self):
+        with pytest.raises(ValueError):
+            CustomSubagentConfig(
+                description="test",
+                system_prompt="test",
+                max_tool_calls=0,
             )
 
     def test_rejects_zero_timeout(self):

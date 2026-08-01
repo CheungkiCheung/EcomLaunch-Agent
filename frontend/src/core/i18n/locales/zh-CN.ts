@@ -1,11 +1,15 @@
 ﻿import {
+  BarChart3Icon,
   CompassIcon,
+  FileSpreadsheetIcon,
   GraduationCapIcon,
   ImageIcon,
   MicroscopeIcon,
+  PackageSearchIcon,
   PenLineIcon,
   ShapesIcon,
   SparklesIcon,
+  TrendingDownIcon,
   VideoIcon,
 } from "lucide-react";
 
@@ -58,6 +62,47 @@ export const zhCN: Translations = {
     blog: "博客",
   },
 
+  auth: {
+    signInTitle: "登录你的账号",
+    createAccountTitle: "创建新账号",
+    email: "邮箱",
+    password: "密码",
+    waiting: "请稍候...",
+    signIn: "登录",
+    createAccount: "创建账号",
+    noAccount: "还没有账号？立即注册",
+    haveAccount: "已有账号？立即登录",
+    backHome: "返回首页",
+    createAdminTitle: "创建管理员账号",
+    createAdminDescription: "设置管理员账号后即可开始使用。",
+    confirmPassword: "确认密码",
+    passwordMinPlaceholder: "密码（至少 8 个字符）",
+    confirmPasswordPlaceholder: "再次输入密码",
+    creatingAdmin: "正在创建账号...",
+    createAdmin: "创建管理员账号",
+    completeSetupTitle: "完成管理员账号设置",
+    completeSetupDescription: "设置你的常用邮箱和新密码。",
+    currentPassword: "当前密码",
+    newPassword: "新密码",
+    confirmNewPassword: "确认新密码",
+    completingSetup: "正在完成设置...",
+    completeSetup: "完成设置",
+    passwordMismatch: "两次输入的密码不一致",
+    passwordTooShort: "密码长度至少为 8 个字符",
+    networkError: "网络错误，请重试。",
+    errors: {
+      invalid_credentials: "邮箱或密码不正确",
+      token_expired: "登录状态已过期，请重新登录",
+      token_invalid: "登录状态无效，请重新登录",
+      user_not_found: "未找到该账号",
+      email_already_exists: "该邮箱已被注册",
+      provider_not_found: "当前登录方式不可用",
+      not_authenticated: "请先登录",
+      system_already_initialized: "系统已经完成初始化",
+      fallback: "认证失败，请重试",
+    },
+  },
+
   // Welcome
   welcome: {
     greeting: "你好，欢迎回来！",
@@ -80,6 +125,8 @@ export const zhCN: Translations = {
   // Input Box
   inputBox: {
     placeholder: "今天我能为你做些什么？",
+    submit: "发送",
+    stop: "停止生成",
     createSkillPrompt:
       "我们一起用 skill-creator 技能来创建一个技能吧。先问问我希望这个技能能做什么。",
     addAttachments: "添加附件",
@@ -168,8 +215,11 @@ export const zhCN: Translations = {
     demoChats: "演示对话",
     agents: "智能体",
     ecomLaunch: "EcomLaunch 验证台",
-    ecomLaunchChat: "Chat",
-    ecomLaunchWarRoom: "War Room",
+    ecomLaunchChat: "验证对话",
+    ecomLaunchWarRoom: "验证作战室",
+    storeOperator: "商铺运营",
+    storeOperatorChat: "数据对话",
+    storeOperatorWarRoom: "作战室",
   },
 
   // Agents
@@ -249,6 +299,41 @@ export const zhCN: Translations = {
         icon: SparklesIcon,
       },
     ],
+    storeOperatorName: "商铺运营 Agent",
+    storeOperatorWelcomeDescription:
+      "上传订单、商品、营销、退款、库存或履约数据，然后直接告诉我你想分析什么。",
+    storeOperatorWelcomeBadges: [
+      "CSV / Excel",
+      "真实计算",
+      "中文对话",
+      "动态 Subagent",
+    ],
+    storeOperatorSuggestions: [
+      {
+        suggestion: "检查数据",
+        prompt:
+          "请先检查我上传的数据包含哪些表、字段和时间范围，告诉我可以可靠分析什么，以及有哪些数据质量问题。",
+        icon: FileSpreadsheetIcon,
+      },
+      {
+        suggestion: "整体异常",
+        prompt:
+          "请分析这份店铺数据最近有什么明显变化。先确认数据中的最新日期和合理比较窗口，再给出有数据支持的结论。",
+        icon: TrendingDownIcon,
+      },
+      {
+        suggestion: "商品贡献",
+        prompt:
+          "请比较最近一个周期和此前等长周期，找出哪些商品或类目对核心经营指标变化贡献最大。",
+        icon: PackageSearchIcon,
+      },
+      {
+        suggestion: "自选问题",
+        prompt:
+          "请根据我上传的数据回答下面这个经营问题；所有数字都通过数据工具计算，并明确当前数据不能判断的部分：",
+        icon: BarChart3Icon,
+      },
+    ],
   },
 
   // Breadcrumb
@@ -313,6 +398,16 @@ export const zhCN: Translations = {
   uploads: {
     uploading: "上传中...",
     uploadingFiles: "文件上传中，请稍候...",
+    uploadFiles: "上传文件",
+    image: "图片",
+    attachment: "附件",
+    removeAttachment: "移除附件",
+  },
+
+  artifactsPanel: {
+    title: "文件",
+    emptyTitle: "还没有选择文件",
+    emptyDescription: "选择一个文件后可在这里查看详情。",
   },
 
   subtasks: {
@@ -327,7 +422,7 @@ export const zhCN: Translations = {
   // Token Usage
   tokenUsage: {
     title: "Token 用量",
-    label: "Tokens",
+    label: "用量",
     input: "输入",
     output: "输出",
     total: "总计",

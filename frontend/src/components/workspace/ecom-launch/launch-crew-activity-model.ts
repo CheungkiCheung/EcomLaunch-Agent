@@ -297,7 +297,9 @@ function latestTaskByRole(tasks: LaunchCrewTask[]) {
 }
 
 function buildArtifacts(filepaths: string[]): LaunchCrewArtifact[] {
-  const readyByName = new Map(filepaths.map((filepath) => [getFileName(filepath), filepath]));
+  const readyByName = new Map(
+    filepaths.map((filepath) => [getFileName(filepath), filepath]),
+  );
   const required = REQUIRED_DELIVERABLES.map((deliverable) => ({
     filepath: readyByName.get(deliverable.filepath) ?? deliverable.filepath,
     name: deliverable.filepath,
@@ -311,7 +313,10 @@ function buildArtifacts(filepaths: string[]): LaunchCrewArtifact[] {
       const name = getFileName(filepath);
       return { filepath, name };
     })
-    .filter(({ name }) => !REQUIRED_DELIVERABLES.some((item) => item.filepath === name))
+    .filter(
+      ({ name }) =>
+        !REQUIRED_DELIVERABLES.some((item) => item.filepath === name),
+    )
     .map(({ filepath, name }) => ({
       filepath,
       name,
@@ -386,7 +391,9 @@ function lineForAgent(
     return task.currentAction;
   }
   if (task?.status === "completed") {
-    return task.result ? "结构化发现已回传给 Launch Director。" : "子任务已完成。";
+    return task.result
+      ? "结构化发现已回传给 Launch Director。"
+      : "子任务已完成。";
   }
   if (task) {
     return task.description;
@@ -423,11 +430,15 @@ function chooseSelectedAgentId({
   if (failed) {
     return failed.role;
   }
-  const working = [...tasks].reverse().find((task) => task.status === "in_progress");
+  const working = [...tasks]
+    .reverse()
+    .find((task) => task.status === "in_progress");
   if (working) {
     return working.role;
   }
-  const completed = [...tasks].reverse().find((task) => task.status === "completed");
+  const completed = [...tasks]
+    .reverse()
+    .find((task) => task.status === "completed");
   if (completed) {
     return completed.role;
   }
@@ -449,7 +460,9 @@ function buildLiveComms(
       task.status === "failed"
         ? (task.error ?? "任务阻塞")
         : task.status === "completed"
-          ? (task.result ? "结构化发现已回传。" : "子任务已完成。")
+          ? task.result
+            ? "结构化发现已回传。"
+            : "子任务已完成。"
           : (task.currentAction ?? task.description),
     kind:
       task.status === "failed"
@@ -525,7 +538,9 @@ function buildEvidenceBadges(
   isStreaming: boolean,
 ): LaunchCrewEvidenceBadge[] {
   const artifactNames = new Set(
-    artifacts.filter((artifact) => artifact.status === "ready").map((artifact) => artifact.name),
+    artifacts
+      .filter((artifact) => artifact.status === "ready")
+      .map((artifact) => artifact.name),
   );
   const evidenceTask = tasks.find((task) => task.role === "evidence-checker");
   return [
@@ -559,5 +574,7 @@ function buildEvidenceBadges(
 }
 
 function agentName(role: LaunchCrewRole) {
-  return LAUNCH_CREW_AGENTS.find((agent) => agent.id === role)?.shortName ?? role;
+  return (
+    LAUNCH_CREW_AGENTS.find((agent) => agent.id === role)?.shortName ?? role
+  );
 }
