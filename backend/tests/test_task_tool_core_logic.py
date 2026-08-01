@@ -7,11 +7,13 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from langchain_core.messages import AIMessage, HumanMessage
 
 from deerflow.subagents.config import SubagentConfig
 
 # Use module import so tests can patch the exact symbols referenced inside task_tool().
 task_tool_module = importlib.import_module("deerflow.tools.builtins.task_tool")
+launch_pack_guard_module = importlib.import_module("deerflow.tools.builtins.launch_pack_guard")
 
 
 class FakeSubagentStatus(Enum):
@@ -48,6 +50,13 @@ def _install_run_budget(
     *,
     max_subagent_calls: int = 4,
     deduplicate_subagents: bool = True,
+    allowed_subagent_types: list[str] | None = None,
+    subagent_dependencies: dict[str, list[str]] | None = None,
+    complete_workflow_patterns: list[str] | None = None,
+    required_completed_subagents: list[str] | None = None,
+    required_output_files: list[str] | None = None,
+    finalize_after_subagent: str | None = None,
+    validate_pack_before_evidence: bool = False,
     remaining_seconds: float = 120,
 ) -> None:
     now = task_tool_module.time.monotonic()
@@ -55,11 +64,19 @@ def _install_run_budget(
         "config": {
             "max_subagent_calls": max_subagent_calls,
             "deduplicate_subagents": deduplicate_subagents,
+            "allowed_subagent_types": allowed_subagent_types,
+            "subagent_dependencies": subagent_dependencies,
+            "complete_workflow_patterns": complete_workflow_patterns,
+            "required_completed_subagents": required_completed_subagents,
+            "required_output_files": required_output_files,
+            "finalize_after_subagent": finalize_after_subagent,
+            "validate_pack_before_evidence": validate_pack_before_evidence,
         },
         "started_at_monotonic": now,
         "deadline_monotonic": now + remaining_seconds,
         "subagent_calls_started": 0,
         "subagent_types_started": set(),
+        "subagent_types_completed": set(),
     }
 
 
@@ -164,6 +181,301 @@ def test_run_budget_rejects_a_duplicate_specialist_without_starting_it(monkeypat
 
     assert "already ran" in result
     assert runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]["subagent_calls_started"] == 1
+
+
+def test_run_budget_rejects_disallowed_subagent_without_starting_it(monkeypatch):
+    runtime = _make_runtime()
+    _install_run_budget(runtime, allowed_subagent_types=["market-voc-researcher", "offer-architect"])
+    monkeypatch.setattr(
+        task_tool_module,
+        "get_subagent_config",
+        lambda _: _make_subagent_config(name="general-purpose"),
+    )
+    monkeypatch.setattr(task_tool_module, "get_available_subagent_names", lambda: ["general-purpose"])
+    monkeypatch.setattr(task_tool_module, "SubagentExecutor", lambda **_: pytest.fail("disallowed subagent must not start"))
+
+    result = _run_task_tool(
+        runtime=runtime,
+        description="通用研究",
+        prompt="redo the research",
+        subagent_type="general-purpose",
+        tool_call_id="tc-disallowed",
+    )
+
+    assert "not allowed for this agent" in result
+    assert "market-voc-researcher, offer-architect" in result
+    budget_state = runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]
+    assert budget_state["subagent_calls_started"] == 0
+    assert budget_state["subagent_types_started"] == set()
+
+
+def test_completed_evidence_checker_marks_terminal_delivery_state():
+    runtime = _make_runtime()
+    _install_run_budget(runtime)
+
+    task_tool_module._mark_completed_subagent(runtime, "evidence-checker", "verdict: revise")
+
+    budget_state = runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]
+    assert budget_state["evidence_checker_completed"] is True
+    assert budget_state["evidence_checker_verdict"] == "revise"
+    assert budget_state["evidence_checker_result"] == "verdict: revise"
+
+
+def test_budget_stopped_evidence_checker_is_not_a_valid_audit():
+    runtime = _make_runtime()
+    _install_run_budget(runtime, finalize_after_subagent="evidence-checker")
+
+    task_tool_module._mark_completed_subagent(
+        runtime,
+        "evidence-checker",
+        "Specialist execution budget reached.\n停止原因：Token 上限 50000。",
+    )
+
+    budget_state = runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]
+    assert "evidence-checker" not in budget_state["subagent_types_completed"]
+    assert budget_state["terminal_subagent_finished"] is True
+    assert budget_state["evidence_checker_completed"] is False
+    assert budget_state["evidence_checker_verdict"] is None
+
+
+def test_budget_stopped_non_terminal_specialist_is_not_marked_completed():
+    runtime = _make_runtime()
+    _install_run_budget(runtime)
+
+    task_tool_module._mark_completed_subagent(
+        runtime,
+        "market-voc-researcher",
+        "Specialist execution budget reached.\n停止原因：主智能体模型调用上限 3 次。",
+    )
+
+    budget_state = runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]
+    assert "market-voc-researcher" not in budget_state["subagent_types_completed"]
+
+
+def test_budget_stopped_required_specialist_terminates_complete_workflow():
+    runtime = _make_runtime()
+    runtime.state["messages"] = [
+        HumanMessage(content="请输出完整 Launch Validation Pack", name="user-input"),
+        HumanMessage(content="compact", name="compacted_file_history", additional_kwargs={"hide_from_ui": True}),
+    ]
+    _install_run_budget(
+        runtime,
+        complete_workflow_patterns=["Launch Validation Pack"],
+        required_completed_subagents=["market-voc-researcher", "evidence-checker"],
+    )
+
+    task_tool_module._mark_completed_subagent(
+        runtime,
+        "market-voc-researcher",
+        "Specialist execution budget reached.\n停止原因：主智能体模型调用上限 4 次。",
+    )
+
+    budget_state = runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]
+    assert budget_state["subagent_types_completed"] == set()
+    assert budget_state["workflow_failed_subagent"] == "market-voc-researcher"
+    assert budget_state["terminal_subagent_finished"] is True
+
+
+def test_evidence_checker_accepts_markdown_audit_result_heading():
+    runtime = _make_runtime()
+    _install_run_budget(runtime)
+
+    task_tool_module._mark_completed_subagent(runtime, "evidence-checker", "## 审计结果：revise\n- 修正 E002")
+
+    budget_state = runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]
+    assert budget_state["evidence_checker_completed"] is True
+    assert budget_state["evidence_checker_verdict"] == "revise"
+
+
+def test_terminal_specialist_preflight_blocks_without_reserving_a_slot(tmp_path, monkeypatch):
+    runtime = _make_runtime()
+    runtime.state["thread_data"]["outputs_path"] = str(tmp_path)
+    runtime.state["messages"] = [HumanMessage(content="没有样品，请输出完整 Launch Validation Pack", name="user-input")]
+    _install_run_budget(
+        runtime,
+        required_output_files=["listing-pack.md"],
+        finalize_after_subagent="evidence-checker",
+        validate_pack_before_evidence=True,
+    )
+    def fake_validate(*_args, **kwargs):
+        assert kwargs["user_request"] == "没有样品，请输出完整 Launch Validation Pack"
+        return ["listing-pack.md:2 unsafe"]
+
+    monkeypatch.setattr(task_tool_module, "validate_launch_pack", fake_validate)
+
+    error = task_tool_module._terminal_specialist_preflight(runtime, "evidence-checker")
+
+    assert error is not None
+    assert "did not reserve a specialist slot" in error
+    assert "listing-pack.md:2 unsafe" in error
+    budget_state = runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]
+    assert budget_state["subagent_calls_started"] == 0
+    assert budget_state["subagent_types_started"] == set()
+    assert budget_state["subagent_types_completed"] == set()
+
+
+def test_second_terminal_preflight_failure_stops_further_audit_attempts(tmp_path, monkeypatch):
+    runtime = _make_runtime()
+    runtime.state["thread_data"]["outputs_path"] = str(tmp_path)
+    runtime.state["messages"] = [HumanMessage(content="请输出完整 Launch Validation Pack", name="user-input")]
+    _install_run_budget(
+        runtime,
+        required_output_files=["listing-pack.md"],
+        finalize_after_subagent="evidence-checker",
+        validate_pack_before_evidence=True,
+    )
+    monkeypatch.setattr(task_tool_module, "validate_launch_pack", lambda *_args, **_kwargs: ["listing-pack.md:2 unsafe"])
+
+    first = task_tool_module._terminal_specialist_preflight(runtime, "evidence-checker")
+    second = task_tool_module._terminal_specialist_preflight(runtime, "evidence-checker")
+    assert first is not None and second is not None
+    assert task_tool_module._record_terminal_preflight_failure(runtime, "evidence-checker", first) is False
+    assert task_tool_module._record_terminal_preflight_failure(runtime, "evidence-checker", second) is True
+
+    budget_state = runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]
+    assert budget_state["terminal_preflight_failures"] == 2
+    assert budget_state["terminal_subagent_finished"] is True
+    assert budget_state["evidence_checker_completed"] is False
+
+
+def test_no_sample_pack_is_deterministically_normalized_before_audit(tmp_path):
+    required = [
+        "launch-war-room.html",
+        "evidence-ledger.json",
+        "competitor-table.csv",
+        "positioning-brief.md",
+        "listing-pack.md",
+        "content-pack.md",
+        "launch-calendar.csv",
+    ]
+    (tmp_path / "launch-war-room.html").write_text(
+        "<html><body><main>Pack validation dashboard with public signals and seven-day actions.</main></body></html>\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "positioning-brief.md").write_text(
+        "# Positioning brief\n\nInternal hypothesis: audience, use scenario, and price acceptance remain unverified; collect traceable problem and budget signals before sampling.\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "launch-calendar.csv").write_text("day,action\n1,collect questions\n", encoding="utf-8")
+    (tmp_path / "evidence-ledger.json").write_text(
+        '{"entries":[{"id":"E1","label":"observed_public","source_urls":[]}]}' + "\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "competitor-table.csv").write_text(
+        "name,evidence_label,source_url\nA,observed_public,\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "listing-pack.md").write_text("亲测防泼水材质，专为20寸登机箱设计。\n", encoding="utf-8")
+    (tmp_path / "content-pack.md").write_text("最近我试用了这款产品。\n", encoding="utf-8")
+    user_request = "我想做一个 89-169 元的旅行收纳包套装，没有样品和规格表。"
+
+    changed = launch_pack_guard_module.prepare_launch_pack_for_audit(
+        tmp_path,
+        required,
+        user_request=user_request,
+    )
+    issues = launch_pack_guard_module.validate_launch_pack(
+        tmp_path,
+        required,
+        user_request=user_request,
+    )
+
+    assert set(changed) == {"listing-pack.md", "content-pack.md", "evidence-ledger.json", "competitor-table.csv"}
+    assert issues == []
+    assert "不接受订单或付款" in (tmp_path / "listing-pack.md").read_text(encoding="utf-8")
+    assert "不接受付款或预订" in (tmp_path / "content-pack.md").read_text(encoding="utf-8")
+
+
+def test_run_budget_blocks_a_sibling_specialist_until_its_dependency_completes():
+    runtime = _make_runtime()
+    _install_run_budget(runtime, subagent_dependencies={"offer-architect": ["market-voc-researcher"]})
+    runtime.state["messages"] = [
+        AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "name": "task",
+                    "args": {"subagent_type": "market-voc-researcher"},
+                    "id": "tc-market",
+                    "type": "tool_call",
+                },
+                {
+                    "name": "task",
+                    "args": {"subagent_type": "offer-architect"},
+                    "id": "tc-offer",
+                    "type": "tool_call",
+                },
+            ],
+        )
+    ]
+
+    _, error = task_tool_module._apply_run_budget_to_subagent(runtime, _make_subagent_config("offer-architect"), "offer-architect")
+
+    assert "must wait for prerequisite(s) market-voc-researcher" in error
+    budget_state = runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]
+    assert budget_state["subagent_calls_started"] == 0
+    assert budget_state["subagent_types_started"] == set()
+
+
+def test_complete_workflow_enforces_dependencies_even_when_the_prerequisite_was_not_scheduled():
+    runtime = _make_runtime()
+    runtime.state["messages"] = [HumanMessage(content="请输出完整 Launch Validation Pack")]
+    _install_run_budget(
+        runtime,
+        subagent_dependencies={"evidence-checker": ["asset-studio"]},
+        complete_workflow_patterns=["Launch Validation Pack"],
+    )
+
+    _, error = task_tool_module._apply_run_budget_to_subagent(
+        runtime,
+        _make_subagent_config("evidence-checker"),
+        "evidence-checker",
+    )
+
+    assert "must wait for prerequisite(s) asset-studio" in error
+    budget_state = runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]
+    assert budget_state["subagent_calls_started"] == 0
+
+
+def test_run_budget_allows_a_dependent_specialist_standalone_or_after_completion():
+    standalone_runtime = _make_runtime()
+    dependencies = {"offer-architect": ["market-voc-researcher"]}
+    _install_run_budget(standalone_runtime, subagent_dependencies=dependencies)
+    standalone_runtime.state["messages"] = [
+        AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "name": "task",
+                    "args": {"subagent_type": "offer-architect"},
+                    "id": "tc-offer",
+                    "type": "tool_call",
+                }
+            ],
+        )
+    ]
+
+    _, standalone_error = task_tool_module._apply_run_budget_to_subagent(
+        standalone_runtime,
+        _make_subagent_config("offer-architect"),
+        "offer-architect",
+    )
+
+    assert standalone_error is None
+
+    completed_runtime = _make_runtime()
+    _install_run_budget(completed_runtime, subagent_dependencies=dependencies)
+    completed_state = completed_runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]
+    completed_state["subagent_types_started"] = {"market-voc-researcher"}
+    task_tool_module._mark_completed_subagent(completed_runtime, "market-voc-researcher", "done")
+
+    _, completed_error = task_tool_module._apply_run_budget_to_subagent(
+        completed_runtime,
+        _make_subagent_config("offer-architect"),
+        "offer-architect",
+    )
+
+    assert completed_error is None
 
 
 def test_run_budget_rejects_subagents_after_the_whole_run_limit(monkeypatch):

@@ -2,16 +2,19 @@
 
 import asyncio
 import logging
+import re
 import time
 import uuid
 from dataclasses import replace
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from langchain.tools import InjectedToolCallId, tool
 from langchain_core.callbacks import BaseCallbackManager
+from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.config import get_stream_writer
 
-from deerflow.agents.middlewares.run_budget_middleware import RUN_BUDGET_CONTEXT_KEY
+from deerflow.agents.middlewares.run_budget_middleware import INTERNAL_HUMAN_MESSAGE_NAMES, RUN_BUDGET_CONTEXT_KEY
 from deerflow.config import get_app_config
 from deerflow.sandbox.security import LOCAL_BASH_SUBAGENT_DISABLED_MESSAGE, is_host_bash_allowed
 from deerflow.subagents import SubagentExecutor, get_available_subagent_names, get_subagent_config
@@ -22,6 +25,7 @@ from deerflow.subagents.executor import (
     get_background_task_result,
     request_cancel_background_task,
 )
+from deerflow.tools.builtins.launch_pack_guard import prepare_launch_pack_for_audit, validate_launch_pack
 from deerflow.tools.types import Runtime
 
 if TYPE_CHECKING:
@@ -32,6 +36,10 @@ logger = logging.getLogger(__name__)
 # Cache subagent token usage by tool_call_id so TokenUsageMiddleware can
 # write it back to the triggering AIMessage's usage_metadata.
 _subagent_usage_cache: dict[str, dict[str, int]] = {}
+_EVIDENCE_VERDICT_PATTERN = re.compile(
+    r"(?im)^\s*(?:#{1,6}\s*)?(?:[-*]\s*)?(?:verdict|审计结论|审计结果|结论)\s*[:：]\s*`?(pass|revise|blocked)\b"
+)
+_INCOMPLETE_AUDIT_PATTERN = re.compile(r"execution budget|执行预算|token\s*上限|model call limit", re.IGNORECASE)
 
 
 def _token_usage_cache_enabled(app_config: "AppConfig | None") -> bool:
@@ -188,6 +196,144 @@ def _merge_skill_allowlists(parent: list[str] | None, child: list[str] | None) -
     return None
 
 
+def _scheduled_sibling_subagent_types(runtime: Any) -> set[str]:
+    """Return specialist types scheduled in the current lead-agent tool batch."""
+    state = getattr(runtime, "state", None)
+    if not isinstance(state, dict):
+        return set()
+    messages = state.get("messages")
+    if not isinstance(messages, (list, tuple)):
+        return set()
+
+    for message in reversed(messages):
+        if not isinstance(message, AIMessage):
+            continue
+        scheduled: set[str] = set()
+        for tool_call in message.tool_calls or []:
+            if tool_call.get("name") != "task":
+                continue
+            args = tool_call.get("args")
+            subagent_type = args.get("subagent_type") if isinstance(args, dict) else None
+            if isinstance(subagent_type, str) and subagent_type:
+                scheduled.add(subagent_type)
+        return scheduled
+    return set()
+
+
+def _message_text(message: Any) -> str:
+    content = getattr(message, "content", "")
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return ""
+    parts: list[str] = []
+    for block in content:
+        if isinstance(block, str):
+            parts.append(block)
+        elif isinstance(block, dict) and isinstance(block.get("text"), str):
+            parts.append(block["text"])
+    return "\n".join(parts)
+
+
+def _complete_workflow_requested(runtime: Any, budget_config: dict[str, Any]) -> bool:
+    patterns = budget_config.get("complete_workflow_patterns")
+    if not isinstance(patterns, list) or not patterns:
+        return False
+    state = getattr(runtime, "state", None)
+    messages = state.get("messages") if isinstance(state, dict) else None
+    if not isinstance(messages, (list, tuple)):
+        return False
+    for message in reversed(messages):
+        if not isinstance(message, HumanMessage) or message.name in INTERNAL_HUMAN_MESSAGE_NAMES:
+            continue
+        user_text = _message_text(message)
+        return any(re.search(pattern, user_text, re.IGNORECASE) for pattern in patterns if isinstance(pattern, str) and pattern)
+    return False
+
+
+def _latest_user_request_text(runtime: Any) -> str:
+    state = getattr(runtime, "state", None)
+    messages = state.get("messages") if isinstance(state, dict) else None
+    if not isinstance(messages, (list, tuple)):
+        return ""
+    for message in reversed(messages):
+        if isinstance(message, HumanMessage) and message.name not in INTERNAL_HUMAN_MESSAGE_NAMES:
+            return _message_text(message)
+    return ""
+
+
+def _terminal_specialist_preflight(runtime: Any, subagent_type: str) -> str | None:
+    """Block the terminal audit until the deterministic candidate-pack contract passes."""
+    context = getattr(runtime, "context", None)
+    budget_state = context.get(RUN_BUDGET_CONTEXT_KEY) if isinstance(context, dict) else None
+    if not isinstance(budget_state, dict):
+        return None
+    budget_config = budget_state.get("config")
+    if not isinstance(budget_config, dict):
+        return None
+    if not budget_config.get("validate_pack_before_evidence"):
+        return None
+    if subagent_type != budget_config.get("finalize_after_subagent"):
+        return None
+
+    required_files = budget_config.get("required_output_files")
+    if not isinstance(required_files, list) or not required_files:
+        return None
+    required_names = [name for name in required_files if isinstance(name, str) and name]
+    state = getattr(runtime, "state", None)
+    thread_data = state.get("thread_data") if isinstance(state, dict) else None
+    outputs_path = thread_data.get("outputs_path") if isinstance(thread_data, dict) else None
+    if not outputs_path:
+        return "Task skipped: launch-pack preflight could not resolve the thread outputs directory."
+
+    resolved_outputs = Path(outputs_path).resolve()
+    normalized_files = prepare_launch_pack_for_audit(
+        resolved_outputs,
+        required_names,
+        user_request=_latest_user_request_text(runtime),
+    )
+    if normalized_files:
+        logger.info("Normalized candidate Launch Pack before evidence audit: %s", ", ".join(normalized_files))
+
+    issues = validate_launch_pack(
+        resolved_outputs,
+        required_names,
+        user_request=_latest_user_request_text(runtime),
+    )
+    if not issues:
+        return None
+    formatted = "\n".join(f"- {issue}" for issue in issues)
+    return (
+        f"Task skipped: candidate Launch Pack preflight must pass before specialist '{subagent_type}' starts. "
+        "Fix only the listed files, then call the same specialist again; this skipped attempt did not reserve a specialist slot.\n"
+        f"{formatted}"
+    )
+
+
+def _record_terminal_preflight_failure(runtime: Any, subagent_type: str, result: str) -> bool:
+    """Stop a complete workflow after a repeated terminal preflight failure."""
+    context = getattr(runtime, "context", None)
+    budget_state = context.get(RUN_BUDGET_CONTEXT_KEY) if isinstance(context, dict) else None
+    if not isinstance(budget_state, dict):
+        return False
+    budget_config = budget_state.get("config")
+    if not isinstance(budget_config, dict) or subagent_type != budget_config.get("finalize_after_subagent"):
+        return False
+
+    failures = budget_state.get("terminal_preflight_failures", 0)
+    failures = failures if isinstance(failures, int) and failures >= 0 else 0
+    failures += 1
+    budget_state["terminal_preflight_failures"] = failures
+    budget_state["terminal_preflight_result"] = result
+    if failures < 2:
+        return False
+
+    budget_state["terminal_subagent_finished"] = True
+    budget_state["evidence_checker_completed"] = False
+    budget_state["evidence_checker_verdict"] = None
+    return True
+
+
 def _apply_run_budget_to_subagent(runtime: Any, config: Any, subagent_type: str) -> tuple[Any, str | None]:
     """Reserve one run-scoped subagent slot and clamp its timeout.
 
@@ -207,6 +353,13 @@ def _apply_run_budget_to_subagent(runtime: Any, config: Any, subagent_type: str)
     if not isinstance(budget_config, dict):
         return config, None
 
+    allowed_subagent_types = budget_config.get("allowed_subagent_types")
+    if allowed_subagent_types is not None:
+        allowed = {name for name in allowed_subagent_types if isinstance(name, str)}
+        if subagent_type not in allowed:
+            allowed_display = ", ".join(sorted(allowed)) or "none"
+            return config, f"Task skipped: subagent type '{subagent_type}' is not allowed for this agent. Allowed types: {allowed_display}."
+
     deadline = budget_state.get("deadline_monotonic")
     if isinstance(deadline, (int, float)):
         remaining_seconds = int(deadline - time.monotonic())
@@ -219,6 +372,28 @@ def _apply_run_budget_to_subagent(runtime: Any, config: Any, subagent_type: str)
     if not isinstance(started_types, set):
         started_types = set(started_types) if isinstance(started_types, (list, tuple)) else set()
         budget_state["subagent_types_started"] = started_types
+
+    completed_types = budget_state.setdefault("subagent_types_completed", set())
+    if not isinstance(completed_types, set):
+        completed_types = set(completed_types) if isinstance(completed_types, (list, tuple)) else set()
+        budget_state["subagent_types_completed"] = completed_types
+
+    dependency_config = budget_config.get("subagent_dependencies")
+    if isinstance(dependency_config, dict):
+        raw_dependencies = dependency_config.get(subagent_type)
+        if isinstance(raw_dependencies, list):
+            dependencies = {name for name in raw_dependencies if isinstance(name, str) and name}
+            if _complete_workflow_requested(runtime, budget_config):
+                active_dependencies = dependencies
+            else:
+                active_dependencies = dependencies.intersection(started_types | _scheduled_sibling_subagent_types(runtime))
+            incomplete_dependencies = sorted(active_dependencies - completed_types)
+            if incomplete_dependencies:
+                dependency_display = ", ".join(incomplete_dependencies)
+                return config, (
+                    f"Task skipped: specialist '{subagent_type}' must wait for prerequisite(s) {dependency_display} "
+                    "to complete. Call it again after those results are available."
+                )
 
     if budget_config.get("deduplicate_subagents", True) and subagent_type in started_types:
         return config, f"Task skipped: specialist '{subagent_type}' already ran in this user request. Reuse its earlier result instead of starting duplicate research."
@@ -233,6 +408,45 @@ def _apply_run_budget_to_subagent(runtime: Any, config: Any, subagent_type: str)
     started_types.add(subagent_type)
     clamped_timeout = max(1, min(config.timeout_seconds, remaining_seconds))
     return replace(config, timeout_seconds=clamped_timeout), None
+
+
+def _mark_completed_subagent(runtime: Any, subagent_type: str, result: str | None) -> None:
+    """Persist completion signals needed by configured terminal-delivery contracts."""
+    context = getattr(runtime, "context", None)
+    if not isinstance(context, dict):
+        return
+    budget_state = context.get(RUN_BUDGET_CONTEXT_KEY)
+    if not isinstance(budget_state, dict):
+        return
+    budget_config = budget_state.get("config")
+    if isinstance(budget_config, dict) and subagent_type == budget_config.get("finalize_after_subagent"):
+        budget_state["terminal_subagent_finished"] = True
+    result_text = result or ""
+    incomplete_result = _INCOMPLETE_AUDIT_PATTERN.search(result_text) is not None
+    if incomplete_result:
+        if subagent_type == "evidence-checker":
+            budget_state["evidence_checker_completed"] = False
+            budget_state["evidence_checker_verdict"] = None
+            budget_state["evidence_checker_result"] = result_text
+        required_subagents = budget_config.get("required_completed_subagents") if isinstance(budget_config, dict) else None
+        required = {name for name in required_subagents if isinstance(name, str) and name} if isinstance(required_subagents, list) else set()
+        if subagent_type in required and _complete_workflow_requested(runtime, budget_config):
+            budget_state["workflow_failed_subagent"] = subagent_type
+            budget_state["workflow_failed_result"] = result_text
+            budget_state["terminal_subagent_finished"] = True
+        return
+
+    completed_types = budget_state.setdefault("subagent_types_completed", set())
+    if not isinstance(completed_types, set):
+        completed_types = set(completed_types) if isinstance(completed_types, (list, tuple)) else set()
+        budget_state["subagent_types_completed"] = completed_types
+    completed_types.add(subagent_type)
+    if subagent_type == "evidence-checker":
+        verdict_match = _EVIDENCE_VERDICT_PATTERN.search(result_text)
+        valid_verdict = verdict_match is not None
+        budget_state["evidence_checker_completed"] = valid_verdict
+        budget_state["evidence_checker_verdict"] = verdict_match.group(1).lower() if valid_verdict and verdict_match else None
+        budget_state["evidence_checker_result"] = result_text
 
 
 @tool("task", parse_docstring=True)
@@ -327,6 +541,17 @@ async def task_tool(
 
     if overrides:
         config = replace(config, **overrides)
+
+    preflight_error = _terminal_specialist_preflight(runtime, subagent_type)
+    if preflight_error is not None:
+        terminal_failure = _record_terminal_preflight_failure(runtime, subagent_type, preflight_error)
+        logger.info("Skipped subagent %s because candidate-pack preflight failed", subagent_type)
+        if terminal_failure:
+            return (
+                f"{preflight_error}\n"
+                "Task skipped: the candidate-pack preflight failed twice; no further audit or delivery attempts are allowed in this request."
+            )
+        return preflight_error
 
     config, budget_error = _apply_run_budget_to_subagent(runtime, config, subagent_type)
     if budget_error is not None:
@@ -424,6 +649,7 @@ async def task_tool(
             if result.status == SubagentStatus.COMPLETED:
                 _cache_subagent_usage(tool_call_id, usage, enabled=cache_token_usage)
                 _report_subagent_usage(runtime, result)
+                _mark_completed_subagent(runtime, subagent_type, result.result)
                 writer({"type": "task_completed", "task_id": task_id, "result": result.result, "usage": usage})
                 logger.info(f"[trace={trace_id}] Task {task_id} completed after {poll_count} polls")
                 cleanup_background_task(task_id)

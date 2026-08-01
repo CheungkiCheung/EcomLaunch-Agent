@@ -24,7 +24,6 @@ const SUBAGENT_IDS = new Set<WarRoomActorId>([
   "market-voc-researcher",
   "offer-architect",
   "asset-studio",
-  "evidence-checker",
 ]);
 
 type TaskRecord = Subtask & {

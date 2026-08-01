@@ -54,6 +54,12 @@ _DEFAULT_WRITE_FILE_ERROR_MAX_CHARS = 2000
 # 0 (or negative) to disable the guard entirely.
 _WRITE_FILE_CONTENT_MAX_BYTES = 80 * 1024
 _WRITE_FILE_MAX_BYTES_ENV = "DEERFLOW_WRITE_FILE_MAX_BYTES"
+_COMPACTED_WRITE_PLACEHOLDER_PATTERN = re.compile(
+    r"^\s*\[compacted \d+ characters already written successfully to .*?; do not reread[^\]]*\]\s*$",
+    re.IGNORECASE | re.DOTALL,
+)
+_RUN_BUDGET_CONTEXT_KEY = "__deerflow_agent_run_budget"
+_OUTPUTS_VIRTUAL_DIR = f"{VIRTUAL_PATH_PREFIX}/outputs"
 _LOCAL_BASH_CWD_COMMANDS = {"cd", "pushd"}
 _LOCAL_BASH_COMMAND_WRAPPERS = {"command", "builtin"}
 _LOCAL_BASH_COMMAND_PREFIX_KEYWORDS = {"!", "{", "case", "do", "elif", "else", "for", "if", "select", "then", "time", "until", "while"}
@@ -1699,6 +1705,57 @@ def _effective_write_file_max_bytes() -> int:
         return _WRITE_FILE_CONTENT_MAX_BYTES
 
 
+def _configured_pack_write_result(
+    runtime: Runtime,
+    *,
+    requested_path: str,
+    content_bytes: int,
+    append: bool,
+) -> str | None:
+    """Return deterministic configured-Pack progress after a successful write."""
+    context = getattr(runtime, "context", None)
+    if not isinstance(context, dict):
+        return None
+    budget_state = context.get(_RUN_BUDGET_CONTEXT_KEY)
+    if not isinstance(budget_state, dict):
+        return None
+    budget_config = budget_state.get("config")
+    if not isinstance(budget_config, dict) or not budget_config.get("auto_present_complete_pack"):
+        return None
+
+    required = budget_config.get("required_output_files")
+    if not isinstance(required, list):
+        return None
+    required_names = [name for name in required if isinstance(name, str) and name]
+    normalized_requested_path = posixpath.normpath(requested_path)
+    if posixpath.dirname(normalized_requested_path) != _OUTPUTS_VIRTUAL_DIR:
+        return None
+    written_name = posixpath.basename(normalized_requested_path)
+    if written_name not in required_names:
+        return None
+
+    written = budget_state.get("required_output_files_written")
+    if not isinstance(written, set):
+        written = set(written) if isinstance(written, (list, tuple)) else set()
+        budget_state["required_output_files_written"] = written
+    written.add(written_name)
+
+    written_required = [name for name in required_names if name in written]
+    missing = [name for name in required_names if name not in written]
+    budget_state["required_output_files_missing"] = missing
+    budget_state["required_output_files_ready"] = not missing
+
+    mode = "append" if append else "overwrite"
+    prefix = f"OK: wrote {content_bytes} bytes to {requested_path} ({mode})."
+    if missing:
+        return (
+            f"{prefix}\nConfigured Pack status: {len(written_required)}/{len(required_names)} required files written in this request. "
+            f"Missing required files: {', '.join(missing)}. "
+            "Do not read or grep files to check existence; write the missing files, then call present_files."
+        )
+    return f"{prefix}\nConfigured Pack status: complete ({len(required_names)}/{len(required_names)}). All required files were written in this request. Do not read or grep them again; call present_files now for deterministic validation."
+
+
 @tool("write_file", parse_docstring=True)
 def write_file_tool(
     runtime: Runtime,
@@ -1735,10 +1792,12 @@ def write_file_tool(
         content: The content to write to the file. ALWAYS PROVIDE THIS PARAMETER THIRD.
         append: Whether to append content to the end of the file instead of overwriting it. Defaults to False.
     """
+    content_bytes = len(content.encode("utf-8"))
+    if _COMPACTED_WRITE_PLACEHOLDER_PATTERN.fullmatch(content):
+        return "Error: write_file content is an internal history-compaction marker, not artifact content. Regenerate and write the real file content; never copy a [compacted ...] marker into a file."
     if not append:
         max_bytes = _effective_write_file_max_bytes()
         if max_bytes > 0:
-            content_bytes = len(content.encode("utf-8"))
             if content_bytes > max_bytes:
                 return (
                     f"Error: write_file content ({content_bytes} bytes) exceeds the "
@@ -1752,7 +1811,8 @@ def write_file_tool(
         requested_path = path
         sandbox = ensure_sandbox_initialized(runtime)
         ensure_thread_directories_exist(runtime)
-        if is_local_sandbox(runtime):
+        local_sandbox = is_local_sandbox(runtime)
+        if local_sandbox:
             thread_data = get_thread_data(runtime)
             validate_local_tool_path(path, thread_data)
             if not _is_custom_mount_path(path):
@@ -1760,7 +1820,15 @@ def write_file_tool(
             # Custom mount paths are resolved by LocalSandbox._resolve_path()
         with get_file_operation_lock(sandbox, path):
             sandbox.write_file(path, content, append)
-        return "OK"
+        return (
+            _configured_pack_write_result(
+                runtime,
+                requested_path=requested_path,
+                content_bytes=content_bytes,
+                append=append,
+            )
+            or "OK"
+        )
     except SandboxError as e:
         return _format_write_file_error(requested_path, e, runtime)
     except PermissionError:

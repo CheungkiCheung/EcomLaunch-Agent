@@ -140,70 +140,78 @@ async def _fetch_rendered_html(url: str, config: LocalFetchConfig) -> tuple[str,
     except ImportError:
         return "", "Error: Playwright is not installed. Run `uv sync` and `uv run playwright install chromium`."
 
-    browser = None
-    context = None
-    page = None
     try:
         async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=True)
-            context_kwargs: dict[str, object] = {
-                "user_agent": config.user_agent,
-                "viewport": {"width": 1365, "height": 900},
-                "ignore_https_errors": True,
-            }
-            if config.proxy:
-                context_kwargs["proxy"] = {"server": config.proxy}
-
-            context = await browser.new_context(**context_kwargs)
-            page = await context.new_page()
-
-            if config.block_resources:
-                async def block_heavy_resources(route):
-                    try:
-                        if route.request.resource_type in {"font", "image", "media"}:
-                            await route.abort()
-                        else:
-                            await route.continue_()
-                    except PlaywrightError:
-                        logger.debug("Ignoring Playwright route handler failure during fetch cleanup", exc_info=True)
-
-                await page.route("**/*", block_heavy_resources)
-
-            timeout_ms = max(config.render_timeout, 1) * 1000
+            browser = None
+            context = None
+            page = None
             try:
-                response = await page.goto(url, wait_until=config.wait_until, timeout=timeout_ms)
-            except PlaywrightTimeoutError:
+                browser = await playwright.chromium.launch(headless=True)
+                context_kwargs: dict[str, object] = {
+                    "user_agent": config.user_agent,
+                    "viewport": {"width": 1365, "height": 900},
+                    "ignore_https_errors": True,
+                }
+                if config.proxy:
+                    context_kwargs["proxy"] = {"server": config.proxy}
+
+                context = await browser.new_context(**context_kwargs)
+                page = await context.new_page()
+
+                if config.block_resources:
+
+                    async def block_heavy_resources(route):
+                        try:
+                            if route.request.resource_type in {"font", "image", "media"}:
+                                await route.abort()
+                            else:
+                                await route.continue_()
+                        except PlaywrightError:
+                            logger.debug("Ignoring Playwright route handler failure during fetch cleanup", exc_info=True)
+
+                    await page.route("**/*", block_heavy_resources)
+
+                timeout_ms = max(config.render_timeout, 1) * 1000
+                try:
+                    response = await page.goto(url, wait_until=config.wait_until, timeout=timeout_ms)
+                except PlaywrightTimeoutError:
+                    html = await page.content()
+                    if html and html.strip():
+                        return html, ""
+                    return "", f"Error: Playwright render timed out after {config.render_timeout}s"
+
+                if response and response.status >= 400:
+                    return "", f"Error: Playwright render returned status {response.status}"
+
+                if config.render_wait_ms > 0:
+                    await page.wait_for_timeout(config.render_wait_ms)
+
                 html = await page.content()
-                if html and html.strip():
-                    return html, ""
-                return "", f"Error: Playwright render timed out after {config.render_timeout}s"
+                if not html or not html.strip():
+                    return "", "Error: Playwright render returned empty response"
 
-            if response and response.status >= 400:
-                return "", f"Error: Playwright render returned status {response.status}"
-
-            if config.render_wait_ms > 0:
-                await page.wait_for_timeout(config.render_wait_ms)
-
-            html = await page.content()
-            if not html or not html.strip():
-                return "", "Error: Playwright render returned empty response"
-
-            return html, ""
+                return html, ""
+            finally:
+                # Keep Playwright alive until its route callbacks and pages are
+                # released. Closing these objects after leaving the manager can
+                # strand Page._on_route tasks on the event loop.
+                if page is not None:
+                    try:
+                        await page.unroute_all(behavior="ignoreErrors")
+                    except PlaywrightError:
+                        logger.debug("Ignoring Playwright unroute failure during fetch cleanup", exc_info=True)
+                if context is not None:
+                    try:
+                        await context.close()
+                    except PlaywrightError:
+                        logger.debug("Ignoring Playwright context close failure during fetch cleanup", exc_info=True)
+                if browser is not None:
+                    try:
+                        await browser.close()
+                    except PlaywrightError:
+                        logger.debug("Ignoring Playwright browser close failure during fetch cleanup", exc_info=True)
     except PlaywrightError as exc:
         return "", f"Error: Playwright render failed: {type(exc).__name__}: {exc}"
-    finally:
-        if page is not None:
-            try:
-                await page.unroute_all(behavior="ignoreErrors")
-            except PlaywrightError:
-                logger.debug("Ignoring Playwright unroute failure during fetch cleanup", exc_info=True)
-        if context is not None:
-            try:
-                await context.close()
-            except PlaywrightError:
-                logger.debug("Ignoring Playwright context close failure during fetch cleanup", exc_info=True)
-        if browser is not None:
-            await browser.close()
 
 
 def _first_text(page: Adaptor, selector: str) -> str:

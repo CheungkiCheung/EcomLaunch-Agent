@@ -4,8 +4,44 @@ memory_enabled: false
 skills:
   - ecom-launch
 run_budget:
-  max_lead_model_calls: 16
-  max_subagent_calls: 4
+  max_lead_model_calls: 20
+  max_subagent_calls: 3
   max_total_tokens: 500000
-  max_execution_seconds: 240
+  max_execution_seconds: 270
   deduplicate_subagents: true
+  allowed_subagent_types:
+  - market-voc-researcher
+  - offer-architect
+  - asset-studio
+  subagent_dependencies:
+    offer-architect:
+    - market-voc-researcher
+    asset-studio:
+    - offer-architect
+  direct_answer_patterns:
+  - '(?:最先|首先|第一步|优先).{0,32}(?:验证|假设|测试|检查|改进)'
+  - '(?:哪一个|哪个|什么).{0,32}(?:假设|风险|指标|问题).{0,16}(?:最先|优先|先)'
+  - '(?:what|which).{0,40}(?:first|priority|hypothesis|risk)'
+  direct_answer_exclude_patterns:
+  - '公开信号|公开数据|公开信息|网页|搜索|调研|研究|竞品|来源|链接|最新|上传|文件|完整|Launch Validation Pack|报告'
+  complete_workflow_patterns:
+  - 'Launch Validation Pack'
+  - '完整.{0,16}(?:验证包|上市包|七件套|7\s*件)'
+  - '7\s*天.{0,20}(?:验证包|Pack)'
+  required_completed_subagents:
+  - market-voc-researcher
+  - offer-architect
+  - asset-studio
+  compact_write_file_history: true
+  required_output_files:
+  - launch-war-room.html
+  - evidence-ledger.json
+  - competitor-table.csv
+  - positioning-brief.md
+  - listing-pack.md
+  - content-pack.md
+  - launch-calendar.csv
+  auto_present_complete_pack: true
+  require_evidence_checker: false
+  validate_pack_before_evidence: false
+  validate_pack_before_present: true

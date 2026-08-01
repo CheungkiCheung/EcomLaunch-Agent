@@ -9,7 +9,6 @@
 - `market-voc-researcher`：公开竞品、价格、评论和用户声音
 - `offer-architect`：人群切口、价值主张、价格假设和验证实验
 - `asset-studio`：商品页、短视频、小红书/抖音和直播资产
-- `evidence-checker`：对最终草稿做独立证据审计
 
 ## 产品信息
 
@@ -49,4 +48,4 @@ content-pack.md
 launch-calendar.csv
 ```
 
-`evidence-ledger.json` 必须是可解析的 JSON 数组；CSV 必须能被标准 CSV 解析器读取。最终回复先给出上市方向、主要风险和下一步，再展示文件，不要把所有文件内容重复粘贴到聊天中。
+`evidence-ledger.json` 必须是可解析的 JSON 数组；CSV 必须能被标准 CSV 解析器读取。最终回复先给出上市方向、主要风险和下一步，再展示文件，不要把所有文件内容重复粘贴到聊天中。最终回复必须明确说明“未经过独立 Evidence Checker 审计”，不得声称链接内容已经被独立核验。

@@ -915,16 +915,31 @@ sandbox:
 #   # Set `model` to use a different model (e.g., a local Ollama model for cost savings).
 #   # The model name must match a name defined in the `models:` section above.
 #
-#   # EcomLaunch example: four bounded specialists with original PM Skills.
+#   # EcomLaunch example: three active bounded specialists with original PM Skills.
 #   # Growth Analyst remains a separate top-level agent (compatibility ID: data-inspector).
+#   # A repository-defined EcomLaunch agent can additionally set
+#   # run_budget.allowed_subagent_types to exactly those three names. This is a
+#   # runtime boundary: built-in general-purpose/bash calls are rejected before
+#   # they reserve a slot or start a SubagentExecutor.
+#   # The same agent config may set run_budget.required_output_files plus
+#   # auto_present_complete_pack=true and validate_pack_before_present=true.
+#   # After the first current-request Pack write, the lead keeps only write/edit
+#   # tools until every configured file has been written, then keeps only
+#   # present_files. A failed deterministic preflight temporarily permits only
+#   # targeted file revision before presentation is retried. require_evidence_checker remains
+#   # an optional independent-audit gate and may stay false. Ordinary short
+#   # answers and one-off artifacts are not forced through this Pack contract.
 #   # custom_agents:
 #   #   market-voc-researcher:
 #   #     description: "Research public market signals, competitors, pricing, reviews, and customer voice"
 #   #     system_prompt: |
 #   #       Research market and customer evidence for EcomLaunch. Use no more than
-#   #       3 web_search, 3 web_fetch, and 1 image_search call. Return concise
-#   #       findings, sources, confidence, and limitations. Do not invent private
-#   #       metrics, sales, reviews, product facts, test results, or policies.
+#   #       2 web_search calls across two tool rounds, fetch at most 4 direct candidate
+#   #       sources, and use at most 1 image_search call. Then return concise
+#   #       findings, exact source URLs, confidence, and limitations. Treat search
+#   #       snippets and generic source names as discovery only; downgrade claims
+#   #       without direct URLs. Do not invent metrics, reviews, product facts,
+#   #       rankings, trends, test results, or policies.
 #   #     tools: [web_search, web_fetch, image_search, read_file]
 #   #     skills:
 #   #       - competitor-analysis
@@ -933,8 +948,8 @@ sandbox:
 #   #     model: inherit
 #   #     max_turns: 50
 #   #     timeout_seconds: 90
-#   #     max_model_calls: 5
-#   #     max_total_tokens: 60000
+#   #     max_model_calls: 4
+#   #     max_total_tokens: 45000
 #   #
 #   #   offer-architect:
 #   #     description: "Turn evidence into an audience wedge, offer, pricing hypothesis, assumptions, and experiments"
@@ -953,15 +968,20 @@ sandbox:
 #   #     model: inherit
 #   #     max_turns: 50
 #   #     timeout_seconds: 60
-#   #     max_model_calls: 3
-#   #     max_total_tokens: 40000
+#   #     max_model_calls: 2
+#   #     max_total_tokens: 30000
 #   #
 #   #   asset-studio:
 #   #     description: "Create ecommerce and content assets from an approved launch brief"
 #   #     system_prompt: |
-#   #       Create only the requested listing, Xiaohongshu, Douyin, short-video,
-#   #       livestream, or creator assets. Do not redo research. Use placeholders
-#   #       for unverified product specifications, tests, testimonials, or policies.
+#   #       Create only the requested assets. If any specification or sample test is
+#   #       missing, switch to NO-SAMPLE MODE and return a compact concept-test kit:
+#   #       category and target price, question-based titles, problem-led posts,
+#   #       one validation-question script, and neutral replies. Consumer-facing
+#   #       lines may contain only category, price, user problem, alternatives, and
+#   #       validation questions. Never include unconfirmed features, product
+#   #       existence, first-person persona, testimonials, or a forbidden-term/safety
+#   #       list, even as a disclaimer or [待确认] example.
 #   #     tools: [read_file]
 #   #     skills:
 #   #       - positioning-ideas
@@ -970,16 +990,20 @@ sandbox:
 #   #     model: inherit
 #   #     max_turns: 50
 #   #     timeout_seconds: 60
-#   #     max_model_calls: 3
-#   #     max_total_tokens: 50000
+#   #     max_model_calls: 2
+#   #     max_total_tokens: 30000
 #   #
 #   #   evidence-checker:
 #   #     description: "Black-box audit final recommendations, claims, citations, and deliverables"
 #   #     system_prompt: |
-#   #       Audit every material claim and source before release. Use web_fetch only
-#   #       for already supplied URLs. Return pass, revise, or blocked with required
-#   #       changes. Do not perform broad research or soften unsupported claims.
-#   #     tools: [read_file, web_fetch]
+#   #       Audit the exact files already written under /mnt/user-data/outputs.
+#   #       Inspect them with grep/read_file and use web_fetch only for supplied URLs.
+#   #       Reject observed_public claims without direct URLs, fabricated experience,
+#   #       unsupported metrics/specifications, and false uploaded_real labels.
+#   #       A disclaimer never rescues unsupported consumer copy. Read all seven
+#   #       files in one parallel tool round, optionally use one targeted web_fetch
+#   #       batch, then reserve the next response for pass, revise, or blocked.
+#   #     tools: [read_file, grep, web_fetch]
 #   #     skills:
 #   #       - strategy-red-team
 #   #       - pre-mortem
@@ -987,8 +1011,8 @@ sandbox:
 #   #     model: inherit
 #   #     max_turns: 50
 #   #     timeout_seconds: 60
-#   #     max_model_calls: 3
-#   #     max_total_tokens: 40000
+#   #     max_model_calls: 4
+#   #     max_total_tokens: 55000
 # ============================================================================
 # ACP Agents Configuration
 # ============================================================================

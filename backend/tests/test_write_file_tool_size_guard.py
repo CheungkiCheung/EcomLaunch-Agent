@@ -8,10 +8,12 @@ or filesystem is exercised, so they're fast and hermetic.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from deerflow.agents.middlewares.run_budget_middleware import RUN_BUDGET_CONTEXT_KEY
 from deerflow.sandbox import tools as tools_module
 from deerflow.sandbox.tools import write_file_tool
 
@@ -114,3 +116,97 @@ def test_env_override_malformed_falls_back_to_default(monkeypatch: pytest.Monkey
     payload = "a" * (100 * 1024)
     result = _call_write_file(content=payload)
     assert result.startswith("Error: write_file content")
+
+
+def test_internal_compaction_marker_is_rejected() -> None:
+    marker = "[compacted 5174 characters already written successfully to /mnt/user-data/outputs/launch-war-room.html; do not reread unless a deterministic preflight error names this file]"
+
+    result = _call_write_file(content=marker)
+
+    assert result.startswith("Error: write_file content is an internal history-compaction marker")
+    assert "Regenerate and write the real file content" in result
+
+
+def test_configured_pack_write_reports_complete_status_without_reread() -> None:
+    fn = getattr(write_file_tool, "func", write_file_tool)
+    runtime = SimpleNamespace(
+        state={},
+        context={
+            "thread_id": "thread-1",
+            RUN_BUDGET_CONTEXT_KEY: {
+                "config": {
+                    "required_output_files": ["a.md", "b.csv"],
+                    "auto_present_complete_pack": True,
+                },
+                "required_output_files_written": {"a.md"},
+            },
+        },
+        config={},
+    )
+    sandbox = MagicMock()
+    sandbox.write_file = MagicMock()
+    with (
+        patch.object(tools_module, "ensure_sandbox_initialized", return_value=sandbox),
+        patch.object(tools_module, "ensure_thread_directories_exist"),
+        patch.object(tools_module, "is_local_sandbox", return_value=False),
+        patch.object(tools_module, "get_file_operation_lock") as mock_lock,
+    ):
+        mock_lock.return_value.__enter__ = MagicMock(return_value=None)
+        mock_lock.return_value.__exit__ = MagicMock(return_value=False)
+        result = fn(
+            runtime=runtime,
+            description="finish configured pack",
+            path="/mnt/user-data/outputs/b.csv",
+            content="header\nvalue\n",
+        )
+
+    assert "Configured Pack status: complete (2/2)" in result
+    assert "Do not read or grep" in result
+    assert runtime.context[RUN_BUDGET_CONTEXT_KEY]["required_output_files_ready"] is True
+    assert runtime.context[RUN_BUDGET_CONTEXT_KEY]["required_output_files_missing"] == []
+    assert runtime.context[RUN_BUDGET_CONTEXT_KEY]["required_output_files_written"] == {"a.md", "b.csv"}
+
+
+def test_configured_pack_write_does_not_count_stale_files_from_prior_requests() -> None:
+    fn = getattr(write_file_tool, "func", write_file_tool)
+    runtime = SimpleNamespace(
+        state={},
+        context={
+            "thread_id": "thread-1",
+            RUN_BUDGET_CONTEXT_KEY: {
+                "config": {
+                    "required_output_files": ["a.md", "b.csv"],
+                    "auto_present_complete_pack": True,
+                },
+                "required_output_files_written": set(),
+            },
+        },
+        config={},
+    )
+    sandbox = MagicMock()
+    sandbox.write_file = MagicMock()
+    sandbox.list_dir.return_value = [
+        "/mnt/user-data/outputs/a.md",
+        "/mnt/user-data/outputs/b.csv",
+    ]
+
+    with (
+        patch.object(tools_module, "ensure_sandbox_initialized", return_value=sandbox),
+        patch.object(tools_module, "ensure_thread_directories_exist"),
+        patch.object(tools_module, "is_local_sandbox", return_value=False),
+        patch.object(tools_module, "get_file_operation_lock") as mock_lock,
+    ):
+        mock_lock.return_value.__enter__ = MagicMock(return_value=None)
+        mock_lock.return_value.__exit__ = MagicMock(return_value=False)
+        result = fn(
+            runtime=runtime,
+            description="write one current file",
+            path="/mnt/user-data/outputs/b.csv",
+            content="header\nvalue\n",
+        )
+
+    assert "Configured Pack status: 1/2 required files written in this request" in result
+    assert "Missing required files: a.md" in result
+    assert runtime.context[RUN_BUDGET_CONTEXT_KEY]["required_output_files_ready"] is False
+    assert runtime.context[RUN_BUDGET_CONTEXT_KEY]["required_output_files_written"] == {"b.csv"}
+    sandbox.list_dir.assert_not_called()

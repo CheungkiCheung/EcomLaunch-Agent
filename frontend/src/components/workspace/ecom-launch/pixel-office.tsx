@@ -6,8 +6,7 @@ type AgentRole =
   | "launch-director"
   | "market-voc-researcher"
   | "offer-architect"
-  | "asset-studio"
-  | "evidence-checker";
+  | "asset-studio";
 
 type AgentStatus = "idle" | "working" | "thinking" | "done" | "error";
 
@@ -50,12 +49,6 @@ const AGENT_CONFIG: Record<
     position: "right-bottom",
     color: "bg-pink-500",
     animation: "animate-creator",
-  },
-  "evidence-checker": {
-    name: "证据检查员",
-    position: "center-bottom",
-    color: "bg-red-500",
-    animation: "animate-checker",
   },
 };
 
@@ -127,12 +120,12 @@ function WhiteBoard({
   currentStage: string;
 }) {
   return (
-    <div className="rounded-lg border-2 border-amber-800 bg-white p-3 shadow-lg">
+    <div className="w-full max-w-64 rounded-lg border-2 border-amber-800 bg-white p-3 shadow-lg">
       {/* 白板标题 */}
-      <div className="mb-2 flex justify-between text-[10px] font-bold">
-        <span className="text-blue-600">TODO</span>
-        <span className="text-yellow-600">IN PROC</span>
-        <span className="text-green-600">DONE</span>
+      <div className="mb-2 grid grid-cols-3 text-center text-[10px] font-bold">
+        <span className="text-blue-600">待办</span>
+        <span className="text-yellow-600">进行中</span>
+        <span className="text-green-600">完成</span>
       </div>
 
       {/* 任务进度 */}
@@ -142,7 +135,7 @@ function WhiteBoard({
           "市场与用户研究",
           "定位与验证",
           "内容资产",
-          "证据审计",
+          "交付预检",
         ].map((task, index) => {
           const taskProgress = Math.min(
             100,
@@ -189,7 +182,6 @@ export function PixelOffice({
     "market-voc-researcher": "idle",
     "offer-architect": "idle",
     "asset-studio": "idle",
-    "evidence-checker": "idle",
   },
   progress = 0,
   currentStage = "等待中",
@@ -232,10 +224,6 @@ export function PixelOffice({
             <PixelCharacter
               role="launch-director"
               status={agentStatuses["launch-director"]}
-            />
-            <PixelCharacter
-              role="evidence-checker"
-              status={agentStatuses["evidence-checker"]}
             />
           </div>
 

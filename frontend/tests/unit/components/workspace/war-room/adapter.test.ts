@@ -17,15 +17,14 @@ function thread(
 }
 
 describe("buildWarRoomSnapshot", () => {
-  it("always exposes the six configured real actors", () => {
+  it("always exposes the five active real actors", () => {
     const snapshot = buildWarRoomSnapshot({});
-    expect(snapshot.actors).toHaveLength(6);
+    expect(snapshot.actors).toHaveLength(5);
     expect(snapshot.actors.map((actor) => actor.id)).toEqual([
       "ecom-launch",
       "market-voc-researcher",
       "offer-architect",
       "asset-studio",
-      "evidence-checker",
       "data-inspector",
     ]);
     expect(snapshot.actors.every((actor) => actor.status === "idle")).toBe(
@@ -93,7 +92,7 @@ describe("buildWarRoomSnapshot", () => {
     expect(inspector?.activity).toBe("reading");
     expect(inspector?.tool).toBe("inspect_data");
     expect(inspector?.artifacts).toEqual(["analysis.md"]);
-    expect(snapshot.actors).toHaveLength(6);
+    expect(snapshot.actors).toHaveLength(5);
   });
 
   it("keeps failed and completed paths visible", () => {

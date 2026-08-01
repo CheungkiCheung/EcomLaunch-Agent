@@ -46,17 +46,6 @@ export const WAR_ROOM_ACTORS: WarRoomActorConfig[] = [
     position: { x: 43, y: 69, workX: 39, workY: 66 },
   },
   {
-    id: "evidence-checker",
-    team: "ecom-launch",
-    name: "证据检查员",
-    shortName: "审核",
-    role: "Evidence Checker",
-    description: "检查来源、事实边界、结论和交付质量。",
-    accent: "#b76555",
-    glow: 0xb76555,
-    position: { x: 62, y: 42, workX: 63, workY: 35 },
-  },
-  {
     id: "data-inspector",
     team: "data-inspector",
     name: "Growth Analyst",

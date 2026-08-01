@@ -353,6 +353,7 @@ class SubagentExecutor:
                         max_subagent_calls=0,
                         max_total_tokens=self.config.max_total_tokens or 2_000_000_000,
                         max_execution_seconds=self.config.timeout_seconds,
+                        force_final_text_on_warning=True,
                         stop_message="Specialist execution budget reached. Return only the findings already collected and clearly state the remaining evidence gaps.",
                     )
                 )

@@ -69,9 +69,12 @@ Multi-agent system using **Orchestrator-subagent** pattern:
 Launch Director (lead agent)
 ├── market-voc-researcher  # Market signals, competitors, pricing, reviews, VOC
 ├── offer-architect        # Positioning, pricing hypotheses, validation experiments
-├── asset-studio           # Listing copy, content hooks, scripts
-└── evidence-checker       # Evidence audit, claim validation
+└── asset-studio           # Listing copy, content hooks, scripts
 ```
+
+The `evidence-checker` definition and generic Harness support are retained for
+future use, but EcomLaunch currently excludes it from its allowlist and complete-Pack
+delivery contract.
 
 **Subagent config location**: `config.yaml → subagents.custom_agents`
 

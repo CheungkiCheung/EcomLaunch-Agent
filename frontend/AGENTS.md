@@ -91,7 +91,7 @@ src/
 - Their chat routes are `/workspace/agents/ecom-launch/chats/[thread_id]` and `/workspace/agents/data-inspector/chats/[thread_id]`.
 - Agent chat creation and message submission carry `context.agent_name`; recent chats are filtered by that owner so the two primary agents keep separate thread histories.
 - Both agents reuse the shared chat composer, upload flow, and thread infrastructure. Agent-specific identity and quick actions belong in the agent chat route instead of a separate dashboard.
-- The standalone War Room route is `/workspace/war-room`. It is a read-only visualization of the two primary agents' latest real thread/run state: EcomLaunch plus its four configured specialists and the single Growth Analyst actor. It must not create a third agent, a second task protocol, or fake activity when no run event exists.
+- The standalone War Room route is `/workspace/war-room`. It is a read-only visualization of the two primary agents' latest real thread/run state: EcomLaunch plus its three active specialists and the single Growth Analyst actor. The retained Evidence Checker is not shown while disabled. It must not create a third agent, a second task protocol, or fake activity when no run event exists.
 
 ## Resources
 

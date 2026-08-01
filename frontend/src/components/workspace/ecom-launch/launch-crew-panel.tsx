@@ -8,7 +8,6 @@ import {
   Loader2Icon,
   PackageCheckIcon,
   SearchIcon,
-  ShieldCheckIcon,
   SparklesIcon,
   TriangleAlertIcon,
 } from "lucide-react";
@@ -39,8 +38,7 @@ import { PixelOffice } from "./pixel-office";
 type LaunchCrewRole =
   | "market-voc-researcher"
   | "offer-architect"
-  | "asset-studio"
-  | "evidence-checker";
+  | "asset-studio";
 
 type LaunchCrewStatus =
   | "idle"
@@ -101,13 +99,6 @@ const ROLE_CONFIGS: LaunchCrewRoleConfig[] = [
     accent: "bg-fuchsia-500",
     icon: FileTextIcon,
   },
-  {
-    id: "evidence-checker",
-    name: "Evidence Checker",
-    desk: "证据与口径审计",
-    accent: "bg-sky-600",
-    icon: ShieldCheckIcon,
-  },
 ];
 
 const ARTIFACT_TO_ROLE: Array<[string, LaunchCrewRole]> = [
@@ -118,8 +109,6 @@ const ARTIFACT_TO_ROLE: Array<[string, LaunchCrewRole]> = [
   ["launch-calendar.csv", "offer-architect"],
   ["listing-pack.md", "asset-studio"],
   ["content-pack.md", "asset-studio"],
-  ["evidence-ledger.json", "evidence-checker"],
-  ["launch-war-room.html", "evidence-checker"],
 ];
 
 const REQUIRED_DELIVERABLES: RequiredDeliverable[] = [
@@ -182,7 +171,7 @@ const WORKFLOW_STAGES: WorkflowStage[] = [
   },
   {
     id: "audit",
-    label: "审计",
+    label: "账本",
     matchers: [
       "audit",
       "evidence",
@@ -674,17 +663,6 @@ export function LaunchCrewPanel({
                     )
                   ? "done"
                   : "idle",
-              "evidence-checker": visibleRoles.some(
-                (r) => r.id === "evidence-checker" && isWorkingStatus(r.status),
-              )
-                ? "working"
-                : visibleRoles.some(
-                      (r) =>
-                        r.id === "evidence-checker" &&
-                        (r.status === "done" || r.status === "delivered"),
-                    )
-                  ? "done"
-                  : "idle",
             }}
             progress={progress}
             currentStage={currentStage?.label ?? "等待中"}
@@ -753,7 +731,7 @@ export function LaunchCrewPanel({
                 <div className="font-medium">等待第一条上新验证任务</div>
                 <p className="text-muted-foreground mt-1 text-xs leading-5">
                   默认 Flash
-                  已保留子智能体能力并关闭额外计划追踪；四个专业角色会按需在这里显示真实分工状态。
+                  已保留子智能体能力并关闭额外计划追踪；三个启用角色会按需在这里显示真实分工状态。
                 </p>
               </div>
             ) : (

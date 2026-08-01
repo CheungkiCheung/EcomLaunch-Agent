@@ -8,15 +8,15 @@
 
 ## 简介
 
-openGrowth 是一个**开源的 AI 增长实验引擎**，基于 DeerFlow 扩展两个彼此独立的顶层 Agent：EcomLaunch 负责上线前研究、定位、实验和内容产出；Growth Analyst 负责分析用户上传的经营和内容表现数据，内部兼容 ID 仍为 `data-inspector`。EcomLaunch 内部采用 Orchestrator-Subagent 架构，按需调用 4 个专业 Subagent。
+openGrowth 是一个**开源的 AI 增长实验引擎**，基于 DeerFlow 扩展两个彼此独立的顶层 Agent：EcomLaunch 负责上线前研究、定位、实验和内容产出；Growth Analyst 负责分析用户上传的经营和内容表现数据，内部兼容 ID 仍为 `data-inspector`。EcomLaunch 内部采用 Orchestrator-Subagent 架构，当前按需调用 3 个专业 Subagent；Evidence Checker 的定义保留，但暂不进入执行链。
 
 ### 核心特性
 
-- **按需多 Agent 协作** - EcomLaunch 只调用任务需要的 0～4 个专业 Subagent
+- **按需多 Agent 协作** - EcomLaunch 只调用任务需要的 0～3 个专业 Subagent
 - **上传数据分析** - 直接分析 CSV/XLSX 商铺、小红书和抖音数据
 - **证据驱动** - 基于公开信号，非主观判断
 - **轻量实验** - 把关键假设变成低成本验证动作和停止条件
-- **真实作战室** - 展示两个顶层 Agent 与 4 个真实 EcomLaunch Subagent 的运行状态
+- **真实作战室** - 展示两个顶层 Agent 与 3 个当前启用的 EcomLaunch Subagent 运行状态
 - **快速默认配置** - 默认 Flash 推理，保留按需子智能体能力并关闭额外的计划追踪开销
 - **整次任务预算** - 限制重复专家调用、主智能体轮次、Token 与执行时间，达到边界后交付已有结果
 
@@ -29,7 +29,7 @@ openGrowth 是一个**开源的 AI 增长实验引擎**，基于 DeerFlow 扩展
                   ▼                                     ▼
        EcomLaunch 顶层 Agent                 Growth Analyst 顶层 Agent
                   │                                     │
-       Orchestrator + 4 个专业 Subagent            inspect_data
+       Orchestrator + 3 个专业 Subagent            inspect_data
                   │                                     │
      公开信号、市场、定位、内容                         query_data
                   │                                     │
@@ -90,26 +90,29 @@ Growth Analyst 默认关闭跨对话长期记忆，避免把上一份数据的�
 
 这一阶段只提供 CSV/XLSX 数据分析；连续指标 A/B、多实验组和专属导航/UI 尚未包含。
 
-## 4 个专业 Subagent
+## 3 个当前启用的专业 Subagent
 
 | Subagent | 职责 | 默认工具边界 |
 |----------|------|--------------|
 | **market-voc-researcher** | 市场、竞品、价格带、评论和用户声音 | `web_search`、`web_fetch`、`image_search`、`read_file`，带严格预算 |
 | **offer-architect** | 人群、价值主张、价格假设和验证实验 | 只读材料，不重复搜索 |
 | **asset-studio** | 商品页、小红书、抖音、短视频和直播资产 | 只读已批准的 Launch Brief，不重新研究 |
-| **evidence-checker** | 来源、声明、产品事实和交付质量审核 | `read_file` + 对已有 URL 的定向 `web_fetch` |
-
-这些角色使用固定上游提交 `18468a95b427e70e258b51389796367c6f684e7d` 的原版 [phuryn/pm-skills](https://github.com/phuryn/pm-skills)。Skill 提供分析框架，DeerFlow 工具负责实际读取、搜索和执行。
+这些角色使用固定上游提交 `18468a95b427e70e258b51389796367c6f684e7d` 的原版 [phuryn/pm-skills](https://github.com/phuryn/pm-skills)。Skill 提供分析框架，DeerFlow 工具负责实际读取、搜索和执行。`evidence-checker` 的全局定义及通用 Harness 支持仍然保留，当前 EcomLaunch 配置不允许调用它。
 
 ## 运行策略
 
 - 简短问题由 EcomLaunch 直接回答。
 - 市场问题只调用 Market & VOC Researcher。
 - 定位和实验任务在证据充分后调用 Offer Architect。
-- 内容任务只调用 Asset Studio；完整包或高风险声明最后调用 Evidence Checker。
+- 内容任务只调用 Asset Studio；完整包依次使用市场研究、Offer 和 Asset Studio。
+- 三个必需专家完成后，完整包在第一份文件写入前就进入受控草拟阶段，只保留 `write_file` 并要求复用专家返回结果；每次写入都会返回本次请求的当前齐备度和缺失文件，达到 `7/7` 后只保留 `present_files` 做确定性预检，不会把上一次请求的旧文件误算为本次完成。
+- 预检失败时只开放 `write_file`/`str_replace` 处理已指明的文件和行，整批修订全部成功后才自动回到 `present_files`；公开观察必须带 HTTP(S) URL，无样品时消费者文案不得包含明显虚构体验或未确认卖点，HTML、Markdown、JSON 和 CSV 还必须满足最低有效内容及结构要求。
+- 七个候选文件最多用两个主智能体回合写完，War Room HTML 保持紧凑并一次写入，避免把时间耗在反复读取、复核或追加页面片段上。
 - 完整 Launch Validation Pack 只在用户明确要求时生成。
 - 前端默认使用 Flash 推理；EcomLaunch 关闭额外的计划追踪，但保留子智能体能力，并限制最多同时调用 2 个 Subagent。
-- 每次请求最多启动 4 个 Subagent，同一专家最多运行一次；默认最多 16 次主智能体模型响应、50 万已观察 Token 和 240 秒执行时间。每个专家另有独立模型调用与 Token 收尾预算，避免撞到递归错误。
+- 每次请求最多启动 3 个 Subagent，同一专家最多运行一次；EcomLaunch 的配置允许列表只包含三个当前启用的专职角色，内置 `general-purpose`/`bash` 和暂时停用的 `evidence-checker` 会在启动前被拒绝，不会消耗执行预算。默认最多 20 次主智能体模型响应、50 万已观察 Token 和 270 秒执行时间。完整七件套展示前会机械检查必需文件、JSON/CSV 结构、公开证据与竞品 URL 的 HTTP(S) 格式，以及无样品消费者文案是否夹带明显虚构体验或未确认卖点。每个专家另有独立模型调用与 Token 收尾预算，避免撞到递归错误。
+- Market Researcher 预留 4 次模型响应完成“搜索、定向抓取、结论收束”；每个专家进入最后一次响应时会机械关闭工具并要求返回已收集结论。任何因模型调用、Token 或时间预算提前停止的必需专家都不会计入完整 Pack，并会立即以未交付状态终止本次完整流程。
+- Offer Architect 预留 2 次响应完成“读取上下文、方案收束”。完整 Pack 交付时必须明确标注“未经过独立 Evidence Checker 审计”；URL 预检只验证格式，不代表网页内容独立支持相邻声明。
 - 信息已经包含产品、约束、公开信号来源、决策目标和交付物时直接执行，不再为可合理推断的平台或人群多问一轮。
 
 ## 产出物
@@ -203,12 +206,12 @@ openGrowth/
 
 - 所有私有指标标记为unavailable
 - 基于公开信号验证
-- 每个决策都有证据支持
+- 直接观察附来源 URL；证据不足的结论降级为估计、假设或不可用
 
-### 3. 游戏化界面
+### 3. 作战室界面
 
-- 像素艺术办公室
-- 6个像素角色
+- 白色暖色办公室场景
+- 6 个可爱角色
 - 实时状态同步
 - 白板任务进度
 

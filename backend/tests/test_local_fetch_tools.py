@@ -1,3 +1,5 @@
+import sys
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import httpx
@@ -220,6 +222,79 @@ async def test_web_fetch_tool_falls_back_to_render_after_static_request_error(mo
 
     assert "# Rendered After Error" in result
     assert "Recovered content" in result
+
+
+@pytest.mark.anyio
+async def test_rendered_fetch_closes_page_resources_before_playwright_stops(monkeypatch):
+    events: list[str] = []
+
+    class FakePlaywrightError(Exception):
+        pass
+
+    class FakePlaywrightTimeoutError(FakePlaywrightError):
+        pass
+
+    class FakePage:
+        async def goto(self, *_args, **_kwargs):
+            events.append("goto")
+            return SimpleNamespace(status=200)
+
+        async def content(self):
+            return "<html><body><main>Rendered</main></body></html>"
+
+        async def wait_for_timeout(self, _timeout):
+            events.append("wait")
+
+        async def unroute_all(self, **_kwargs):
+            assert "playwright_exit" not in events
+            events.append("unroute")
+
+    class FakeContext:
+        async def new_page(self):
+            return FakePage()
+
+        async def close(self):
+            assert "playwright_exit" not in events
+            events.append("context_close")
+
+    class FakeBrowser:
+        async def new_context(self, **_kwargs):
+            return FakeContext()
+
+        async def close(self):
+            assert "playwright_exit" not in events
+            events.append("browser_close")
+
+    class FakeChromium:
+        async def launch(self, **_kwargs):
+            return FakeBrowser()
+
+    class FakePlaywright:
+        chromium = FakeChromium()
+
+    class FakePlaywrightManager:
+        async def __aenter__(self):
+            events.append("playwright_enter")
+            return FakePlaywright()
+
+        async def __aexit__(self, *_args):
+            events.append("playwright_exit")
+
+    fake_async_api = SimpleNamespace(
+        Error=FakePlaywrightError,
+        TimeoutError=FakePlaywrightTimeoutError,
+        async_playwright=lambda: FakePlaywrightManager(),
+    )
+    monkeypatch.setitem(sys.modules, "playwright.async_api", fake_async_api)
+
+    html, error = await tools._fetch_rendered_html(
+        "https://example.com",
+        LocalFetchConfig(block_resources=False, render_wait_ms=0),
+    )
+
+    assert error == ""
+    assert "Rendered" in html
+    assert events[-4:] == ["unroute", "context_close", "browser_close", "playwright_exit"]
 
 
 @pytest.mark.anyio

@@ -75,10 +75,14 @@ test.describe("Agent chat", () => {
     ).toBeVisible();
     await expect(
       page.getByText(
-        "默认 Flash 已保留计划和子智能体能力；四个专业角色会按需在这里显示真实分工状态。",
+        "默认 Flash 已保留子智能体能力并关闭额外计划追踪；三个启用角色会按需在这里显示真实分工状态。",
         { exact: true },
       ),
     ).toBeVisible();
+    await expect(
+      page.getByText("Evidence Checker", { exact: true }),
+    ).toHaveCount(0);
+    await expect(page.getByText("证据检查员", { exact: true })).toHaveCount(0);
     await expect(page.getByText("开启 Ultra 后", { exact: false })).toHaveCount(
       0,
     );

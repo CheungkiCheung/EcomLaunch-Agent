@@ -15,8 +15,8 @@ EXPECTED_SUBAGENTS = {
             "market-segments",
             "sentiment-analysis",
         ],
-        "max_model_calls": 5,
-        "max_total_tokens": 60000,
+        "max_model_calls": 4,
+        "max_total_tokens": 45000,
     },
     "offer-architect": {
         "tools": ["read_file"],
@@ -28,8 +28,8 @@ EXPECTED_SUBAGENTS = {
             "prioritize-assumptions",
             "brainstorm-experiments-new",
         ],
-        "max_model_calls": 3,
-        "max_total_tokens": 40000,
+        "max_model_calls": 2,
+        "max_total_tokens": 30000,
     },
     "asset-studio": {
         "tools": ["read_file"],
@@ -38,14 +38,14 @@ EXPECTED_SUBAGENTS = {
             "value-prop-statements",
             "marketing-ideas",
         ],
-        "max_model_calls": 3,
-        "max_total_tokens": 50000,
+        "max_model_calls": 2,
+        "max_total_tokens": 30000,
     },
     "evidence-checker": {
-        "tools": ["read_file", "web_fetch"],
+        "tools": ["read_file", "grep", "web_fetch"],
         "skills": ["strategy-red-team", "pre-mortem", "test-scenarios"],
-        "max_model_calls": 3,
-        "max_total_tokens": 40000,
+        "max_model_calls": 4,
+        "max_total_tokens": 55000,
     },
 }
 
@@ -75,7 +75,7 @@ UPSTREAM_PM_SKILL_SHA256 = {
 }
 
 
-def test_ecom_launch_registers_four_bounded_specialists() -> None:
+def test_ecom_launch_retains_four_bounded_specialist_definitions() -> None:
     config = yaml.safe_load((REPO_ROOT / "config.yaml").read_text(encoding="utf-8"))
     custom_agents = config["subagents"]["custom_agents"]
 
@@ -92,13 +92,23 @@ def test_ecom_launch_registers_four_bounded_specialists() -> None:
         assert custom_agents[name]["max_total_tokens"] == expected["max_total_tokens"]
 
     researcher_prompt = custom_agents["market-voc-researcher"]["system_prompt"]
-    assert "at most 3 web_search" in researcher_prompt
+    assert "at most 2 web_search" in researcher_prompt
+    assert "at most two tool rounds" in researcher_prompt
     assert "under 1200 Chinese characters" in researcher_prompt
     assert "do not repeat similar queries" in researcher_prompt
     assert "last30days" not in researcher_prompt
+    assert "exact source URL" in researcher_prompt
+    assert "Search snippets and generic source names are discovery aids" in researcher_prompt
     assert "web_search" not in custom_agents["offer-architect"]["tools"]
     assert "web_search" not in custom_agents["asset-studio"]["tools"]
-    assert custom_agents["evidence-checker"]["tools"] == ["read_file", "web_fetch"]
+    assert "first-person usage history" in custom_agents["asset-studio"]["system_prompt"]
+    assert "consumer copy may state only the category, target price, user problem, and validation question" in custom_agents["asset-studio"]["system_prompt"]
+    assert custom_agents["evidence-checker"]["tools"] == ["read_file", "grep", "web_fetch"]
+    assert "exact final files" in custom_agents["evidence-checker"]["system_prompt"]
+    assert "observed_public entries without direct source URLs" in custom_agents["evidence-checker"]["system_prompt"]
+    assert "one targeted web_fetch batch" in custom_agents["evidence-checker"]["system_prompt"]
+    assert "reserve the next model response for the final verdict" in custom_agents["evidence-checker"]["system_prompt"]
+    assert "never return conditional pass" in custom_agents["evidence-checker"]["system_prompt"]
 
 
 def test_ecom_launch_soul_is_shallow_and_mode_agnostic() -> None:
@@ -115,16 +125,39 @@ def test_ecom_launch_soul_is_shallow_and_mode_agnostic() -> None:
 
 def test_ecom_launch_skill_uses_minimum_needed_workflow() -> None:
     skill = (REPO_ROOT / "skills" / "custom" / "ecom-launch" / "SKILL.md").read_text(encoding="utf-8")
+    frontmatter = yaml.safe_load(skill.split("---", 2)[1])
 
     assert "Choose the smallest useful scope" in skill
     assert "Do not call all specialists by default" in skill
+    assert "short prioritization question" in skill
     assert "Maximum useful concurrency is two" in skill
+    assert frontmatter["allowed-tools"] == [
+        "read_file",
+        "grep",
+        "write_file",
+        "str_replace",
+        "present_files",
+        "task",
+        "ask_clarification",
+    ]
+    assert "EcomLaunch itself must not repeat or extend that web research" in skill
     assert "complete Launch Validation Pack only when the user explicitly asks" in skill
     assert "call each specialist type at most once" in skill
+    assert "minimum specialist sequence is mandatory" in skill
+    assert "Never schedule dependent specialists in the same tool-call batch" in skill
+    assert "10 KB or less" in skill
+    assert "no more than two model turns" in skill
     assert "never silently switch geography" in skill
     assert "Do not create extra files outside the standard set" in skill
-    assert "evidence-checker" in skill
+    assert "currently disabled for EcomLaunch" in skill
+    assert "Do not call it" in skill
+    assert "未经过独立 Evidence Checker 审计" in skill
     assert "[待确认]" in skill
+    assert "direct `source_urls` list" in skill
+    assert "first-person usage story" in skill
+    assert "URL checks validate only HTTP(S) syntax" in skill
+    assert "fake listings" in skill
+    assert "end with a question" in skill
     assert "stop" in skill.lower()
     assert "growth-analyst" not in skill
     assert "last30days" not in skill
@@ -139,11 +172,50 @@ def test_ecom_launch_agent_loads_only_its_router_skill() -> None:
     assert config["skills"] == ["ecom-launch"]
     assert config["memory_enabled"] is False
     assert config["run_budget"] == {
-        "max_lead_model_calls": 16,
-        "max_subagent_calls": 4,
+        "max_lead_model_calls": 20,
+        "max_subagent_calls": 3,
         "max_total_tokens": 500000,
-        "max_execution_seconds": 240,
+        "max_execution_seconds": 270,
         "deduplicate_subagents": True,
+        "allowed_subagent_types": [
+            "market-voc-researcher",
+            "offer-architect",
+            "asset-studio",
+        ],
+        "subagent_dependencies": {
+            "offer-architect": ["market-voc-researcher"],
+            "asset-studio": ["offer-architect"],
+        },
+        "direct_answer_patterns": [
+            "(?:最先|首先|第一步|优先).{0,32}(?:验证|假设|测试|检查|改进)",
+            "(?:哪一个|哪个|什么).{0,32}(?:假设|风险|指标|问题).{0,16}(?:最先|优先|先)",
+            "(?:what|which).{0,40}(?:first|priority|hypothesis|risk)",
+        ],
+        "direct_answer_exclude_patterns": ["公开信号|公开数据|公开信息|网页|搜索|调研|研究|竞品|来源|链接|最新|上传|文件|完整|Launch Validation Pack|报告"],
+        "complete_workflow_patterns": [
+            "Launch Validation Pack",
+            "完整.{0,16}(?:验证包|上市包|七件套|7\\s*件)",
+            "7\\s*天.{0,20}(?:验证包|Pack)",
+        ],
+        "required_completed_subagents": [
+            "market-voc-researcher",
+            "offer-architect",
+            "asset-studio",
+        ],
+        "compact_write_file_history": True,
+        "required_output_files": [
+            "launch-war-room.html",
+            "evidence-ledger.json",
+            "competitor-table.csv",
+            "positioning-brief.md",
+            "listing-pack.md",
+            "content-pack.md",
+            "launch-calendar.csv",
+        ],
+        "auto_present_complete_pack": True,
+        "require_evidence_checker": False,
+        "validate_pack_before_evidence": False,
+        "validate_pack_before_present": True,
     }
     assert "content-calibration" not in config["skills"]
 

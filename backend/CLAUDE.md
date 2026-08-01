@@ -197,16 +197,61 @@ from deerflow.config import get_app_config
 
 Repository-defined agent configs may also set `run_budget` with
 `max_lead_model_calls`, `max_subagent_calls`, `max_total_tokens`,
-`max_execution_seconds`, and `deduplicate_subagents`. The budget applies to the
+`max_execution_seconds`, `deduplicate_subagents`, and an optional
+`allowed_subagent_types` allowlist. When the allowlist is present, a task call
+for another type is rejected before the execution slot is reserved or a
+`SubagentExecutor` is started. Complete-pack agents may additionally configure
+`required_output_files`, `require_evidence_checker`, and
+`validate_pack_before_present`. A complete-pack agent may enable
+`auto_present_complete_pack`; successful writes then return the configured
+filename-set progress for the current user request, and once all required files
+have been written in that request plus all specialists are ready,
+RunBudget permits only `present_files`. After the first required-file write and
+before completeness, it removes read/grep/research/delegation/presentation and
+keeps only `write_file`/`str_replace` for the remaining configured artifacts.
+Once every required specialist is ready, the same boundary now starts before
+the first artifact write: only `write_file` is available for the initial Pack
+draft, using specialist results already present in the lead context.
+If deterministic preflight fails, only `write_file`/`str_replace` remain until
+every attempted revision in the latest batch succeeds, after which
+`present_files` is forced again.
+Write-history compaction applies only after the matching successful ToolMessage;
+pending and failed `write_file` calls retain their original payload so a
+compaction marker can never be executed as file content.
+When the exact configured filename set is
+presented, `present_files` requires a completed checker run only when
+`require_evidence_checker` is enabled, and can perform a deterministic preflight
+over minimum HTML/Markdown/JSON/CSV content and structure, ledger URL syntax,
+competitor-row URL syntax, and no-sample consumer-copy claims before artifacts
+enter thread state. The budget applies to the
 latest user turn, preserves an already-completed final answer, permits
 `present_files` as terminal delivery, and clamps specialist timeouts to the
-whole request's remaining wall time.
+whole request's remaining wall time. After `present_files` succeeds it injects
+a hidden terminal summary instruction and removes any later tool calls, so a
+completed delivery cannot start another research or drafting phase.
 
 Subagent Skill inheritance distinguishes an omitted child list from an explicit
 child list: `skills: null` inherits the lead agent's available Skills, while an
 explicit custom-subagent list is the configured specialist boundary and is kept
 as-is. This allows a router-only lead agent such as EcomLaunch to delegate to PM
 Skills without loading those Skills into the lead prompt.
+
+EcomLaunch complete-pack runs currently use three active specialists in sequence:
+Market Researcher, Offer Architect, and Asset Studio. The lead writes the seven
+compact candidate artifacts in at most two model turns, then presents the files
+through deterministic preflight. Evidence Checker remains defined globally for
+future reactivation, but the EcomLaunch allowlist, dependency graph, completion
+contract, and delivery gate do not call or require it. Budget-finalized
+specialist results are not recorded as completed, so dependency and delivery
+contracts cannot treat a truncated required specialist as a successful role run.
+Market Researcher has four model calls to cover bounded search, targeted fetch,
+and a final findings response. Offer Architect has two model calls. The last
+allowed specialist response is mechanically tool-free, so it must return
+collected findings instead of starting another tool round. For no-sample/no-spec
+requests, delivery preflight rejects malformed evidence files, non-HTTP(S)
+direct-observation URLs, obvious fabricated experience, and unconfirmed product
+claims. It does not fetch URLs or independently verify source-to-claim support;
+complete Packs must be labeled as not independently Evidence-audited.
 
 ### Middleware Chain
 
@@ -222,7 +267,7 @@ Lead-agent middlewares are assembled in strict append order across `packages/har
 8. **ToolErrorHandlingMiddleware** - Converts tool exceptions into error `ToolMessage`s so the run can continue instead of aborting
 9. **SummarizationMiddleware** - Context reduction when approaching token limits (optional, if enabled)
 10. **TodoListMiddleware** - Task tracking with `write_todos` tool (optional, if plan_mode)
-11. **RunBudgetMiddleware** - Optional per-agent whole-request boundary. Stops additional non-terminal tool work after configured lead-model calls, observed lead + subagent tokens, or wall time; initializes the run-scoped subagent counter/deadline consumed by `task_tool`
+11. **RunBudgetMiddleware** - Optional per-agent whole-request boundary. Stops additional non-terminal tool work after configured lead-model calls, observed lead + subagent tokens, or wall time; initializes the run-scoped subagent counter/deadline consumed by `task_tool`; treats a successful `present_files` result as terminal and blocks later tool calls
 12. **TokenUsageMiddleware** - Records token usage metrics when token tracking is enabled (optional); subagent usage is cached by `tool_call_id` only while token usage is enabled and merged back into the dispatching AIMessage by message position rather than message id
 13. **TitleMiddleware** - Auto-generates thread title after first complete exchange and normalizes structured message content before prompting the title model
 14. **MemoryMiddleware** - Queues conversations for async memory update (filters to user + final AI responses)
@@ -344,6 +389,7 @@ Proxied through nginx: `/api/langgraph/*` → Gateway LangGraph-compatible runti
 - `tavily/` - Web search (5 results default) and web fetch (4KB limit)
 - `jina_ai/` - Web fetch via Jina reader API with readability extraction
 - `firecrawl/` - Web scraping via Firecrawl API
+- `local_fetch/` - Static HTTP fetch with optional Playwright rendering fallback. Render cleanup removes routes and closes the page context/browser before leaving the Playwright manager so pending route callbacks cannot outlive the runtime.
 
 **Growth Analyst application tools** (`app/data_inspector/`):
 
