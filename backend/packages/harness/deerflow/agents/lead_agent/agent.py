@@ -447,6 +447,15 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
     else:
         agent_config = load_agent_config(agent_name)
         agent_is_builtin = bool(agent_name and is_builtin_agent(agent_name))
+    # Flash mode: swap to openskufast budget (tighter tool limits for fast answers)
+    mode = cfg.get("mode")
+    if mode == "flash" and agent_config is not None and agent_config.flash_skills:
+        try:
+            flash_cfg = load_agent_config("openskufast", user_id=user_id if user_id is not None else None)
+            if flash_cfg is not None and flash_cfg.run_budget is not None:
+                agent_config = agent_config.model_copy(update={"run_budget": flash_cfg.run_budget})
+        except (FileNotFoundError, ValueError):
+            pass
     available_skills = _available_skill_names(agent_config, is_bootstrap, runtime_config=cfg)
     # Custom agent model from agent config (if any), or None to let _resolve_model_name pick the default
     agent_model_name = agent_config.model if agent_config and agent_config.model else None
