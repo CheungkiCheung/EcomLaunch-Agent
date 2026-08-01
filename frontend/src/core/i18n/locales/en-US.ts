@@ -180,6 +180,7 @@ export const enUS: Translations = {
     warRoom: "War Room",
     ecomLaunch: "EcomLaunch Validation",
     dataInspector: "Growth Analyst",
+    openskufast: "OpenSKU Fast",
   },
 
   // Agents
@@ -232,15 +233,24 @@ export const enUS: Translations = {
     backToGallery: "Back to Gallery",
     ecomLaunchName: "EcomLaunch Validation",
     dataInspectorName: "Growth Analyst",
+    openskufastName: "OpenSKU Fast",
     ecomLaunchWelcomeDescription:
       "Turn a rough product idea into a 7-day ecommerce launch validation pack using public signals, uploaded context, and labeled assumptions.",
     dataInspectorWelcomeDescription:
       "Upload CSV or XLSX data to find changes, anomalies, causes, and practical growth opportunities.",
+    openskufastWelcomeDescription:
+      "Single-agent fast product research & decisions. Uses Web Search + 22 PM skills for market analysis, positioning, pricing, and GTM advice.",
     ecomLaunchWelcomeBadges: [
       "Public signals",
       "No backend data needed",
       "Launch Crew",
       "7-day pack",
+    ],
+    openskufastWelcomeBadges: [
+      "Single agent",
+      "Web Search",
+      "PM Skills",
+      "Fast decisions",
     ],
     ecomLaunchSuggestions: [
       {
@@ -283,6 +293,25 @@ export const enUS: Translations = {
         suggestion: "Improvement areas",
         prompt: "Based on this data, what should be improved first?",
         icon: ListChecksIcon,
+      },
+    ],
+    openskufastSuggestions: [
+      {
+        suggestion: "New product",
+        prompt:
+          "I want to launch a $15-$30 commuter coffee tumbler. Use public signals for market analysis, competitor scan, positioning, and pricing strategy.",
+        icon: CompassIcon,
+      },
+      {
+        suggestion: "Category scan",
+        prompt:
+          "In pet supplies, what new product directions are worth low-cost testing? Scan public signals and give opportunity judgment.",
+        icon: MicroscopeIcon,
+      },
+      {
+        suggestion: "Competitor teardown",
+        prompt: "Here is a public competitor link/name. Help me break down its positioning, selling points, and possible improvement areas.",
+        icon: SparklesIcon,
       },
     ],
   },

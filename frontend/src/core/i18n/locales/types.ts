@@ -121,6 +121,7 @@ export interface Translations {
     warRoom: string;
     ecomLaunch: string;
     dataInspector: string;
+    openskufast: string;
   };
 
   // Agents
@@ -160,15 +161,23 @@ export interface Translations {
     backToGallery: string;
     ecomLaunchName: string;
     dataInspectorName: string;
+    openskufastName: string;
     ecomLaunchWelcomeDescription: string;
     dataInspectorWelcomeDescription: string;
+    openskufastWelcomeDescription: string;
     ecomLaunchWelcomeBadges: string[];
+    openskufastWelcomeBadges: string[];
     ecomLaunchSuggestions: {
       suggestion: string;
       prompt: string;
       icon: LucideIcon;
     }[];
     dataInspectorSuggestions: {
+      suggestion: string;
+      prompt: string;
+      icon: LucideIcon;
+    }[];
+    openskufastSuggestions: {
       suggestion: string;
       prompt: string;
       icon: LucideIcon;

@@ -5,6 +5,7 @@ import {
   DatabaseIcon,
   PlusSquare,
   ShoppingBagIcon,
+  ZapIcon,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -50,7 +51,8 @@ export default function AgentChatPage() {
   }>();
   const isEcomLaunch = agent_name === "ecom-launch";
   const isDataInspector = agent_name === "data-inspector";
-  const isPrimaryAgent = isEcomLaunch || isDataInspector;
+  const isOpenskufast = agent_name === "openskufast";
+  const isPrimaryAgent = isEcomLaunch || isDataInspector || isOpenskufast;
 
   const { agent } = useAgent(isPrimaryAgent ? null : agent_name);
 
@@ -192,17 +194,23 @@ export default function AgentChatPage() {
     ? ShoppingBagIcon
     : isDataInspector
       ? DatabaseIcon
-      : BotIcon;
+      : isOpenskufast
+        ? ZapIcon
+        : BotIcon;
   const agentDisplayName = isEcomLaunch
     ? t.agents.ecomLaunchName
     : isDataInspector
       ? t.agents.dataInspectorName
-      : (agent?.name ?? agent_name);
+      : isOpenskufast
+        ? t.agents.openskufastName
+        : (agent?.name ?? agent_name);
   const welcomeSuggestions = isEcomLaunch
     ? t.agents.ecomLaunchSuggestions
     : isDataInspector
       ? t.agents.dataInspectorSuggestions
-      : undefined;
+      : isOpenskufast
+        ? t.agents.openskufastSuggestions
+        : undefined;
 
   return (
     <ThreadContext.Provider value={{ thread }}>

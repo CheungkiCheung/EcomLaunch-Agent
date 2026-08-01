@@ -174,6 +174,7 @@ export const zhCN: Translations = {
     warRoom: "作战室",
     ecomLaunch: "EcomLaunch 验证台",
     dataInspector: "Growth Analyst",
+    openskufast: "OpenSKU Fast",
   },
 
   // Agents
@@ -220,15 +221,24 @@ export const zhCN: Translations = {
     backToGallery: "返回 Gallery",
     ecomLaunchName: "EcomLaunch 验证台",
     dataInspectorName: "Growth Analyst",
+    openskufastName: "OpenSKU Fast",
     ecomLaunchWelcomeDescription:
       "用公开信号、上传材料和明确假设，把模糊新品想法变成 7 天电商上新验证包。",
     dataInspectorWelcomeDescription:
       "上传 CSV 或 XLSX，发现经营和内容数据中的变化、异常、原因与增长机会。",
+    openskufastWelcomeDescription:
+      "单智能体快速商品研究与决策。用 Web Search + 22 个 PM 技能独立完成市场分析、定位、定价和 GTM 建议。",
     ecomLaunchWelcomeBadges: [
       "公开信号",
       "无后台数据可用",
       "Launch Crew",
       "7 天验证包",
+    ],
+    openskufastWelcomeBadges: [
+      "单智能体",
+      "Web Search",
+      "PM Skills",
+      "快速决策",
     ],
     ecomLaunchSuggestions: [
       {
@@ -271,6 +281,25 @@ export const zhCN: Translations = {
         suggestion: "改进方向",
         prompt: "根据这个数据，哪些地方最值得优先改进？",
         icon: ListChecksIcon,
+      },
+    ],
+    openskufastSuggestions: [
+      {
+        suggestion: "新品评估",
+        prompt:
+          "我想做一个 99-199 元的通勤咖啡杯。请用公开信号帮我做市场分析、竞品扫描、定位建议和定价策略。",
+        icon: CompassIcon,
+      },
+      {
+        suggestion: "类目机会",
+        prompt:
+          "在宠物用品类目里，有哪些值得低成本测试的新品方向？帮我扫描公开信号并给出机会判断。",
+        icon: MicroscopeIcon,
+      },
+      {
+        suggestion: "竞品拆解",
+        prompt: "这是一个公开竞品链接/名称，帮我拆解它的定位、卖点和可能的改进空间。",
+        icon: SparklesIcon,
       },
     ],
   },
