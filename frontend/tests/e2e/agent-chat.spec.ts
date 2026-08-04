@@ -59,7 +59,7 @@ test.describe("Agent chat", () => {
     await expect(page.getByText("Improvement areas")).toBeVisible();
   });
 
-  test("EcomLaunch keeps its crew available in the default Flash mode", async ({
+  test("OpenSKU keeps its launch team available in the default Flash mode", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -71,11 +71,11 @@ test.describe("Agent chat", () => {
       page.getByRole("button", { name: "Flash", exact: true }),
     ).toBeVisible({ timeout: 15_000 });
     await expect(
-      page.getByRole("heading", { name: "Launch Crew", exact: true }),
+      page.getByRole("heading", { name: "Launch Team", exact: true }),
     ).toBeVisible();
     await expect(
       page.getByText(
-        "默认 Flash 已保留子智能体能力并关闭额外计划追踪；三个启用角色会按需在这里显示真实分工状态。",
+        "Flash keeps specialist capability available without extra planning overhead. Active roles appear here only when real work is assigned.",
         { exact: true },
       ),
     ).toBeVisible();
