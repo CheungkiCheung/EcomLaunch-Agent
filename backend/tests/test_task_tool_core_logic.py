@@ -297,6 +297,7 @@ def test_terminal_specialist_preflight_blocks_without_reserving_a_slot(tmp_path,
         finalize_after_subagent="evidence-checker",
         validate_pack_before_evidence=True,
     )
+
     def fake_validate(*_args, **kwargs):
         assert kwargs["user_request"] == "没有样品，请输出完整 Launch Validation Pack"
         return ["listing-pack.md:2 unsafe"]
@@ -1667,6 +1668,27 @@ def test_subagent_usage_cache_is_skipped_when_config_file_is_missing(monkeypatch
     )
 
     assert task_tool_module._token_usage_cache_enabled(None) is False
+
+
+def test_subagent_usage_cache_is_skipped_when_provider_env_is_unresolved(monkeypatch):
+    monkeypatch.setattr(
+        task_tool_module,
+        "get_app_config",
+        MagicMock(side_effect=ValueError("Environment variable DEEPSEEK_API_KEY not found for config value $DEEPSEEK_API_KEY")),
+    )
+
+    assert task_tool_module._token_usage_cache_enabled(None) is False
+
+
+def test_subagent_usage_cache_preserves_unrelated_config_errors(monkeypatch):
+    monkeypatch.setattr(
+        task_tool_module,
+        "get_app_config",
+        MagicMock(side_effect=ValueError("token_usage.enabled must be a boolean")),
+    )
+
+    with pytest.raises(ValueError, match="token_usage.enabled must be a boolean"):
+        task_tool_module._token_usage_cache_enabled(None)
 
 
 def test_subagent_usage_cache_is_skipped_when_token_usage_is_disabled(monkeypatch):

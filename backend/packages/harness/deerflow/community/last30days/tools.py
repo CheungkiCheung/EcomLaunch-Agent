@@ -6,9 +6,6 @@ import json
 import logging
 import os
 import subprocess
-import tempfile
-from pathlib import Path
-from typing import Optional
 
 from langchain.tools import tool
 
@@ -23,7 +20,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_SCRIPT_PATH = None  # Will be auto-detected or configured
 
 
-def _find_last30days_script() -> Optional[str]:
+def _find_last30days_script() -> str | None:
     """Find the last30days script in common locations."""
     # Check environment variable first
     env_path = os.environ.get("LAST30DAYS_SCRIPT_PATH")
@@ -74,10 +71,10 @@ def _find_python312() -> str:
 
 def _run_last30days(
     topic: str,
-    sources: Optional[list[str]] = None,
+    sources: list[str] | None = None,
     depth: str = "quick",
     emit: str = "compact",
-    extra_args: Optional[list[str]] = None,
+    extra_args: list[str] | None = None,
 ) -> dict:
     """
     Run last30days script and return results.
@@ -215,7 +212,7 @@ def _extract_summary(output: str) -> str:
     """Extract summary from last30days output."""
     lines = output.split("\n")
     summary_lines = []
-    
+
     # Look for Ranked Evidence Clusters section
     in_clusters = False
     for line in lines:
@@ -229,19 +226,19 @@ def _extract_summary(output: str) -> str:
                 summary_lines.append(title_match)
                 if len(summary_lines) >= 3:
                     break
-    
+
     if not summary_lines:
         # Fallback: look for "What I learned:" section
         for i, line in enumerate(lines):
             if "What I learned:" in line:
                 # Get next few non-empty lines
-                for j in range(i+1, min(i+10, len(lines))):
+                for j in range(i + 1, min(i + 10, len(lines))):
                     if lines[j].strip() and not lines[j].startswith("#"):
                         summary_lines.append(lines[j].strip())
                         if len(summary_lines) >= 3:
                             break
                 break
-    
+
     return " | ".join(summary_lines[:3]) if summary_lines else "Research completed"
 
 
@@ -249,7 +246,7 @@ def _extract_insights(output: str) -> list[str]:
     """Extract key insights from last30days output."""
     insights = []
     lines = output.split("\n")
-    
+
     # Look for evidence items with score tuples
     for line in lines:
         # Match patterns like "(score 44, 1 item, sources: Hacker News)"
@@ -264,7 +261,7 @@ def _extract_insights(output: str) -> list[str]:
                 insights.append(match[:150])
                 if len(insights) >= 5:
                     break
-    
+
     # Also look for direct evidence quotes
     if len(insights) < 3:
         for line in lines:
@@ -274,7 +271,7 @@ def _extract_insights(output: str) -> list[str]:
                     insights.append(evidence[:150])
                     if len(insights) >= 5:
                         break
-    
+
     return insights
 
 
@@ -319,7 +316,7 @@ def _extract_stats(output: str) -> dict:
                 stats["polymarket_markets"] = int(num)
             except (ValueError, IndexError):
                 pass
-    
+
     # Also check for stats in Source Coverage section
     for line in lines:
         if "Reddit:" in line and "items" in line.lower():

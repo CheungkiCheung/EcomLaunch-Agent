@@ -39,11 +39,19 @@ class MinHeap<T> {
     return top;
   }
 
+  private swap(a: number, b: number) {
+    const first = this.data[a];
+    const second = this.data[b];
+    if (first === undefined || second === undefined) return;
+    this.data[a] = second;
+    this.data[b] = first;
+  }
+
   private bubbleUp(i: number) {
     while (i > 0) {
       const parent = (i - 1) >> 1;
       if (this.score(this.data[i]!) >= this.score(this.data[parent]!)) break;
-      [this.data[i]!, this.data[parent]!] = [this.data[parent]!, this.data[i]!];
+      this.swap(i, parent);
       i = parent;
     }
   }
@@ -54,10 +62,12 @@ class MinHeap<T> {
       let smallest = i;
       const l = 2 * i + 1;
       const r = 2 * i + 2;
-      if (l < n && this.score(this.data[l]!) < this.score(this.data[smallest]!)) smallest = l;
-      if (r < n && this.score(this.data[r]!) < this.score(this.data[smallest]!)) smallest = r;
+      if (l < n && this.score(this.data[l]!) < this.score(this.data[smallest]!))
+        smallest = l;
+      if (r < n && this.score(this.data[r]!) < this.score(this.data[smallest]!))
+        smallest = r;
       if (smallest === i) break;
-      [this.data[i]!, this.data[smallest]!] = [this.data[smallest]!, this.data[i]!];
+      this.swap(i, smallest);
       i = smallest;
     }
   }
@@ -198,7 +208,8 @@ export class Pathfinder {
         if (!this.valid(nr, nc) || !this.grid[nr]![nc]!) continue;
 
         if (dr !== 0 && dc !== 0) {
-          if (!this.grid[cur.r + dr]![cur.c] || !this.grid[cur.r]![cur.c + dc]) continue;
+          if (!this.grid[cur.r + dr]![cur.c] || !this.grid[cur.r]![cur.c + dc])
+            continue;
         }
 
         const cost = dr !== 0 && dc !== 0 ? 1.414 : 1;
@@ -228,7 +239,10 @@ export class Pathfinder {
     return Math.max(dr, dc) + (Math.SQRT2 - 1) * Math.min(dr, dc);
   }
 
-  private nearestWalkableCell(r: number, c: number): { r: number; c: number } | null {
+  private nearestWalkableCell(
+    r: number,
+    c: number,
+  ): { r: number; c: number } | null {
     for (let d = 1; d <= 12; d++) {
       let bestDist = Infinity;
       let bestCell: { r: number; c: number } | null = null;

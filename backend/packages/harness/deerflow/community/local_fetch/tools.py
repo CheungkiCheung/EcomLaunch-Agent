@@ -20,10 +20,7 @@ class LocalFetchConfig:
     render_timeout: int = 25
     max_chars: int = 4096
     min_content_chars: int = 600
-    user_agent: str = (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
-    )
+    user_agent: str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
     proxy: str | None = None
     trust_env: bool = False
     render_mode: str = "auto"

@@ -102,7 +102,7 @@ export class InteractionMenu {
       this.container.add(highlight);
 
       const txt = this.scene.add.text(PAD_X, y + ITEM_HEIGHT / 2, opt.label, {
-        fontFamily: 'Menlo, monospace',
+        fontFamily: "Menlo, monospace",
         fontSize: FONT_SIZE,
         color: opt.enabled ? TEXT_COLOR : DISABLED_COLOR,
       });
@@ -140,7 +140,10 @@ export class InteractionMenu {
     const cam = this.scene.cameras.main;
     const screenX = (worldX - cam.scrollX) * cam.zoom;
     const screenY = (worldY - cam.scrollY) * cam.zoom;
-    const menuX = Math.min(screenX - MENU_WIDTH / 2, cam.width - MENU_WIDTH - 10);
+    const menuX = Math.min(
+      screenX - MENU_WIDTH / 2,
+      cam.width - MENU_WIDTH - 10,
+    );
     const menuY = Math.max(screenY - totalH - 10, 10);
     this.container.setPosition(Math.max(menuX, 10), menuY);
     this.container.setVisible(true);

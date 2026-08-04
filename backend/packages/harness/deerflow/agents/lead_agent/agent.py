@@ -449,11 +449,7 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
         agent_is_builtin = bool(agent_name and is_builtin_agent(agent_name))
     # Flash mode: swap to openskufast budget (tighter tool limits for fast answers)
     mode = cfg.get("mode")
-    if (
-        mode == "flash"
-        and agent_config is not None
-        and agent_config.flash_skills
-    ):
+    if mode == "flash" and agent_config is not None and agent_config.flash_skills:
         try:
             flash_cfg = load_agent_config("openskufast", user_id=user_id if user_id is not None else None)
             if flash_cfg is not None and flash_cfg.run_budget is not None:

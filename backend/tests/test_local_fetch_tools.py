@@ -24,7 +24,7 @@ class MockAsyncClient:
     captured_get_kwargs = {}
     response = httpx.Response(
         200,
-        text="<html><head><title>Fetched Page</title><meta name=\"description\" content=\"Short description\"></head><body><main><h1>Hello</h1><p>World</p></main></body></html>",
+        text='<html><head><title>Fetched Page</title><meta name="description" content="Short description"></head><body><main><h1>Hello</h1><p>World</p></main></body></html>',
         request=httpx.Request("GET", "https://example.com"),
     )
 
@@ -125,7 +125,7 @@ async def test_web_fetch_tool_returns_http_error(monkeypatch):
 async def test_web_fetch_tool_auto_renders_when_static_content_is_thin(monkeypatch):
     MockAsyncClient.response = httpx.Response(
         200,
-        text="<html><head><title>App Shell</title></head><body><div id=\"app-root\"></div><script>window.__APP__ = {}</script></body></html>",
+        text='<html><head><title>App Shell</title></head><body><div id="app-root"></div><script>window.__APP__ = {}</script></body></html>',
         request=httpx.Request("GET", "https://example.com"),
     )
     monkeypatch.setattr(tools.httpx, "AsyncClient", MockAsyncClient)
@@ -369,9 +369,7 @@ def test_should_try_render():
 
 
 def test_meaningful_content_length_ignores_metadata_quote_lines():
-    assert _meaningful_content_length("# Title\n\n> metadata description\n\nVisible body") < len(
-        "# Title\n\n> metadata description\n\nVisible body"
-    )
+    assert _meaningful_content_length("# Title\n\n> metadata description\n\nVisible body") < len("# Title\n\n> metadata description\n\nVisible body")
 
 
 def test_extract_markdown_falls_back_to_body_text(monkeypatch):

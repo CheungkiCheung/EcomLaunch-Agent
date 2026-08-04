@@ -689,10 +689,7 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
             stopped = clone_ai_message_with_tool_calls(
                 last,
                 [],
-                content=(
-                    "Launch Pack 未完成修订或交付，仍有必需文件未通过确定性预检。\n\n"
-                    f"停止原因：{reason}。"
-                ),
+                content=(f"Launch Pack 未完成修订或交付，仍有必需文件未通过确定性预检。\n\n停止原因：{reason}。"),
             )
             return {"messages": [stopped]}
 

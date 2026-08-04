@@ -22,11 +22,7 @@ def _message_text(message: object) -> str:
         return content
     if not isinstance(content, list):
         return ""
-    return "\n".join(
-        block if isinstance(block, str) else block.get("text", "")
-        for block in content
-        if isinstance(block, str) or (isinstance(block, dict) and isinstance(block.get("text"), str))
-    )
+    return "\n".join(block if isinstance(block, str) else block.get("text", "") for block in content if isinstance(block, str) or (isinstance(block, dict) and isinstance(block.get("text"), str)))
 
 
 def _latest_user_request_text(runtime: Runtime) -> str:
@@ -132,9 +128,7 @@ def _complete_pack_preflight(runtime: Runtime, filepaths: list[str]) -> list[str
         completed_subagents = budget_state.get("subagent_types_completed", set())
         if not isinstance(completed_subagents, set):
             completed_subagents = set(completed_subagents) if isinstance(completed_subagents, (list, tuple)) else set()
-        missing_subagents = sorted(
-            name for name in required_subagents if isinstance(name, str) and name and name not in completed_subagents
-        )
+        missing_subagents = sorted(name for name in required_subagents if isinstance(name, str) and name and name not in completed_subagents)
         if missing_subagents:
             issues.append(f"configured specialist(s) have not completed for this user request: {', '.join(missing_subagents)}")
 
@@ -217,23 +211,14 @@ def present_file_tool(
                 budget_state["loop_attempts"] = attempts
                 if attempts >= max_attempts:
                     budget_state["loop_exhausted"] = True
-                    header = (
-                        f"Error: Launch Pack preflight blocked delivery (attempt {attempts}/{max_attempts}, "
-                        "loop exhausted — stop revising and deliver the best current result):\n"
-                    )
+                    header = f"Error: Launch Pack preflight blocked delivery (attempt {attempts}/{max_attempts}, loop exhausted — stop revising and deliver the best current result):\n"
                 else:
-                    header = (
-                        f"Error: Launch Pack preflight blocked delivery (attempt {attempts}/{max_attempts}; "
-                        "fix exactly the issues below, then call present_files again):\n"
-                    )
+                    header = f"Error: Launch Pack preflight blocked delivery (attempt {attempts}/{max_attempts}; fix exactly the issues below, then call present_files again):\n"
                 previous = history[:-1]
                 if previous:
                     prior = previous[-1]
                     prior_failures = "\n".join(f"- {i}" for i in (prior.get("issues") or []))
-                    loop_context = (
-                        f"\n\n[Loop state] Previously tried {len(previous)} revision(s). "
-                        f"Last failure was: {prior_failures}"
-                    )
+                    loop_context = f"\n\n[Loop state] Previously tried {len(previous)} revision(s). Last failure was: {prior_failures}"
                 else:
                     loop_context = "\n\n[Loop state] This is the first preflight failure for this pack."
                 return Command(
@@ -255,9 +240,7 @@ def present_file_tool(
             if isinstance(budget_state, dict):
                 history = budget_state.setdefault("loop_history", [])
                 if isinstance(history, list):
-                    history.append(
-                        {"attempt": len(history) + 1, "status": "delivered", "issues": []}
-                    )
+                    history.append({"attempt": len(history) + 1, "status": "delivered", "issues": []})
                 budget_state["loop_delivered"] = True
 
     try:

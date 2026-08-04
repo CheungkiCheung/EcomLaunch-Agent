@@ -36,10 +36,12 @@ logger = logging.getLogger(__name__)
 # Cache subagent token usage by tool_call_id so TokenUsageMiddleware can
 # write it back to the triggering AIMessage's usage_metadata.
 _subagent_usage_cache: dict[str, dict[str, int]] = {}
-_EVIDENCE_VERDICT_PATTERN = re.compile(
-    r"(?im)^\s*(?:#{1,6}\s*)?(?:[-*]\s*)?(?:verdict|审计结论|审计结果|结论)\s*[:：]\s*`?(pass|revise|blocked)\b"
-)
+_EVIDENCE_VERDICT_PATTERN = re.compile(r"(?im)^\s*(?:#{1,6}\s*)?(?:[-*]\s*)?(?:verdict|审计结论|审计结果|结论)\s*[:：]\s*`?(pass|revise|blocked)\b")
 _INCOMPLETE_AUDIT_PATTERN = re.compile(r"execution budget|执行预算|token\s*上限|model call limit", re.IGNORECASE)
+_UNRESOLVED_ENV_CONFIG_PATTERN = re.compile(
+    r"Environment variable .+ not found for config value .+",
+    re.IGNORECASE,
+)
 
 
 def _token_usage_cache_enabled(app_config: "AppConfig | None") -> bool:
@@ -48,6 +50,10 @@ def _token_usage_cache_enabled(app_config: "AppConfig | None") -> bool:
             app_config = get_app_config()
         except FileNotFoundError:
             return False
+        except ValueError as exc:
+            if _UNRESOLVED_ENV_CONFIG_PATTERN.search(str(exc)):
+                return False
+            raise
     return bool(getattr(getattr(app_config, "token_usage", None), "enabled", False))
 
 
@@ -390,10 +396,7 @@ def _apply_run_budget_to_subagent(runtime: Any, config: Any, subagent_type: str)
             incomplete_dependencies = sorted(active_dependencies - completed_types)
             if incomplete_dependencies:
                 dependency_display = ", ".join(incomplete_dependencies)
-                return config, (
-                    f"Task skipped: specialist '{subagent_type}' must wait for prerequisite(s) {dependency_display} "
-                    "to complete. Call it again after those results are available."
-                )
+                return config, (f"Task skipped: specialist '{subagent_type}' must wait for prerequisite(s) {dependency_display} to complete. Call it again after those results are available.")
 
     if budget_config.get("deduplicate_subagents", True) and subagent_type in started_types:
         return config, f"Task skipped: specialist '{subagent_type}' already ran in this user request. Reuse its earlier result instead of starting duplicate research."
@@ -547,10 +550,7 @@ async def task_tool(
         terminal_failure = _record_terminal_preflight_failure(runtime, subagent_type, preflight_error)
         logger.info("Skipped subagent %s because candidate-pack preflight failed", subagent_type)
         if terminal_failure:
-            return (
-                f"{preflight_error}\n"
-                "Task skipped: the candidate-pack preflight failed twice; no further audit or delivery attempts are allowed in this request."
-            )
+            return f"{preflight_error}\nTask skipped: the candidate-pack preflight failed twice; no further audit or delivery attempts are allowed in this request."
         return preflight_error
 
     config, budget_error = _apply_run_budget_to_subagent(runtime, config, subagent_type)

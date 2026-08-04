@@ -491,9 +491,9 @@ def test_wrap_model_call_compacts_large_historical_write_file_payloads() -> None
     assert "content" not in json.loads(raw_compacted)
     assert captured[0].messages[-1].name == "compacted_file_history"
     assert "Successful writes:" in captured[0].messages[-1].content
-    assert '\"path\":\"/mnt/user-data/outputs/report.md\"' in captured[0].messages[-1].content
-    assert '\"bytes\":2000' in captured[0].messages[-1].content
-    assert '\"status\":\"success\"' in captured[0].messages[-1].content
+    assert '"path":"/mnt/user-data/outputs/report.md"' in captured[0].messages[-1].content
+    assert '"bytes":2000' in captured[0].messages[-1].content
+    assert '"status":"success"' in captured[0].messages[-1].content
     assert "[compacted" not in captured[0].messages[-1].content
     assert "Do not reread" in captured[0].messages[-1].content
     assert captured[0].messages[3].tool_calls[0]["args"]["content"] == pending_content

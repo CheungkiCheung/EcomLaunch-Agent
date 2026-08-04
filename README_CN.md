@@ -13,7 +13,8 @@
 
 <p align="center">
   <a href="README.md">English</a> ·
-  <a href="#快速开始"><strong>快速开始</strong></a> ·
+  <a href="#体验无密钥英文演示"><strong>体验 Demo</strong></a> ·
+  <a href="#快速开始">快速开始</a> ·
   <a href="#opensku-能交付什么">交付内容</a> ·
   <a href="docs/war-room.md">War Room</a>
 </p>
@@ -21,6 +22,18 @@
 ![OpenSKU 英文 War Room 演示](.github/assets/war-room-demo.gif)
 
 OpenSKU 为独立开发者、产品团队和电商经营者提供一个协作式 AI 上新团队。它会在投入库存、广告预算和正式发布之前，研究公开市场信号，区分事实、估算和假设，设计商品方案，并在一个可追踪的流程中生成完整上新包。
+
+## 体验无密钥英文演示
+
+录制式英文 Demo 不需要后端、模型供应商或 API Key。它使用确定性的样例数据，明确说明没有实时 Agent 正在运行，并提供暖色 War Room 回放和 4 份可以直接打开检查的交付物。
+
+```bash
+cd frontend
+pnpm install
+pnpm demo
+```
+
+打开 [http://localhost:3000/demo](http://localhost:3000/demo)。样例任务是验证一款面向美国市场的紧凑型旅行咖啡杯，并且明确与实时市场研究区分开。
 
 ## OpenSKU 能交付什么
 

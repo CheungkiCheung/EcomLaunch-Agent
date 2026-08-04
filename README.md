@@ -20,7 +20,8 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start"><strong>Quick start</strong></a> ·
+  <a href="#try-the-english-demo"><strong>Try demo</strong></a> ·
+  <a href="#quick-start">Quick start</a> ·
   <a href="#what-opensku-delivers">What it delivers</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="docs/war-room.md">War Room</a> ·
@@ -30,6 +31,18 @@
 ![OpenSKU English War Room demo](.github/assets/war-room-demo.gif)
 
 OpenSKU gives solo founders, product teams, and ecommerce operators a coordinated AI team for the work that happens before inventory, ad spend, and launch commitments. It researches public market signals, separates evidence from assumptions, designs an offer, and produces an editable launch pack in one auditable workflow.
+
+## Try the English demo
+
+The recorded English demo needs no backend, model provider, or API key. It uses deterministic sample data, clearly labels that no live agents are running, and includes a warm War Room replay plus four inspectable deliverables.
+
+```bash
+cd frontend
+pnpm install
+pnpm demo
+```
+
+Open [http://localhost:3000/demo](http://localhost:3000/demo). The sample validates a hypothetical compact travel coffee mug for the US market and is explicitly separated from live market research.
 
 ## What OpenSKU delivers
 
@@ -173,6 +186,8 @@ pnpm typecheck
 pnpm test
 pnpm test:e2e
 ```
+
+Backend unit tests do not require model-provider credentials. Running model-backed application flows still requires at least one configured provider key.
 
 ## Roadmap
 

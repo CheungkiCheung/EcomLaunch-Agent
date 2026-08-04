@@ -139,9 +139,7 @@ function SidebarProvider({
           style={
             {
               "--sidebar-width":
-                sidebarWidth != null
-                  ? `${sidebarWidth}px`
-                  : SIDEBAR_WIDTH,
+                sidebarWidth != null ? `${sidebarWidth}px` : SIDEBAR_WIDTH,
               "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
               ...style,
             } as React.CSSProperties
@@ -171,7 +169,8 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset";
   collapsible?: "offcanvas" | "icon" | "none";
 }) {
-  const { isMobile, state, openMobile, setOpenMobile, setSidebarWidth } = useSidebar();
+  const { isMobile, state, openMobile, setOpenMobile, setSidebarWidth } =
+    useSidebar();
 
   if (collapsible === "none") {
     return (
@@ -264,13 +263,14 @@ function Sidebar({
                 e.preventDefault();
                 const startX = e.clientX;
                 const container = e.currentTarget.parentElement!.parentElement!;
-                const cssWidth = getComputedStyle(container).getPropertyValue("--sidebar-width").trim();
-                const startW =
-                  cssWidth.endsWith("rem")
-                    ? parseFloat(cssWidth) * 16
-                    : cssWidth.endsWith("px")
-                      ? parseFloat(cssWidth)
-                      : 256;
+                const cssWidth = getComputedStyle(container)
+                  .getPropertyValue("--sidebar-width")
+                  .trim();
+                const startW = cssWidth.endsWith("rem")
+                  ? parseFloat(cssWidth) * 16
+                  : cssWidth.endsWith("px")
+                    ? parseFloat(cssWidth)
+                    : 256;
                 // Disable width transition while dragging for smooth follow
                 container.style.transition = "none";
                 const onMove = (ev: PointerEvent) => {
@@ -289,7 +289,7 @@ function Sidebar({
                 window.addEventListener("pointerup", onUp);
               }}
             >
-              <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border opacity-0 transition-opacity group-hover/resizer:opacity-100" />
+              <div className="bg-border absolute inset-y-0 left-1/2 w-px -translate-x-1/2 opacity-0 transition-opacity group-hover/resizer:opacity-100" />
             </div>
           )}
         </div>

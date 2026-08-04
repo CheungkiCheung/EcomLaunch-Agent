@@ -1,10 +1,14 @@
 "use client";
 
-import { ChevronRightIcon, RocketIcon, SearchIcon, ShieldCheckIcon } from "lucide-react";
+import {
+  ChevronRightIcon,
+  RocketIcon,
+  SearchIcon,
+  ShieldCheckIcon,
+} from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { FlickeringGrid } from "@/components/ui/flickering-grid";
 import Galaxy from "@/components/ui/galaxy";
 import { cn } from "@/lib/utils";
 
@@ -41,19 +45,35 @@ export function Hero({ className }: { className?: string }) {
         </h1>
         <p className="text-muted-foreground mt-8 max-w-2xl text-center text-lg text-white/70">
           OpenSKU 基于 LangGraph 多智能体编排，用公开信号做市场研究、
-          方案设计与内容生成。闪速模式 30 秒给结论，Ultra 模式生成
-          七件套 Launch Validation Pack，每条结论附证据来源。
+          方案设计与内容生成。闪速模式 30 秒给结论，Ultra 模式生成 七件套 Launch
+          Validation Pack，每条结论附证据来源。
         </p>
         <div className="mt-8 flex items-center gap-3">
           <Link href="/workspace/agents/ecom-launch/chats/new">
-            <Button size="lg" className="bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-lg shadow-orange-500/25 hover:from-amber-500 hover:to-orange-600">
+            <Button
+              size="lg"
+              className="bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-lg shadow-orange-500/25 hover:from-amber-500 hover:to-orange-600"
+            >
               <span>开始验证你的产品</span>
               <ChevronRightIcon className="size-4" />
             </Button>
           </Link>
           <Link href="/workspace">
-            <Button size="lg" variant="outline" className="border-white/25 bg-transparent text-white hover:bg-white/10">
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-white/25 bg-transparent text-white hover:bg-white/10"
+            >
               进入工作区
+            </Button>
+          </Link>
+          <Link href="/demo">
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-amber-300/40 bg-amber-300/10 text-amber-100 hover:bg-amber-300/20 hover:text-white"
+            >
+              View English demo
             </Button>
           </Link>
         </div>

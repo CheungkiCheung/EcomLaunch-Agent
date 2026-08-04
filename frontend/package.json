@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "demo": "next dev --turbo",
     "demo:save": "node scripts/save-demo.js",
     "build": "next build",
     "check": "eslint . --ext .ts,.tsx && tsc --noEmit",

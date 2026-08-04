@@ -1185,10 +1185,7 @@ class TestUserIdForwarding:
 def test_prepare_update_prompt_uses_agent_scoped_memory_prompt() -> None:
     """Growth Analyst's scenario-specific memory prompt overrides the default."""
     agent_prompt = (
-        "You are a growth metric memory manager. {correction_hint} "
-        "<current_memory>{current_memory}</current_memory> "
-        "<conversation>{conversation}</conversation> "
-        'Return {{"user": {{}}, "history": {{}}, "newFacts": [], "factsToRemove": []}}'
+        'You are a growth metric memory manager. {correction_hint} <current_memory>{current_memory}</current_memory> <conversation>{conversation}</conversation> Return {{"user": {{}}, "history": {{}}, "newFacts": [], "factsToRemove": []}}'
     )
 
     with (

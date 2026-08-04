@@ -118,10 +118,7 @@ def test_data_inspector_pm_skill_content_matches_pinned_upstream() -> None:
 
         assert substitutions == 1, f"{skill_name} must only add the DeerFlow license/tool metadata block"
         actual_sha256 = hashlib.sha256(upstream_compatible_text.encode()).hexdigest()
-        assert actual_sha256 == expected_sha256, (
-            f"{skill_name} diverged from the pinned phuryn/pm-skills source; "
-            "update the upstream pin deliberately instead of adding dataset-specific instructions"
-        )
+        assert actual_sha256 == expected_sha256, f"{skill_name} diverged from the pinned phuryn/pm-skills source; update the upstream pin deliberately instead of adding dataset-specific instructions"
 
 
 def test_project_configs_register_data_tool_group_and_tools() -> None:

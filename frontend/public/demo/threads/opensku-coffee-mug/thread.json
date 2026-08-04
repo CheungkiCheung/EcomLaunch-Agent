@@ -1,0 +1,37 @@
+{
+  "thread_id": "opensku-coffee-mug",
+  "created_at": "2026-08-04T00:00:00.000Z",
+  "updated_at": "2026-08-04T00:00:00.000Z",
+  "metadata": {
+    "model_name": "recorded-sample",
+    "is_demo": true
+  },
+  "values": {
+    "title": "Validate a compact travel coffee mug",
+    "messages": [
+      {
+        "content": "Validate a compact travel coffee mug for the US market. Target commuters and frequent travelers, test a $24–$34 price range, and keep the product under 350 g.",
+        "additional_kwargs": {},
+        "response_metadata": {},
+        "type": "human",
+        "name": null,
+        "id": "opensku-demo-human-1"
+      },
+      {
+        "content": "## Recorded sample result\n\n**Recommendation: VALIDATE BEFORE COMMITTING.** The brief defines a clear use occasion, but leak resistance, cleaning effort, cup-holder fit, and price acceptance require physical and message testing before an inventory decision.\n\nThis is a deterministic English demo. No model or external API is running, and the sample findings are not current market research.\n\nOpen the richer [War Room replay](/demo) to inspect six agent states and four sample deliverables.",
+        "additional_kwargs": {},
+        "response_metadata": {
+          "finish_reason": "stop",
+          "model_name": "recorded-sample"
+        },
+        "type": "ai",
+        "name": null,
+        "id": "opensku-demo-ai-1",
+        "tool_calls": [],
+        "invalid_tool_calls": []
+      }
+    ],
+    "artifacts": [],
+    "uploaded_files": []
+  }
+}

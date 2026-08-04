@@ -36,6 +36,12 @@ export async function Header({ className, homeURL, locale }: HeaderProps) {
       </div>
       <nav className="mr-8 ml-auto flex items-center gap-8 text-sm font-medium">
         <Link
+          href="/demo"
+          className="text-secondary-foreground hover:text-foreground transition-colors"
+        >
+          English demo
+        </Link>
+        <Link
           href={`/${lang}/docs`}
           className="text-secondary-foreground hover:text-foreground transition-colors"
         >

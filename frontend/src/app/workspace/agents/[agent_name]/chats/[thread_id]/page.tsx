@@ -140,8 +140,7 @@ export default function AgentChatPage() {
     runtimeContext: isEcomLaunch
       ? {
           is_plan_mode: false,
-          subagent_enabled:
-            effectiveContext.mode !== "flash",
+          subagent_enabled: effectiveContext.mode !== "flash",
           max_concurrent_subagents: 2,
         }
       : undefined,
@@ -332,9 +331,7 @@ export default function AgentChatPage() {
                         : "ready"
                   }
                   context={effectiveContext}
-                  availableModes={
-                    isEcomLaunch ? ["flash", "ultra"] : undefined
-                  }
+                  availableModes={isEcomLaunch ? ["flash", "ultra"] : undefined}
                   extraHeader={
                     isWelcomeMode && (
                       <AgentWelcome agent={agent} agentName={agent_name} />

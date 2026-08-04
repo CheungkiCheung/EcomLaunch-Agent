@@ -51,7 +51,12 @@ const T: Record<Lang, Record<string, string>> = {
 function validateNextParam(next: string | null): string | null {
   if (!next) return null;
   if (!next.startsWith("/")) return null;
-  if (next.startsWith("//") || next.startsWith("http://") || next.startsWith("https://")) return null;
+  if (
+    next.startsWith("//") ||
+    next.startsWith("http://") ||
+    next.startsWith("https://")
+  )
+    return null;
   if (next.includes(":") && !next.startsWith("/")) return null;
   return next;
 }
@@ -69,7 +74,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const t = T[lang]!;
+  const t = T[lang];
   const nextParam = searchParams.get("next");
   const redirectPath = validateNextParam(nextParam) ?? "/workspace";
 
@@ -84,8 +89,10 @@ export default function LoginPage() {
       .then((data: { needs_setup?: boolean }) => {
         if (!cancelled && data.needs_setup) router.push("/setup");
       })
-      .catch(() => {});
-    return () => { cancelled = true; };
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   const toggleLang = useCallback(() => {
@@ -97,14 +104,21 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const endpoint = isLogin ? "/api/v1/auth/login/local" : "/api/v1/auth/register";
+      const endpoint = isLogin
+        ? "/api/v1/auth/login/local"
+        : "/api/v1/auth/register";
       const body = isLogin
         ? `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
         : JSON.stringify({ email, password });
       const headers: HeadersInit = isLogin
         ? { "Content-Type": "application/x-www-form-urlencoded" }
         : { "Content-Type": "application/json" };
-      const res = await fetch(endpoint, { method: "POST", headers, body, credentials: "include" });
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body,
+        credentials: "include",
+      });
       if (!res.ok) {
         const data = await res.json();
         const authError = parseAuthError(data);
@@ -149,12 +163,31 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="email" className="text-sm font-medium">{t.email}</label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPlaceholder} required />
+            <label htmlFor="email" className="text-sm font-medium">
+              {t.email}
+            </label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t.emailPlaceholder}
+              required
+            />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="password" className="text-sm font-medium">{t.password}</label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t.passwordPlaceholder} required minLength={isLogin ? 6 : 8} />
+            <label htmlFor="password" className="text-sm font-medium">
+              {t.password}
+            </label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t.passwordPlaceholder}
+              required
+              minLength={isLogin ? 6 : 8}
+            />
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
@@ -163,13 +196,22 @@ export default function LoginPage() {
         </form>
 
         <div className="text-center text-sm">
-          <button type="button" onClick={() => { setIsLogin(!isLogin); setError(""); }} className="text-blue-500 hover:underline">
+          <button
+            type="button"
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setError("");
+            }}
+            className="text-blue-500 hover:underline"
+          >
             {isLogin ? t.switchToRegister : t.switchToLogin}
           </button>
         </div>
 
         <div className="text-muted-foreground text-center text-xs">
-          <Link href="/" className="hover:underline">{t.backHome}</Link>
+          <Link href="/" className="hover:underline">
+            {t.backHome}
+          </Link>
         </div>
       </div>
     </div>

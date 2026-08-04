@@ -3,10 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import {
-  SidebarTrigger,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
 

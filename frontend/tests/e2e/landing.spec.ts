@@ -15,6 +15,9 @@ test.describe("Landing page", () => {
     await expect(
       page.getByRole("link", { name: /开始验证你的产品/i }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /view english demo/i }),
+    ).toBeVisible();
   });
 
   test("Get Started link navigates to ecom-launch workspace", async ({
@@ -29,6 +32,23 @@ test.describe("Landing page", () => {
 
     // Should redirect to the ecom-launch agent chat
     await page.waitForURL("**/workspace/agents/ecom-launch/chats/new");
-    await expect(page).toHaveURL(/\/workspace\/agents\/ecom-launch\/chats\/new/);
+    await expect(page).toHaveURL(
+      /\/workspace\/agents\/ecom-launch\/chats\/new/,
+    );
+  });
+
+  test("English demo link opens the credential-free sample", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    await page.getByRole("link", { name: /view english demo/i }).click();
+
+    await expect(page).toHaveURL(/\/demo$/);
+    await expect(
+      page.getByRole("heading", {
+        name: /see an ecommerce launch team turn one brief into a decision pack/i,
+      }),
+    ).toBeVisible();
   });
 });

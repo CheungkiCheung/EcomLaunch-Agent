@@ -74,7 +74,10 @@ export const ORIGINAL_OFFICE_COLLISIONS: OfficeCollisionRect[] = [
   { x: 790, y: 900, width: 78, height: 82 },
 ];
 
-export const ORIGINAL_ACTOR_LAYOUT: Record<WarRoomActorId, OriginalActorLayout> = {
+export const ORIGINAL_ACTOR_LAYOUT: Record<
+  WarRoomActorId,
+  OriginalActorLayout
+> = {
   "ecom-launch": {
     homeX: 720,
     homeY: 880,
@@ -132,11 +135,7 @@ export function originalCharacterPath(actorId: WarRoomActorId) {
   return `/war-room-original/characters/${actorId}.png`;
 }
 
-export function pointTouchesOfficeCollision(
-  x: number,
-  y: number,
-  padding = 0,
-) {
+export function pointTouchesOfficeCollision(x: number, y: number, padding = 0) {
   return ORIGINAL_OFFICE_COLLISIONS.some(
     (rect) =>
       x >= rect.x - padding &&

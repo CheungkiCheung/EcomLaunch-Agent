@@ -351,12 +351,7 @@ def prepare_launch_pack_for_audit(outputs_dir: Path, required_files: list[str], 
     changed: list[str] = []
     no_sample_context = bool(_NO_SAMPLE_PATTERN.search(user_request))
     if not no_sample_context:
-        no_sample_context = any(
-            name in required
-            and (path := outputs_dir / name).is_file()
-            and bool(_NO_SAMPLE_PATTERN.search(_read_text(path)))
-            for name in ("listing-pack.md", "content-pack.md")
-        )
+        no_sample_context = any(name in required and (path := outputs_dir / name).is_file() and bool(_NO_SAMPLE_PATTERN.search(_read_text(path))) for name in ("listing-pack.md", "content-pack.md"))
     if no_sample_context:
         templates = {
             "listing-pack.md": _safe_listing_template(user_request),
