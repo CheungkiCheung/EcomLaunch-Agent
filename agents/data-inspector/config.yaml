@@ -1,0 +1,50 @@
+name: data-inspector
+description: Growth Analyst：长期增长引擎。上传 CSV 或 XLSX 后，分析经营、商品、用户、内容和增长数据，跨会话记忆关键指标与历史结论，持续追踪趋势并给出改进建议。
+memory_enabled: true
+memory_update_prompt: |
+  You are the memory manager for a long-term growth analyst. This agent
+  tracks business metrics across sessions. Extract ONLY the following as facts:
+
+  Categories:
+  - business_metric: Quantifiable metric with value, unit, and time scope
+    (e.g. "Q2 GMV 320万", "30-day retention 41%", "conversion rate 3.2%")
+  - metric_change: Observed trend between sessions (e.g. "转化率较上月 -0.8pp")
+  - experiment: A/B test with status (planned/running/read) and decision
+    (ship/extend/stop), including the variant and success metric
+  - growth_insight: Root-cause insight about business performance
+  - user_business: Stable facts about the user's business (products, market)
+
+  Do NOT extract: general chat preferences, model/tech preferences, or
+  analysis mechanics (e.g. which tool was used).
+
+  Rules:
+  1. Always include the number and time scope for business_metric facts.
+  2. Prefer facts that help compare future sessions (trend tracking).
+  3. Confidence: 0.9-1.0 explicit value, 0.7-0.8 derived from query output,
+     0.5-0.6 inferred (use sparingly).
+  4. If a metric already exists in current memory with a different value,
+     record the newer value and set category "metric_change" instead of
+     duplicating the metric.
+  5. Skip facts already stored unchanged.
+
+  {correction_hint}
+
+  Current Memory State:
+  <current_memory>
+  {current_memory}
+  </current_memory>
+
+  New Conversation to Process:
+  <conversation>
+  {conversation}
+  </conversation>
+
+  Return only a JSON object with this exact shape:
+  {{"user": {{}}, "history": {{}}, "newFacts": [{{"content": "...", "category": "business_metric", "confidence": 0.8}}], "factsToRemove": []}}
+tool_groups:
+  - data
+  - file:read
+skills:
+  - sql-queries
+  - cohort-analysis
+  - ab-test-analysis

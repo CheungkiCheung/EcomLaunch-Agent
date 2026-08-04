@@ -1,0 +1,35 @@
+name: openskufast
+description: 内部闪速配置。单智能体快速电商研究，Web Search + PM 技能，无子智能体。
+memory_enabled: false
+tool_groups:
+  - web
+  - file:read
+  - file:write
+skills:
+  - beachhead-segment
+  - brainstorm-experiments-new
+  - competitor-analysis
+  - customer-journey-map
+  - gtm-motions
+  - gtm-strategy
+  - ideal-customer-profile
+  - identify-assumptions-new
+  - market-segments
+  - market-sizing
+  - marketing-ideas
+  - positioning-ideas
+  - pre-mortem
+  - pricing-strategy
+  - prioritize-assumptions
+  - product-name
+  - sentiment-analysis
+  - strategy-red-team
+  - test-scenarios
+  - user-segmentation
+  - value-prop-statements
+  - value-proposition
+run_budget:
+  max_lead_model_calls: 12
+  max_subagent_calls: 0
+  max_total_tokens: 250000
+  max_execution_seconds: 270

@@ -1,0 +1,312 @@
+config_version: 11
+log_level: info
+token_usage:
+  enabled: true
+models:
+- name: deepseek-chat
+  display_name: DeepSeek V4 Flash
+  use: deerflow.models.patched_deepseek:PatchedChatDeepSeek
+  model: deepseek-chat
+  api_base: https://api.deepseek.com/v1
+  api_key: $DEEPSEEK_API_KEY
+  timeout: 600.0
+  max_retries: 2
+  max_tokens: 8192
+  supports_thinking: false
+  supports_vision: false
+- name: deepseek-reasoner
+  display_name: DeepSeek Reasoner
+  use: deerflow.models.patched_deepseek:PatchedChatDeepSeek
+  model: deepseek-reasoner
+  api_base: https://api.deepseek.com/v1
+  api_key: $DEEPSEEK_API_KEY
+  timeout: 600.0
+  max_retries: 2
+  max_tokens: 8192
+  supports_thinking: true
+  supports_vision: false
+  when_thinking_enabled:
+    extra_body:
+      thinking:
+        type: enabled
+  when_thinking_disabled:
+    extra_body:
+      thinking:
+        type: disabled
+tool_groups:
+- name: web
+- name: file:read
+- name: file:write
+- name: bash
+- name: data
+tools:
+- name: web_search
+  group: web
+  use: deerflow.community.ddg_search.tools:web_search_tool
+  max_results: 5
+- name: web_fetch
+  group: web
+  use: deerflow.community.local_fetch.tools:web_fetch_tool
+  timeout: 15
+  render_timeout: 25
+  render_mode: auto
+  wait_until: domcontentloaded
+  render_wait_ms: 1200
+  block_resources: true
+  min_content_chars: 600
+  max_chars: 8000
+- name: image_search
+  group: web
+  use: deerflow.community.image_search.tools:image_search_tool
+  max_results: 5
+- name: ls
+  group: file:read
+  use: deerflow.sandbox.tools:ls_tool
+- name: read_file
+  group: file:read
+  use: deerflow.sandbox.tools:read_file_tool
+- name: glob
+  group: file:read
+  use: deerflow.sandbox.tools:glob_tool
+  max_results: 200
+- name: grep
+  group: file:read
+  use: deerflow.sandbox.tools:grep_tool
+  max_results: 100
+- name: write_file
+  group: file:write
+  use: deerflow.sandbox.tools:write_file_tool
+- name: str_replace
+  group: file:write
+  use: deerflow.sandbox.tools:str_replace_tool
+- name: bash
+  group: bash
+  use: deerflow.sandbox.tools:bash_tool
+- name: last30days
+  group: web
+  use: deerflow.community.last30days.tools:last30days_tool
+  timeout: 150
+- name: inspect_data
+  group: data
+  use: app.data_inspector.tools:inspect_data_tool
+- name: query_data
+  group: data
+  use: app.data_inspector.tools:query_data_tool
+- name: analyze_ab_test
+  group: data
+  use: app.data_inspector.tools:analyze_ab_test_tool
+tool_search:
+  enabled: false
+tool_output:
+  enabled: true
+  externalize_min_chars: 12000
+  preview_head_chars: 2000
+  preview_tail_chars: 1000
+  fallback_max_chars: 30000
+  fallback_head_chars: 8000
+  fallback_tail_chars: 3000
+  storage_subdir: .tool-results
+  exempt_tools:
+  - read_file
+  - read_file_tool
+loop_detection:
+  enabled: true
+  warn_threshold: 3
+  hard_limit: 5
+  window_size: 20
+  max_tracked_threads: 100
+  tool_freq_warn: 30
+  tool_freq_hard_limit: 50
+safety_finish_reason:
+  enabled: true
+uploads:
+  max_files: 10
+  max_file_size: 52428800
+  max_total_size: 104857600
+  auto_convert_documents: false
+  pdf_converter: auto
+sandbox:
+  use: deerflow.sandbox.local:LocalSandboxProvider
+  allow_host_bash: false
+  bash_output_max_chars: 20000
+  read_file_output_max_chars: 50000
+  ls_output_max_chars: 20000
+skills:
+  container_path: /mnt/skills
+title:
+  enabled: true
+  max_words: 6
+  max_chars: 60
+  model_name: null
+summarization:
+  enabled: true
+  model_name: null
+  trigger:
+  - type: tokens
+    value: 32000
+  keep:
+    type: messages
+    value: 10
+  trim_tokens_to_summarize: 15564
+  summary_prompt: null
+  preserve_recent_skill_count: 5
+  preserve_recent_skill_tokens: 25000
+  preserve_recent_skill_tokens_per_skill: 5000
+  skill_file_read_tool_names:
+  - read_file
+  - read
+  - view
+  - cat
+memory:
+  enabled: true
+  storage_path: memory.json
+  debounce_seconds: 30
+  model_name: null
+  max_facts: 100
+  fact_confidence_threshold: 0.7
+  injection_enabled: true
+  max_injection_tokens: 2000
+agents_api:
+  enabled: false
+skill_evolution:
+  enabled: false
+  moderation_model_name: null
+database:
+  backend: sqlite
+  sqlite_dir: .deer-flow/data
+run_events:
+  backend: memory
+  max_trace_content: 10240
+  track_token_usage: true
+subagents:
+  timeout_seconds: 900
+  max_turns: 80
+  agents:
+    general-purpose:
+      timeout_seconds: 1800
+      max_turns: 160
+    bash:
+      timeout_seconds: 300
+      max_turns: 80
+  custom_agents:
+    market-voc-researcher:
+      description: Research public market signals, competitors, pricing, reviews, and customer voice for an ecommerce launch decision
+      system_prompt: |
+        You are the Market & VOC Researcher for EcomLaunch.
+
+        Investigate the market, competitors, substitutes, visible price bands, category promises, public reviews, customer language, pains, usage scenarios, and objections. Use public pages and uploaded files only.
+
+        Keep the run bounded: use at most 2 web_search calls across at most two tool rounds, fetch at most 4 direct candidate sources, and use at most 1 image_search call. After those tool rounds, use the next model response for concise final findings. Stop when the evidence is sufficient or sources are blocked; do not repeat similar queries or try many fallback search phrasings.
+
+        Return concise structured findings with:
+        - market patterns and competitor landscape
+        - price bands and recurring promises
+        - customer pain, triggers, objections, scenarios, and exact wording
+        - source URLs, confidence, and limitations
+
+        Every observed_public claim must include an exact source URL on the same bullet. Search snippets and generic source names are discovery aids, not evidence. Do not report TOP rankings, growth trends, high engagement, exact prices, play counts, material percentages, or specifications unless a directly fetched source supports them; otherwise label them estimated or unavailable.
+
+        Keep the response under 1200 Chinese characters or equivalent, using compact structured bullets. Do not invent reviews, sales, market share, merchant metrics, product specifications, test results, or policies. Return findings to EcomLaunch; do not write or present final deliverables.
+      tools:
+        - web_search
+        - web_fetch
+        - image_search
+        - read_file
+      skills:
+        - competitor-analysis
+        - market-segments
+        - sentiment-analysis
+      model: inherit
+      max_turns: 50
+      timeout_seconds: 150
+      max_model_calls: 4
+      max_total_tokens: 45000
+
+    offer-architect:
+      description: Turn available evidence into an audience wedge, offer, pricing hypothesis, risky assumptions, and launch experiments
+      system_prompt: |
+        You are the Offer Architect for EcomLaunch.
+
+        Use the launch brief and research supplied by EcomLaunch. Choose a beachhead audience, articulate the job-to-be-done and value proposition, propose a pricing hypothesis, identify risky assumptions, and design the cheapest useful validation experiments.
+
+        Do not repeat market research. If a critical fact is missing, return the evidence gap instead of searching broadly.
+
+        Return a concise structured Launch Brief with:
+        - audience wedge and ideal customer profile
+        - job-to-be-done, value proposition, and differentiation
+        - pricing hypothesis
+        - risky assumptions ordered by impact and uncertainty
+        - validation experiments, success criteria, and stop criteria
+        - verdict: test_now, test_after_fixing_assumptions, hold, or insufficient_evidence
+
+        Keep the response under 1000 Chinese characters or equivalent. Separate evidence from assumptions. Do not invent private metrics, product facts, test results, or policies. Return findings to EcomLaunch; do not write or present final deliverables.
+      tools:
+        - read_file
+      skills:
+        - beachhead-segment
+        - value-proposition
+        - pricing-strategy
+        - identify-assumptions-new
+        - prioritize-assumptions
+        - brainstorm-experiments-new
+      model: inherit
+      max_turns: 50
+      timeout_seconds: 60
+      max_model_calls: 2
+      max_total_tokens: 30000
+    asset-studio:
+      description: Create ecommerce listing, social, short-video, livestream, and creator assets from an approved launch brief
+      system_prompt: |
+        You are the Asset Studio for EcomLaunch.
+
+        Create requested ecommerce and content assets from the approved audience, positioning, evidence, and claim boundaries supplied by EcomLaunch. Do not redo market research or change the strategy without flagging the conflict.
+
+        Return only the requested assets. If any specification or sample test is missing, switch to NO-SAMPLE MODE and return a compact concept-test kit, not publish-ready listing copy: category and target price, three question-based titles, two problem-led posts, one short-video question script, and three neutral replies.
+
+        In NO-SAMPLE MODE consumer copy may state only the category, target price, user problem, and validation question (alternatives are also allowed). Never include first-person usage history, a product feature, material, capacity, portability, appearance, vehicle fit, compatibility, performance, test, guarantee, testimonial, first-person persona, or wording that implies the product already exists. Do not mention forbidden terms even to deny them, and do not emit a "禁用词" or "安全清单" section for the lead to copy. Do not use phrases such as "这只/这款产品", "我们的产品", or "本人是...控". The lead will reuse your text verbatim, so keep all consumer copy safe without [待确认] labels or disclaimer-based exceptions.
+
+        Keep the response under 900 Chinese characters or equivalent. Do not redo research, invent product facts, or present final deliverables. Return the compact assets to EcomLaunch.
+      tools:
+        - read_file
+      skills:
+        - positioning-ideas
+        - value-prop-statements
+        - marketing-ideas
+      model: inherit
+      max_turns: 50
+      timeout_seconds: 60
+      max_model_calls: 2
+      max_total_tokens: 30000
+
+    evidence-checker:
+      description: Black-box audit final ecommerce recommendations, claims, citations, and deliverables before release
+      system_prompt: |
+        You are the Evidence Checker for EcomLaunch.
+
+        Audit the exact final files under /mnt/user-data/outputs against the launch brief. Do not return pass unless those files already exist and you inspected them with grep/read_file. Check every material claim, citation, metric, product fact, test result, certification, testimonial, and policy. Use web_fetch only to inspect an already supplied source URL; do not perform broad research.
+
+        Reject observed_public entries without direct source URLs; generic source names, search snippets, and loosely related pages are insufficient. Reject unsupported rankings, trends, superlatives, exact metrics, prices, and specifications. Reject uploaded_real when the referenced material was not actually uploaded. When specifications or sample tests are missing, reject consumer-facing first-person usage stories, testimonials, product features, product performance claims, or test outcomes even if they are followed by a warning, concept-stage disclaimer, [待确认], or assumption label. A disclaimer at the end of the file never rescues an unsupported claim earlier in consumer copy. This applies across categories to unconfirmed materials, dimensions, capacity, power, protocols, compatibility, appearance, stability, safety, durability, certifications, or usage claims.
+
+        Return:
+        - verdict: pass, revise, or blocked
+        - unsupported or risky claims
+        - missing or mismatched sources
+        - missing product facts and policy confirmations
+        - required revisions and confidence summary
+
+        Use exactly the verdict scale pass, revise, or blocked; never return conditional pass. In the first tool round, read all seven files in one parallel batch. Use grep only when an exact line must be located. Optionally use one targeted web_fetch batch for the most material supplied URLs in the second tool round, then reserve the next model response for the final verdict. Do not narrate between tool rounds. Treat 403/404 or mismatched pages as unsupported. Your final response must contain the verdict and concrete revisions; never end by requesting another tool call.
+
+        Keep the response under 1000 Chinese characters or equivalent. Return pass only when there are no material findings; otherwise return revise or blocked with exact file names and required edits. Reject invented merchant metrics, sales, market share, uplift, product specifications, test results, certifications, testimonials, warranty, refund, or shipping promises. Return audit findings to EcomLaunch; do not rewrite or present the final package.
+      tools:
+        - read_file
+        - grep
+        - web_fetch
+      skills:
+        - strategy-red-team
+        - pre-mortem
+        - test-scenarios
+      model: inherit
+      max_turns: 50
+      timeout_seconds: 60
+      max_model_calls: 4
+      max_total_tokens: 55000

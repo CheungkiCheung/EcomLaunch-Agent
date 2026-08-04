@@ -1,0 +1,35 @@
+{
+  "product": {
+    "idea": "Portable leak-proof coffee tumbler for office commute and light outdoor use",
+    "category": "coffee tumbler / travel mug / portable insulated cup",
+    "target_price_range": "RMB 99-199",
+    "constraints": [
+      "stainless steel body",
+      "easy to clean",
+      "no electronics",
+      "must fit office commute and light outdoor scenarios"
+    ]
+  },
+  "target_platforms": [
+    "Taobao",
+    "Xiaohongshu",
+    "Douyin"
+  ],
+  "target_customers": [
+    "office workers who carry coffee during commute",
+    "light outdoor users who want a simple durable cup",
+    "users who care about leakage, cleaning, odor, and portability"
+  ],
+  "desired_outputs": [
+    "public market scan",
+    "competitor price-band table",
+    "review and VOC insight mining",
+    "product positioning brief",
+    "ecommerce listing copy",
+    "short-video and livestream content pack",
+    "7-day launch testing plan",
+    "evidence ledger"
+  ],
+  "private_data_status": "No merchant backend data is available. Do not invent GMV, CTR, CVR, ROI, ad spend, sales volume, refund rate, repeat purchase rate, or exact market share.",
+  "language": "Chinese output preferred, but keep filenames and JSON keys in English."
+}

@@ -1,0 +1,812 @@
+﻿import {
+  ChartNoAxesCombinedIcon,
+  CompassIcon,
+  GraduationCapIcon,
+  ImageIcon,
+  ListChecksIcon,
+  MicroscopeIcon,
+  PenLineIcon,
+  SearchIcon,
+  ShapesIcon,
+  SparklesIcon,
+  VideoIcon,
+} from "lucide-react";
+
+import type { Translations } from "./types";
+
+export const zhCN: Translations = {
+  // Locale meta
+  locale: {
+    localName: "中文",
+  },
+
+  // Common
+  common: {
+    home: "首页",
+    settings: "设置",
+    delete: "删除",
+    edit: "编辑",
+    rename: "重命名",
+    share: "分享",
+    openInNewWindow: "在新窗口打开",
+    close: "关闭",
+    more: "更多",
+    search: "搜索",
+    loadMore: "加载更多",
+    download: "下载",
+    thinking: "思考",
+    artifacts: "文件",
+    public: "公共",
+    custom: "自定义",
+    notAvailableInDemoMode: "在演示模式下不可用",
+    loading: "加载中...",
+    version: "版本",
+    lastUpdated: "最后更新",
+    code: "代码",
+    preview: "预览",
+    cancel: "取消",
+    save: "保存",
+    install: "安装",
+    create: "创建",
+    import: "导入",
+    export: "导出",
+    exportAsMarkdown: "导出为 Markdown",
+    exportAsJSON: "导出为 JSON",
+    exportSuccess: "对话已导出",
+  },
+
+  // Home
+  home: {
+    docs: "文档",
+    blog: "博客",
+  },
+
+  // Welcome
+  welcome: {
+    greeting: "你好，欢迎回来！",
+    description:
+      "欢迎使用 OpenSKU，一个完全开源的超级智能体。通过内置和自定义的 Skills，\nOpenSKU 可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n图片、视频、播客及网页等，几乎可以做任何事情。",
+
+    createYourOwnSkill: "创建你自己的 Agent SKill",
+    createYourOwnSkillDescription:
+      "创建你的 Agent Skill 来释放 OpenSKU 的潜力。通过自定义技能，OpenSKU\n可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n网页等作品，几乎可以做任何事情。",
+  },
+
+  // Clipboard
+  clipboard: {
+    copyToClipboard: "复制到剪贴板",
+    copiedToClipboard: "已复制到剪贴板",
+    failedToCopyToClipboard: "复制到剪贴板失败",
+    linkCopied: "链接已复制到剪贴板",
+  },
+
+  // Input Box
+  inputBox: {
+    placeholder: "今天我能为你做些什么？",
+    createSkillPrompt:
+      "我们一起用 skill-creator 技能来创建一个技能吧。先问问我希望这个技能能做什么。",
+    addAttachments: "添加附件",
+    mode: "模式",
+    flashMode: "闪速",
+    flashModeDescription: "快速且高效的完成任务，但可能不够精准",
+    reasoningMode: "思考",
+    reasoningModeDescription: "思考后再行动，在时间与准确性之间取得平衡",
+    proMode: "Pro",
+    proModeDescription: "思考、计划再执行，获得更精准的结果，可能需要更多时间",
+    ultraMode: "Ultra",
+    ultraModeDescription:
+      "继承自 Pro 模式，可调用子代理分工协作，适合复杂多步骤任务，能力最强",
+    reasoningEffort: "推理深度",
+    reasoningEffortMinimal: "最低",
+    reasoningEffortMinimalDescription: "检索 + 直接输出",
+    reasoningEffortLow: "低",
+    reasoningEffortLowDescription: "简单逻辑校验 + 浅层推演",
+    reasoningEffortMedium: "中",
+    reasoningEffortMediumDescription: "多层逻辑分析 + 基础验证",
+    reasoningEffortHigh: "高",
+    reasoningEffortHighDescription: "全维度逻辑推演 + 多路径验证 + 反推校验",
+    searchModels: "搜索模型...",
+    surpriseMe: "小惊喜",
+    surpriseMePrompt: "给我一个小惊喜吧",
+    followupLoading: "正在生成可能的后续问题...",
+    followupConfirmTitle: "发送建议问题？",
+    followupConfirmDescription: "当前输入框已有内容，选择发送方式。",
+    followupConfirmAppend: "追加并发送",
+    followupConfirmReplace: "替换并发送",
+    suggestions: [
+      {
+        suggestion: "写作",
+        prompt: "撰写一篇关于[主题]的博客文章",
+        icon: PenLineIcon,
+      },
+      {
+        suggestion: "研究",
+        prompt: "深入浅出的研究一下[主题]，并总结发现。",
+        icon: MicroscopeIcon,
+      },
+      {
+        suggestion: "收集",
+        prompt: "从[来源]收集数据并创建报告。",
+        icon: ShapesIcon,
+      },
+      {
+        suggestion: "学习",
+        prompt: "学习关于[主题]并创建教程。",
+        icon: GraduationCapIcon,
+      },
+    ],
+    suggestionsCreate: [
+      {
+        suggestion: "网页",
+        prompt: "生成一个关于[主题]的网页",
+        icon: CompassIcon,
+      },
+      {
+        suggestion: "图片",
+        prompt: "生成一个关于[主题]的图片",
+        icon: ImageIcon,
+      },
+      {
+        suggestion: "视频",
+        prompt: "生成一个关于[主题]的视频",
+        icon: VideoIcon,
+      },
+      {
+        type: "separator",
+      },
+      {
+        suggestion: "技能",
+        prompt:
+          "我们一起用 skill-creator 技能来创建一个技能吧。先问问我希望这个技能能做什么。",
+        icon: SparklesIcon,
+      },
+    ],
+  },
+
+  // Sidebar
+  sidebar: {
+    newChat: "新对话",
+    chats: "对话",
+    recentChats: "最近的对话",
+    demoChats: "演示对话",
+    agents: "智能体",
+    primaryAgents: "核心智能体",
+    warRoom: "作战室",
+    ecomLaunch: "OpenSKU 上新团队",
+    dataInspector: "Growth Analyst",
+    openskufast: "OpenSKU Fast",
+  },
+
+  // Agents
+  agents: {
+    title: "智能体",
+    description: "创建和管理具有专属 Prompt 与能力的自定义智能体。",
+    newAgent: "新建智能体",
+    emptyTitle: "还没有自定义智能体",
+    emptyDescription: "创建你的第一个自定义智能体，设置专属系统提示词。",
+    chat: "对话",
+    delete: "删除",
+    deleteConfirm: "确定要删除该智能体吗？此操作不可撤销。",
+    deleteSuccess: "智能体已删除",
+    newChat: "新对话",
+    createPageTitle: "设计你的智能体",
+    createPageSubtitle: "描述你想要的智能体，我来帮你通过对话创建。",
+    nameStepTitle: "给新智能体起个名字",
+    nameStepHint:
+      "只允许字母、数字和连字符，存储时自动转为小写（例如 code-reviewer）",
+    nameStepPlaceholder: "例如 code-reviewer",
+    nameStepContinue: "继续",
+    nameStepInvalidError: "名称无效，只允许字母、数字和连字符",
+    nameStepAlreadyExistsError: "已存在同名智能体",
+    nameStepNetworkError: "网络请求失败，请检查网络或后端连接",
+    nameStepCheckError: "无法验证名称可用性，请稍后重试",
+    nameStepCheckErrorWithDetail: "名称校验失败：{detail}",
+    nameStepApiDisabledError:
+      "服务器未开启自定义智能体管理功能，请联系管理员。",
+    nameStepBootstrapMessage:
+      "新智能体的名称是 {name}。请先帮我设计它的用途、行为方式和 SOUL.md，再保存它。",
+    save: "保存智能体",
+    saving: "正在保存智能体...",
+    saveRequested:
+      "已提交保存请求，OpenSKU 正在根据当前对话生成并保存初版智能体。",
+    saveHint:
+      "你可以在右上角的菜单里随时保存这个智能体，就算目前还只是初稿也可以。",
+    saveCommandMessage:
+      "请现在根据我们目前已经讨论的全部内容保存这个自定义智能体。这就是我明确的保存确认。如果仍有少量细节缺失，请根据上下文做出合理假设，生成一份简洁的英文初始 SOUL.md，并直接调用 setup_agent，不要再向我索要额外确认。",
+    agentCreatedPendingRefresh:
+      "智能体已创建，但 OpenSKU 暂时还无法读取到它。请稍后刷新当前页面。",
+    more: "更多操作",
+    agentCreated: "智能体已创建！",
+    startChatting: "开始对话",
+    backToGallery: "返回 Gallery",
+    ecomLaunchName: "OpenSKU 上新团队",
+    dataInspectorName: "Growth Analyst",
+    openskufastName: "OpenSKU Fast",
+    ecomLaunchWelcomeDescription:
+      "用公开信号、上传材料和明确假设，把模糊新品想法变成 7 天电商上新验证包。",
+    dataInspectorWelcomeDescription:
+      "上传 CSV 或 XLSX，发现经营和内容数据中的变化、异常、原因与增长机会。",
+    openskufastWelcomeDescription:
+      "单智能体快速商品研究与决策。用 Web Search + 22 个 PM 技能独立完成市场分析、定位、定价和 GTM 建议。",
+    ecomLaunchWelcomeBadges: [
+      "公开信号",
+      "无后台数据可用",
+      "Launch Crew",
+      "7 天验证包",
+    ],
+    openskufastWelcomeBadges: [
+      "单智能体",
+      "Web Search",
+      "PM Skills",
+      "快速决策",
+    ],
+    ecomLaunchSuggestions: [
+      {
+        suggestion: "无数据验证",
+        prompt:
+          "我想做一个 99-199 元的通勤咖啡杯，但没有任何店铺后台数据。请用公开信号帮我判断是否值得做 7 天轻量验证，并输出 Launch Validation Pack。",
+        icon: CompassIcon,
+      },
+      {
+        suggestion: "类目机会",
+        prompt:
+          "我想在宠物用品类目找一个适合低成本测试的新品机会。请先用公开信号扫描，再给出受众楔子、卖点假设和 7 天验证计划。",
+        icon: MicroscopeIcon,
+      },
+      {
+        suggestion: "公开链接",
+        prompt:
+          "这是一个公开竞品/商品链接。请不要假设我有销量或转化数据，只基于可见公开信号和页面信息判断是否值得小规模上新验证：",
+        icon: ShapesIcon,
+      },
+      {
+        suggestion: "信息不完整",
+        prompt:
+          "我只有一个很粗糙的新品想法。请先问我一个最关键的问题；如果信息仍然不足，就用明确标注的假设继续生成轻量验证方案。",
+        icon: SparklesIcon,
+      },
+    ],
+    dataInspectorSuggestions: [
+      {
+        suggestion: "数据概览",
+        prompt: "分析一下这个数据。",
+        icon: ChartNoAxesCombinedIcon,
+      },
+      {
+        suggestion: "查找异常",
+        prompt: "找出这个数据里最值得关注的异常和变化。",
+        icon: SearchIcon,
+      },
+      {
+        suggestion: "改进方向",
+        prompt: "根据这个数据，哪些地方最值得优先改进？",
+        icon: ListChecksIcon,
+      },
+    ],
+    openskufastSuggestions: [
+      {
+        suggestion: "新品评估",
+        prompt:
+          "我想做一个 99-199 元的通勤咖啡杯。请用公开信号帮我做市场分析、竞品扫描、定位建议和定价策略。",
+        icon: CompassIcon,
+      },
+      {
+        suggestion: "类目机会",
+        prompt:
+          "在宠物用品类目里，有哪些值得低成本测试的新品方向？帮我扫描公开信号并给出机会判断。",
+        icon: MicroscopeIcon,
+      },
+      {
+        suggestion: "竞品拆解",
+        prompt:
+          "这是一个公开竞品链接/名称，帮我拆解它的定位、卖点和可能的改进空间。",
+        icon: SparklesIcon,
+      },
+    ],
+  },
+
+  // Breadcrumb
+  breadcrumb: {
+    workspace: "工作区",
+    chats: "对话",
+  },
+
+  // Workspace
+  workspace: {
+    officialWebsite: "访问 OpenSKU 官方网站",
+    githubTooltip: "访问 OpenSKU 的 Github 仓库",
+    settingsAndMore: "设置和更多",
+    visitGithub: "在 Github 上查看 OpenSKU",
+    reportIssue: "报告问题",
+    contactUs: "联系我们",
+    about: "关于 OpenSKU",
+    logout: "退出登录",
+  },
+
+  // War Room
+  warRoom: {
+    title: "OpenSKU 智能商业作战室",
+    subtitle: "OpenSKU 上新团队与 Growth Analyst 的真实运行现场",
+    refresh: "刷新",
+    allIdle: "全员待命",
+    activeAgents: (count: number) => `${count} 位正在执行`,
+    switchLanguage: "切换到英文",
+    teamStatus: "团队状态",
+    switchActor: "点击切换角色",
+    chat: "对话",
+    task: "任务",
+    output: "输出",
+    runDetails: "运行详情",
+    currentRun: "当前运行",
+    running: "执行中",
+    completed: "已完成",
+    artifacts: "产物",
+    blocked: "阻塞",
+    expandChat: "展开对话",
+    minimizeChat: "缩回对话",
+    expand: "展开",
+    minimize: "缩回",
+    closeChat: "关闭对话",
+    close: "关闭",
+    pipeline: "执行流水线",
+    runMetrics: "运行指标",
+    taskQueue: "任务队列",
+    artifactFiles: (count: number) => `产物文件 (${count})`,
+    noArtifacts: "暂无产物文件",
+    statuses: {
+      idle: "待命",
+      queued: "排队中",
+      working: "执行中",
+      done: "已完成",
+      failed: "遇到阻塞",
+    },
+    activities: {
+      waiting: "等待任务",
+      orchestrating: "调度协作",
+      searching: "采集信息",
+      reading: "读取资料",
+      analyzing: "分析数据",
+      writing: "整理产物",
+      reviewing: "核查结果",
+      delivering: "交付成果",
+    },
+    summaries: {
+      failed: "任务遇到阻塞，等待查看失败信息。",
+      done: "本轮任务已经完成，交付结果可查看。",
+      queued: "任务已经进入队列，等待开始执行。",
+      idle: "当前待命，等待新的真实任务事件。",
+      waiting: "正在等待上游任务。",
+      orchestrating: "正在拆解目标并调度协作任务。",
+      searching: "正在采集市场、用户或公开信息。",
+      reading: "正在读取文件、页面或数据结构。",
+      analyzing: "正在计算、比较并识别关键变化。",
+      writing: "正在组织结论并生成交付内容。",
+      reviewing: "正在检查来源、边界和交付质量。",
+      delivering: "正在整理产物并交付结果。",
+    },
+    stages: {
+      init: "分析需求",
+      research: "市场研究",
+      offer: "方案设计",
+      content: "内容生成",
+      pack: "打包交付",
+      done: "完成",
+    },
+    metrics: {
+      llmCalls: "LLM 调用",
+      tokens: "Token",
+      duration: "耗时",
+      searches: "搜索",
+      fetches: "抓取",
+      filesWritten: "写文件",
+    },
+    actors: {
+      "ecom-launch": {
+        name: "OpenSKU 上新团队",
+        shortName: "启动总监",
+        role: "启动总监",
+        description: "拆解目标、调度专家并汇总最终交付。",
+      },
+      "market-voc-researcher": {
+        name: "市场研究员",
+        shortName: "市场",
+        role: "市场与用户声音研究员",
+        description: "研究竞品、市场信号与真实用户声音。",
+      },
+      "offer-architect": {
+        name: "方案架构师",
+        shortName: "方案",
+        role: "方案架构师",
+        description: "组织定位、卖点、验证假设与上市方案。",
+      },
+      "asset-studio": {
+        name: "素材工作室",
+        shortName: "素材",
+        role: "素材工作室",
+        description: "制作商品页、内容方向、脚本与营销资产。",
+      },
+      "evidence-checker": {
+        name: "证据检查员",
+        shortName: "审核",
+        role: "证据检查员",
+        description: "检查来源、事实边界、结论和交付质量。",
+      },
+      "data-inspector": {
+        name: "增长分析师",
+        shortName: "增长",
+        role: "数据与增长分析师",
+        description: "分析上传数据、解释异常并发现可执行的经营与增长机会。",
+      },
+    },
+    canvas: {
+      initializationFailed: "场景初始化失败",
+      loadFailed: (message: string) => `办公室加载失败：${message}`,
+      loading: "正在布置办公室…",
+      controls: "WASD / 方向键移动 · E 对话",
+      interactionPrompt: "E",
+      viewTask: "查看任务",
+      viewOutput: "查看输出",
+    },
+    chatPanel: {
+      taskCompleted: "已完成",
+      taskFailed: "失败",
+      taskRunning: "进行中",
+      noTask: "暂无任务",
+      noOutput: "暂无输出",
+      history: (count: number) => `历史会话 (${count})`,
+      noHistory: "暂无历史会话",
+      untitled: "未命名会话",
+      startChat: (actorName: string) => `与 ${actorName} 开始对话`,
+      startChatHint: "直接提问，任务会在作战室实时呈现",
+      responseComplete: "回复完成 · 动画与面板已同步更新",
+    },
+  },
+
+  launchCrew: {
+    productName: "OpenSKU",
+    title: "上新团队",
+    collaborating: "协作中",
+    synced: "已同步",
+    collaborationProgress: "协作进度",
+    validationStage: "验证阶段",
+    complete: "完成",
+    waiting: "等待中",
+    deliveryChecklist: "交付清单",
+    coreFilesComplete: (completed: number, total: number) =>
+      `${completed}/${total} 个核心文件已落地`,
+    allPresent: "已齐",
+    advancing: "推进中",
+    missing: "待补交",
+    pendingGeneration: "待生成",
+    emptyTitle: "等待第一条上新验证任务",
+    emptyDescription:
+      "Flash 保留子智能体能力并关闭额外计划追踪；三个启用角色会按需在这里显示真实分工状态。",
+    assignedTask: "分派任务",
+    currentAction: "当前动作",
+    deliverables: "交付物",
+    roles: {
+      "market-voc-researcher": {
+        name: "市场研究员",
+        desk: "市场与用户研究",
+      },
+      "offer-architect": {
+        name: "方案架构师",
+        desk: "定位与验证设计",
+      },
+      "asset-studio": {
+        name: "素材工作室",
+        desk: "内容与上市资产",
+      },
+    },
+    deliverableLabels: {
+      competitorTable: "市场信号表",
+      evidenceLedger: "证据账本",
+      positioningBrief: "定位 Brief",
+      listingPack: "Listing Pack",
+      contentPack: "内容包",
+      launchCalendar: "7 天计划",
+      warRoomPage: "War Room 页面",
+    },
+    workflowStages: {
+      brief: "简报",
+      research: "研究",
+      offer: "定位",
+      assets: "资产",
+      plan: "计划",
+      audit: "账本",
+      pack: "交付",
+    },
+    phases: {
+      assign: "分派",
+      collect: "采集",
+      organize: "整理",
+      return: "回传",
+    },
+    statuses: {
+      idle: "待命",
+      assigned: "已分配",
+      searching: "搜索中",
+      reading: "阅读中",
+      writing: "写作中",
+      delivered: "已落地",
+      done: "已完成",
+      failed: "失败",
+    },
+    bubbles: {
+      delivered: "交付物已落地，已进入启动总监汇总。",
+      waiting: "等待启动总监分派任务。",
+      blocked: "这个工作流遇到阻塞。",
+      resultReturned: "结构化发现已回传给启动总监。",
+      taskCompleted: "子任务已完成。",
+      searching: "正在搜索公开信号。",
+      fetching: "正在读取公开页面。",
+      reading: "正在检查已有材料。",
+      working: "正在处理分派任务。",
+    },
+    pixel: {
+      thinking: "思考中",
+      todo: "待办",
+      inProgress: "进行中",
+      done: "完成",
+      tasks: [
+        "需求澄清",
+        "市场与用户研究",
+        "定位与验证",
+        "内容资产",
+        "交付预检",
+      ],
+      currentStage: "当前阶段",
+    },
+  },
+
+  // Conversation
+  conversation: {
+    noMessages: "还没有消息",
+    startConversation: "开始新的对话以查看消息",
+  },
+
+  // Chats
+  chats: {
+    searchChats: "搜索对话",
+  },
+
+  // Page titles (document title)
+  pages: {
+    appName: "OpenSKU",
+    chats: "对话",
+    newChat: "新对话",
+    untitled: "未命名",
+  },
+
+  // Tool calls
+  toolCalls: {
+    moreSteps: (count: number) => `查看其他 ${count} 个步骤`,
+    lessSteps: "隐藏步骤",
+    executeCommand: "执行命令",
+    presentFiles: "展示文件",
+    needYourHelp: "需要你的协助",
+    useTool: (toolName: string) => `使用 “${toolName}” 工具`,
+    searchFor: (query: string) => `搜索 “${query}”`,
+    searchForRelatedInfo: "搜索相关信息",
+    searchForRelatedImages: "搜索相关图片",
+    searchForRelatedImagesFor: (query: string) => `搜索相关图片 “${query}”`,
+    searchOnWebFor: (query: string) => `在网络上搜索 “${query}”`,
+    viewWebPage: "查看网页",
+    listFolder: "列出文件夹",
+    readFile: "读取文件",
+    writeFile: "写入文件",
+    clickToViewContent: "点击查看文件内容",
+    writeTodos: "更新 To-do 列表",
+    skillInstallTooltip: "安装技能并使其可在 OpenSKU 中使用",
+  },
+
+  uploads: {
+    uploading: "上传中...",
+    uploadingFiles: "文件上传中，请稍候...",
+  },
+
+  subtasks: {
+    subtask: "子任务",
+    executing: (count: number) =>
+      `${count > 1 ? "并行" : ""}执行 ${count} 个子任务`,
+    in_progress: "子任务运行中",
+    completed: "子任务已完成",
+    failed: "子任务失败",
+  },
+
+  // Token Usage
+  tokenUsage: {
+    title: "Token 用量",
+    label: "Tokens",
+    input: "输入",
+    output: "输出",
+    total: "总计",
+    view: "显示方式",
+    unavailable:
+      "暂无 Token 用量。只有模型成功返回且供应商提供 usage_metadata 时才会显示。",
+    unavailableShort: "未返回用量",
+    note: "顶部总量优先使用后端持久化的线程用量；当当前回复仍在流式返回时，还会叠加可见的进行中用量。每轮和调试用量只来自当前可见消息，可能与平台账单页不完全一致。",
+    presets: {
+      off: "关闭",
+      summary: "总览",
+      perTurn: "每轮",
+      debug: "调试",
+    },
+    presetDescriptions: {
+      off: "隐藏顶部和会话内的 token 展示。",
+      summary: "只在顶部显示当前对话累计 token。",
+      perTurn: "显示顶部累计，并为每轮 assistant 回复显示一条汇总 token。",
+      debug: "显示顶部累计，并展示按步骤归类的 token 调试信息。",
+    },
+    finalAnswer: "最终回复",
+    stepTotal: "步骤总计",
+    sharedAttribution: "该 token 由此步骤中的多个动作共同消耗",
+    subagent: (description: string) => `子任务：${description}`,
+    startTodo: (content: string) => `开始 To-do：${content}`,
+    completeTodo: (content: string) => `完成 To-do：${content}`,
+    updateTodo: (content: string) => `更新 To-do：${content}`,
+    removeTodo: (content: string) => `移除 To-do：${content}`,
+  },
+
+  // Shortcuts
+  shortcuts: {
+    searchActions: "搜索操作...",
+    noResults: "未找到结果。",
+    actions: "操作",
+    keyboardShortcuts: "键盘快捷键",
+    keyboardShortcutsDescription: "使用键盘快捷键更快地操作 OpenSKU。",
+    openCommandPalette: "打开命令面板",
+    toggleSidebar: "切换侧边栏",
+  },
+
+  // Settings
+  settings: {
+    title: "设置",
+    description: "根据你的偏好调整 OpenSKU 的界面和行为。",
+    sections: {
+      account: "账号",
+      appearance: "外观",
+      memory: "记忆",
+      tools: "工具",
+      skills: "技能",
+      notification: "通知",
+      about: "关于",
+    },
+    memory: {
+      title: "记忆",
+      description:
+        "OpenSKU 会在后台不断从你的对话中自动学习。这些记忆能帮助 OpenSKU 更好地理解你，并提供更个性化的体验。",
+      empty: "暂无可展示的记忆数据。",
+      rawJson: "原始 JSON",
+      exportButton: "导出记忆",
+      exportSuccess: "记忆已导出",
+      importButton: "导入记忆",
+      importConfirmTitle: "导入记忆？",
+      importConfirmDescription: "这会用选中的 JSON 备份覆盖当前记忆。",
+      importFileLabel: "已选择文件",
+      importInvalidFile: "读取记忆文件失败，请选择有效的 JSON 导出文件。",
+      importSuccess: "记忆已导入",
+      manualFactSource: "手动添加",
+      addFact: "添加事实",
+      addFactTitle: "添加记忆事实",
+      editFactTitle: "编辑记忆事实",
+      addFactSuccess: "事实已创建",
+      editFactSuccess: "事实已更新",
+      clearAll: "清空全部记忆",
+      clearAllConfirmTitle: "要清空全部记忆吗？",
+      clearAllConfirmDescription:
+        "这会删除所有已保存的摘要和事实。此操作无法撤销。",
+      clearAllSuccess: "已清空全部记忆",
+      factDeleteConfirmTitle: "要删除这条事实吗？",
+      factDeleteConfirmDescription:
+        "这条事实会立即从记忆中删除。此操作无法撤销。",
+      factDeleteSuccess: "事实已删除",
+      factContentLabel: "内容",
+      factCategoryLabel: "类别",
+      factConfidenceLabel: "置信度",
+      factContentPlaceholder: "描述你想保存的记忆事实",
+      factCategoryPlaceholder: "context",
+      factConfidenceHint: "请输入 0 到 1 之间的数字。",
+      factSave: "保存事实",
+      factValidationContent: "事实内容不能为空。",
+      factValidationConfidence: "置信度必须是 0 到 1 之间的数字。",
+      noFacts: "还没有保存的事实。",
+      summaryReadOnly:
+        "摘要分区当前仍为只读。现在你可以清空全部记忆或删除单条事实。",
+      memoryFullyEmpty: "还没有保存任何记忆。",
+      factPreviewLabel: "即将删除的事实",
+      searchPlaceholder: "搜索记忆",
+      filterAll: "全部",
+      filterFacts: "事实",
+      filterSummaries: "摘要",
+      noMatches: "没有找到匹配的记忆。",
+      markdown: {
+        overview: "概览",
+        userContext: "用户上下文",
+        work: "工作",
+        personal: "个人",
+        topOfMind: "近期关注（Top of mind）",
+        historyBackground: "历史背景",
+        recentMonths: "近几个月",
+        earlierContext: "更早上下文",
+        longTermBackground: "长期背景",
+        updatedAt: "更新于",
+        facts: "事实",
+        empty: "（空）",
+        table: {
+          category: "类别",
+          confidence: "置信度",
+          confidenceLevel: {
+            veryHigh: "极高",
+            high: "较高",
+            normal: "一般",
+            unknown: "未知",
+          },
+          content: "内容",
+          source: "来源",
+          createdAt: "创建时间",
+          view: "查看",
+        },
+      },
+    },
+    appearance: {
+      themeTitle: "主题",
+      themeDescription: "跟随系统或选择固定的界面模式。",
+      system: "系统",
+      light: "浅色",
+      dark: "深色",
+      systemDescription: "自动跟随系统主题。",
+      lightDescription: "更明亮的配色，适合日间使用。",
+      darkDescription: "更暗的配色，减少眩光方便专注。",
+      languageTitle: "语言",
+      languageDescription: "在不同语言之间切换。",
+    },
+    tools: {
+      title: "工具",
+      description: "管理 MCP 工具的配置和启用状态。",
+    },
+    skills: {
+      title: "技能",
+      description: "管理 Agent Skill 配置和启用状态。",
+      createSkill: "新建技能",
+      emptyTitle: "还没有技能",
+      emptyDescription:
+        "将你的 Agent Skill 文件夹放在 OpenSKU 根目录下的 `/skills/custom` 文件夹中。",
+      emptyButton: "创建你的第一个技能",
+    },
+    notification: {
+      title: "通知",
+      description:
+        "OpenSKU 只会在窗口不活跃时发送完成通知，特别适合长时间任务：你可以先去做别的事，完成后会收到提醒。",
+      requestPermission: "请求通知权限",
+      deniedHint:
+        "通知权限已被拒绝。可在浏览器的网站设置中重新开启，以接收完成提醒。",
+      testButton: "发送测试通知",
+      testTitle: "OpenSKU",
+      testBody: "这是一条测试通知。",
+      notSupported: "当前浏览器不支持通知功能。",
+      disableNotification: "关闭通知",
+    },
+    account: {
+      profileTitle: "个人信息",
+      email: "邮箱",
+      role: "角色",
+      changePasswordTitle: "修改密码",
+      changePasswordDescription: "更新你的账号密码。",
+      currentPassword: "当前密码",
+      newPassword: "新密码",
+      confirmNewPassword: "确认新密码",
+      passwordMismatch: "两次输入的新密码不一致",
+      passwordTooShort: "密码长度至少为 8 个字符",
+      passwordChangedSuccess: "密码修改成功",
+      networkError: "网络错误，请重试。",
+      updating: "更新中...",
+      updatePassword: "修改密码",
+      signOut: "退出登录",
+    },
+    acknowledge: {
+      emptyTitle: "致谢",
+      emptyDescription: "相关的致谢信息会展示在这里。",
+    },
+  },
+};
