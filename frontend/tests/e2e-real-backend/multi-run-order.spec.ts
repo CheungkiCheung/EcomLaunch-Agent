@@ -20,7 +20,9 @@ import { expect, test } from "@playwright/test";
  * No model, no recording, no API key — the runs are seeded via a test-only
  * endpoint mounted only on the replay gateway.
  */
-const APP = "http://localhost:3000";
+const APP =
+  process.env.OPENSKU_REAL_BACKEND_BASE_URL ??
+  `http://localhost:${process.env.OPENSKU_REAL_BACKEND_FRONTEND_PORT ?? "3102"}`;
 
 // Distinctive markers so getByText can't collide with UI chrome.
 const ALPHA = "ALPHA-FIRST-QUESTION-7f3a2c";

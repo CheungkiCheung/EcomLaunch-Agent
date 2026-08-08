@@ -20,7 +20,7 @@ from deerflow.config.memory_config import MemoryConfig, load_memory_config_from_
 from deerflow.config.model_config import ModelConfig
 from deerflow.config.reload_boundary import format_field_description
 from deerflow.config.run_events_config import RunEventsConfig
-from deerflow.config.runtime_paths import existing_project_file
+from deerflow.config.runtime_paths import aliased_env, existing_project_file
 from deerflow.config.safety_finish_reason_config import SafetyFinishReasonConfig
 from deerflow.config.sandbox_config import SandboxConfig
 from deerflow.config.skill_evolution_config import SkillEvolutionConfig
@@ -169,7 +169,8 @@ class AppConfig(BaseModel):
 
         Priority:
         1. If provided `config_path` argument, use it.
-        2. If provided `DEER_FLOW_CONFIG_PATH` environment variable, use it.
+        2. If provided `OPENSKU_CONFIG_PATH` environment variable, use it.
+           `DEER_FLOW_CONFIG_PATH` remains a compatibility alias.
         3. Otherwise, search the caller project root.
         4. Finally, search legacy backend/repository-root defaults for monorepo compatibility.
         """
@@ -178,10 +179,11 @@ class AppConfig(BaseModel):
             if not Path.exists(path):
                 raise FileNotFoundError(f"Config file specified by param `config_path` not found at {path}")
             return path
-        elif os.getenv("DEER_FLOW_CONFIG_PATH"):
-            path = Path(os.getenv("DEER_FLOW_CONFIG_PATH"))
+        elif configured := aliased_env("OPENSKU_CONFIG_PATH", "DEER_FLOW_CONFIG_PATH"):
+            env_path, env_name = configured
+            path = Path(env_path)
             if not Path.exists(path):
-                raise FileNotFoundError(f"Config file specified by environment variable `DEER_FLOW_CONFIG_PATH` not found at {path}")
+                raise FileNotFoundError(f"Config file specified by environment variable `{env_name}` not found at {path}")
             return path
         else:
             project_config = existing_project_file(("config.yaml",))

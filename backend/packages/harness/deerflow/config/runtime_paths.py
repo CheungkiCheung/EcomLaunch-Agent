@@ -4,21 +4,34 @@ import os
 from pathlib import Path
 
 
+def aliased_env(primary: str, legacy: str) -> tuple[str, str] | None:
+    """Return the first non-empty OpenSKU env value and the name that supplied it."""
+    if value := os.getenv(primary):
+        return value, primary
+    if value := os.getenv(legacy):
+        return value, legacy
+    return None
+
+
 def project_root() -> Path:
     """Return the caller project root for runtime-owned files."""
-    if env_root := os.getenv("DEER_FLOW_PROJECT_ROOT"):
+    configured = aliased_env("OPENSKU_PROJECT_ROOT", "DEER_FLOW_PROJECT_ROOT")
+    if configured:
+        env_root, env_name = configured
         root = Path(env_root).resolve()
         if not root.exists():
-            raise ValueError(f"DEER_FLOW_PROJECT_ROOT is set to '{env_root}', but the resolved path '{root}' does not exist.")
+            raise ValueError(f"{env_name} is set to '{env_root}', but the resolved path '{root}' does not exist.")
         if not root.is_dir():
-            raise ValueError(f"DEER_FLOW_PROJECT_ROOT is set to '{env_root}', but the resolved path '{root}' is not a directory.")
+            raise ValueError(f"{env_name} is set to '{env_root}', but the resolved path '{root}' is not a directory.")
         return root
     return Path.cwd().resolve()
 
 
 def runtime_home() -> Path:
-    """Return the writable DeerFlow state directory."""
-    if env_home := os.getenv("DEER_FLOW_HOME"):
+    """Return the writable OpenSKU state directory."""
+    configured = aliased_env("OPENSKU_HOME", "DEER_FLOW_HOME")
+    if configured:
+        env_home, _ = configured
         return Path(env_home).resolve()
     return project_root() / ".deer-flow"
 

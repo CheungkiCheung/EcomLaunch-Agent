@@ -13,8 +13,8 @@ const meta: MetaRecord = {
   "work-with-memory": {
     title: "使用记忆系统",
   },
-  "deploy-your-own-deerflow": {
-    title: "部署你的 DeerFlow",
+  "deploy-opensku": {
+    title: "部署你的 OpenSKU",
   },
 };
 

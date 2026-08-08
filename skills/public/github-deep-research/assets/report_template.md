@@ -186,7 +186,7 @@ This report was compiled using:
 
 ---
 
-**Report Prepared By:** Github Deep Research by DeerFlow
+**Report Prepared By:** GitHub Deep Research by OpenSKU
 **Date:** {REPORT_DATE}
 **Report Version:** 1.0
 **Status:** Complete

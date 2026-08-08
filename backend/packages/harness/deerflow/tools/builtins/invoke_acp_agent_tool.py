@@ -231,7 +231,7 @@ def build_invoke_acp_agent_tool(agents: dict) -> BaseTool:
                 await conn.initialize(
                     protocol_version=PROTOCOL_VERSION,
                     client_capabilities=ClientCapabilities(),
-                    client_info=Implementation(name="deerflow", title="DeerFlow", version="0.1.0"),
+                    client_info=Implementation(name="deerflow", title="OpenSKU", version="0.1.0"),
                 )
                 session_kwargs: dict[str, Any] = {"cwd": physical_cwd, "mcp_servers": mcp_servers}
                 if agent_config.model:

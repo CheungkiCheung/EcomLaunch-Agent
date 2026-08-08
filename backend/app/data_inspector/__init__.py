@@ -1,4 +1,4 @@
-"""Application-layer tools for the Data Inspector agent."""
+"""Application-layer tools for the Growth Analyst agent."""
 
 from .tools import analyze_ab_test_tool, inspect_data_tool, query_data_tool
 

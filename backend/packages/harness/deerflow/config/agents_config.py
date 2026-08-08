@@ -8,7 +8,6 @@ per-user layout.
 """
 
 import logging
-import os
 import re
 from pathlib import Path
 from typing import Any
@@ -18,7 +17,7 @@ from pydantic import BaseModel
 
 from deerflow.config.agent_run_budget_config import AgentRunBudgetConfig
 from deerflow.config.paths import get_paths
-from deerflow.config.runtime_paths import project_root
+from deerflow.config.runtime_paths import aliased_env, project_root
 from deerflow.runtime.user_context import get_effective_user_id
 
 logger = logging.getLogger(__name__)
@@ -55,7 +54,8 @@ def builtin_agents_dir() -> Path:
     ``project_root()`` is intentionally caller-relative for standalone harness
     usage. In the monorepo, however, developers often start the Gateway from
     ``backend/`` while repository-shipped agents live one level up at
-    ``../agents``. If ``DEER_FLOW_PROJECT_ROOT`` is explicitly set, respect it
+    ``../agents``. If ``OPENSKU_PROJECT_ROOT`` (or its compatibility alias
+    ``DEER_FLOW_PROJECT_ROOT``) is explicitly set, respect it
     as authoritative; otherwise fall back to the parent repository root for that
     common local-dev startup path.
     """
@@ -64,7 +64,7 @@ def builtin_agents_dir() -> Path:
     if project_default.is_dir():
         return project_default
 
-    if os.getenv("DEER_FLOW_PROJECT_ROOT"):
+    if aliased_env("OPENSKU_PROJECT_ROOT", "DEER_FLOW_PROJECT_ROOT"):
         return project_default
 
     if root.name == "backend":

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Collect Kubernetes sandbox pod memory snapshots for DeerFlow.
+"""Collect Kubernetes sandbox pod memory snapshots for OpenSKU.
 
 This script is intentionally lightweight: it shells out to ``kubectl`` and
 emits either JSON or Markdown so maintainers can compare sandbox backends and
@@ -18,7 +18,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 DEFAULT_NAMESPACE = "deer-flow"
-DEFAULT_SELECTOR = "app=deer-flow-sandbox"
+DEFAULT_SELECTOR = "app=opensku-sandbox"
 DEFAULT_KUBECTL_TIMEOUT = 30
 
 
@@ -295,7 +295,7 @@ def build_report(
 def render_markdown(report: dict[str, Any]) -> str:
     summary = report["summary"]
     lines = [
-        "# DeerFlow Sandbox Memory Profile",
+        "# OpenSKU Sandbox Memory Profile",
         "",
         f"- Captured at: `{report['captured_at']}`",
         f"- Namespace: `{report['namespace']}`",

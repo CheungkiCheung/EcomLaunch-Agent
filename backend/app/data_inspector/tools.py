@@ -1,6 +1,6 @@
 """Deterministic, read-only analysis tools for uploaded CSV/XLSX files.
 
-The Data Inspector agent is configured through DeerFlow's native agent, skill,
+The Growth Analyst agent is configured through OpenSKU's native agent, skill,
 and tool configuration.  This module deliberately stays small: it resolves the
 current thread's upload directory, profiles supported tabular files, and runs a
 single bounded read-only DuckDB query over in-memory tables.

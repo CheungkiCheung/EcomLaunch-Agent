@@ -1,4 +1,4 @@
-"""ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via Gateway."""
+"""ChannelManager — consumes inbound messages and dispatches them to the OpenSKU agent via Gateway."""
 
 from __future__ import annotations
 
@@ -596,7 +596,7 @@ def _format_uploaded_files_block(files: list[dict[str, Any]]) -> str:
 
 
 class ChannelManager:
-    """Core dispatcher that bridges IM channels to the DeerFlow agent.
+    """Core dispatcher that bridges IM channels to the OpenSKU agent.
 
     It reads from the MessageBus inbound queue, creates/reuses threads on
     Gateway's LangGraph-compatible API, sends messages via ``runs.wait``, and publishes
@@ -809,7 +809,7 @@ class ChannelManager:
     async def _handle_chat(self, msg: InboundMessage, extra_context: dict[str, Any] | None = None) -> None:
         client = self._get_client()
 
-        # Look up existing DeerFlow thread.
+        # Look up existing OpenSKU thread.
         # topic_id may be None (e.g. Telegram private chats) — the store
         # handles this by using the "channel:chat_id" key without a topic suffix.
         thread_id = self.store.get_thread_id(msg.channel_name, msg.chat_id, topic_id=msg.topic_id)

@@ -4,29 +4,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-DeerFlow Frontend is a Next.js 16 web interface for an AI agent system. It communicates with a LangGraph-based backend to provide thread-based AI conversations with streaming responses, artifacts, and a skills/tools system.
+OpenSKU Frontend is a Next.js 16 web interface for an AI agent system. It communicates with a LangGraph-based backend to provide thread-based AI conversations with streaming responses, artifacts, and a skills/tools system.
 
 **Stack**: Next.js 16, React 19, TypeScript 5.8, Tailwind CSS 4, pnpm 10.26.2
 
 ## Commands
 
-| Command          | Purpose                                           |
-| ---------------- | ------------------------------------------------- |
-| `pnpm dev`       | Dev server with Turbopack (http://localhost:3000) |
-| `pnpm build`     | Production build                                  |
-| `pnpm check`     | Lint + type check (run before committing)         |
-| `pnpm lint`      | ESLint only                                       |
-| `pnpm lint:fix`  | ESLint with auto-fix                              |
-| `pnpm test`      | Run unit tests with Vitest                        |
-| `pnpm test:e2e`  | Run E2E tests with Playwright (Chromium)          |
-| `pnpm typecheck` | TypeScript type check (`tsc --noEmit`)            |
-| `pnpm start`     | Start production server                           |
+| Command                        | Purpose                                           |
+| ------------------------------ | ------------------------------------------------- |
+| `pnpm dev`                     | Dev server with Turbopack (http://localhost:3000) |
+| `pnpm build`                   | Production build                                  |
+| `pnpm check`                   | Lint + type check (run before committing)         |
+| `pnpm lint`                    | ESLint only                                       |
+| `pnpm lint:fix`                | ESLint with auto-fix                              |
+| `pnpm test`                    | Run unit tests with Vitest                        |
+| `pnpm test:e2e`                | Run isolated mock E2E on port 3101                |
+| `pnpm test:e2e:reuse`          | Run mock E2E against an existing port-3000 server |
+| `pnpm test:e2e:real-backend`   | Run real Gateway replay E2E on isolated port 3102 |
+| `pnpm test:e2e:opensku-replay` | Run full-stack Launch/Growth replay E2E           |
+| `pnpm test:e2e:visual`         | Run the focused visual regression suite           |
+| `pnpm typecheck`               | TypeScript type check (`tsc --noEmit`)            |
+| `pnpm start`                   | Start production server                           |
 
 Unit tests live under `tests/unit/` and mirror the `src/` layout (e.g., `tests/unit/core/api/stream-mode.test.ts` tests `src/core/api/stream-mode.ts`). Powered by Vitest; import source modules via the `@/` path alias.
 
-E2E tests live under `tests/e2e/` and use Playwright with Chromium. They mock all backend APIs via `page.route()` network interception and test real page interactions (navigation, chat input, streaming responses). Config: `playwright.config.ts`.
+Mock E2E tests live under `tests/e2e/` and use Playwright with Chromium. They mock backend APIs via `page.route()` and default to a newly built production server on port `3101`; they do not reuse the developer's port-3000 process unless `PLAYWRIGHT_REUSE_SERVER=1` is explicitly set. Use `PLAYWRIGHT_PORT=<port> pnpm test:e2e` to select another isolated port.
 
-When a real authenticated development server is already using port 3000, run E2E on an isolated unauthenticated server with `PLAYWRIGHT_PORT=3100 pnpm test:e2e`. Supplying `PLAYWRIGHT_PORT` disables reuse of the existing server so the Playwright web-server environment is applied.
+`tests/e2e-opensku-replay/` is the product-level full-stack suite. It starts a real production Next.js server and a real Gateway/runtime while replacing only the LLM with the committed hash-keyed replay fixture. The suite covers Launch Ultra's specialist/preflight repair loop and Growth Analyst's CSV upload/join/A/B-analysis path. `tests/e2e/visual-regression.spec.ts` keeps a small macOS pixel baseline and uses DOM/layout assertions plus attached screenshots in Linux CI.
+
+`playwright.real-backend.config.ts` runs the lower-level real-backend contract suite on port `3102` (Gateway `8011`) by default; `playwright.record.config.ts` uses port `3103` for manual real-provider recording. Both are isolated from the developer's port `3000` unless an explicit reuse flag/configuration is supplied.
 
 ## Architecture
 
@@ -71,11 +77,11 @@ The frontend is a stateful chat application. Users create **threads** (conversat
 
 ### Primary Agents
 
-The workspace sidebar provides two primary agent entry points: `EcomLaunch` and `Growth Analyst`. Growth Analyst keeps the compatibility route and `agent_name` value `data-inspector`. They share the standard chat composer, file upload, and thread APIs; recent-chat lists use the internal value to keep each agent's conversations separate from the other agent and from general chats.
+The workspace sidebar provides two primary agent entry points: `OpenSKU Launch Team` and `Growth Analyst`. Growth Analyst keeps the compatibility route and `agent_name` value `data-inspector`. They share the standard chat composer, file upload, and thread APIs; recent-chat lists use the internal value to keep each agent's conversations separate from the other agent and from general chats.
 
 Growth Analyst's route provides its own user-facing name, database icon, and data-analysis quick actions. Keep this route as a chat experience; reusable analysis behavior is configured by the backend agent, tools, and skills.
 
-Primary-agent chats default to Flash reasoning. EcomLaunch additionally overrides the run context with `is_plan_mode=false`, `subagent_enabled=true`, and `max_concurrent_subagents=2`: specialists stay available while todo-plan creation/update calls remain disabled. Whole-request call, token, duplicate-specialist, and wall-time budgets are enforced by the backend agent config.
+Primary-agent chats default to Flash reasoning. OpenSKU Launch Team additionally overrides the run context with `is_plan_mode=false`, `subagent_enabled=true`, and `max_concurrent_subagents=2`: specialists stay available while todo-plan creation/update calls remain disabled. Whole-request call, token, duplicate-specialist, and wall-time budgets are enforced by the backend agent config.
 
 ### Key Patterns
 

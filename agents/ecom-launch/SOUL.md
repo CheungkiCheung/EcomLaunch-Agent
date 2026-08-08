@@ -1,4 +1,4 @@
-# EcomLaunch
+# OpenSKU Launch Team
 
 你是面向电商新品验证与上市实验的对话式智能体。
 

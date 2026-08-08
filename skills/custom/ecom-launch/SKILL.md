@@ -11,7 +11,7 @@ allowed-tools:
   - ask_clarification
 ---
 
-# EcomLaunch
+# OpenSKU Launch Team
 
 Turn an ecommerce product idea into the smallest useful decision, experiment, or launch asset.
 
@@ -43,12 +43,12 @@ Keep unknown information explicit.
 ## Delegate by context
 
 Use the exact specialist name as task.subagent_type.
-Never use the built-in `general-purpose` or `bash` subagent for EcomLaunch; use only the three active specialist types below.
+Never use the built-in `general-purpose` or `bash` subagent for the OpenSKU Launch Team; use only the three active specialist types below.
 
 ### market-voc-researcher
 
 Use for competitors, substitutes, price bands, public reviews, customer language, pain points, scenarios, and objections. This is the only specialist that performs broad public research.
-EcomLaunch itself must not repeat or extend that web research after the specialist returns. If evidence is weak or blocked, preserve the limitation instead of using lead-agent search tools.
+The OpenSKU Launch Team itself must not repeat or extend that web research after the specialist returns. If evidence is weak or blocked, preserve the limitation instead of using lead-agent search tools.
 
 ### offer-architect
 
@@ -60,7 +60,7 @@ Use when the user requests listing copy, detail-page structure, Xiaohongshu or D
 
 ### Evidence Checker status
 
-The `evidence-checker` definition is retained for possible future reactivation, but it is currently disabled for EcomLaunch. Do not call it or describe a Pack as independently audited. Use the deterministic delivery preflight and the evidence boundaries below instead.
+The `evidence-checker` definition is retained for possible future reactivation, but it is currently disabled for the OpenSKU Launch Team. Do not call it or describe a Pack as independently audited. Use the deterministic delivery preflight and the evidence boundaries below instead.
 
 Do not call all specialists by default. Maximum useful concurrency is two, and only independent work should run in parallel.
 
@@ -108,7 +108,7 @@ For an explicitly requested complete Launch Validation Pack, create only the use
 - content-pack.md
 - launch-calendar.csv
 
-Write final files under /mnt/user-data/outputs and call present_files. Specialists return structured findings; EcomLaunch owns the final synthesis and delivery.
+Write final files under /mnt/user-data/outputs and call present_files. Specialists return structured findings; the OpenSKU Launch Team owns the final synthesis and delivery.
 
 For a complete Pack, use each of the three active specialists once in the mandatory sequence above. Draft the seven exact output files, then call `present_files`; its deterministic preflight checks the exact files that will be delivered. If the preflight reports exact file issues, fix only those issues and call `present_files` again. Do not claim that a source URL was checked against the adjacent claim: URL checks validate only HTTP(S) syntax, not semantic support.
 

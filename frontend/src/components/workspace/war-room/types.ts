@@ -94,13 +94,13 @@ export type WarRoomSnapshot = {
   failedCount: number;
   artifactCount: number;
   updatedAt: string;
-  /** EcomLaunch pipeline stages (init → research → design → content → pack → done). */
+  /** OpenSKU Launch Team pipeline stages (init → research → design → content → pack → done). */
   stages: WarRoomStage[];
-  /** Run metrics for the latest EcomLaunch run. */
+  /** Run metrics for the latest OpenSKU Launch Team run. */
   metrics: WarRoomMetrics;
-  /** Latest run status for the EcomLaunch thread. */
+  /** Latest run status for the OpenSKU Launch Team thread. */
   runStatus?: WarRoomRunStatus;
-  /** Thread title of the latest EcomLaunch run. */
+  /** Thread title of the latest OpenSKU Launch Team run. */
   runTitle?: string;
 };
 

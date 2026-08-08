@@ -122,7 +122,9 @@ test.describe("EcomLaunch welcome and suggestions", () => {
 });
 
 test.describe("War Room", () => {
-  test("War Room shows empty state without run data", async ({ page }) => {
+  test("War Room shows empty state without run data", async ({
+    page,
+  }, testInfo) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     mockLangGraphAPI(page);
 
@@ -130,7 +132,7 @@ test.describe("War Room", () => {
       {
         name: "locale",
         value: "zh-CN",
-        url: "http://localhost:3000",
+        url: String(testInfo.project.use.baseURL),
       },
     ]);
 
@@ -175,7 +177,7 @@ test.describe("War Room", () => {
 
   test("War Room switches languages and keeps a compact layout usable", async ({
     page,
-  }) => {
+  }, testInfo) => {
     await page.setViewportSize({ width: 1100, height: 800 });
     mockLangGraphAPI(page);
 
@@ -183,7 +185,7 @@ test.describe("War Room", () => {
       {
         name: "locale",
         value: "en-US",
-        url: "http://localhost:3000",
+        url: String(testInfo.project.use.baseURL),
       },
     ]);
     await page.goto("/workspace/war-room");
@@ -216,7 +218,7 @@ test.describe("War Room", () => {
 });
 
 test.describe("Input box behavior", () => {
-  test("EcomLaunch input shows upload attachments button", async ({ page }) => {
+  test("EcomLaunch input exposes the attachment picker", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     mockLangGraphAPI(page);
 
@@ -227,9 +229,9 @@ test.describe("Input box behavior", () => {
     );
     await expect(textarea).toBeVisible({ timeout: 15_000 });
 
-    // Attachment button visible
     await expect(
-      page.locator("button[aria-label*='attachment' i]"),
-    ).toHaveCount(0);
+      page.getByRole("button", { name: /Add attachments|添加附件/ }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Upload files")).toHaveCount(1);
   });
 });

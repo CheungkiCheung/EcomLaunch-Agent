@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <a href="#try-the-english-demo"><strong>Try demo</strong></a> ·
+  <a href="#try-the-bilingual-demo"><strong>Try demo</strong></a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#what-opensku-delivers">What it delivers</a> ·
   <a href="#how-it-works">How it works</a> ·
@@ -32,9 +32,9 @@
 
 OpenSKU gives solo founders, product teams, and ecommerce operators a coordinated AI team for the work that happens before inventory, ad spend, and launch commitments. It researches public market signals, separates evidence from assumptions, designs an offer, and produces an editable launch pack in one auditable workflow.
 
-## Try the English demo
+## Try the bilingual demo
 
-The recorded English demo needs no backend, model provider, or API key. It uses deterministic sample data, clearly labels that no live agents are running, and includes a warm War Room replay plus four inspectable deliverables.
+The recorded demo supports English and Chinese without a backend, model provider, or API key. It uses deterministic sample data, clearly labels that no live agents are running, and includes a 60-second guided walkthrough across two scenarios: Launch Validation and a Growth Analyst experiment. The Launch path exposes a bounded agent-environment loop—action, structured observation, dynamically selected minimal repair, recheck, and stop condition—while each scenario includes a warm War Room replay and four inspectable deliverables in the selected language.
 
 ```bash
 cd frontend
@@ -42,7 +42,7 @@ pnpm install
 pnpm demo
 ```
 
-Open [http://localhost:3000/demo](http://localhost:3000/demo). The sample validates a hypothetical compact travel coffee mug for the US market and is explicitly separated from live market research.
+Open the [English demo](http://localhost:3000/demo?lang=en) or [Chinese demo](http://localhost:3000/demo?lang=zh). Start with the hypothetical compact travel coffee mug, then switch to the recorded checkout experiment to inspect a read-only multi-file analysis, two-proportion test, SRM check, cohort fixture, and bounded memory snapshot. Scenario and language choices are preserved in the URL, and both paths are explicitly separated from live research and real store data.
 
 ## What OpenSKU delivers
 
@@ -78,16 +78,18 @@ launch-calendar.csv
 
 ## Meet the launch team
 
-| Agent | Responsibility |
-| --- | --- |
-| **Launch Director** | Breaks down the brief, coordinates specialists, and assembles the decision pack. |
-| **Market Researcher** | Finds competitors, pricing signals, market context, and real customer language. |
-| **Offer Architect** | Builds positioning, offer, pricing, and low-cost validation hypotheses. |
-| **Asset Studio** | Turns the strategy into listing copy, content angles, and launch-ready scripts. |
-| **Evidence Checker** | Keeps observed facts, estimates, and assumptions visibly separated. |
-| **Growth Analyst** | Analyzes uploaded CSV/XLSX data for changes, anomalies, cohorts, and experiments. |
+| Runtime role                              | Responsibility                                                                                             |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Launch Director**                       | Breaks down the brief, coordinates specialists, and assembles the decision pack.                           |
+| **Market Researcher**                     | Finds competitors, pricing signals, market context, and real customer language.                            |
+| **Offer Architect**                       | Builds positioning, offer, pricing, and low-cost validation hypotheses.                                    |
+| **Asset Studio**                          | Turns the strategy into listing copy, content angles, and launch-ready scripts.                            |
+| **Growth Analyst**                        | Analyzes uploaded CSV/XLSX data for changes, anomalies, cohorts, and experiments.                          |
+| **Deterministic Preflight (system gate)** | Checks the seven-file contract, evidence URLs, JSON/CSV structure, and unsupported claims before delivery. |
 
 The War Room is not a fake animation layer. It visualizes the latest real thread, run, task, artifact, and failure state for each agent. The interface supports both English and Chinese, including the Phaser scene labels and interaction menu.
+
+The interview demo separates the fixed specialist workflow from the adaptive delivery loop: the first `present_files` call receives two structured preflight violations, the lead agent selects only the affected 2/7 files and bounded edit tools, the second call passes 7/7, and the run stops after using 2/5 available iterations.
 
 ## Choose the right mode
 
@@ -188,6 +190,34 @@ pnpm test:e2e
 ```
 
 Backend unit tests do not require model-provider credentials. Running model-backed application flows still requires at least one configured provider key.
+
+### Reproducible product verification
+
+OpenSKU includes two deterministic full-stack replay scenarios. The browser talks to a real production Next.js build and a real Gateway/runtime; only the LLM is replaced by a committed, input-hash-matched fixture.
+
+```bash
+# Mock UI E2E on an isolated port (3101 by default)
+cd frontend
+pnpm test:e2e
+
+# Launch Ultra + Growth Analyst full-stack replay
+pnpm test:e2e:opensku-replay
+
+# Focused landing/demo/War Room visual regression
+pnpm test:e2e:visual
+
+# Rebuild the replay fixture after intentional prompt/tool changes
+cd ../backend
+PYTHONPATH=. uv run python scripts/build_opensku_replay_fixture.py
+```
+
+The Launch replay verifies the three-specialist dependency chain, a seven-file pack, deterministic preflight feedback, minimal repair, re-validation, and War Room checkpoint hydration. The Growth replay uploads three CSV files through the real API and verifies inspection, multi-file join, two-proportion significance analysis, and the final ship/extend/stop decision.
+
+CI also builds and boots the documented local quick-start path and both production container images in `.github/workflows/quickstart-smoke.yml`. A bounded weekly/manual Live LLM Canary is defined in `.github/workflows/live-llm-canary.yml`; configure `OPENSKU_CANARY_API_KEY`, and optionally `OPENSKU_CANARY_BASE_URL` and `OPENSKU_CANARY_MODEL`, to enable real-provider execution. With no key it records an explicit skip.
+
+### Compatibility names
+
+OpenSKU is the public product name. The `deerflow.*` Python import namespace, `DeerFlowClient`, `.deer-flow` runtime directory, `ecom-launch` / `data-inspector` agent IDs, and selected `DEER_FLOW_*` variables remain compatibility interfaces. New deployments should prefer `OPENSKU_PROJECT_ROOT`, `OPENSKU_HOME`, `OPENSKU_CONFIG_PATH`, `OPENSKU_EXTENSIONS_CONFIG_PATH`, `OPENSKU_SKILLS_PATH`, and `OPENSKU_HOST_BASE_DIR`.
 
 ## Roadmap
 

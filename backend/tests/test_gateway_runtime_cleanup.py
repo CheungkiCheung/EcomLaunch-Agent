@@ -46,9 +46,11 @@ def test_service_launchers_always_use_gateway_runtime():
 def test_local_dev_gateway_reload_excludes_runtime_state_with_absolute_dirs():
     serve_sh = _read("scripts/serve.sh")
 
-    assert 'export DEER_FLOW_PROJECT_ROOT="$REPO_ROOT"' in serve_sh
+    assert 'OPENSKU_PROJECT_ROOT="${OPENSKU_PROJECT_ROOT:-${DEER_FLOW_PROJECT_ROOT:-$REPO_ROOT}}"' in serve_sh
+    assert 'export DEER_FLOW_PROJECT_ROOT="$OPENSKU_PROJECT_ROOT"' in serve_sh
     assert 'BACKEND_RUNTIME_HOME="$REPO_ROOT/backend/.deer-flow"' in serve_sh
-    assert 'export DEER_FLOW_HOME="$BACKEND_RUNTIME_HOME"' in serve_sh
+    assert 'OPENSKU_HOME="${OPENSKU_HOME:-${DEER_FLOW_HOME:-$BACKEND_RUNTIME_HOME}}"' in serve_sh
+    assert 'export DEER_FLOW_HOME="$OPENSKU_HOME"' in serve_sh
     # Every absolute reload-exclude must be pre-created, including backend/sandbox
     # (#3459 / #3454) — see test_uvicorn_reload_exclude.py for the mechanism.
     assert 'mkdir -p "$DEER_FLOW_HOME" "$BACKEND_RUNTIME_HOME" "$REPO_ROOT/backend/sandbox"' in serve_sh

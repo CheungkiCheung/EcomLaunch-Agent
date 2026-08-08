@@ -18,7 +18,7 @@
         "id": "opensku-demo-human-1"
       },
       {
-        "content": "## Recorded sample result\n\n**Recommendation: VALIDATE BEFORE COMMITTING.** The brief defines a clear use occasion, but leak resistance, cleaning effort, cup-holder fit, and price acceptance require physical and message testing before an inventory decision.\n\nThis is a deterministic English demo. No model or external API is running, and the sample findings are not current market research.\n\nOpen the richer [War Room replay](/demo) to inspect six agent states and four sample deliverables.",
+        "content": "## Recorded sample result\n\n**Recommendation: VALIDATE BEFORE COMMITTING.** The brief defines a clear use occasion, but leak resistance, cleaning effort, cup-holder fit, and price acceptance require physical and message testing before an inventory decision.\n\nThis is a deterministic English demo. No model or external API is running, and the sample findings are not current market research.\n\nOpen the richer [interview walkthrough](/demo?scenario=launch) to inspect the Launch Director, three active specialists, the deterministic preflight gate, and four sample deliverables. Switch to the Growth Experiment scenario to inspect a separate read-only analysis path.",
         "additional_kwargs": {},
         "response_metadata": {
           "finish_reason": "stop",

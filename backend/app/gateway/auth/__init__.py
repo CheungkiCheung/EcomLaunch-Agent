@@ -1,4 +1,4 @@
-"""Authentication module for DeerFlow.
+"""Authentication module for OpenSKU.
 
 This module provides:
 - JWT-based authentication

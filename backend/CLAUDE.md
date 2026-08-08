@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-DeerFlow is a LangGraph-based AI super agent system with a full-stack architecture. The backend provides a "super agent" with sandbox execution, persistent memory, subagent delegation, and extensible tool integration - all operating in per-thread isolated environments.
+OpenSKU is a LangGraph-based AI super agent system with a full-stack architecture. The backend provides a "super agent" with sandbox execution, persistent memory, subagent delegation, and extensible tool integration - all operating in per-thread isolated environments.
 
-The application layer currently ships two independent repository-defined top-level agents: EcomLaunch for research/content workflows and Growth Analyst for conversational analysis of uploaded CSV/XLSX files. Growth Analyst keeps the compatibility ID `data-inspector`; the two top-level agents are not automatically chained.
+The application layer currently ships two independent repository-defined top-level agents: OpenSKU Launch Team for research/content workflows and Growth Analyst for conversational analysis of uploaded CSV/XLSX files. Growth Analyst keeps the compatibility ID `data-inspector`; the two top-level agents are not automatically chained.
+
+OpenSKU is the product name. The Python package/import namespace `deerflow.*`, the embedded `DeerFlowClient` class, the `.deer-flow` runtime-data directory, the `ecom-launch` / `data-inspector` agent IDs, and selected `DEER_FLOW_*` wire variables remain compatibility interfaces. New configuration and documentation must prefer `OPENSKU_*`; do not rename compatibility identifiers without a migration plan and regression coverage.
 
 **Architecture**:
 - **Gateway API** (port 8001): REST API plus embedded LangGraph-compatible agent runtime
@@ -19,7 +21,7 @@ The application layer currently ships two independent repository-defined top-lev
 
 **Project Structure**:
 ```
-deer-flow/
+opensku/
 ├── Makefile                    # Root commands (check, install, dev, stop)
 ├── config.yaml                 # Main application configuration
 ├── extensions_config.json      # MCP servers and skills configuration
@@ -123,7 +125,7 @@ Blocking-IO runtime gate (`tests/blocking_io/`):
 - Wraps every item under `tests/blocking_io/` with a strict Blockbuster
   context scoped to `app.*` and `deerflow.*` (see
   `tests/support/detectors/blocking_io_runtime.py`). Any sync blocking IO
-  call whose stack passes through DeerFlow business code while running on
+  call whose stack passes through OpenSKU business code while running on
   the asyncio event loop raises `BlockingError` and fails the test.
 - Regression anchors live there: `test_skills_load.py` (locks the
   `asyncio.to_thread` offload around `LocalSkillStorage.load_skills`, fix
@@ -158,7 +160,9 @@ The backend is split into two layers with a strict dependency direction:
 
 **Dependency rule**: App imports deerflow, but deerflow never imports app. This boundary is enforced by `tests/test_harness_boundary.py` which runs in CI.
 
-`app/data_inspector/` is intentionally an application-layer extension. The repository-defined `data-inspector` agent reaches it through `config.yaml` tool reflection, so the DeerFlow Harness remains unchanged and reusable.
+The package and import names in this section are compatibility APIs, not the public product brand. Runtime path resolution prefers `OPENSKU_PROJECT_ROOT`, `OPENSKU_HOME`, `OPENSKU_CONFIG_PATH`, `OPENSKU_EXTENSIONS_CONFIG_PATH`, `OPENSKU_SKILLS_PATH`, and `OPENSKU_HOST_BASE_DIR`, with their corresponding `DEER_FLOW_*` names accepted only as legacy aliases.
+
+`app/data_inspector/` is intentionally an application-layer extension. The repository-defined `data-inspector` agent reaches it through `config.yaml` tool reflection, so the OpenSKU Harness remains unchanged and reusable.
 
 **Import conventions**:
 ```python
@@ -233,14 +237,14 @@ completed delivery cannot start another research or drafting phase.
 Subagent Skill inheritance distinguishes an omitted child list from an explicit
 child list: `skills: null` inherits the lead agent's available Skills, while an
 explicit custom-subagent list is the configured specialist boundary and is kept
-as-is. This allows a router-only lead agent such as EcomLaunch to delegate to PM
+as-is. This allows a router-only lead agent such as OpenSKU Launch Team to delegate to PM
 Skills without loading those Skills into the lead prompt.
 
-EcomLaunch complete-pack runs currently use three active specialists in sequence:
+OpenSKU Launch Team complete-pack runs currently use three active specialists in sequence:
 Market Researcher, Offer Architect, and Asset Studio. The lead writes the seven
 compact candidate artifacts in at most two model turns, then presents the files
 through deterministic preflight. Evidence Checker remains defined globally for
-future reactivation, but the EcomLaunch allowlist, dependency graph, completion
+future reactivation, but the OpenSKU Launch Team allowlist, dependency graph, completion
 contract, and delivery gate do not call or require it. Budget-finalized
 specialist results are not recorded as completed, so dependency and delivery
 contracts cannot treat a truncated required specialist as a successful role run.
@@ -325,7 +329,7 @@ CORS is same-origin by default when requests enter through nginx on port 2026. S
 | **Skills** (`/api/skills`) | `GET /` - list skills; `GET /{name}` - details; `PUT /{name}` - update enabled; `POST /install` - install from .skill archive (accepts standard optional frontmatter like `version`, `author`, `compatibility`) |
 | **Memory** (`/api/memory`) | `GET /` - memory data; `POST /reload` - force reload; `GET /config` - config; `GET /status` - config + data |
 | **Uploads** (`/api/threads/{id}/uploads`) | `POST /` - upload files (auto-converts PDF/PPT/Excel/Word); `GET /list` - list; `DELETE /{filename}` - delete |
-| **Threads** (`/api/threads/{id}`) | `DELETE /` - remove DeerFlow-managed local thread data after LangGraph thread deletion; unexpected failures are logged server-side and return a generic 500 detail |
+| **Threads** (`/api/threads/{id}`) | `DELETE /` - remove OpenSKU-managed local thread data after LangGraph thread deletion; unexpected failures are logged server-side and return a generic 500 detail |
 | **Artifacts** (`/api/threads/{id}/artifacts`) | `GET /{path}` - serve artifacts; active content types (`text/html`, `application/xhtml+xml`, `image/svg+xml`) are always forced as download attachments to reduce XSS risk; `?download=true` still forces download for other file types |
 | **Suggestions** (`/api/threads/{id}/suggestions`) | `POST /` - generate follow-up questions; rich list/block model content is normalized and inline reasoning (`<think>...</think>`, including unclosed/truncated blocks from reasoning models like MiniMax-M3) is stripped before JSON parsing |
 | **Thread Runs** (`/api/threads/{id}/runs`) | `POST /` - create background run; `POST /stream` - create + SSE stream; `POST /wait` - create + block; `GET /` - list runs; `GET /{rid}` - run details; `POST /{rid}/cancel` - cancel; `GET /{rid}/join` - join SSE; `GET /{rid}/messages` - paginated messages `{data, has_more}`; `GET /{rid}/events` - full event stream; `GET /../messages` - thread messages with feedback; `GET /../token-usage` - aggregate tokens |
@@ -351,7 +355,7 @@ Proxied through nginx: `/api/langgraph/*` → Gateway LangGraph-compatible runti
 
 **Virtual Path System**:
 - Agent sees: `/mnt/user-data/{workspace,uploads,outputs}`, `/mnt/skills`
-- Physical: `backend/.deer-flow/users/{user_id}/threads/{thread_id}/user-data/...`, `deer-flow/skills/`
+- Physical: `backend/.deer-flow/users/{user_id}/threads/{thread_id}/user-data/...`, `skills/`
 - Translation: `LocalSandboxProvider` builds per-thread `PathMapping`s for the user-data prefixes at acquire time; `tools.py` keeps `replace_virtual_path()` / `replace_virtual_paths_in_command()` as a defense-in-depth layer (and for path validation). AIO has the directories volume-mounted at the same virtual paths inside its container, so both implementations accept `/mnt/user-data/...` natively.
 - Detection: `is_local_sandbox()` accepts both `sandbox_id == "local"` (legacy / no-thread) and `sandbox_id.startswith("local:")` (per-thread)
 
@@ -419,7 +423,7 @@ Proxied through nginx: `/api/langgraph/*` → Gateway LangGraph-compatible runti
 
 ### Skills System (`packages/harness/deerflow/skills/`)
 
-- **Location**: `deer-flow/skills/{public,custom}/`
+- **Location**: `skills/{public,custom}/`
 - **Format**: Directory with `SKILL.md` (YAML frontmatter: name, description, license, allowed-tools)
 - **Loading**: `load_skills()` recursively scans `skills/{public,custom}` for `SKILL.md`, parses metadata, and reads enabled state from extensions_config.json
 - **Injection**: Enabled skills listed in agent system prompt with container paths
@@ -442,7 +446,7 @@ Proxied through nginx: `/api/langgraph/*` → Gateway LangGraph-compatible runti
 
 ### IM Channels System (`app/channels/`)
 
-Bridges external messaging platforms (Feishu, Slack, Telegram, DingTalk) to the DeerFlow agent via Gateway's LangGraph-compatible API.
+Bridges external messaging platforms (Feishu, Slack, Telegram, DingTalk) to the OpenSKU agent via Gateway's LangGraph-compatible API.
 
 
 **Architecture**: Channels communicate with Gateway through the `langgraph-sdk` HTTP client (same as the frontend), ensuring threads are created and managed server-side. The internal SDK client injects process-local internal auth plus a matching CSRF cookie/header pair so Gateway accepts state-changing thread/run requests from channel workers without relying on browser session cookies.
@@ -539,7 +543,7 @@ Returns `{}` when Langfuse is not in the enabled providers — LangSmith-only de
 
 **`config.yaml`** key sections:
 - `models[]` - LLM configs with `use` class path, `supports_thinking`, `supports_vision`, provider-specific fields
-- vLLM reasoning models should use `deerflow.models.vllm_provider:VllmChatModel`; for Qwen-style parsers prefer `when_thinking_enabled.extra_body.chat_template_kwargs.enable_thinking`, and DeerFlow will also normalize the older `thinking` alias
+- vLLM reasoning models should use `deerflow.models.vllm_provider:VllmChatModel`; for Qwen-style parsers prefer `when_thinking_enabled.extra_body.chat_template_kwargs.enable_thinking`, and OpenSKU will also normalize the older `thinking` alias
 - `tools[]` - Tool configs with `use` variable path and `group`
 - `tool_groups[]` - Logical groupings for tools
 - `sandbox.use` - Sandbox provider class path
@@ -557,7 +561,7 @@ Both can be modified at runtime via Gateway API endpoints or `DeerFlowClient` me
 
 ### Embedded Client (`packages/harness/deerflow/client.py`)
 
-`DeerFlowClient` provides direct in-process access to all DeerFlow capabilities without HTTP services. All return types align with the Gateway API response schemas, so consumer code works identically in HTTP and embedded modes.
+`DeerFlowClient` provides direct in-process access to all OpenSKU capabilities without HTTP services. All return types align with the Gateway API response schemas, so consumer code works identically in HTTP and embedded modes.
 
 **Architecture**: Imports the same `deerflow` modules that Gateway API uses. Shares the same config files and data directories. No FastAPI dependency.
 
@@ -609,6 +613,25 @@ make test
 # Run a specific test file
 PYTHONPATH=. uv run pytest tests/test_<feature>.py -v
 ```
+
+### Deterministic Product Replay and Live Canary
+
+The committed OpenSKU replay fixture replaces only the LLM provider; Gateway authentication, thread state, uploads, agent/subagent orchestration, tools, run budgets, preflight validation, artifact APIs, and the production frontend remain real.
+
+```bash
+# Rebuild the 15-turn hash-keyed fixture after an intentional prompt/tool-contract change
+PYTHONPATH=. uv run python scripts/build_opensku_replay_fixture.py
+
+# Backend golden scenarios
+PYTHONPATH=. uv run pytest tests/test_opensku_replay_golden.py tests/test_replay_provider_hashing.py -q
+
+# Full-stack browser replay (run from frontend/)
+pnpm test:e2e:opensku-replay
+```
+
+The Launch Ultra replay requires the three configured specialists, seven artifacts, an initial two-item preflight failure, two bounded `str_replace` repairs, and a successful second `present_files`. The Growth Analyst replay uploads three CSVs and pins `inspect_data -> query_data -> analyze_ab_test`, including the experiment significance and confidence interval.
+
+`.github/workflows/live-llm-canary.yml` runs weekly and on manual dispatch. It requires `OPENSKU_CANARY_API_KEY` (or the legacy `OPENAI_API_KEY` secret), optionally `OPENSKU_CANARY_BASE_URL`, and `OPENSKU_CANARY_MODEL`. The canary explicitly records `replay: false`, enforces model-call/token/tool budgets, and uploads state, events, metrics, artifacts, and a summary. Missing credentials produce an explicit skipped result rather than a false pass.
 
 ### Running the Full Application
 

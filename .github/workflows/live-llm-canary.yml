@@ -1,0 +1,88 @@
+name: Live LLM Canary
+
+on:
+  schedule:
+    - cron: "17 2 * * 1"
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Canary depth
+        required: true
+        default: full
+        type: choice
+        options:
+          - full
+          - flash
+
+concurrency:
+  group: live-llm-canary
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    name: Real Gateway + real LLM
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPENSKU_CANARY_API_KEY: ${{ secrets.OPENSKU_CANARY_API_KEY || secrets.OPENAI_API_KEY }}
+      OPENSKU_CANARY_BASE_URL: ${{ secrets.OPENSKU_CANARY_BASE_URL || secrets.OPENAI_API_BASE }}
+      OPENSKU_CANARY_MODEL: ${{ vars.OPENSKU_CANARY_MODEL || 'gpt-4.1-mini' }}
+      OPENSKU_CANARY_MAX_MODEL_CALLS: "15"
+      OPENSKU_CANARY_MAX_TOTAL_TOKENS: "120000"
+      OPENSKU_CANARY_MAX_EXECUTION_SECONDS: "360"
+    steps:
+      - uses: actions/checkout@v6
+      - name: Resolve canary availability
+        id: availability
+        shell: bash
+        run: |
+          if [ -n "$OPENSKU_CANARY_API_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "### Live LLM Canary" >> "$GITHUB_STEP_SUMMARY"
+            echo "Skipped: configure OPENSKU_CANARY_API_KEY (and optionally OPENSKU_CANARY_BASE_URL / OPENSKU_CANARY_MODEL)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Record explicit no-key skip
+        if: steps.availability.outputs.enabled != 'true'
+        run: python3 backend/scripts/run_live_llm_canary.py --output-dir live-canary-results
+      - uses: actions/setup-python@v6
+        if: steps.availability.outputs.enabled == 'true'
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v7
+        if: steps.availability.outputs.enabled == 'true'
+      - name: Install backend dependencies
+        if: steps.availability.outputs.enabled == 'true'
+        working-directory: backend
+        run: uv sync --group dev
+      - name: Run bounded live canary
+        if: steps.availability.outputs.enabled == 'true'
+        working-directory: backend
+        run: |
+          PYTHONPATH=. uv run python scripts/run_live_llm_canary.py \
+            --profile "${{ inputs.profile || 'full' }}" \
+            --output-dir ../live-canary-results
+      - name: Publish canary summary
+        if: always()
+        shell: bash
+        run: |
+          echo "### Live LLM Canary Result" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f live-canary-results/summary.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat live-canary-results/summary.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No summary was produced; inspect the job log." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload traces, run events, metrics, and artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-llm-canary-${{ github.run_id }}
+          path: live-canary-results/
+          if-no-files-found: warn
+          retention-days: 14

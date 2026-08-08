@@ -122,6 +122,7 @@ def test_health_still_works_when_docs_disabled():
         resp = client.get("/health")
         assert resp.status_code == 200
         assert resp.json()["status"] == "healthy"
+        assert resp.json()["service"] == "opensku-gateway"
 
 
 # ---------------------------------------------------------------------------

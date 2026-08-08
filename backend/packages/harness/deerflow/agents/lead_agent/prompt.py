@@ -552,10 +552,10 @@ Recent breakthroughs in language models have also accelerated progress
 ```markdown
 ## Executive Summary
 
-DeerFlow is an open-source AI agent framework that gained significant traction in early 2026
-[citation:GitHub Repository](https://github.com/bytedance/deer-flow). The project focuses on
-providing a production-ready agent system with sandbox execution and memory management
-[citation:DeerFlow Documentation](https://deer-flow.dev/docs).
+OpenSKU is an open-source ecommerce agent platform for evidence-bounded launch validation
+[citation:GitHub Repository](https://github.com/CheungkiCheung/opensku). The project combines
+specialist orchestration, sandboxed artifacts, memory, and deterministic delivery checks
+[citation:OpenSKU Documentation](https://github.com/CheungkiCheung/opensku#readme).
 
 ## Key Analysis
 
@@ -567,8 +567,8 @@ combined with a FastAPI gateway for REST API access [citation:FastAPI](https://f
 ## Sources
 
 ### Primary Sources
-- [GitHub Repository](https://github.com/bytedance/deer-flow) - Official source code and documentation
-- [DeerFlow Documentation](https://deer-flow.dev/docs) - Technical specifications
+- [GitHub Repository](https://github.com/CheungkiCheung/opensku) - Official source code and documentation
+- [OpenSKU Documentation](https://github.com/CheungkiCheung/opensku#readme) - Technical specifications
 
 ### Media Coverage
 - [AI Trends 2026](https://techcrunch.com/ai-trends) - Industry analysis
@@ -580,7 +580,7 @@ combined with a FastAPI gateway for REST API access [citation:FastAPI](https://f
 - The `[citation:Title](URL)` format is ONLY for inline citations within the report body
 - ❌ WRONG: `GitHub 仓库 - 官方源代码和文档` (no URL!)
 - ❌ WRONG in Sources: `[citation:GitHub Repository](url)` (citation prefix is for inline only!)
-- ✅ RIGHT in Sources: `[GitHub Repository](https://github.com/bytedance/deer-flow) - 官方源代码和文档`
+- ✅ RIGHT in Sources: `[GitHub Repository](https://github.com/CheungkiCheung/opensku) - 官方源代码和文档`
 
 **WORKFLOW for Research Tasks:**
 1. Use web_search to find sources → Extract {{title, url, snippet}} from results

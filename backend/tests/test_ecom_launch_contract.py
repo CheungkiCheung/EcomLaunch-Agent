@@ -111,12 +111,13 @@ def test_ecom_launch_retains_four_bounded_specialist_definitions() -> None:
     assert "never return conditional pass" in custom_agents["evidence-checker"]["system_prompt"]
 
 
-def test_ecom_launch_soul_is_shallow_and_mode_agnostic() -> None:
+def test_opensku_launch_soul_is_shallow_and_mode_agnostic() -> None:
     soul = (REPO_ROOT / "agents" / "ecom-launch" / "SOUL.md").read_text(encoding="utf-8")
 
     assert len(soul.splitlines()) <= 12
     assert "默认直接回答" in soul
-    assert "OpenSKU" not in soul
+    assert "OpenSKU Launch Team" in soul
+    assert "DeerFlow" not in soul
     assert "growth-analyst" not in soul
     assert "launch-war-room.html" not in soul
 
@@ -138,7 +139,7 @@ def test_ecom_launch_skill_uses_minimum_needed_workflow() -> None:
         "task",
         "ask_clarification",
     ]
-    assert "EcomLaunch itself must not repeat or extend that web research" in skill
+    assert "The OpenSKU Launch Team itself must not repeat or extend that web research" in skill
     assert "complete Launch Validation Pack only when the user explicitly asks" in skill
     assert "call each specialist type at most once" in skill
     assert "minimum specialist sequence is mandatory" in skill
@@ -147,7 +148,7 @@ def test_ecom_launch_skill_uses_minimum_needed_workflow() -> None:
     assert "no more than two model turns" in skill
     assert "never silently switch geography" in skill
     assert "Do not create extra files outside the standard set" in skill
-    assert "currently disabled for EcomLaunch" in skill
+    assert "currently disabled for the OpenSKU Launch Team" in skill
     assert "Do not call it" in skill
     assert "未经过独立 Evidence Checker 审计" in skill
     assert "[待确认]" in skill
@@ -237,7 +238,7 @@ def test_vendored_pm_skills_match_pinned_upstream() -> None:
 
 def test_example_and_documented_subagent_configs_match_the_four_role_contract() -> None:
     example_text = (REPO_ROOT / "config.example.yaml").read_text(encoding="utf-8")
-    documented = yaml.safe_load((REPO_ROOT / "docs" / "ecom-launch" / "subagents.ecom-launch.yaml").read_text(encoding="utf-8"))
+    documented = yaml.safe_load((REPO_ROOT / "docs" / "opensku-launch" / "subagents.ecom-launch.yaml").read_text(encoding="utf-8"))
 
     for name in EXPECTED_SUBAGENTS:
         assert name in example_text

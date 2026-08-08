@@ -1,7 +1,10 @@
 import type { Message } from "@langchain/langgraph-sdk";
 import { describe, expect, it } from "vitest";
 
-import { buildWarRoomSnapshot } from "@/components/workspace/war-room/adapter";
+import {
+  buildWarRoomSnapshot,
+  hydrateWarRoomThread,
+} from "@/components/workspace/war-room/adapter";
 import { zhCN } from "@/core/i18n/locales/zh-CN";
 import type { AgentThread } from "@/core/threads/types";
 
@@ -166,5 +169,30 @@ describe("buildWarRoomSnapshot", () => {
       "/workspace/agents/data-inspector/chats/data-inspector-thread",
     );
     expect(snapshot.completedCount).toBe(1);
+  });
+
+  it("hydrates thread-search metadata with the latest checkpoint before counting artifacts", () => {
+    const metadataOnlyThread = {
+      thread_id: "ecom-launch-thread",
+      context: { agent_name: "ecom-launch" },
+    } as AgentThread;
+    const hydrated = hydrateWarRoomThread(metadataOnlyThread, {
+      values: {
+        title: "Launch complete",
+        messages: [],
+        artifacts: ["one.md", "two.csv"],
+      },
+    });
+
+    const snapshot = buildWarRoomSnapshot({
+      ecomThread: hydrated,
+      ecomRunStatus: "success",
+    });
+
+    expect(snapshot.artifactCount).toBe(2);
+    expect(
+      snapshot.actors.find((actor) => actor.id === "ecom-launch")?.artifacts,
+    ).toEqual(["one.md", "two.csv"]);
+    expect(snapshot.runTitle).toBe("Launch complete");
   });
 });

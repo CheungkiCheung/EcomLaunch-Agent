@@ -20,7 +20,11 @@ on:
       - "backend/tests/_replay_fixture.py"
       - "backend/tests/seed_runs_router.py"
       - "backend/tests/test_replay_golden.py"
+      - "backend/tests/test_opensku_replay_golden.py"
+      - "backend/tests/test_replay_provider_hashing.py"
+      - "backend/tests/opensku_scenario_provider.py"
       - "backend/scripts/run_replay_gateway.py"
+      - "backend/scripts/build_opensku_replay_fixture.py"
       - ".github/workflows/replay-e2e.yml"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -33,7 +37,11 @@ on:
       - "backend/tests/_replay_fixture.py"
       - "backend/tests/seed_runs_router.py"
       - "backend/tests/test_replay_golden.py"
+      - "backend/tests/test_opensku_replay_golden.py"
+      - "backend/tests/test_replay_provider_hashing.py"
+      - "backend/tests/opensku_scenario_provider.py"
       - "backend/scripts/run_replay_gateway.py"
+      - "backend/scripts/build_opensku_replay_fixture.py"
       - ".github/workflows/replay-e2e.yml"
 
 concurrency:
@@ -62,7 +70,12 @@ jobs:
         run: uv sync --group dev
       - name: Replay golden (backend SSE contract)
         working-directory: backend
-        run: PYTHONPATH=. uv run pytest tests/test_replay_golden.py -v
+        run: |
+          PYTHONPATH=. uv run pytest \
+            tests/test_replay_golden.py \
+            tests/test_opensku_replay_golden.py \
+            tests/test_replay_provider_hashing.py \
+            -v
 
   fullstack-replay-render:
     name: Layer 2 — full-stack render (no API key)
@@ -97,6 +110,9 @@ jobs:
       - name: Full-stack replay render (DOM assertions are the gate)
         working-directory: frontend
         run: pnpm exec playwright test -c playwright.real-backend.config.ts
+      - name: OpenSKU Launch Ultra + Growth Analyst replay flows
+        working-directory: frontend
+        run: pnpm test:e2e:opensku-replay
       - name: Upload report + render artifact
         uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}

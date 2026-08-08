@@ -107,7 +107,7 @@ def test_build_report_merges_top_and_pod_metadata():
 
     report = mod.build_report(
         namespace="deer-flow",
-        selector="app=deer-flow-sandbox",
+        selector="app=opensku-sandbox",
         sample="empty",
         top_pods=top_pods,
         pod_json=pod_json,
@@ -130,7 +130,7 @@ def test_render_markdown_escapes_process_command_pipes():
     mod = _load_module()
     report = mod.build_report(
         namespace="deer-flow",
-        selector="app=deer-flow-sandbox",
+        selector="app=opensku-sandbox",
         sample="pipe-command",
         top_pods=mod.parse_top_pods("sandbox-abc 29m 792Mi\n"),
         pod_json={"items": []},
@@ -150,7 +150,7 @@ def test_build_report_counts_unparsed_memory_values():
     mod = _load_module()
     report = mod.build_report(
         namespace="deer-flow",
-        selector="app=deer-flow-sandbox",
+        selector="app=opensku-sandbox",
         sample="partial",
         top_pods=mod.parse_top_pods("sandbox-abc 29m 792Mi\nsandbox-def bad unknown\n"),
         pod_json={"items": []},
@@ -167,7 +167,7 @@ def test_build_report_includes_process_sample_errors():
     mod = _load_module()
     report = mod.build_report(
         namespace="deer-flow",
-        selector="app=deer-flow-sandbox",
+        selector="app=opensku-sandbox",
         sample="partial",
         top_pods=mod.parse_top_pods("sandbox-abc 29m 792Mi\n"),
         pod_json={"items": []},
@@ -233,7 +233,7 @@ def test_render_markdown_includes_sample_and_notes():
     mod = _load_module()
     report = mod.build_report(
         namespace="deer-flow",
-        selector="app=deer-flow-sandbox",
+        selector="app=opensku-sandbox",
         sample="after-python",
         top_pods=mod.parse_top_pods("sandbox-abc 29m 792Mi\n"),
         pod_json={"items": []},
@@ -254,7 +254,7 @@ def test_collect_rejects_invalid_kubectl_timeout():
     try:
         mod.collect(
             namespace="deer-flow",
-            selector="app=deer-flow-sandbox",
+            selector="app=opensku-sandbox",
             sample="empty",
             kubectl="kubectl",
             kubectl_timeout=0,

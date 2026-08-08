@@ -743,7 +743,7 @@ class FeishuChannel(Channel):
             sender_id = event.event.sender.sender_id.open_id
 
             # root_id is set when the message is a reply within a Feishu thread.
-            # Use it as topic_id so all replies share the same DeerFlow thread.
+            # Use it as topic_id so all replies share the same OpenSKU thread.
             root_id = self._non_empty_str(getattr(message, "root_id", None))
             parent_id = self._non_empty_str(getattr(message, "parent_id", None))
             feishu_thread_id = self._non_empty_str(getattr(message, "thread_id", None))
@@ -828,7 +828,7 @@ class FeishuChannel(Channel):
             else:
                 msg_type = InboundMessageType.CHAT
 
-            # Prefer any platform message id that already maps to a DeerFlow
+            # Prefer any platform message id that already maps to a OpenSKU
             # thread. This keeps replies to bot clarification cards in the
             # original conversation even when Feishu reports the card as root.
             topic_id, resolved_from_stored_mapping = self._resolve_topic_id(

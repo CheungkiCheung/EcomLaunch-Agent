@@ -1095,6 +1095,21 @@ export function useThreadRuns(threadId?: string) {
   });
 }
 
+export function useThreadState(threadId?: string) {
+  const apiClient = getAPIClient();
+  return useQuery({
+    queryKey: ["thread", threadId, "state"],
+    queryFn: async () => {
+      if (!threadId) {
+        return null;
+      }
+      return apiClient.threads.getState<AgentThreadState>(threadId);
+    },
+    enabled: Boolean(threadId),
+    refetchOnWindowFocus: false,
+  });
+}
+
 export function useThreadTokenUsage(
   threadId?: string | null,
   { enabled = true }: { enabled?: boolean } = {},

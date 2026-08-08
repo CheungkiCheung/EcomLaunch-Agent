@@ -1,0 +1,46 @@
+---
+title: Why OpenSKU
+description: OpenSKU turns an ecommerce product brief or growth dataset into an evidence-bounded decision, inspectable artifacts, and a reproducible agent workflow.
+---
+
+import { Callout, Cards } from "nextra/components";
+
+# Why OpenSKU
+
+<Callout type="info" emoji="🛒">
+  OpenSKU is built for the expensive decisions that happen before inventory,
+  ad spend, and launch commitments.
+</Callout>
+
+Most ecommerce AI tools stop at a polished answer. OpenSKU is designed to produce work that a founder, operator, or interviewer can inspect: the evidence used, the assumptions made, the specialist hand-offs, the generated files, the verification failures, and the exact repairs that made a delivery pass.
+
+## Evidence before confidence
+
+Product validation often mixes public facts, calculations, and guesses. OpenSKU keeps those boundaries explicit with `observed_public`, `estimated`, and `assumption` evidence classes. A deterministic preflight checks the seven-file launch contract, source URLs, JSON/CSV structure, and unsupported no-sample claims before the pack can be delivered.
+
+## A team, not a single oversized prompt
+
+Launch Ultra coordinates three scoped specialists in dependency order:
+
+- **Market Researcher** gathers market, competitor, price, and customer-language signals.
+- **Offer Architect** turns the research into positioning, pricing, and validation hypotheses.
+- **Asset Studio** produces listing and content assets from the approved strategy.
+
+The Launch Director owns the final contract and repair loop. Growth Analyst is an independent top-level workflow for uploaded CSV/XLSX data, joins, cohorts, and A/B significance analysis.
+
+## A bounded verification loop
+
+The delivery loop is intentionally observable: act, receive a structured observation, select the smallest repair, recheck, and stop on success or budget exhaustion. Run budgets limit model calls, tokens, time, duplicate specialists, and loop iterations so a failed delivery cannot wander indefinitely.
+
+## Reproducible by default
+
+The repository includes bilingual recorded demos and deterministic full-stack replay tests. Replay keeps the production frontend, Gateway, authentication, uploads, LangGraph runtime, subagents, tools, checkpoints, preflight, and artifact APIs real; only the LLM provider is replaced by an input-hash-matched fixture. A separate scheduled canary covers the real-model boundary.
+
+## Product surface and runtime
+
+OpenSKU combines a Next.js workspace, FastAPI Gateway, LangGraph runtime, sandboxed files, cross-session memory, and a live War Room. The War Room hydrates from actual thread checkpoints so specialist and artifact state are not decorative animation.
+
+<Cards num={2}>
+  <Cards.Card title="Core Concepts" href="/docs/introduction/core-concepts" />
+  <Cards.Card title="Harness vs App" href="/docs/introduction/harness-vs-app" />
+</Cards>

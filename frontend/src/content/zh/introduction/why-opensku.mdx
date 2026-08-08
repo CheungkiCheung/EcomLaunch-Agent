@@ -1,0 +1,45 @@
+---
+title: 为什么选择 OpenSKU
+description: OpenSKU 把电商商品 Brief 或增长数据，转化为有证据边界的决策、可检查产物和可复现 Agent 流程。
+---
+
+import { Callout, Cards } from "nextra/components";
+
+# 为什么选择 OpenSKU
+
+<Callout type="info" emoji="🛒">
+  OpenSKU 聚焦的是投入库存、广告预算和正式上新之前，最容易付出错误成本的决策。
+</Callout>
+
+大多数电商 AI 工具停在一份看起来完整的回答。OpenSKU 更关心人能不能检查整个过程：用了什么证据、做了什么假设、专家如何交接、生成了哪些文件、校验为什么失败，以及最后用什么最小修订通过。
+
+## 先讲证据，再讲结论
+
+新品验证很容易把公开事实、计算结果和猜测混在一起。OpenSKU 用 `observed_public`、`estimated`、`assumption` 三类证据边界区分它们。确定性 Preflight 会在交付前检查 7 件套合同、证据 URL、JSON/CSV 结构以及无样品场景中不受支持的宣称。
+
+## 是协作团队，不是一条超长 Prompt
+
+Launch Ultra 按依赖顺序调度三个范围清晰的专家：
+
+- **市场研究员**：收集市场、竞品、价格和用户语言信号。
+- **方案架构师**：把研究转成定位、定价和验证假设。
+- **素材工作室**：根据已确认策略生成商品页和内容素材。
+
+启动总监负责最终合同和修订 Loop。Growth Analyst 是独立顶层流程，用于上传 CSV/XLSX、跨文件 Join、Cohort 和 A/B 显著性分析。
+
+## 有边界的验证 Loop
+
+交付 Loop 可以被直接观察：执行 Action、接收结构化 Observation、选择最小修订、重新校验，并在成功或预算耗尽时停止。Run Budget 会约束模型调用、Token、时间、重复专家和 Loop 轮数，避免失败交付无限游走。
+
+## 默认可复现
+
+仓库包含中英文录制 Demo 和确定性全栈 Replay。Replay 保留真实的生产前端、Gateway、认证、上传、LangGraph 运行时、子 Agent、工具、Checkpoint、Preflight 和 Artifact API，只替换 LLM Provider。另外的定时 Canary 覆盖真实模型边界。
+
+## 产品界面与运行时
+
+OpenSKU 把 Next.js 工作区、FastAPI Gateway、LangGraph 运行时、沙箱文件、跨会话 Memory 和实时 War Room 组合在一起。War Room 从真实线程 Checkpoint 恢复专家和产物状态，不是一层装饰动画。
+
+<Cards num={2}>
+  <Cards.Card title="核心概念" href="/docs/introduction/core-concepts" />
+  <Cards.Card title="Harness 与应用" href="/docs/introduction/harness-vs-app" />
+</Cards>

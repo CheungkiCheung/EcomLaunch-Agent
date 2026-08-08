@@ -12,7 +12,9 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EXAMPLE="$REPO_ROOT/config.example.yaml"
 
 # Resolve config.yaml location: env var > backend/ > repo root
-if [ -n "$DEER_FLOW_CONFIG_PATH" ] && [ -f "$DEER_FLOW_CONFIG_PATH" ]; then
+if [ -n "${OPENSKU_CONFIG_PATH:-}" ] && [ -f "$OPENSKU_CONFIG_PATH" ]; then
+    CONFIG="$OPENSKU_CONFIG_PATH"
+elif [ -n "${DEER_FLOW_CONFIG_PATH:-}" ] && [ -f "$DEER_FLOW_CONFIG_PATH" ]; then
     CONFIG="$DEER_FLOW_CONFIG_PATH"
 elif [ -f "$REPO_ROOT/backend/config.yaml" ]; then
     CONFIG="$REPO_ROOT/backend/config.yaml"

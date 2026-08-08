@@ -1,1 +1,1 @@
-# DeerFlow Setup Wizard package
+# OpenSKU Setup Wizard package

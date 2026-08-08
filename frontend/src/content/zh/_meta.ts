@@ -8,10 +8,10 @@ const meta: MetaRecord = {
     title: "简介",
   },
   harness: {
-    title: "DeerFlow Harness",
+    title: "OpenSKU Harness",
   },
   application: {
-    title: "DeerFlow 应用",
+    title: "OpenSKU 应用",
   },
   tutorials: {
     title: "教程",
@@ -23,9 +23,6 @@ const meta: MetaRecord = {
     type: "page",
   },
   blog: {
-    type: "page",
-  },
-  posts: {
     type: "page",
   },
   login: {

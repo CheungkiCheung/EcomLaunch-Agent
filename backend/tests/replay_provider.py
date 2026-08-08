@@ -45,7 +45,7 @@ Point a config model's ``use`` at this class and set the fixture via env::
         use: replay_provider:ReplayChatModel
         model: gpt-5.5            # placeholder; ignored
 
-    DEERFLOW_REPLAY_FIXTURE=/path/to/write_read_file.ultra.json
+    OPENSKU_REPLAY_FIXTURE=/path/to/write_read_file.ultra.json
 
 A cache miss raises loudly with a diagnostic — that is the signal that the
 replayed run diverged from the recording (graph changed, a new volatile field
@@ -74,7 +74,8 @@ from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResu
 from langchain_core.runnables import Runnable
 from pydantic import PrivateAttr
 
-_FIXTURE_ENV = "DEERFLOW_REPLAY_FIXTURE"
+_FIXTURE_ENV = "OPENSKU_REPLAY_FIXTURE"
+_LEGACY_FIXTURE_ENV = "DEERFLOW_REPLAY_FIXTURE"
 
 # Process-wide record of replay misses. A miss raises inside the model, but the
 # gateway's LLMErrorHandlingMiddleware swallows it into a normal assistant error
@@ -107,6 +108,7 @@ _ISO_TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[
 _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 # Absolute temp/home roots used for per-run isolation (macOS + Linux + DEER_FLOW_HOME tmp).
 _PATH_RE = re.compile(r"(?:/private)?/(?:var/folders|tmp)/[^\s\"']*")
+_CONFIGURED_PACK_STATUS_RE = re.compile(r"\nConfigured Pack status:.*\Z", re.DOTALL)
 
 
 def _normalize_text(text: str) -> str:
@@ -115,6 +117,11 @@ def _normalize_text(text: str) -> str:
     text = _ISO_TS_RE.sub("<TS>", text)
     text = _DATE_RE.sub("<DATE>", text)
     text = _PATH_RE.sub("<PATH>", text)
+    # Parallel write_file calls race when updating the per-request Pack counter,
+    # so a particular file may report "1/7" in one run and "6/7" in another.
+    # The counter is middleware guidance, not a model/tool result; remove that
+    # volatile suffix while retaining the stable write outcome and filepath.
+    text = _CONFIGURED_PACK_STATUS_RE.sub("", text)
     return text
 
 
@@ -167,7 +174,29 @@ def _canonical_messages(messages: list[BaseMessage]) -> str:
         if name:
             entry["name"] = name
         projected.append(entry)
-    raw = json.dumps(projected, sort_keys=True, ensure_ascii=False)
+    # LangGraph may emit results from one parallel tool-call batch in completion
+    # order. Sort only consecutive tool messages (the AI message boundaries
+    # still preserve sequential batches) so replay hashes do not depend on
+    # thread scheduling.
+    stable_projected: list[dict[str, Any]] = []
+    index = 0
+    while index < len(projected):
+        if projected[index].get("type") != "tool":
+            stable_projected.append(projected[index])
+            index += 1
+            continue
+        end = index
+        while end < len(projected) and projected[end].get("type") == "tool":
+            end += 1
+        stable_projected.extend(
+            sorted(
+                projected[index:end],
+                key=lambda entry: json.dumps(entry, sort_keys=True, ensure_ascii=False),
+            )
+        )
+        index = end
+
+    raw = json.dumps(stable_projected, sort_keys=True, ensure_ascii=False)
     return _normalize_text(raw)
 
 
@@ -203,7 +232,7 @@ class ReplayChatModel(BaseChatModel):
     def __init__(self, **kwargs: Any) -> None:
         # Ignore provider noise the factory forwards from config (model, api_key,
         # base_url, ...). Fixture path comes from the ``fixture`` kwarg or env.
-        fixture_path = kwargs.pop("fixture", None) or os.environ.get(_FIXTURE_ENV)
+        fixture_path = kwargs.pop("fixture", None) or os.environ.get(_FIXTURE_ENV) or os.environ.get(_LEGACY_FIXTURE_ENV)
         super().__init__()
         if not fixture_path:
             raise ValueError(f"ReplayChatModel needs a fixture path via the ``fixture`` kwarg or ${_FIXTURE_ENV}")
@@ -225,7 +254,7 @@ class ReplayChatModel(BaseChatModel):
                 "The replayed run diverged from the recording (graph changed, a non-deterministic tool result "
                 "altered a downstream input, or a volatile field slipped past normalization). "
                 f"Known hashes: {sorted(self._table)}. "
-                f"Normalized input (first 800 chars): {preview[:800]!r}"
+                f"Normalized input (first 4000 chars): {preview[:4000]!r}"
             )
         return bucket.popleft()
 

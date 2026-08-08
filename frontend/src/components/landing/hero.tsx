@@ -67,13 +67,13 @@ export function Hero({ className }: { className?: string }) {
               进入工作区
             </Button>
           </Link>
-          <Link href="/demo">
+          <Link href="/demo?lang=zh">
             <Button
               size="lg"
               variant="outline"
               className="border-amber-300/40 bg-amber-300/10 text-amber-100 hover:bg-amber-300/20 hover:text-white"
             >
-              View English demo
+              查看中英文 Demo
             </Button>
           </Link>
         </div>

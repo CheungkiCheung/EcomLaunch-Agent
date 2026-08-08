@@ -15,6 +15,8 @@ import json
 import uuid
 from pathlib import Path
 
+import yaml
+
 # mode -> (thinking_enabled, is_plan_mode, subagent_enabled). Mirrors the
 # frontend mapping in core/threads/hooks.ts.
 MODE_CONTEXT: dict[str, tuple[bool, bool, bool]] = {
@@ -25,6 +27,25 @@ MODE_CONTEXT: dict[str, tuple[bool, bool, bool]] = {
     # so ultra is thinking-enabled too.
     "ultra": (True, True, True),
 }
+
+
+def opensku_growth_csvs() -> dict[str, str]:
+    """Return the deterministic three-table Growth Analyst upload fixture."""
+    customers = ["user_id,segment"]
+    assignments = ["user_id,variant"]
+    outcomes = ["user_id,converted"]
+    for user_id in range(1, 201):
+        variant = "control" if user_id <= 100 else "variant"
+        converted = int(user_id <= 10 or 101 <= user_id <= 120)
+        customers.append(f"{user_id},new")
+        assignments.append(f"{user_id},{variant}")
+        outcomes.append(f"{user_id},{converted}")
+    return {
+        "customers.csv": "\n".join(customers) + "\n",
+        "assignments.csv": "\n".join(assignments) + "\n",
+        "outcomes.csv": "\n".join(outcomes) + "\n",
+    }
+
 
 # The replay model block: same model NAME as recording (so nothing in the prompt
 # shifts), only ``use`` swapped to the deterministic replay provider.
@@ -93,6 +114,41 @@ database:
   backend: sqlite
   sqlite_dir: {home / "db"}
 """
+
+
+def build_opensku_config_yaml(*, model_use: str, home: Path, repo_root: Path) -> str:
+    """Build a hermetic OpenSKU product config from the committed runtime config.
+
+    The product replay needs the real repository agents, specialist graph, data
+    tools, run-budget policy, and Skills. Only provider-dependent and background
+    features are replaced or disabled so the run remains deterministic.
+    """
+    source = yaml.safe_load((repo_root / "config.yaml").read_text(encoding="utf-8"))
+    if not isinstance(source, dict):
+        raise ValueError("config.yaml must contain a mapping")
+
+    source["log_level"] = "warning"
+    source["models"] = [
+        {
+            "name": "scenario-model",
+            "display_name": "OpenSKU Replay Model",
+            "use": model_use,
+            "model": "opensku-replay",
+            "supports_thinking": True,
+            "supports_vision": False,
+        }
+    ]
+    source.setdefault("skills", {})["path"] = str(repo_root / "skills")
+    source["skills"]["container_path"] = "/mnt/skills"
+    source.setdefault("database", {})["backend"] = "sqlite"
+    source["database"]["sqlite_dir"] = str(home / "db")
+    source["run_events"] = {"backend": "memory", "track_token_usage": False}
+    source["memory"] = {"enabled": False, "injection_enabled": False}
+    source["summarization"] = {"enabled": False}
+    source["title"] = {"enabled": False}
+    source["token_usage"] = {"enabled": False}
+    source.setdefault("agents_api", {})["enabled"] = True
+    return yaml.safe_dump(source, allow_unicode=True, sort_keys=False)
 
 
 def prepare_hermetic_extras(home: Path) -> Path:

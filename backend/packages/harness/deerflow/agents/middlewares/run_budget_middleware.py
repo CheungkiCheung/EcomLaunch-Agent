@@ -335,13 +335,14 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
         return any(re.search(pattern, user_text, re.IGNORECASE) for pattern in patterns)
 
     def _has_failed_preflight(self, messages: list[Any]) -> bool:
-        """Return True when a present_files call in the current turn failed
-        (e.g. deterministic preflight blocked delivery), meaning the pack
-        exists on disk but was not delivered."""
-        for _, name, _args, result in self._tool_outcomes(messages):
-            if name == "present_files" and not self._tool_succeeded(result):
-                return True
-        return False
+        """Return whether the latest ``present_files`` attempt failed.
+
+        An earlier failed preflight is part of a healthy verification loop. It
+        must stop forcing the model back into that loop after a later retry has
+        successfully delivered the pack.
+        """
+        present_outcomes = [result for _, name, _args, result in self._tool_outcomes(messages) if name == "present_files"]
+        return bool(present_outcomes) and not self._tool_succeeded(present_outcomes[-1])
 
     def _terminal_subagent_completed(self, runtime: Runtime) -> bool:
         subagent_type = self.config.finalize_after_subagent

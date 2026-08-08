@@ -16,8 +16,10 @@ export const DEFAULT_LOCAL_SETTINGS: LocalSettings = {
   },
 };
 
-export const LOCAL_SETTINGS_KEY = "deerflow.local-settings";
-export const THREAD_MODEL_KEY_PREFIX = "deerflow.thread-model.";
+export const LOCAL_SETTINGS_KEY = "opensku.local-settings";
+export const THREAD_MODEL_KEY_PREFIX = "opensku.thread-model.";
+export const LEGACY_LOCAL_SETTINGS_KEY = "deerflow.local-settings";
+export const LEGACY_THREAD_MODEL_KEY_PREFIX = "deerflow.thread-model.";
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -68,11 +70,26 @@ function getThreadModelStorageKey(threadId: string): string {
   return `${THREAD_MODEL_KEY_PREFIX}${threadId}`;
 }
 
+function getLegacyThreadModelStorageKey(threadId: string): string {
+  return `${LEGACY_THREAD_MODEL_KEY_PREFIX}${threadId}`;
+}
+
 export function getThreadModelName(threadId: string): string | undefined {
   if (!isBrowser()) {
     return undefined;
   }
-  return localStorage.getItem(getThreadModelStorageKey(threadId)) ?? undefined;
+  const current = localStorage.getItem(getThreadModelStorageKey(threadId));
+  if (current !== null) {
+    return current;
+  }
+  const legacyKey = getLegacyThreadModelStorageKey(threadId);
+  const legacy = localStorage.getItem(legacyKey);
+  if (legacy !== null) {
+    localStorage.setItem(getThreadModelStorageKey(threadId), legacy);
+    localStorage.removeItem(legacyKey);
+    return legacy;
+  }
+  return undefined;
 }
 
 export function saveThreadModelName(
@@ -85,9 +102,11 @@ export function saveThreadModelName(
   const key = getThreadModelStorageKey(threadId);
   if (!modelName) {
     localStorage.removeItem(key);
+    localStorage.removeItem(getLegacyThreadModelStorageKey(threadId));
     return;
   }
   localStorage.setItem(key, modelName);
+  localStorage.removeItem(getLegacyThreadModelStorageKey(threadId));
 }
 
 export function applyThreadModelOverride(
@@ -110,11 +129,19 @@ export function getLocalSettings(): LocalSettings {
   if (!isBrowser()) {
     return DEFAULT_LOCAL_SETTINGS;
   }
-  const json = localStorage.getItem(LOCAL_SETTINGS_KEY);
+  const current = localStorage.getItem(LOCAL_SETTINGS_KEY);
+  const legacy =
+    current === null ? localStorage.getItem(LEGACY_LOCAL_SETTINGS_KEY) : null;
+  const json = current ?? legacy;
   try {
     if (json) {
       const settings = JSON.parse(json) as Partial<LocalSettings>;
-      return mergeLocalSettings(settings);
+      const merged = mergeLocalSettings(settings);
+      if (legacy !== null) {
+        localStorage.setItem(LOCAL_SETTINGS_KEY, JSON.stringify(merged));
+        localStorage.removeItem(LEGACY_LOCAL_SETTINGS_KEY);
+      }
+      return merged;
     }
   } catch {}
   return DEFAULT_LOCAL_SETTINGS;
@@ -125,4 +152,5 @@ export function saveLocalSettings(settings: LocalSettings) {
     return;
   }
   localStorage.setItem(LOCAL_SETTINGS_KEY, JSON.stringify(settings));
+  localStorage.removeItem(LEGACY_LOCAL_SETTINGS_KEY);
 }

@@ -236,7 +236,7 @@ export function InputBox({
 
   const handleModeSelect = useCallback(
     (mode: InputMode) => {
-      // When the host page restricts available modes (e.g. EcomLaunch with
+      // When the host page restricts available modes (e.g. OpenSKU Launch Team with
       // Flash/Ultra only), honor the selection without forcing it back to
       // flash — the host is responsible for switching to a thinking-capable
       // model when needed. Without this, Ultra can never be selected when
@@ -1006,6 +1006,7 @@ function AddAttachmentsButton({ className }: { className?: string }) {
   return (
     <Tooltip content={t.inputBox.addAttachments}>
       <PromptInputButton
+        aria-label={t.inputBox.addAttachments}
         className={cn("px-2!", className)}
         onClick={() => attachments.openFileDialog()}
       >

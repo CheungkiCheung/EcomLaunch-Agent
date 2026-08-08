@@ -1137,3 +1137,44 @@ def test_complete_workflow_toolless_after_failed_preflight_reengages_model() -> 
     )
 
     assert update == {"jump_to": "model"}
+
+
+def test_complete_workflow_toolless_after_successful_preflight_retry_can_finish() -> None:
+    """A successful retry closes the verification loop even when an earlier
+    preflight attempt failed in the same user turn."""
+    middleware = RunBudgetMiddleware(
+        AgentRunBudgetConfig(
+            max_lead_model_calls=20,
+            max_subagent_calls=3,
+            max_total_tokens=500_000,
+            max_execution_seconds=270,
+            required_completed_subagents=["market-voc-researcher", "offer-architect", "asset-studio"],
+            required_output_files=["a.md", "b.csv"],
+            auto_present_complete_pack=True,
+            validate_pack_before_present=True,
+            complete_workflow_patterns=["Launch Validation Pack", "验证包"],
+        )
+    )
+    runtime = _runtime()
+    middleware.before_agent({}, runtime)
+    budget_state = runtime.context[RUN_BUDGET_CONTEXT_KEY]
+    budget_state["subagent_types_completed"] = {"market-voc-researcher", "offer-architect", "asset-studio"}
+    budget_state["required_output_files_ready"] = True
+
+    update = middleware.after_model(
+        {
+            "messages": [
+                HumanMessage(content="输出 Launch Validation Pack"),
+                AIMessage(content="", tool_calls=[_tool_call("present_files", "p1")]),
+                ToolMessage(content="Error: Launch Pack preflight blocked delivery", tool_call_id="p1", status="error"),
+                AIMessage(content="", tool_calls=[_tool_call("str_replace", "r1")]),
+                ToolMessage(content="Successfully replaced text", tool_call_id="r1"),
+                AIMessage(content="", tool_calls=[_tool_call("present_files", "p2")]),
+                ToolMessage(content="Successfully presented files", tool_call_id="p2", status="success"),
+                AIMessage(content="7/7 artifacts delivered."),
+            ]
+        },
+        runtime,
+    )
+
+    assert update is None

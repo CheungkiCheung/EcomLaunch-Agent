@@ -20,13 +20,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useI18n } from "@/core/i18n/hooks";
-import { useThreadRuns, useThreads } from "@/core/threads/hooks";
+import {
+  useThreadRuns,
+  useThreads,
+  useThreadState,
+} from "@/core/threads/hooks";
 import type { AgentThread } from "@/core/threads/types";
 import { agentNameOfThread } from "@/core/threads/utils";
 import { cn } from "@/lib/utils";
 
 import { ActorChatPanel } from "./actor-chat-panel";
-import { buildWarRoomSnapshot } from "./adapter";
+import { buildWarRoomSnapshot, hydrateWarRoomThread } from "./adapter";
 import { WAR_ROOM_POLL_INTERVAL_MS } from "./config";
 import type { ActorView } from "./office-scene";
 import type {
@@ -67,13 +71,18 @@ function Metric({
   icon: Icon,
   label,
   value,
+  testId,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: number;
+  testId?: string;
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-white/80 bg-white/82 px-3 py-2 shadow-sm backdrop-blur-md">
+    <div
+      className="flex items-center gap-2 rounded-xl border border-white/80 bg-white/82 px-3 py-2 shadow-sm backdrop-blur-md"
+      data-testid={testId}
+    >
       <Icon className="size-4 text-orange-500" />
       <div>
         <div className="text-[10px] font-medium tracking-wide text-stone-400 uppercase">
@@ -170,6 +179,16 @@ export function WarRoomPage() {
   const dataThread = latestThread(threads, "data-inspector");
   const ecomRuns = useThreadRuns(ecomThread?.thread_id);
   const dataRuns = useThreadRuns(dataThread?.thread_id);
+  const ecomState = useThreadState(ecomThread?.thread_id);
+  const dataState = useThreadState(dataThread?.thread_id);
+  const hydratedEcomThread = useMemo(
+    () => hydrateWarRoomThread(ecomThread, ecomState.data),
+    [ecomState.data, ecomThread],
+  );
+  const hydratedDataThread = useMemo(
+    () => hydrateWarRoomThread(dataThread, dataState.data),
+    [dataState.data, dataThread],
+  );
   const [selectedActorId, setSelectedActorId] =
     useState<WarRoomActorId>("ecom-launch");
   const [selectedView, setSelectedView] = useState<ActorView>("chat");
@@ -214,7 +233,9 @@ export function WarRoomPage() {
     void threadsQuery.refetch();
     void ecomRuns.refetch();
     void dataRuns.refetch();
-  }, [dataRuns, ecomRuns, threadsQuery]);
+    void ecomState.refetch();
+    void dataState.refetch();
+  }, [dataRuns, dataState, ecomRuns, ecomState, threadsQuery]);
 
   useEffect(() => {
     const timer = window.setInterval(refresh, WAR_ROOM_POLL_INTERVAL_MS);
@@ -225,15 +246,21 @@ export function WarRoomPage() {
     () =>
       buildWarRoomSnapshot(
         {
-          ecomThread,
+          ecomThread: hydratedEcomThread,
           ecomRunStatus: latestRunStatus(ecomRuns.data),
           ecomRuns: ecomRuns.data as WarRoomSource["ecomRuns"],
-          dataThread,
+          dataThread: hydratedDataThread,
           dataRunStatus: latestRunStatus(dataRuns.data),
         },
         copy,
       ),
-    [copy, dataRuns.data, dataThread, ecomRuns.data, ecomThread],
+    [
+      copy,
+      dataRuns.data,
+      ecomRuns.data,
+      hydratedDataThread,
+      hydratedEcomThread,
+    ],
   );
   const selectedActor =
     snapshot.actors.find((actor) => actor.id === selectedActorId) ??
@@ -384,6 +411,7 @@ export function WarRoomPage() {
               icon={FileStackIcon}
               label={copy.artifacts}
               value={snapshot.artifactCount}
+              testId="war-room-artifact-count"
             />
             {snapshot.failedCount > 0 && (
               <Metric

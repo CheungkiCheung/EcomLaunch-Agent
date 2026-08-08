@@ -17,6 +17,10 @@
     "start": "next start",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:real-backend": "playwright test -c playwright.real-backend.config.ts",
+    "test:e2e:opensku-replay": "playwright test -c playwright.opensku-replay.config.ts",
+    "test:e2e:visual": "playwright test tests/e2e/visual-regression.spec.ts",
+    "test:e2e:reuse": "PLAYWRIGHT_PORT=3000 PLAYWRIGHT_REUSE_SERVER=1 playwright test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -15,9 +15,11 @@ const here = dirname(fileURLToPath(import.meta.url));
  * final answer) reproduce deterministically.
  */
 // Register through the frontend origin (same-origin proxy) so the auth cookies
-// are stored for and sent to localhost:3000 — the gateway is reached via the
+// are stored for and sent to the isolated frontend origin — the gateway is reached via the
 // next.config rewrite, never cross-origin from the browser.
-const APP = "http://localhost:3000";
+const APP =
+  process.env.OPENSKU_REAL_BACKEND_BASE_URL ??
+  `http://localhost:${process.env.OPENSKU_REAL_BACKEND_FRONTEND_PORT ?? "3102"}`;
 const fixture = JSON.parse(
   readFileSync(
     join(
@@ -73,7 +75,7 @@ test.describe("real backend render (replay, no API key)", () => {
     // matches the recorded fixture; otherwise the replay input hash would miss.
     await page.addInitScript(() => {
       window.localStorage.setItem(
-        "deerflow.local-settings",
+        "opensku.local-settings",
         JSON.stringify({ context: { mode: "ultra" } }),
       );
     });

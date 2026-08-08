@@ -26,24 +26,37 @@ sys.path.insert(0, str(_BACKEND / "tests"))  # replay_provider + build_config_ya
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8011)
     parser.add_argument("--fixture", default=str(_BACKEND / "tests" / "fixtures" / "replay" / "write_read_file.ultra.json"))
     parser.add_argument("--cors", default="http://localhost:3000")
+    parser.add_argument("--profile", choices=("generic", "opensku"), default="generic")
     args = parser.parse_args()
 
-    from _replay_fixture import REPLAY_MODEL_BLOCK, build_config_yaml, prepare_hermetic_extras
+    from _replay_fixture import REPLAY_MODEL_BLOCK, build_config_yaml, build_opensku_config_yaml, prepare_hermetic_extras
 
     home = Path(tempfile.mkdtemp(prefix="replay-gw-"))
     cfg = home / "config.yaml"
-    cfg.write_text(build_config_yaml(model_block=REPLAY_MODEL_BLOCK, home=home), encoding="utf-8")
+    if args.profile == "opensku":
+        cfg.write_text(
+            build_opensku_config_yaml(
+                model_use="replay_provider:ReplayChatModel",
+                home=home,
+                repo_root=_BACKEND.parent,
+            ),
+            encoding="utf-8",
+        )
+    else:
+        cfg.write_text(build_config_yaml(model_block=REPLAY_MODEL_BLOCK, home=home), encoding="utf-8")
 
-    # Override (not setdefault): the replay gateway must be hermetic, so an outer
-    # DEER_FLOW_HOME can't leak in and shift prompt-affecting paths/skills.
-    os.environ["DEER_FLOW_HOME"] = str(home)
-    os.environ["DEER_FLOW_CONFIG_PATH"] = str(cfg)
-    os.environ["DEER_FLOW_EXTENSIONS_CONFIG_PATH"] = str(prepare_hermetic_extras(home))
-    os.environ["DEERFLOW_REPLAY_FIXTURE"] = args.fixture
-    os.environ.setdefault("AUTH_JWT_SECRET", "ci-replay-secret")
+    # Override (not setdefault): the replay gateway must be hermetic, so outer
+    # runtime path variables cannot shift prompt-affecting paths or Skills.
+    os.environ["OPENSKU_HOME"] = str(home)
+    os.environ["OPENSKU_CONFIG_PATH"] = str(cfg)
+    os.environ["OPENSKU_PROJECT_ROOT"] = str(_BACKEND.parent)
+    os.environ["OPENSKU_EXTENSIONS_CONFIG_PATH"] = str(prepare_hermetic_extras(home))
+    os.environ["OPENSKU_REPLAY_FIXTURE"] = args.fixture
+    os.environ.setdefault("AUTH_JWT_SECRET", "opensku-replay-local-secret-at-least-32-bytes")
     os.environ["GATEWAY_CORS_ORIGINS"] = args.cors
     # Child / dynamic imports (resolve_class) search PYTHONPATH too.
     os.environ["PYTHONPATH"] = os.pathsep.join(p for p in (str(_BACKEND), str(_BACKEND / "tests"), os.environ.get("PYTHONPATH", "")) if p)
@@ -64,8 +77,8 @@ def main() -> int:
         target = gateway_app
         print("[replay-gw] test-only seed router mounted at /api/test-only/seed-runs", flush=True)
 
-    print(f"[replay-gw] config={cfg} fixture={args.fixture} cors={args.cors} port={args.port}", flush=True)
-    uvicorn.run(target, host="127.0.0.1", port=args.port, log_level="warning")
+    print(f"[replay-gw] config={cfg} fixture={args.fixture} cors={args.cors} host={args.host} port={args.port}", flush=True)
+    uvicorn.run(target, host=args.host, port=args.port, log_level="warning")
     return 0
 
 

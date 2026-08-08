@@ -6,10 +6,17 @@ import { defineConfig, devices } from "@playwright/test";
  * key). This is separate from `playwright.config.ts` (which mocks the backend)
  * so the mock-based suite is untouched.
  *
- * Two webServers are started: the replay gateway (:8011) and the frontend
- * (:3000, pointed at the gateway). Auth uses a throwaway test account the spec
- * registers at runtime — no secrets.
+ * Two webServers are started: the replay gateway (:8011 by default) and an
+ * isolated frontend (:3102 by default, pointed at the gateway). Auth uses a
+ * throwaway test account the spec registers at runtime — no secrets.
  */
+const frontendPort = process.env.OPENSKU_REAL_BACKEND_FRONTEND_PORT ?? "3102";
+const gatewayPort = process.env.OPENSKU_REAL_BACKEND_GATEWAY_PORT ?? "8011";
+const frontendURL = `http://localhost:${frontendPort}`;
+const gatewayURL = `http://127.0.0.1:${gatewayPort}`;
+const reuseExistingServer =
+  process.env.OPENSKU_REAL_BACKEND_REUSE_SERVER === "1";
+
 export default defineConfig({
   testDir: "./tests/e2e-real-backend",
   fullyParallel: false,
@@ -20,7 +27,7 @@ export default defineConfig({
   timeout: 90_000,
 
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: frontendURL,
     trace: "on-first-retry",
   },
 
@@ -28,10 +35,10 @@ export default defineConfig({
 
   webServer: [
     {
-      command: "uv run python scripts/run_replay_gateway.py --port 8011",
+      command: `uv run python scripts/run_replay_gateway.py --port ${gatewayPort} --cors ${frontendURL}`,
       cwd: "../backend",
-      url: "http://localhost:8011/health",
-      reuseExistingServer: !process.env.CI,
+      url: `${gatewayURL}/health`,
+      reuseExistingServer,
       timeout: 180_000,
       stdout: "pipe",
       stderr: "pipe",
@@ -41,19 +48,19 @@ export default defineConfig({
       env: { DEERFLOW_ENABLE_TEST_SEED: "1" },
     },
     {
-      command: "pnpm build && pnpm start",
-      url: "http://localhost:3000",
-      reuseExistingServer: !process.env.CI,
+      command: `pnpm build && pnpm start --port ${frontendPort}`,
+      url: frontendURL,
+      reuseExistingServer,
       timeout: 240_000,
       env: {
         SKIP_ENV_VALIDATION: "1",
         DEER_FLOW_AUTH_DISABLED: "1",
-        BETTER_AUTH_SECRET: "local-dev-secret",
+        BETTER_AUTH_SECRET: "opensku-real-backend-local-secret-32-bytes",
         // Leave NEXT_PUBLIC_* unset so the frontend uses its built-in
         // next.config rewrites (same-origin proxy) instead of talking to the
         // gateway cross-origin — cross-origin fetches drop the auth cookies.
         // Just point that proxy at the replay gateway.
-        DEER_FLOW_INTERNAL_GATEWAY_BASE_URL: "http://127.0.0.1:8011",
+        DEER_FLOW_INTERNAL_GATEWAY_BASE_URL: gatewayURL,
       },
     },
   ],

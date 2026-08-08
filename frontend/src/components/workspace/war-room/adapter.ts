@@ -32,6 +32,25 @@ const SUBAGENT_IDS = new Set<WarRoomActorId>([
   "evidence-checker",
 ]);
 
+export function hydrateWarRoomThread(
+  thread: WarRoomSource["ecomThread"],
+  state:
+    | { values?: NonNullable<WarRoomSource["ecomThread"]>["values"] }
+    | null
+    | undefined,
+) {
+  if (!thread || !state?.values) {
+    return thread;
+  }
+  return {
+    ...thread,
+    values: {
+      ...(thread.values ?? {}),
+      ...state.values,
+    },
+  };
+}
+
 type TaskRecord = Subtask & {
   sequence: number;
   output?: string;

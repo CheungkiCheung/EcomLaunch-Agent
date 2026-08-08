@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# serve.sh — Unified DeerFlow service launcher
+# serve.sh — Unified OpenSKU service launcher
 #
 # Usage:
 #   ./scripts/serve.sh [--dev|--prod] [--daemon] [--stop|--restart]
@@ -241,7 +241,8 @@ stop_all() {
     _kill_repo_port 8001
     _kill_repo_port 3000
     _kill_repo_port 2026
-    ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
+    ./scripts/cleanup-containers.sh opensku-sandbox 2>/dev/null || true
+    ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true  # legacy prefix
     echo "✓ All services stopped"
 }
 
@@ -286,16 +287,17 @@ else
 fi
 
 # Runtime path defaults. Local `make dev` launches Gateway from `backend/`,
-# so pin DeerFlow-owned state to the expected backend runtime directory and
+# so pin OpenSKU-owned state to the expected backend runtime directory and
 # create it before uvicorn builds its reload exclude filter.
-if [ -z "$DEER_FLOW_PROJECT_ROOT" ]; then
-    export DEER_FLOW_PROJECT_ROOT="$REPO_ROOT"
-fi
+OPENSKU_PROJECT_ROOT="${OPENSKU_PROJECT_ROOT:-${DEER_FLOW_PROJECT_ROOT:-$REPO_ROOT}}"
+export OPENSKU_PROJECT_ROOT
+# Compatibility for internal packages and older deployments.
+export DEER_FLOW_PROJECT_ROOT="$OPENSKU_PROJECT_ROOT"
 
 BACKEND_RUNTIME_HOME="$REPO_ROOT/backend/.deer-flow"
-if [ -z "$DEER_FLOW_HOME" ]; then
-    export DEER_FLOW_HOME="$BACKEND_RUNTIME_HOME"
-fi
+OPENSKU_HOME="${OPENSKU_HOME:-${DEER_FLOW_HOME:-$BACKEND_RUNTIME_HOME}}"
+export OPENSKU_HOME
+export DEER_FLOW_HOME="$OPENSKU_HOME"
 
 # `backend/sandbox` is excluded from uvicorn's reload watcher below. uvicorn only
 # excludes an absolute path directly when it already exists as a directory;
@@ -323,12 +325,13 @@ fi
 
 # ── Config check ─────────────────────────────────────────────────────────────
 
+OPENSKU_CONFIG_PATH="${OPENSKU_CONFIG_PATH:-${DEER_FLOW_CONFIG_PATH:-}}"
 if ! { \
-        [ -n "$DEER_FLOW_CONFIG_PATH" ] && [ -f "$DEER_FLOW_CONFIG_PATH" ] || \
+        [ -n "$OPENSKU_CONFIG_PATH" ] && [ -f "$OPENSKU_CONFIG_PATH" ] || \
         [ -f backend/config.yaml ] || \
         [ -f config.yaml ]; \
     }; then
-    echo "✗ No DeerFlow config file found."
+    echo "✗ No OpenSKU config file found."
     echo "  Run 'make setup' (recommended) or 'make config' to generate config.yaml."
     exit 1
 fi
@@ -382,7 +385,7 @@ fi
 
 echo ""
 echo "=========================================="
-echo "  Starting DeerFlow"
+echo "  Starting OpenSKU"
 echo "=========================================="
 echo ""
 echo "  Mode: $MODE_LABEL"
@@ -459,7 +462,7 @@ run_service "Nginx" \
 
 echo ""
 echo "=========================================="
-echo "  ✓ DeerFlow is running!  [$MODE_LABEL]"
+echo "  ✓ OpenSKU is running!  [$MODE_LABEL]"
 echo "=========================================="
 echo ""
 echo "  🌐 http://localhost:2026"

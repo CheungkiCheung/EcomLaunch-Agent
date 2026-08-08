@@ -13,7 +13,7 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 DOCKER_DIR="$PROJECT_ROOT/docker"
 
 # Docker Compose command with project name
-COMPOSE_CMD="docker compose -p deer-flow-dev -f docker-compose-dev.yaml"
+COMPOSE_CMD="docker compose -p opensku-dev -f docker-compose-dev.yaml"
 
 load_proxy_env_from_dotenv() {
     local env_file="$PROJECT_ROOT/.env"
@@ -113,7 +113,7 @@ docker_available() {
 # Initialize: pre-pull the sandbox image so first Pod startup is fast
 init() {
     echo "=========================================="
-    echo "  DeerFlow Init — Pull Sandbox Image"
+    echo "  OpenSKU Init — Pull Sandbox Image"
     echo "=========================================="
     echo ""
 
@@ -185,7 +185,7 @@ start() {
     fi
 
     echo "=========================================="
-    echo "  Starting DeerFlow Docker Development"
+    echo "  Starting OpenSKU Docker Development"
     echo "=========================================="
     echo ""
 
@@ -205,12 +205,13 @@ start() {
     fi
     echo ""
     
-    # Set DEER_FLOW_ROOT for provisioner if not already set
-    if [ -z "$DEER_FLOW_ROOT" ]; then
-        export DEER_FLOW_ROOT="$PROJECT_ROOT"
-        echo -e "${BLUE}Setting DEER_FLOW_ROOT=$DEER_FLOW_ROOT${NC}"
+    # Set the OpenSKU root for provisioner mounts and export the legacy alias.
+    if [ -z "${OPENSKU_ROOT:-}" ]; then
+        export OPENSKU_ROOT="${DEER_FLOW_ROOT:-$PROJECT_ROOT}"
+        echo -e "${BLUE}Setting OPENSKU_ROOT=$OPENSKU_ROOT${NC}"
         echo ""
     fi
+    export DEER_FLOW_ROOT="$OPENSKU_ROOT"
     
     # Ensure config.yaml exists before starting.
     if [ ! -f "$PROJECT_ROOT/config.yaml" ]; then
@@ -220,7 +221,7 @@ start() {
             echo -e "${YELLOW}============================================================${NC}"
             echo -e "${YELLOW}  config.yaml has been created from config.example.yaml.${NC}"
             echo -e "${YELLOW}  Please edit config.yaml to set your API keys and model   ${NC}"
-            echo -e "${YELLOW}  configuration before starting DeerFlow.                  ${NC}"
+            echo -e "${YELLOW}  configuration before starting OpenSKU.                   ${NC}"
             echo -e "${YELLOW}============================================================${NC}"
             echo ""
             echo -e "${YELLOW}  Recommended: run 'make setup' before starting Docker.    ${NC}"
@@ -252,7 +253,7 @@ start() {
     cd "$DOCKER_DIR" && $COMPOSE_CMD up --build -d --remove-orphans $services
     echo ""
     echo "=========================================="
-    echo "  DeerFlow Docker is starting!"
+    echo "  OpenSKU Docker is starting!"
     echo "=========================================="
     echo ""
     echo "  🌐 Application: http://localhost:2026"
@@ -301,14 +302,14 @@ logs() {
 
 # Stop Docker development environment
 stop() {
-    # DEER_FLOW_ROOT is referenced in docker-compose-dev.yaml; set it before
+    # OPENSKU_ROOT is referenced in docker-compose-dev.yaml; set it before
     # running compose down to suppress "variable is not set" warnings.
-    if [ -z "$DEER_FLOW_ROOT" ]; then
-        export DEER_FLOW_ROOT="$PROJECT_ROOT"
-    fi
+    export OPENSKU_ROOT="${OPENSKU_ROOT:-${DEER_FLOW_ROOT:-$PROJECT_ROOT}}"
+    export DEER_FLOW_ROOT="$OPENSKU_ROOT"
     echo "Stopping Docker development services..."
     cd "$DOCKER_DIR" && $COMPOSE_CMD down
     echo "Cleaning up sandbox containers..."
+    "$SCRIPT_DIR/cleanup-containers.sh" opensku-sandbox 2>/dev/null || true
     "$SCRIPT_DIR/cleanup-containers.sh" deer-flow-sandbox 2>/dev/null || true
     echo -e "${GREEN}✓ Docker services stopped${NC}"
 }
@@ -316,7 +317,7 @@ stop() {
 # Restart Docker development environment
 restart() {
     echo "========================================"
-    echo "  Restarting DeerFlow Docker Services"
+    echo "  Restarting OpenSKU Docker Services"
     echo "========================================"
     echo ""
     echo -e "${BLUE}Restarting containers...${NC}"
@@ -331,7 +332,7 @@ restart() {
 
 # Show help
 help() {
-    echo "DeerFlow Docker Management Script"
+    echo "OpenSKU Docker Management Script"
     echo ""
     echo "Usage: $0 <command> [options]"
     echo ""

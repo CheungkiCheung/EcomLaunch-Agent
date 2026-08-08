@@ -16,8 +16,16 @@ test.describe("Landing page", () => {
       page.getByRole("link", { name: /开始验证你的产品/i }),
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { name: /view english demo/i }),
+      page.getByRole("link", { name: /查看中英文 demo/i }),
     ).toBeVisible();
+
+    await expect(
+      page.locator('link[rel="icon"][href="/favicon.svg"]'),
+    ).toHaveCount(1);
+
+    const favicon = await page.request.get("/favicon.svg");
+    expect(favicon.ok()).toBe(true);
+    expect(await favicon.text()).toContain("OpenSKU logo");
   });
 
   test("Get Started link navigates to ecom-launch workspace", async ({
@@ -37,17 +45,17 @@ test.describe("Landing page", () => {
     );
   });
 
-  test("English demo link opens the credential-free sample", async ({
+  test("bilingual demo link opens the Chinese credential-free sample", async ({
     page,
   }) => {
     await page.goto("/");
 
-    await page.getByRole("link", { name: /view english demo/i }).click();
+    await page.getByRole("link", { name: /查看中英文 demo/i }).click();
 
-    await expect(page).toHaveURL(/\/demo$/);
+    await expect(page).toHaveURL(/\/demo\?lang=zh$/);
     await expect(
       page.getByRole("heading", {
-        name: /see an ecommerce launch team turn one brief into a decision pack/i,
+        name: /一份商品 brief，生成一套可决策的上新包/i,
       }),
     ).toBeVisible();
   });

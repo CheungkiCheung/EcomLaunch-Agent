@@ -11,6 +11,10 @@ export const metadata: Metadata = {
   title: "OpenSKU — The open-source AI launch team for ecommerce",
   description:
     "Research market signals, make evidence-backed launch decisions, and build launch-ready ecommerce assets.",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    shortcut: ["/favicon.svg"],
+  },
 };
 
 export default async function RootLayout({

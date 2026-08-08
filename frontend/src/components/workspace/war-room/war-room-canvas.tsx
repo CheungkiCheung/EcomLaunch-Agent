@@ -112,7 +112,11 @@ export function WarRoomCanvas({
   }, []);
 
   return (
-    <div className="relative size-full overflow-hidden bg-[#f8f4ec]">
+    <div
+      className="relative size-full overflow-hidden bg-[#f8f4ec]"
+      data-ready={ready ? "true" : "false"}
+      data-testid="war-room-canvas"
+    >
       <div ref={containerRef} className="absolute inset-0" />
       {!ready && (
         <div className="absolute inset-0 grid place-items-center bg-[#f8f4ec] px-6 text-center text-sm text-stone-400">

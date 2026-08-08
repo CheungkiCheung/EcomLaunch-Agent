@@ -10,7 +10,7 @@ import { expect, test } from "@playwright/test";
  * suggestions all fired). It asserts nothing about content — it produces the
  * fixture, it doesn't verify it.
  */
-const APP = "http://localhost:3000";
+const APP = `http://localhost:${process.env.OPENSKU_RECORD_FRONTEND_PORT ?? "3103"}`;
 const SCENARIO = "write_read_file";
 const MODE = "ultra";
 const PROMPT =
@@ -93,7 +93,7 @@ test("record write/read-file run through the real frontend", async ({
 
   await page.addInitScript(() => {
     window.localStorage.setItem(
-      "deerflow.local-settings",
+      "opensku.local-settings",
       JSON.stringify({ context: { mode: "ultra" } }),
     );
   });

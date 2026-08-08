@@ -130,6 +130,15 @@ export async function createWarRoomGame({
   labels: Translations["warRoom"];
 }): Promise<WarRoomGameHandle> {
   const PhaserModule = await import("phaser");
+  const reducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
+  let markSceneReady: (() => void) | undefined;
+  let rejectSceneReady: ((cause: Error) => void) | undefined;
+  const sceneReady = new Promise<void>((resolve, reject) => {
+    markSceneReady = resolve;
+    rejectSceneReady = reject;
+  });
 
   class OfficeScene extends PhaserModule.Scene {
     private collisionGroup: Phaser.Physics.Arcade.StaticGroup | null = null;
@@ -237,6 +246,7 @@ export async function createWarRoomGame({
       };
 
       this.updateSnapshot(initialSnapshot);
+      markSceneReady?.();
     }
 
     private buildCollisionGroup() {
@@ -420,7 +430,12 @@ export async function createWarRoomGame({
     }
 
     private scheduleWander(actor: ActorSprite) {
-      if (actor.wanderTimer || ORIGINAL_OFFICE_POIS.length === 0) return;
+      if (
+        reducedMotion ||
+        actor.wanderTimer ||
+        ORIGINAL_OFFICE_POIS.length === 0
+      )
+        return;
       const poi =
         ORIGINAL_OFFICE_POIS[
           PhaserModule.Math.Between(0, ORIGINAL_OFFICE_POIS.length - 1)
@@ -718,6 +733,7 @@ export async function createWarRoomGame({
             this.time.delayedCall(2500, () => actor.emote.setVisible(false));
           }
         } else if (
+          !reducedMotion &&
           actorSnapshot.status === "idle" &&
           !actor.emote.visible &&
           Math.random() < 0.05
@@ -777,9 +793,25 @@ export async function createWarRoomGame({
       arcade: { gravity: { x: 0, y: 0 } },
     },
   });
-  let sceneInstance: OfficeScene | null = null;
-  game.events.on("ready", () => {
-    sceneInstance = game.scene.getScene("OfficeScene") as OfficeScene;
+  const readyTimeout = window.setTimeout(
+    () =>
+      rejectSceneReady?.(new Error("War Room scene initialization timed out")),
+    15_000,
+  );
+  try {
+    await sceneReady;
+  } catch (cause) {
+    game.destroy(true);
+    throw cause;
+  } finally {
+    window.clearTimeout(readyTimeout);
+  }
+
+  const sceneInstance = game.scene.getScene("OfficeScene") as OfficeScene;
+  await new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve());
+    });
   });
 
   return {

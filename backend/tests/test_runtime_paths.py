@@ -18,6 +18,11 @@ from deerflow.skills.storage import get_or_new_skill_storage
 
 def _clear_path_env(monkeypatch):
     for name in (
+        "OPENSKU_CONFIG_PATH",
+        "OPENSKU_EXTENSIONS_CONFIG_PATH",
+        "OPENSKU_HOME",
+        "OPENSKU_PROJECT_ROOT",
+        "OPENSKU_SKILLS_PATH",
         "DEER_FLOW_CONFIG_PATH",
         "DEER_FLOW_EXTENSIONS_CONFIG_PATH",
         "DEER_FLOW_HOME",
@@ -25,6 +30,41 @@ def _clear_path_env(monkeypatch):
         "DEER_FLOW_SKILLS_PATH",
     ):
         monkeypatch.delenv(name, raising=False)
+
+
+def test_opensku_environment_names_take_priority_over_legacy_aliases(tmp_path: Path, monkeypatch):
+    _clear_path_env(monkeypatch)
+    opensku_root = tmp_path / "opensku-root"
+    legacy_root = tmp_path / "legacy-root"
+    opensku_root.mkdir()
+    legacy_root.mkdir()
+    opensku_config = opensku_root / "config.yaml"
+    opensku_extensions = opensku_root / "extensions_config.json"
+    opensku_skills = opensku_root / "skills"
+    opensku_home = opensku_root / "state"
+    opensku_config.write_text(
+        yaml.safe_dump({"sandbox": {"use": "deerflow.sandbox.local:LocalSandboxProvider"}}),
+        encoding="utf-8",
+    )
+    opensku_extensions.write_text('{"mcpServers": {}, "skills": {}}', encoding="utf-8")
+    opensku_skills.mkdir()
+
+    monkeypatch.setenv("OPENSKU_PROJECT_ROOT", str(opensku_root))
+    monkeypatch.setenv("DEER_FLOW_PROJECT_ROOT", str(legacy_root))
+    monkeypatch.setenv("OPENSKU_CONFIG_PATH", str(opensku_config))
+    monkeypatch.setenv("DEER_FLOW_CONFIG_PATH", str(legacy_root / "missing.yaml"))
+    monkeypatch.setenv("OPENSKU_EXTENSIONS_CONFIG_PATH", str(opensku_extensions))
+    monkeypatch.setenv("DEER_FLOW_EXTENSIONS_CONFIG_PATH", str(legacy_root / "missing.json"))
+    monkeypatch.setenv("OPENSKU_HOME", str(opensku_home))
+    monkeypatch.setenv("DEER_FLOW_HOME", str(legacy_root / "state"))
+    monkeypatch.setenv("OPENSKU_SKILLS_PATH", str(opensku_skills))
+    monkeypatch.setenv("DEER_FLOW_SKILLS_PATH", str(legacy_root / "skills"))
+
+    assert project_root() == opensku_root
+    assert AppConfig.resolve_config_path() == opensku_config
+    assert ExtensionsConfig.resolve_config_path() == opensku_extensions
+    assert Paths().base_dir == opensku_home
+    assert SkillsConfig().get_skills_path() == opensku_skills
 
 
 def test_default_runtime_paths_resolve_from_current_project(tmp_path: Path, monkeypatch):

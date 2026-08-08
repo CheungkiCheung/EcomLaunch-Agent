@@ -8,13 +8,16 @@ import { defineConfig, devices } from "@playwright/test";
  *
  * Not committed as a test run; `tests/e2e-record/` holds the driver spec.
  */
+const frontendPort = process.env.OPENSKU_RECORD_FRONTEND_PORT ?? "3103";
+const frontendURL = `http://localhost:${frontendPort}`;
+
 export default defineConfig({
   testDir: "./tests/e2e-record",
   fullyParallel: false,
   workers: 1,
   reporter: "list",
   timeout: 200_000,
-  use: { baseURL: "http://localhost:3000", trace: "off" },
+  use: { baseURL: frontendURL, trace: "off" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     {
@@ -43,14 +46,14 @@ export default defineConfig({
       },
     },
     {
-      command: "pnpm build && pnpm start",
-      url: "http://localhost:3000",
+      command: `pnpm build && pnpm start --port ${frontendPort}`,
+      url: frontendURL,
       reuseExistingServer: false,
       timeout: 240_000,
       env: {
         SKIP_ENV_VALIDATION: "1",
         DEER_FLOW_AUTH_DISABLED: "1",
-        BETTER_AUTH_SECRET: "local-dev-secret",
+        BETTER_AUTH_SECRET: "opensku-record-local-secret-at-least-32-bytes",
         DEER_FLOW_INTERNAL_GATEWAY_BASE_URL: "http://127.0.0.1:8012",
       },
     },

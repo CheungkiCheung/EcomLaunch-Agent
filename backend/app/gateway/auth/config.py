@@ -1,4 +1,4 @@
-"""Authentication configuration for DeerFlow."""
+"""Authentication configuration for OpenSKU."""
 
 import logging
 import os
@@ -45,7 +45,9 @@ def _load_or_create_secret() -> str:
             if secret:
                 return secret
     except OSError as exc:
-        raise RuntimeError(f"Failed to read JWT secret from {secret_file}. Set AUTH_JWT_SECRET explicitly or fix DEER_FLOW_HOME/base directory permissions so DeerFlow can read its persisted auth secret.") from exc
+        raise RuntimeError(
+            f"Failed to read JWT secret from {secret_file}. Set AUTH_JWT_SECRET explicitly or fix OPENSKU_HOME/base directory permissions so OpenSKU can read its persisted auth secret (DEER_FLOW_HOME remains a compatibility alias)."
+        ) from exc
 
     secret = secrets.token_urlsafe(32)
     try:
@@ -54,7 +56,9 @@ def _load_or_create_secret() -> str:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(secret)
     except OSError as exc:
-        raise RuntimeError(f"Failed to persist JWT secret to {secret_file}. Set AUTH_JWT_SECRET explicitly or fix DEER_FLOW_HOME/base directory permissions so DeerFlow can store a stable auth secret.") from exc
+        raise RuntimeError(
+            f"Failed to persist JWT secret to {secret_file}. Set AUTH_JWT_SECRET explicitly or fix OPENSKU_HOME/base directory permissions so OpenSKU can store a stable auth secret (DEER_FLOW_HOME remains a compatibility alias)."
+        ) from exc
     return secret
 
 

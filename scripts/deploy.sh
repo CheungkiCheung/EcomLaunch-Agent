@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# deploy.sh - Build, start, or stop DeerFlow production services
+# deploy.sh - Build, start, or stop OpenSKU production services
 #
 # Commands:
 #   deploy.sh                    — build + start
@@ -43,7 +43,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 DOCKER_DIR="$REPO_ROOT/docker"
-COMPOSE_CMD=(docker compose -p deer-flow -f "$DOCKER_DIR/docker-compose.yaml")
+COMPOSE_CMD=(docker compose -p opensku -f "$DOCKER_DIR/docker-compose.yaml")
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 
@@ -53,23 +53,24 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-# ── DEER_FLOW_HOME ────────────────────────────────────────────────────────────
+# ── OpenSKU runtime paths ─────────────────────────────────────────────────────
 
-if [ -z "$DEER_FLOW_HOME" ]; then
-    export DEER_FLOW_HOME="$REPO_ROOT/backend/.deer-flow"
-fi
-echo -e "${BLUE}DEER_FLOW_HOME=$DEER_FLOW_HOME${NC}"
-mkdir -p "$DEER_FLOW_HOME"
+OPENSKU_HOME="${OPENSKU_HOME:-${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}}"
+export OPENSKU_HOME
+export DEER_FLOW_HOME="$OPENSKU_HOME"
+echo -e "${BLUE}OPENSKU_HOME=$OPENSKU_HOME${NC}"
+mkdir -p "$OPENSKU_HOME"
 
-# ── DEER_FLOW_REPO_ROOT (for skills host path in DooD) ───────────────────────
-
-export DEER_FLOW_REPO_ROOT="$REPO_ROOT"
+# Compatibility aliases are exported for internal package and compose paths.
+OPENSKU_REPO_ROOT="${OPENSKU_REPO_ROOT:-${DEER_FLOW_REPO_ROOT:-$REPO_ROOT}}"
+export OPENSKU_REPO_ROOT
+export DEER_FLOW_REPO_ROOT="$OPENSKU_REPO_ROOT"
 
 # ── config.yaml ───────────────────────────────────────────────────────────────
 
-if [ -z "$DEER_FLOW_CONFIG_PATH" ]; then
-    export DEER_FLOW_CONFIG_PATH="$REPO_ROOT/config.yaml"
-fi
+OPENSKU_CONFIG_PATH="${OPENSKU_CONFIG_PATH:-${DEER_FLOW_CONFIG_PATH:-$REPO_ROOT/config.yaml}}"
+export OPENSKU_CONFIG_PATH
+export DEER_FLOW_CONFIG_PATH="$OPENSKU_CONFIG_PATH"
 
 if  [ "$CMD" != "down" ] && [ ! -f "$DEER_FLOW_CONFIG_PATH" ]; then
     # Try to seed from repo (config.example.yaml is the canonical template)
@@ -90,9 +91,9 @@ fi
 
 # ── extensions_config.json ───────────────────────────────────────────────────
 
-if [ -z "$DEER_FLOW_EXTENSIONS_CONFIG_PATH" ]; then
-    export DEER_FLOW_EXTENSIONS_CONFIG_PATH="$REPO_ROOT/extensions_config.json"
-fi
+OPENSKU_EXTENSIONS_CONFIG_PATH="${OPENSKU_EXTENSIONS_CONFIG_PATH:-${DEER_FLOW_EXTENSIONS_CONFIG_PATH:-$REPO_ROOT/extensions_config.json}}"
+export OPENSKU_EXTENSIONS_CONFIG_PATH
+export DEER_FLOW_EXTENSIONS_CONFIG_PATH="$OPENSKU_EXTENSIONS_CONFIG_PATH"
 
 if [ ! -f "$DEER_FLOW_EXTENSIONS_CONFIG_PATH" ]; then
     if [ -f "$REPO_ROOT/extensions_config.json" ]; then
@@ -212,11 +213,11 @@ detect_sandbox_mode() {
 if [ "$CMD" = "down" ]; then
     # Set minimal env var defaults so docker compose can parse the file without
     # warning about unset variables that appear in volume specs.
-    export DEER_FLOW_HOME="${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}"
-    export DEER_FLOW_CONFIG_PATH="${DEER_FLOW_CONFIG_PATH:-$DEER_FLOW_HOME/config.yaml}"
-    export DEER_FLOW_EXTENSIONS_CONFIG_PATH="${DEER_FLOW_EXTENSIONS_CONFIG_PATH:-$DEER_FLOW_HOME/extensions_config.json}"
-    export DEER_FLOW_DOCKER_SOCKET="${DEER_FLOW_DOCKER_SOCKET:-/var/run/docker.sock}"
-    export DEER_FLOW_REPO_ROOT="${DEER_FLOW_REPO_ROOT:-$REPO_ROOT}"
+    export OPENSKU_HOME="${OPENSKU_HOME:-${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}}"
+    export OPENSKU_CONFIG_PATH="${OPENSKU_CONFIG_PATH:-${DEER_FLOW_CONFIG_PATH:-$OPENSKU_HOME/config.yaml}}"
+    export OPENSKU_EXTENSIONS_CONFIG_PATH="${OPENSKU_EXTENSIONS_CONFIG_PATH:-${DEER_FLOW_EXTENSIONS_CONFIG_PATH:-$OPENSKU_HOME/extensions_config.json}}"
+    export OPENSKU_DOCKER_SOCKET="${OPENSKU_DOCKER_SOCKET:-${DEER_FLOW_DOCKER_SOCKET:-/var/run/docker.sock}}"
+    export OPENSKU_REPO_ROOT="${OPENSKU_REPO_ROOT:-${DEER_FLOW_REPO_ROOT:-$REPO_ROOT}}"
     export BETTER_AUTH_SECRET="${BETTER_AUTH_SECRET:-placeholder}"
     export DEER_FLOW_INTERNAL_AUTH_TOKEN="${DEER_FLOW_INTERNAL_AUTH_TOKEN:-placeholder}"
     "${COMPOSE_CMD[@]}" down
@@ -228,14 +229,13 @@ fi
 
 if [ "$CMD" = "build" ]; then
     echo "=========================================="
-    echo "  DeerFlow — Building Images"
+    echo "  OpenSKU — Building Images"
     echo "=========================================="
     echo ""
 
     # Docker socket is needed for compose to parse volume specs
-    if [ -z "$DEER_FLOW_DOCKER_SOCKET" ]; then
-        export DEER_FLOW_DOCKER_SOCKET="/var/run/docker.sock"
-    fi
+    export OPENSKU_DOCKER_SOCKET="${OPENSKU_DOCKER_SOCKET:-${DEER_FLOW_DOCKER_SOCKET:-/var/run/docker.sock}}"
+    export DEER_FLOW_DOCKER_SOCKET="$OPENSKU_DOCKER_SOCKET"
 
     "${COMPOSE_CMD[@]}" build
 
@@ -252,7 +252,7 @@ fi
 # ── Banner ────────────────────────────────────────────────────────────────────
 
 echo "=========================================="
-echo "  DeerFlow Production Deployment"
+echo "  OpenSKU Production Deployment"
 echo "=========================================="
 echo ""
 
@@ -270,19 +270,18 @@ if [ "$sandbox_mode" = "provisioner" ]; then
     services="$services provisioner"
 fi
 
-# ── DEER_FLOW_DOCKER_SOCKET ───────────────────────────────────────────────────
+# ── OPENSKU_DOCKER_SOCKET ─────────────────────────────────────────────────────
 
-if [ -z "$DEER_FLOW_DOCKER_SOCKET" ]; then
-    export DEER_FLOW_DOCKER_SOCKET="/var/run/docker.sock"
-fi
+export OPENSKU_DOCKER_SOCKET="${OPENSKU_DOCKER_SOCKET:-${DEER_FLOW_DOCKER_SOCKET:-/var/run/docker.sock}}"
+export DEER_FLOW_DOCKER_SOCKET="$OPENSKU_DOCKER_SOCKET"
 
 if [ "$sandbox_mode" != "local" ]; then
-    if [ ! -S "$DEER_FLOW_DOCKER_SOCKET" ]; then
-        echo -e "${RED}⚠ Docker socket not found at $DEER_FLOW_DOCKER_SOCKET${NC}"
+    if [ ! -S "$OPENSKU_DOCKER_SOCKET" ]; then
+        echo -e "${RED}⚠ Docker socket not found at $OPENSKU_DOCKER_SOCKET${NC}"
         echo "  AioSandboxProvider (DooD) will not work."
         exit 1
     else
-        echo -e "${GREEN}✓ Docker socket: $DEER_FLOW_DOCKER_SOCKET${NC}"
+        echo -e "${GREEN}✓ Docker socket: $OPENSKU_DOCKER_SOCKET${NC}"
     fi
 fi
 
@@ -305,7 +304,7 @@ fi
 
 echo ""
 echo "=========================================="
-echo "  DeerFlow is running!"
+echo "  OpenSKU is running!"
 echo "=========================================="
 echo ""
 echo "  🌐 Application: http://localhost:${PORT:-2026}"
