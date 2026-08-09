@@ -96,6 +96,28 @@ def test_comparison_marks_small_latency_changes_as_no_material_improvement() -> 
     assert comparison["faster_scenarios"] == []
 
 
+def test_comparison_ignores_large_percentage_on_tiny_absolute_latency_change() -> None:
+    baseline = _build_report(
+        {"launch": [_row(elapsed=20.0)], "growth": [_row(elapsed=0.057)]},
+        repeats=1,
+        replay_misses=0,
+    )
+    candidate = _build_report(
+        {"launch": [_row(elapsed=20.0)], "growth": [_row(elapsed=0.05)]},
+        repeats=1,
+        replay_misses=0,
+    )
+
+    comparison = compare_reports(baseline, candidate)
+
+    assert comparison["baseline_p50_seconds"]["growth"] == 0.057
+    assert comparison["candidate_p50_seconds"]["growth"] == 0.05
+    assert comparison["latency_changes_pct"]["growth"] < -5.0
+    assert comparison["latency_changes_seconds"]["growth"] == -0.007
+    assert comparison["verdict"] == "no_material_improvement"
+    assert comparison["faster_scenarios"] == []
+
+
 def test_report_is_sanitized_and_explains_baseline_scope() -> None:
     report = _build_report(
         {"launch": [_row()], "growth": [_row()]},

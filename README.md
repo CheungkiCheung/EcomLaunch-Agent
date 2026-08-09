@@ -220,14 +220,16 @@ The Launch replay verifies the three-specialist dependency chain, a seven-file p
 
 `make benchmark-replay` drives those same real Gateway paths with the committed deterministic replay provider and writes sanitized JSON, Markdown, and HTML reports to `benchmarks/opensku-replay/`. The report separates contract completion, deterministic numeric checks, and latency from live-model quality. It makes no optimization claim unless a candidate report preserves quality and shows a material improvement against a baseline.
 
-The current published baseline is available as [JSON](benchmarks/opensku-replay/latest-summary.json), [Markdown](benchmarks/opensku-replay/latest-report.md), and [HTML](benchmarks/opensku-replay/latest-report.html). It covers three repeats each of the Launch and Growth golden workflows; live-model latency, Token usage, and broad category quality are intentionally not inferred from this deterministic run.
+The current published comparison is available as [JSON](benchmarks/opensku-replay/latest-summary.json), [Markdown](benchmarks/opensku-replay/latest-report.md), and [HTML](benchmarks/opensku-replay/latest-report.html). It covers three repeats each of the Launch and Growth golden workflows; live-model latency, Token usage, and broad category quality are intentionally not inferred from this deterministic run.
 
-| Deterministic replay scenario | Runs | Run success | Contract-complete | P50 Gateway time |
-| --- | ---: | ---: | ---: | ---: |
-| Launch Ultra verification loop | 3 | 100% | 100% | 15.178 s |
-| Growth upload + Join + A/B | 3 | 100% | 100% | 0.057 s |
+| Deterministic replay scenario | Runs | Baseline P50 | Candidate P50 | P50 change | Candidate contract-complete |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Launch Ultra verification loop | 3 | 15.178 s | 0.464 s | -14.714 s (-96.94%) | 100% |
+| Growth upload + Join + A/B | 3 | 0.057 s | 0.066 s | +0.009 s (+15.79%; below absolute gate) | 100% |
 
-The benchmark's **Evidence-Gated Optimization Comparator** rejects a faster candidate whenever run success or contract checks regress, and treats latency movement below the configured 5% threshold as no material improvement. The published baseline therefore records no optimization claim yet.
+The accepted Launch candidate replaces fixed five-second subagent completion polling with bounded adaptive backoff (`0.1s -> 0.2s -> 0.4s -> 0.8s -> 1.0s cap`). Three sequential specialists previously paid almost the full polling interval even when their work had already completed. The candidate preserves the same specialist order, seven artifacts, two deterministic preflight attempts, two bounded repairs, and zero replay misses.
+
+The benchmark's **Evidence-Gated Optimization Comparator** rejects a faster candidate whenever run success or contract checks regress. A latency movement is material only when it reaches both the configured relative threshold (default 5%) and absolute threshold (default 50 ms), preventing tiny millisecond fluctuations from being promoted as optimization results. Under that rule only the Launch improvement is accepted; the Growth difference is recorded but treated as noise.
 
 CI also builds and boots the documented local quick-start path and both production container images in `.github/workflows/quickstart-smoke.yml`. A bounded weekly/manual Live LLM Canary is defined in `.github/workflows/live-llm-canary.yml`; configure `OPENSKU_CANARY_API_KEY`, and optionally `OPENSKU_CANARY_BASE_URL` and `OPENSKU_CANARY_MODEL`, to enable real-provider execution. With no key it records an explicit skip.
 

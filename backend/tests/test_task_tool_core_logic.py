@@ -1078,6 +1078,49 @@ def test_task_tool_polling_safety_timeout(monkeypatch):
     assert events[-1]["type"] == "task_timed_out"
 
 
+def test_task_tool_uses_bounded_adaptive_polling(monkeypatch):
+    config = _make_subagent_config()
+    events = []
+    sleep_delays = []
+    responses = iter(
+        [
+            _make_result(FakeSubagentStatus.RUNNING, ai_messages=[]),
+            _make_result(FakeSubagentStatus.RUNNING, ai_messages=[]),
+            _make_result(FakeSubagentStatus.RUNNING, ai_messages=[]),
+            _make_result(FakeSubagentStatus.RUNNING, ai_messages=[]),
+            _make_result(FakeSubagentStatus.RUNNING, ai_messages=[]),
+            _make_result(FakeSubagentStatus.COMPLETED, result="done"),
+        ]
+    )
+
+    async def record_sleep(delay: float) -> None:
+        sleep_delays.append(delay)
+
+    monkeypatch.setattr(task_tool_module, "SubagentStatus", FakeSubagentStatus)
+    monkeypatch.setattr(
+        task_tool_module,
+        "SubagentExecutor",
+        type("DummyExecutor", (), {"__init__": lambda self, **kwargs: None, "execute_async": lambda self, prompt, task_id=None: task_id}),
+    )
+    monkeypatch.setattr(task_tool_module, "get_subagent_config", lambda _: config)
+    monkeypatch.setattr(task_tool_module, "get_background_task_result", lambda _: next(responses))
+    monkeypatch.setattr(task_tool_module, "get_stream_writer", lambda: events.append)
+    monkeypatch.setattr(task_tool_module.asyncio, "sleep", record_sleep)
+    monkeypatch.setattr("deerflow.tools.get_available_tools", lambda **kwargs: [])
+    monkeypatch.setattr(task_tool_module, "cleanup_background_task", lambda _: None)
+
+    output = _run_task_tool(
+        runtime=_make_runtime(),
+        description="执行任务",
+        prompt="finish after several polls",
+        subagent_type="general-purpose",
+        tool_call_id="tc-adaptive-polling",
+    )
+
+    assert output == "Task Succeeded. Result: done"
+    assert sleep_delays == [0.1, 0.2, 0.4, 0.8, 1.0]
+
+
 def test_cleanup_called_on_completed(monkeypatch):
     """Verify cleanup_background_task is called when task completes."""
     config = _make_subagent_config()

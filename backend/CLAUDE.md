@@ -257,6 +257,13 @@ direct-observation URLs, obvious fabricated experience, and unconfirmed product
 claims. It does not fetch URLs or independently verify source-to-claim support;
 complete Packs must be labeled as not independently Evidence-audited.
 
+`task_tool` observes background specialist completion with bounded adaptive
+polling (`0.1s -> 0.2s -> 0.4s -> 0.8s -> 1.0s cap`) instead of a fixed
+five-second interval. This keeps short local/replay tasks responsive without a
+hot loop during long provider calls; execution timeout, the additional
+60-second safety buffer, cancellation, deferred cleanup, progress events, and
+token-usage reporting retain their existing semantics.
+
 ### Middleware Chain
 
 Lead-agent middlewares are assembled in strict append order across `packages/harness/deerflow/agents/middlewares/tool_error_handling_middleware.py` (`build_lead_runtime_middlewares`) and `packages/harness/deerflow/agents/lead_agent/agent.py` (`build_middlewares`):
@@ -638,7 +645,10 @@ The replay benchmark executes those same real Gateway paths repeatedly and emits
 sanitized `latest-summary.json`, `latest-report.md`, and `latest-report.html`
 files under `benchmarks/opensku-replay/`. It is an evidence gate: a candidate
 optimization is accepted only when it does not regress run success or contract
-checks and shows a material quality or latency improvement. Replay token counts
+checks and shows a material quality or latency improvement. Latency must pass
+both the relative threshold (default 5%) and absolute threshold (default 50 ms),
+so millisecond noise on already-fast scenarios is not counted as an optimization.
+Replay token counts
 are intentionally marked unavailable because the deterministic fixture disables
 token accounting.
 

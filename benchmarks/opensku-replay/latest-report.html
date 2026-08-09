@@ -12,7 +12,7 @@ table{width:100%;border-collapse:collapse;margin-top:12px} th,td{padding:10px;bo
 code{background:#f3eee7;padding:2px 5px;border-radius:5px}
 </style></head><body><main><article>
 <h1>OpenSKU Replay Benchmark</h1>
-<p>Generated <code>2026-08-09T05:14:06Z</code> · provider <code>deterministic_replay</code> · repeats <code>3</code></p>
+<p>Generated <code>2026-08-09T05:44:07Z</code> · provider <code>deterministic_replay</code> · repeats <code>3</code></p>
 <p class="note">This is a deterministic Gateway contract baseline, not a live-model quality score. The report stores no prompts, responses, uploaded rows, or artifact contents.</p>
 <h2>Overall</h2><table><tbody>
 <tr><th>Scenarios</th><td>2</td></tr>
@@ -20,9 +20,10 @@ code{background:#f3eee7;padding:2px 5px;border-radius:5px}
 <tr><th>Run success rate</th><td><span class="pill">100.0%</span></td></tr>
 <tr><th>Contract-complete run rate</th><td><span class="pill">100.0%</span></td></tr>
 <tr><th>Contract check pass rate</th><td><span class="pill">100.0%</span></td></tr>
-<tr><th>Optimization verdict</th><td><code>baseline_only</code></td></tr>
+<tr><th>Optimization verdict</th><td><code>candidate_faster</code></td></tr>
 </tbody></table>
-<h2>Scenario summary</h2><table><thead><tr><th>Scenario</th><th>Runs</th><th>Run success</th><th>Contract-complete</th><th>Checks</th><th>P50</th><th>P95</th></tr></thead><tbody><tr><td>launch</td><td>3</td><td>100.0%</td><td>100.0%</td><td>100.0%</td><td>15.178s</td><td>15.802s</td></tr><tr><td>growth</td><td>3</td><td>100.0%</td><td>100.0%</td><td>100.0%</td><td>0.057s</td><td>0.082s</td></tr></tbody></table>
+<h2>Scenario summary</h2><table><thead><tr><th>Scenario</th><th>Runs</th><th>Run success</th><th>Contract-complete</th><th>Checks</th><th>P50</th><th>P95</th></tr></thead><tbody><tr><td>launch</td><td>3</td><td>100.0%</td><td>100.0%</td><td>100.0%</td><td>0.464s</td><td>0.793s</td></tr><tr><td>growth</td><td>3</td><td>100.0%</td><td>100.0%</td><td>100.0%</td><td>0.066s</td><td>0.066s</td></tr></tbody></table>
+<h2>Optimization comparison</h2><p>Verdict: <code>candidate_faster</code>. A latency change is material only when it reaches both <code>5.0%</code> and <code>0.050s</code>.</p><ul><li><code>growth</code>: <code>0.057s -&gt; 0.066s</code>; <code>15.79%</code> / <code>+0.009s</code> (below gate)</li><li><code>launch</code>: <code>15.178s -&gt; 0.464s</code>; <code>-96.94%</code> / <code>-14.714s</code> (material)</li></ul>
 <h2>Limitations</h2><ul>
 <li>Replay is deterministic and does not represent live provider quality.</li>
 <li>Token metrics are available only when runtime token tracking is enabled.</li>

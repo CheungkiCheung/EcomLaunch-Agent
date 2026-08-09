@@ -33,6 +33,14 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Completion polling starts aggressively so fast specialists do not pay a fixed
+# multi-second tail, then backs off to a one-second ceiling for long-running LLM
+# work. The cap keeps task progress and cancellation responsive without turning
+# a several-minute subagent into a hot polling loop.
+_SUBAGENT_POLL_INITIAL_SECONDS = 0.1
+_SUBAGENT_POLL_MAX_SECONDS = 1.0
+_SUBAGENT_POLL_BACKOFF_FACTOR = 2.0
+
 # Cache subagent token usage by tool_call_id so TokenUsageMiddleware can
 # write it back to the triggering AIMessage's usage_metadata.
 _subagent_usage_cache: dict[str, dict[str, int]] = {}
@@ -69,6 +77,11 @@ def pop_cached_subagent_usage(tool_call_id: str) -> dict | None:
 def _is_subagent_terminal(result: Any) -> bool:
     """Return whether a background subagent result is safe to clean up."""
     return result.status in {SubagentStatus.COMPLETED, SubagentStatus.FAILED, SubagentStatus.CANCELLED, SubagentStatus.TIMED_OUT} or getattr(result, "completed_at", None) is not None
+
+
+def _next_subagent_poll_delay(current_delay: float) -> float:
+    """Return the next bounded exponential-backoff polling interval."""
+    return min(_SUBAGENT_POLL_MAX_SECONDS, current_delay * _SUBAGENT_POLL_BACKOFF_FACTOR)
 
 
 async def _await_subagent_terminal(task_id: str, max_polls: int) -> Any | None:
@@ -615,14 +628,21 @@ async def task_tool(
     # Use tool_call_id as task_id for better traceability
     task_id = executor.execute_async(prompt, task_id=tool_call_id)
 
-    # Poll for task completion in backend (removes need for LLM to poll)
+    # Poll for task completion in backend (removes need for LLM to poll).
+    # Use a bounded exponential backoff: fast Replay/local specialists are
+    # observed quickly, while long provider calls settle at one poll/second.
     poll_count = 0
+    poll_delay_seconds = _SUBAGENT_POLL_INITIAL_SECONDS
+    polling_elapsed_seconds = 0.0
     last_status = None
     last_message_count = 0  # Track how many AI messages we've already sent
-    # Polling timeout: execution timeout + 60s buffer, checked every 5s
+    # Polling timeout: execution timeout + 60s buffer. Keep the five-second
+    # count for cancellation/deferred-cleanup helpers, whose behavior is
+    # intentionally unchanged.
+    polling_timeout_seconds = config.timeout_seconds + 60
     max_poll_count = (config.timeout_seconds + 60) // 5
 
-    logger.info(f"[trace={trace_id}] Started background task {task_id} (subagent={subagent_type}, timeout={config.timeout_seconds}s, polling_limit={max_poll_count} polls)")
+    logger.info(f"[trace={trace_id}] Started background task {task_id} (subagent={subagent_type}, timeout={config.timeout_seconds}s, polling_timeout={polling_timeout_seconds}s)")
 
     writer = get_stream_writer()
     # Send Task Started message'
@@ -702,16 +722,20 @@ async def task_tool(
                     return f"Task degraded: {subagent_type} timed out. Continue with explicit unavailable/assumption labels."
                 return f"Task timed out. Error: {result.error}"
 
-            # Still running, wait before next poll
-            await asyncio.sleep(5)
+            # Still running, wait before next poll. Accumulate the requested
+            # waits so the safety bound stays independent of how many adaptive
+            # polling iterations occurred.
+            await asyncio.sleep(poll_delay_seconds)
             poll_count += 1
+            polling_elapsed_seconds += poll_delay_seconds
+            poll_delay_seconds = _next_subagent_poll_delay(poll_delay_seconds)
 
             # Polling timeout as a safety net (in case thread pool timeout doesn't work)
-            # Set to execution timeout + 60s buffer, in 5s poll intervals
+            # Set to execution timeout + 60s buffer.
             # This catches edge cases where the background task gets stuck
-            if poll_count > max_poll_count:
+            if polling_elapsed_seconds > polling_timeout_seconds:
                 timeout_minutes = config.timeout_seconds // 60
-                logger.error(f"[trace={trace_id}] Task {task_id} polling timed out after {poll_count} polls (should have been caught by thread pool timeout)")
+                logger.error(f"[trace={trace_id}] Task {task_id} polling timed out after {poll_count} polls/{polling_elapsed_seconds:.1f}s (should have been caught by thread pool timeout)")
                 _report_subagent_usage(runtime, result)
                 usage = _summarize_usage(getattr(result, "token_usage_records", None))
                 _cache_subagent_usage(tool_call_id, usage, enabled=cache_token_usage)

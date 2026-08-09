@@ -1,6 +1,6 @@
 # OpenSKU Replay Benchmark
 
-Generated: `2026-08-09T05:14:06Z`
+Generated: `2026-08-09T05:44:07Z`
 Provider: `deterministic_replay`
 Repeats per scenario: `3`
 
@@ -21,12 +21,16 @@ Repeats per scenario: `3`
 
 | Scenario | Runs | Run success | Contract-complete | Checks | P50 | P95 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| launch | 3 | 100.0% | 100.0% | 100.0% | 15.178s | 15.802s |
-| growth | 3 | 100.0% | 100.0% | 100.0% | 0.057s | 0.082s |
+| launch | 3 | 100.0% | 100.0% | 100.0% | 0.464s | 0.793s |
+| growth | 3 | 100.0% | 100.0% | 100.0% | 0.066s | 0.066s |
 
 ## Evidence-gated optimization verdict
 
-No candidate/baseline comparison was supplied. This run establishes a measured baseline; it makes no optimization claim.
+**Verdict:** `candidate_faster`
+
+P50 latency changes (negative means faster; material only when both `5.0%` and `0.050s` thresholds are met):
+- `growth`: `0.057s -> 0.066s`; `15.79%` / `+0.009s` (below gate)
+- `launch`: `15.178s -> 0.464s`; `-96.94%` / `-14.714s` (material)
 
 ## Limitations
 

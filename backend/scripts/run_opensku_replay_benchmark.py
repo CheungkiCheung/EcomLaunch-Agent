@@ -155,8 +155,9 @@ def compare_reports(
     candidate: dict[str, Any],
     *,
     latency_threshold_pct: float = 5.0,
+    latency_threshold_seconds: float = 0.05,
 ) -> dict[str, Any]:
-    """Compare two reports without allowing quality regressions to hide speedups."""
+    """Compare reports using quality-first relative and absolute latency gates."""
 
     baseline_summary = _summary_for_report(baseline)
     candidate_summary = _summary_for_report(candidate)
@@ -178,16 +179,25 @@ def compare_reports(
         if candidate_summary[key] > baseline_summary[key]
     }
     latency_changes_pct: dict[str, float] = {}
+    latency_changes_seconds: dict[str, float] = {}
+    baseline_p50_seconds: dict[str, float] = {}
+    candidate_p50_seconds: dict[str, float] = {}
+    raw_latency_changes_seconds: dict[str, float] = {}
     baseline_scenarios = baseline.get("summary", {}).get("scenarios", {})
     candidate_scenarios = candidate.get("summary", {}).get("scenarios", {})
     for scenario_name in sorted(set(baseline_scenarios) & set(candidate_scenarios)):
         baseline_p50 = float(baseline_scenarios[scenario_name].get("latency_seconds", {}).get("p50") or 0)
         candidate_p50 = float(candidate_scenarios[scenario_name].get("latency_seconds", {}).get("p50") or 0)
         if baseline_p50 > 0:
-            latency_changes_pct[scenario_name] = round((candidate_p50 - baseline_p50) / baseline_p50 * 100, 2)
+            raw_delta_seconds = candidate_p50 - baseline_p50
+            baseline_p50_seconds[scenario_name] = round(baseline_p50, 3)
+            candidate_p50_seconds[scenario_name] = round(candidate_p50, 3)
+            raw_latency_changes_seconds[scenario_name] = raw_delta_seconds
+            latency_changes_seconds[scenario_name] = round(raw_delta_seconds, 3)
+            latency_changes_pct[scenario_name] = round(raw_delta_seconds / baseline_p50 * 100, 2)
 
-    faster_scenarios = sorted(name for name, change in latency_changes_pct.items() if change <= -latency_threshold_pct)
-    slower_scenarios = sorted(name for name, change in latency_changes_pct.items() if change >= latency_threshold_pct)
+    faster_scenarios = sorted(name for name, change in latency_changes_pct.items() if change <= -latency_threshold_pct and raw_latency_changes_seconds[name] <= -latency_threshold_seconds)
+    slower_scenarios = sorted(name for name, change in latency_changes_pct.items() if change >= latency_threshold_pct and raw_latency_changes_seconds[name] >= latency_threshold_seconds)
 
     if quality_regressions:
         verdict = "reject_quality_regression"
@@ -204,7 +214,12 @@ def compare_reports(
 
     return {
         "verdict": verdict,
+        "baseline_p50_seconds": baseline_p50_seconds,
+        "candidate_p50_seconds": candidate_p50_seconds,
         "latency_changes_pct": latency_changes_pct,
+        "latency_changes_seconds": latency_changes_seconds,
+        "latency_threshold_pct": latency_threshold_pct,
+        "latency_threshold_seconds": latency_threshold_seconds,
         "faster_scenarios": faster_scenarios,
         "slower_scenarios": slower_scenarios,
         "quality_regressions": quality_regressions,
@@ -449,9 +464,13 @@ def _render_markdown(report: dict[str, Any]) -> str:
     else:
         lines.append(f"**Verdict:** `{comparison['verdict']}`")
         if comparison["latency_changes_pct"]:
-            lines.append("\nP50 latency changes (negative means faster):")
+            lines.append(f"\nP50 latency changes (negative means faster; material only when both `{comparison['latency_threshold_pct']:.1f}%` and `{comparison['latency_threshold_seconds']:.3f}s` thresholds are met):")
             for name, change in comparison["latency_changes_pct"].items():
-                lines.append(f"- `{name}`: `{change:.2f}%`")
+                baseline_p50 = comparison["baseline_p50_seconds"][name]
+                candidate_p50 = comparison["candidate_p50_seconds"][name]
+                delta_seconds = comparison["latency_changes_seconds"][name]
+                material = name in comparison["faster_scenarios"] or name in comparison["slower_scenarios"]
+                lines.append(f"- `{name}`: `{baseline_p50:.3f}s -> {candidate_p50:.3f}s`; `{change:.2f}%` / `{delta_seconds:+.3f}s` ({'material' if material else 'below gate'})")
         if comparison["quality_regressions"]:
             lines.append("\nQuality regressions were detected and speed changes are rejected:")
             for key, values in comparison["quality_regressions"].items():
@@ -487,6 +506,23 @@ def _render_html(report: dict[str, Any]) -> str:
         )
     comparison = report.get("comparison")
     verdict = comparison["verdict"] if comparison else "baseline_only"
+    comparison_html = ""
+    if comparison:
+        change_items = []
+        for name, change in comparison["latency_changes_pct"].items():
+            baseline_p50 = comparison["baseline_p50_seconds"][name]
+            candidate_p50 = comparison["candidate_p50_seconds"][name]
+            delta_seconds = comparison["latency_changes_seconds"][name]
+            material = name in comparison["faster_scenarios"] or name in comparison["slower_scenarios"]
+            change_items.append(
+                f"<li><code>{html.escape(name)}</code>: <code>{baseline_p50:.3f}s -&gt; {candidate_p50:.3f}s</code>; <code>{change:.2f}%</code> / <code>{delta_seconds:+.3f}s</code> ({'material' if material else 'below gate'})</li>"
+            )
+        comparison_html = (
+            "<h2>Optimization comparison</h2>"
+            f"<p>Verdict: <code>{html.escape(verdict)}</code>. A latency change is material only when it reaches both "
+            f"<code>{comparison['latency_threshold_pct']:.1f}%</code> and <code>{comparison['latency_threshold_seconds']:.3f}s</code>.</p>"
+            f"<ul>{''.join(change_items)}</ul>"
+        )
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OpenSKU Replay Benchmark</title>
@@ -512,6 +548,7 @@ code{{background:#f3eee7;padding:2px 5px;border-radius:5px}}
 <tr><th>Optimization verdict</th><td><code>{html.escape(verdict)}</code></td></tr>
 </tbody></table>
 <h2>Scenario summary</h2><table><thead><tr><th>Scenario</th><th>Runs</th><th>Run success</th><th>Contract-complete</th><th>Checks</th><th>P50</th><th>P95</th></tr></thead><tbody>{"".join(rows)}</tbody></table>
+{comparison_html}
 <h2>Limitations</h2><ul>
 <li>Replay is deterministic and does not represent live provider quality.</li>
 <li>Token metrics are available only when runtime token tracking is enabled.</li>
@@ -577,9 +614,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-dir", default="benchmark-results/opensku-replay")
     parser.add_argument("--baseline", type=Path)
     parser.add_argument("--latency-threshold-pct", type=float, default=5.0)
+    parser.add_argument("--latency-threshold-seconds", type=float, default=0.05)
     args = parser.parse_args(argv)
     if args.repeats < 1:
         parser.error("--repeats must be at least 1")
+    if args.latency_threshold_pct < 0 or args.latency_threshold_seconds < 0:
+        parser.error("latency thresholds must be non-negative")
 
     output_dir = Path(args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -643,7 +683,12 @@ def main(argv: list[str] | None = None) -> int:
         misses = len(replay_provider.replay_misses())
         report = _build_report(rows, repeats=args.repeats, replay_misses=misses)
         if args.baseline:
-            report["comparison"] = compare_reports(_read_json(args.baseline), report, latency_threshold_pct=args.latency_threshold_pct)
+            report["comparison"] = compare_reports(
+                _read_json(args.baseline),
+                report,
+                latency_threshold_pct=args.latency_threshold_pct,
+                latency_threshold_seconds=args.latency_threshold_seconds,
+            )
         _write_json(output_dir / "latest-summary.json", report)
         (output_dir / "latest-report.md").write_text(_render_markdown(report), encoding="utf-8")
         (output_dir / "latest-report.html").write_text(_render_html(report), encoding="utf-8")
