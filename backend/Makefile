@@ -1,3 +1,5 @@
+.PHONY: install dev gateway test test-blocking-io lint format detect-blocking-io benchmark-replay
+
 install:
 	uv sync
 
@@ -22,3 +24,6 @@ format:
 
 detect-blocking-io:
 	@PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run python ../scripts/detect_blocking_io_static.py --output ../.deer-flow/blocking-io-findings.json
+
+benchmark-replay:
+	@PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run python scripts/run_opensku_replay_benchmark.py --repeats $${OPENSKU_BENCHMARK_REPEATS:-3} --output-dir ../benchmarks/opensku-replay

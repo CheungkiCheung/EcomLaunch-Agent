@@ -627,9 +627,20 @@ PYTHONPATH=. uv run pytest tests/test_opensku_replay_golden.py tests/test_replay
 
 # Full-stack browser replay (run from frontend/)
 pnpm test:e2e:opensku-replay
+
+# Evidence-gated Launch + Growth contract benchmark (from repository root)
+make benchmark-replay
 ```
 
 The Launch Ultra replay requires the three configured specialists, seven artifacts, an initial two-item preflight failure, two bounded `str_replace` repairs, and a successful second `present_files`. The Growth Analyst replay uploads three CSVs and pins `inspect_data -> query_data -> analyze_ab_test`, including the experiment significance and confidence interval.
+
+The replay benchmark executes those same real Gateway paths repeatedly and emits
+sanitized `latest-summary.json`, `latest-report.md`, and `latest-report.html`
+files under `benchmarks/opensku-replay/`. It is an evidence gate: a candidate
+optimization is accepted only when it does not regress run success or contract
+checks and shows a material quality or latency improvement. Replay token counts
+are intentionally marked unavailable because the deterministic fixture disables
+token accounting.
 
 `.github/workflows/live-llm-canary.yml` runs weekly and on manual dispatch. It requires `OPENSKU_CANARY_API_KEY` (or the legacy `OPENAI_API_KEY` secret), optionally `OPENSKU_CANARY_BASE_URL`, and `OPENSKU_CANARY_MODEL`. The canary explicitly records `replay: false`, enforces model-call/token/tool budgets, and uploads state, events, metrics, artifacts, and a summary. Missing credentials produce an explicit skipped result rather than a false pass.
 

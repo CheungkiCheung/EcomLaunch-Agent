@@ -1,0 +1,304 @@
+{
+  "report_version": 1,
+  "generated_at": "2026-08-09T05:14:06Z",
+  "provider": "deterministic_replay",
+  "replay": true,
+  "repeats": 3,
+  "environment": {
+    "python": "3.12.10",
+    "platform": "macOS-26.5.2-arm64-arm-64bit"
+  },
+  "summary": {
+    "scenarios": {
+      "launch": {
+        "runs": 3,
+        "run_success_rate": 1.0,
+        "contract_pass_rate": 1.0,
+        "check_pass_rate": 1.0,
+        "latency_seconds": {
+          "min": 15.177,
+          "p50": 15.178,
+          "p95": 15.802,
+          "max": 15.871,
+          "mean": 15.409
+        },
+        "llm_call_count": {
+          "min": null,
+          "max": null,
+          "mean": null
+        },
+        "total_tokens": {
+          "min": null,
+          "max": null,
+          "mean": null
+        },
+        "token_metrics_available": false
+      },
+      "growth": {
+        "runs": 3,
+        "run_success_rate": 1.0,
+        "contract_pass_rate": 1.0,
+        "check_pass_rate": 1.0,
+        "latency_seconds": {
+          "min": 0.056,
+          "p50": 0.057,
+          "p95": 0.082,
+          "max": 0.085,
+          "mean": 0.066
+        },
+        "llm_call_count": {
+          "min": null,
+          "max": null,
+          "mean": null
+        },
+        "total_tokens": {
+          "min": null,
+          "max": null,
+          "mean": null
+        },
+        "token_metrics_available": false
+      }
+    },
+    "scenario_count": 2,
+    "runs": 6,
+    "run_success_rate": 1.0,
+    "contract_pass_rate": 1.0,
+    "check_pass_rate": 1.0
+  },
+  "runs": {
+    "launch": [
+      {
+        "scenario": "launch",
+        "tool_names": [
+          "task",
+          "task",
+          "task",
+          "write_file",
+          "write_file",
+          "write_file",
+          "write_file",
+          "write_file",
+          "write_file",
+          "write_file",
+          "present_files",
+          "str_replace",
+          "str_replace",
+          "present_files"
+        ],
+        "artifact_names": [
+          "competitor-table.csv",
+          "content-pack.md",
+          "evidence-ledger.json",
+          "launch-calendar.csv",
+          "launch-war-room.html",
+          "listing-pack.md",
+          "positioning-brief.md"
+        ],
+        "subagent_sequence": [
+          "market-voc-researcher",
+          "offer-architect",
+          "asset-studio"
+        ],
+        "checks": {
+          "run_succeeded": true,
+          "specialists_in_dependency_order": true,
+          "seven_artifacts_delivered": true,
+          "seven_file_writes": true,
+          "two_preflight_attempts": true,
+          "two_bounded_repairs": true,
+          "failed_observations_recorded": true,
+          "evidence_ledger_observed_public": true
+        },
+        "run_succeeded": true,
+        "contract_passed": true,
+        "llm_call_count": null,
+        "total_tokens": null,
+        "token_metrics_available": false,
+        "repeat": 1,
+        "elapsed_seconds": 15.871
+      },
+      {
+        "scenario": "launch",
+        "tool_names": [
+          "task",
+          "task",
+          "task",
+          "write_file",
+          "write_file",
+          "write_file",
+          "write_file",
+          "write_file",
+          "write_file",
+          "write_file",
+          "present_files",
+          "str_replace",
+          "str_replace",
+          "present_files"
+        ],
+        "artifact_names": [
+          "competitor-table.csv",
+          "content-pack.md",
+          "evidence-ledger.json",
+          "launch-calendar.csv",
+          "launch-war-room.html",
+          "listing-pack.md",
+          "positioning-brief.md"
+        ],
+        "subagent_sequence": [
+          "market-voc-researcher",
+          "offer-architect",
+          "asset-studio"
+        ],
+        "checks": {
+          "run_succeeded": true,
+          "specialists_in_dependency_order": true,
+          "seven_artifacts_delivered": true,
+          "seven_file_writes": true,
+          "two_preflight_attempts": true,
+          "two_bounded_repairs": true,
+          "failed_observations_recorded": true,
+          "evidence_ledger_observed_public": true
+        },
+        "run_succeeded": true,
+        "contract_passed": true,
+        "llm_call_count": null,
+        "total_tokens": null,
+        "token_metrics_available": false,
+        "repeat": 2,
+        "elapsed_seconds": 15.177
+      },
+      {
+        "scenario": "launch",
+        "tool_names": [
+          "task",
+          "task",
+          "task",
+          "write_file",
+          "write_file",
+          "write_file",
+          "write_file",
+          "write_file",
+          "write_file",
+          "write_file",
+          "present_files",
+          "str_replace",
+          "str_replace",
+          "present_files"
+        ],
+        "artifact_names": [
+          "competitor-table.csv",
+          "content-pack.md",
+          "evidence-ledger.json",
+          "launch-calendar.csv",
+          "launch-war-room.html",
+          "listing-pack.md",
+          "positioning-brief.md"
+        ],
+        "subagent_sequence": [
+          "market-voc-researcher",
+          "offer-architect",
+          "asset-studio"
+        ],
+        "checks": {
+          "run_succeeded": true,
+          "specialists_in_dependency_order": true,
+          "seven_artifacts_delivered": true,
+          "seven_file_writes": true,
+          "two_preflight_attempts": true,
+          "two_bounded_repairs": true,
+          "failed_observations_recorded": true,
+          "evidence_ledger_observed_public": true
+        },
+        "run_succeeded": true,
+        "contract_passed": true,
+        "llm_call_count": null,
+        "total_tokens": null,
+        "token_metrics_available": false,
+        "repeat": 3,
+        "elapsed_seconds": 15.178
+      }
+    ],
+    "growth": [
+      {
+        "scenario": "growth",
+        "tool_names": [
+          "inspect_data",
+          "query_data",
+          "analyze_ab_test"
+        ],
+        "artifact_names": [],
+        "checks": {
+          "run_succeeded": true,
+          "three_csv_files_uploaded": true,
+          "deterministic_tool_chain": true,
+          "ship_decision_present": true,
+          "p_value_present": true,
+          "uplift_present": true,
+          "confidence_interval_present": true,
+          "srm_check_present": true
+        },
+        "run_succeeded": true,
+        "contract_passed": true,
+        "llm_call_count": null,
+        "total_tokens": null,
+        "token_metrics_available": false,
+        "repeat": 1,
+        "elapsed_seconds": 0.085
+      },
+      {
+        "scenario": "growth",
+        "tool_names": [
+          "inspect_data",
+          "query_data",
+          "analyze_ab_test"
+        ],
+        "artifact_names": [],
+        "checks": {
+          "run_succeeded": true,
+          "three_csv_files_uploaded": true,
+          "deterministic_tool_chain": true,
+          "ship_decision_present": true,
+          "p_value_present": true,
+          "uplift_present": true,
+          "confidence_interval_present": true,
+          "srm_check_present": true
+        },
+        "run_succeeded": true,
+        "contract_passed": true,
+        "llm_call_count": null,
+        "total_tokens": null,
+        "token_metrics_available": false,
+        "repeat": 2,
+        "elapsed_seconds": 0.056
+      },
+      {
+        "scenario": "growth",
+        "tool_names": [
+          "inspect_data",
+          "query_data",
+          "analyze_ab_test"
+        ],
+        "artifact_names": [],
+        "checks": {
+          "run_succeeded": true,
+          "three_csv_files_uploaded": true,
+          "deterministic_tool_chain": true,
+          "ship_decision_present": true,
+          "p_value_present": true,
+          "uplift_present": true,
+          "confidence_interval_present": true,
+          "srm_check_present": true
+        },
+        "run_succeeded": true,
+        "contract_passed": true,
+        "llm_call_count": null,
+        "total_tokens": null,
+        "token_metrics_available": false,
+        "repeat": 3,
+        "elapsed_seconds": 0.057
+      }
+    ]
+  },
+  "replay_misses": 0,
+  "comparison": null
+}

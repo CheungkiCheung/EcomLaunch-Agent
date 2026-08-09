@@ -203,7 +203,12 @@ pnpm test:e2e
 # Launch Ultra + Growth Analyst full-stack replay
 pnpm test:e2e:opensku-replay
 
+# Evidence-gated Launch + Growth contract benchmark (3 repeats)
+cd ..
+make benchmark-replay
+
 # Focused landing/demo/War Room visual regression
+cd frontend
 pnpm test:e2e:visual
 
 # Rebuild the replay fixture after intentional prompt/tool changes
@@ -212,6 +217,17 @@ PYTHONPATH=. uv run python scripts/build_opensku_replay_fixture.py
 ```
 
 The Launch replay verifies the three-specialist dependency chain, a seven-file pack, deterministic preflight feedback, minimal repair, re-validation, and War Room checkpoint hydration. The Growth replay uploads three CSV files through the real API and verifies inspection, multi-file join, two-proportion significance analysis, and the final ship/extend/stop decision.
+
+`make benchmark-replay` drives those same real Gateway paths with the committed deterministic replay provider and writes sanitized JSON, Markdown, and HTML reports to `benchmarks/opensku-replay/`. The report separates contract completion, deterministic numeric checks, and latency from live-model quality. It makes no optimization claim unless a candidate report preserves quality and shows a material improvement against a baseline.
+
+The current published baseline is available as [JSON](benchmarks/opensku-replay/latest-summary.json), [Markdown](benchmarks/opensku-replay/latest-report.md), and [HTML](benchmarks/opensku-replay/latest-report.html). It covers three repeats each of the Launch and Growth golden workflows; live-model latency, Token usage, and broad category quality are intentionally not inferred from this deterministic run.
+
+| Deterministic replay scenario | Runs | Run success | Contract-complete | P50 Gateway time |
+| --- | ---: | ---: | ---: | ---: |
+| Launch Ultra verification loop | 3 | 100% | 100% | 15.178 s |
+| Growth upload + Join + A/B | 3 | 100% | 100% | 0.057 s |
+
+The benchmark's **Evidence-Gated Optimization Comparator** rejects a faster candidate whenever run success or contract checks regress, and treats latency movement below the configured 5% threshold as no material improvement. The published baseline therefore records no optimization claim yet.
 
 CI also builds and boots the documented local quick-start path and both production container images in `.github/workflows/quickstart-smoke.yml`. A bounded weekly/manual Live LLM Canary is defined in `.github/workflows/live-llm-canary.yml`; configure `OPENSKU_CANARY_API_KEY`, and optionally `OPENSKU_CANARY_BASE_URL` and `OPENSKU_CANARY_MODEL`, to enable real-provider execution. With no key it records an explicit skip.
 
@@ -227,7 +243,7 @@ OpenSKU is the public product name. The `deerflow.*` Python import namespace, `D
 - [x] CSV/XLSX Growth Analyst
 - [ ] Shareable public launch reports
 - [ ] Reusable category and marketplace templates
-- [ ] Evaluation fixtures and reproducible launch-quality benchmarks
+- [x] Evaluation fixtures and reproducible launch-quality benchmarks (Launch + Growth golden baseline)
 - [ ] One-command hosted demo deployment
 
 ## Contributing

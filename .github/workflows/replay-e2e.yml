@@ -25,6 +25,9 @@ on:
       - "backend/tests/opensku_scenario_provider.py"
       - "backend/scripts/run_replay_gateway.py"
       - "backend/scripts/build_opensku_replay_fixture.py"
+      - "backend/scripts/run_opensku_replay_benchmark.py"
+      - "backend/tests/test_opensku_replay_benchmark.py"
+      - "benchmarks/opensku-replay/**"
       - ".github/workflows/replay-e2e.yml"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -42,6 +45,9 @@ on:
       - "backend/tests/opensku_scenario_provider.py"
       - "backend/scripts/run_replay_gateway.py"
       - "backend/scripts/build_opensku_replay_fixture.py"
+      - "backend/scripts/run_opensku_replay_benchmark.py"
+      - "backend/tests/test_opensku_replay_benchmark.py"
+      - "benchmarks/opensku-replay/**"
       - ".github/workflows/replay-e2e.yml"
 
 concurrency:
@@ -76,6 +82,19 @@ jobs:
             tests/test_opensku_replay_golden.py \
             tests/test_replay_provider_hashing.py \
             -v
+      - name: Evidence-gated Launch + Growth benchmark
+        working-directory: backend
+        run: |
+          PYTHONPATH=. uv run python scripts/run_opensku_replay_benchmark.py \
+            --repeats 1 \
+            --output-dir benchmark-results/opensku-replay
+      - name: Upload replay benchmark report
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: opensku-replay-benchmark
+          path: backend/benchmark-results/opensku-replay/
+          retention-days: 14
 
   fullstack-replay-render:
     name: Layer 2 — full-stack render (no API key)
