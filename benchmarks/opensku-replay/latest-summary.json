@@ -1,6 +1,6 @@
 {
   "report_version": 1,
-  "generated_at": "2026-08-09T05:44:07Z",
+  "generated_at": "2026-08-09T09:14:13Z",
   "provider": "deterministic_replay",
   "replay": true,
   "repeats": 3,
@@ -16,11 +16,11 @@
         "contract_pass_rate": 1.0,
         "check_pass_rate": 1.0,
         "latency_seconds": {
-          "min": 0.436,
-          "p50": 0.464,
-          "p95": 0.793,
-          "max": 0.83,
-          "mean": 0.577
+          "min": 0.425,
+          "p50": 0.427,
+          "p95": 0.826,
+          "max": 0.87,
+          "mean": 0.574
         },
         "llm_call_count": {
           "min": null,
@@ -40,11 +40,11 @@
         "contract_pass_rate": 1.0,
         "check_pass_rate": 1.0,
         "latency_seconds": {
-          "min": 0.051,
-          "p50": 0.066,
-          "p95": 0.066,
-          "max": 0.066,
-          "mean": 0.061
+          "min": 0.046,
+          "p50": 0.049,
+          "p95": 0.071,
+          "max": 0.073,
+          "mean": 0.056
         },
         "llm_call_count": {
           "min": null,
@@ -115,7 +115,7 @@
         "total_tokens": null,
         "token_metrics_available": false,
         "repeat": 1,
-        "elapsed_seconds": 0.83
+        "elapsed_seconds": 0.87
       },
       {
         "scenario": "launch",
@@ -165,7 +165,7 @@
         "total_tokens": null,
         "token_metrics_available": false,
         "repeat": 2,
-        "elapsed_seconds": 0.436
+        "elapsed_seconds": 0.427
       },
       {
         "scenario": "launch",
@@ -215,7 +215,7 @@
         "total_tokens": null,
         "token_metrics_available": false,
         "repeat": 3,
-        "elapsed_seconds": 0.464
+        "elapsed_seconds": 0.425
       }
     ],
     "growth": [
@@ -243,7 +243,7 @@
         "total_tokens": null,
         "token_metrics_available": false,
         "repeat": 1,
-        "elapsed_seconds": 0.066
+        "elapsed_seconds": 0.049
       },
       {
         "scenario": "growth",
@@ -269,7 +269,7 @@
         "total_tokens": null,
         "token_metrics_available": false,
         "repeat": 2,
-        "elapsed_seconds": 0.051
+        "elapsed_seconds": 0.073
       },
       {
         "scenario": "growth",
@@ -295,50 +295,10 @@
         "total_tokens": null,
         "token_metrics_available": false,
         "repeat": 3,
-        "elapsed_seconds": 0.066
+        "elapsed_seconds": 0.046
       }
     ]
   },
   "replay_misses": 0,
-  "comparison": {
-    "verdict": "candidate_faster",
-    "baseline_p50_seconds": {
-      "growth": 0.057,
-      "launch": 15.178
-    },
-    "candidate_p50_seconds": {
-      "growth": 0.066,
-      "launch": 0.464
-    },
-    "latency_changes_pct": {
-      "growth": 15.79,
-      "launch": -96.94
-    },
-    "latency_changes_seconds": {
-      "growth": 0.009,
-      "launch": -14.714
-    },
-    "latency_threshold_pct": 5.0,
-    "latency_threshold_seconds": 0.05,
-    "faster_scenarios": [
-      "launch"
-    ],
-    "slower_scenarios": [],
-    "quality_regressions": {},
-    "quality_improvements": {},
-    "baseline": {
-      "scenario_count": 2,
-      "runs": 6,
-      "run_success_rate": 1.0,
-      "contract_pass_rate": 1.0,
-      "check_pass_rate": 1.0
-    },
-    "candidate": {
-      "scenario_count": 2,
-      "runs": 6,
-      "run_success_rate": 1.0,
-      "contract_pass_rate": 1.0,
-      "check_pass_rate": 1.0
-    }
-  }
+  "comparison": null
 }

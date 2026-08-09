@@ -1,7 +1,10 @@
+import asyncio
 import json
+import time
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from deerflow.agents.middlewares.run_budget_middleware import RUN_BUDGET_CONTEXT_KEY, RunBudgetMiddleware, _current_turn_messages
@@ -274,6 +277,68 @@ def test_wrap_model_call_warns_the_model_to_finalize_before_the_hard_limit() -> 
     assert final_message.name == "run_budget_finalization"
     assert final_message.additional_kwargs["hide_from_ui"] is True
     assert "Do not call more research or drafting tools" in final_message.content
+
+
+@pytest.mark.asyncio
+async def test_async_model_call_is_cancelled_at_the_remaining_run_budget() -> None:
+    middleware = RunBudgetMiddleware(
+        AgentRunBudgetConfig(
+            max_lead_model_calls=2,
+            max_subagent_calls=0,
+            max_total_tokens=100_000,
+            max_execution_seconds=60,
+            max_model_call_seconds=45,
+        )
+    )
+    runtime = _runtime()
+    middleware.before_agent({}, runtime)
+    runtime.context[RUN_BUDGET_CONTEXT_KEY]["deadline_monotonic"] = time.monotonic() + 0.02
+    request = _FakeRequest(
+        runtime=runtime,
+        messages=[HumanMessage(content="build pack")],
+        tools=[],
+    )
+    cancelled = asyncio.Event()
+
+    async def handler(_updated_request):
+        try:
+            await asyncio.sleep(10)
+        finally:
+            cancelled.set()
+
+    result = await middleware.awrap_model_call(request, handler)
+
+    assert isinstance(result, AIMessage)
+    assert result.additional_kwargs["deerflow_error_fallback"] is True
+    assert result.additional_kwargs["error_type"] == "RunBudgetModelTimeout"
+    assert "运行预算" in result.content
+    assert cancelled.is_set()
+
+
+@pytest.mark.asyncio
+async def test_async_model_call_does_not_relabel_provider_timeout() -> None:
+    middleware = RunBudgetMiddleware(
+        AgentRunBudgetConfig(
+            max_lead_model_calls=2,
+            max_subagent_calls=0,
+            max_total_tokens=100_000,
+            max_execution_seconds=60,
+            max_model_call_seconds=45,
+        )
+    )
+    runtime = _runtime()
+    middleware.before_agent({}, runtime)
+    request = _FakeRequest(
+        runtime=runtime,
+        messages=[HumanMessage(content="build pack")],
+        tools=[],
+    )
+
+    async def handler(_updated_request):
+        raise TimeoutError("provider timeout")
+
+    with pytest.raises(TimeoutError, match="provider timeout"):
+        await middleware.awrap_model_call(request, handler)
 
 
 def test_specialist_finalization_removes_tools_and_requires_final_text() -> None:

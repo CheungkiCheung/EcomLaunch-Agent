@@ -151,6 +151,7 @@ async def run_agent(
     pre_run_snapshot: dict[str, Any] | None = None
     snapshot_capture_failed = False
     llm_error_fallback_message: str | None = None
+    terminal_delivery_succeeded = False
 
     journal = None
 
@@ -314,6 +315,7 @@ async def run_agent(
                     logger.info("Run %s abort requested — stopping", run_id)
                     break
                 llm_error_fallback_message = llm_error_fallback_message or _extract_llm_error_fallback_message(chunk)
+                terminal_delivery_succeeded = terminal_delivery_succeeded or _has_successful_terminal_delivery(chunk)
                 sse_event = _lg_mode_to_sse_event(single_mode)
                 await bridge.publish(run_id, sse_event, serialize(chunk, mode=single_mode))
         else:
@@ -333,6 +335,7 @@ async def run_agent(
                     continue
 
                 llm_error_fallback_message = llm_error_fallback_message or _extract_llm_error_fallback_message(chunk)
+                terminal_delivery_succeeded = terminal_delivery_succeeded or _has_successful_terminal_delivery(chunk)
                 sse_event = _lg_mode_to_sse_event(mode)
                 await bridge.publish(run_id, sse_event, serialize(chunk, mode=mode))
 
@@ -355,7 +358,7 @@ async def run_agent(
                     logger.warning("Failed to rollback checkpoint for run %s", run_id, exc_info=True)
             else:
                 await run_manager.set_status(run_id, RunStatus.interrupted)
-        elif llm_error_fallback_message or (journal is not None and journal.had_llm_error_fallback):
+        elif not terminal_delivery_succeeded and (llm_error_fallback_message or (journal is not None and journal.had_llm_error_fallback)):
             error_msg = llm_error_fallback_message
             if error_msg is None and journal is not None:
                 error_msg = journal.llm_error_fallback_message
@@ -640,6 +643,49 @@ def _extract_llm_error_fallback_message(value: Any) -> str | None:
         return None
 
     return walk(value)
+
+
+def _has_successful_terminal_delivery(value: Any) -> bool:
+    """Return whether a streamed values state contains a successful delivery.
+
+    A lead-model call can time out, re-enter the complete-Pack state machine,
+    and then recover by successfully running the authoritative renderer. The
+    earlier hidden fallback remains in message history, so status resolution
+    must distinguish an unrecovered provider failure from a later completed
+    terminal delivery.
+    """
+
+    if not isinstance(value, dict):
+        return False
+    messages = value.get("messages")
+    if not isinstance(messages, (list, tuple)):
+        return False
+    current_turn_start = 0
+    for index, message in enumerate(messages):
+        message_type = message.get("type") if isinstance(message, dict) else getattr(message, "type", None)
+        additional = message.get("additional_kwargs") if isinstance(message, dict) else getattr(message, "additional_kwargs", None)
+        hidden = isinstance(additional, dict) and additional.get("hide_from_ui") is True
+        if message_type in {"human", "user"} and not hidden:
+            current_turn_start = index + 1
+    turn_messages = messages[current_turn_start:]
+    delivery_ids: set[str] = set()
+    for message in turn_messages:
+        calls = message.get("tool_calls") if isinstance(message, dict) else getattr(message, "tool_calls", None)
+        for call in calls or []:
+            if not isinstance(call, dict) or call.get("name") not in {"present_files", "render_launch_pack"}:
+                continue
+            call_id = call.get("id")
+            if isinstance(call_id, str) and call_id:
+                delivery_ids.add(call_id)
+    if not delivery_ids:
+        return False
+    for message in turn_messages:
+        message_type = message.get("type") if isinstance(message, dict) else getattr(message, "type", None)
+        tool_call_id = message.get("tool_call_id") if isinstance(message, dict) else getattr(message, "tool_call_id", None)
+        content = message.get("content", "") if isinstance(message, dict) else getattr(message, "content", "")
+        if message_type == "tool" and str(tool_call_id) in delivery_ids and "Successfully presented files" in str(content):
+            return True
+    return False
 
 
 def _extract_human_message(graph_input: dict) -> HumanMessage | None:

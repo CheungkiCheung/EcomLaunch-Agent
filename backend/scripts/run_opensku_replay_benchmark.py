@@ -157,7 +157,14 @@ def compare_reports(
     latency_threshold_pct: float = 5.0,
     latency_threshold_seconds: float = 0.05,
 ) -> dict[str, Any]:
-    """Compare reports using quality-first relative and absolute latency gates."""
+    """Compare reports without allowing Replay timing to become a perf claim.
+
+    Replay is useful for deterministic contract regressions, but it replaces
+    the model provider and therefore cannot establish an end-user latency
+    improvement.  Latency deltas are still retained as diagnostics so a
+    polling or scheduling change can be investigated and then measured with
+    the live benchmark.
+    """
 
     baseline_summary = _summary_for_report(baseline)
     candidate_summary = _summary_for_report(candidate)
@@ -196,21 +203,43 @@ def compare_reports(
             latency_changes_seconds[scenario_name] = round(raw_delta_seconds, 3)
             latency_changes_pct[scenario_name] = round(raw_delta_seconds / baseline_p50 * 100, 2)
 
-    faster_scenarios = sorted(name for name, change in latency_changes_pct.items() if change <= -latency_threshold_pct and raw_latency_changes_seconds[name] <= -latency_threshold_seconds)
-    slower_scenarios = sorted(name for name, change in latency_changes_pct.items() if change >= latency_threshold_pct and raw_latency_changes_seconds[name] >= latency_threshold_seconds)
-
-    if quality_regressions:
-        verdict = "reject_quality_regression"
-    elif quality_improvements and slower_scenarios:
-        verdict = "candidate_quality_better_with_latency_cost"
-    elif quality_improvements:
-        verdict = "candidate_quality_better"
-    elif slower_scenarios:
-        verdict = "reject_efficiency_regression"
-    elif faster_scenarios:
-        verdict = "candidate_faster"
+    # A replay report is intentionally not eligible for any performance
+    # conclusion.  This guard lives in the comparator (rather than only in
+    # README copy) so future reports cannot accidentally publish a deterministic
+    # "candidate_faster" result.
+    # Missing replay metadata is unsafe too: only reports that explicitly say
+    # ``replay: false`` may ever participate in a performance comparison.
+    replay_comparison = baseline.get("replay") is not False or candidate.get("replay") is not False
+    faster_scenarios = []
+    slower_scenarios = []
+    if replay_comparison:
+        verdict = "replay_contract_regression" if quality_regressions else "replay_contract_only"
     else:
-        verdict = "no_material_improvement"
+        faster_scenarios = sorted(
+            name
+            for name, change in latency_changes_pct.items()
+            if change <= -latency_threshold_pct
+            and raw_latency_changes_seconds[name] <= -latency_threshold_seconds
+        )
+        slower_scenarios = sorted(
+            name
+            for name, change in latency_changes_pct.items()
+            if change >= latency_threshold_pct
+            and raw_latency_changes_seconds[name] >= latency_threshold_seconds
+        )
+
+        if quality_regressions:
+            verdict = "reject_quality_regression"
+        elif quality_improvements and slower_scenarios:
+            verdict = "candidate_quality_better_with_latency_cost"
+        elif quality_improvements:
+            verdict = "candidate_quality_better"
+        elif slower_scenarios:
+            verdict = "reject_efficiency_regression"
+        elif faster_scenarios:
+            verdict = "candidate_faster"
+        else:
+            verdict = "no_material_improvement"
 
     return {
         "verdict": verdict,
@@ -222,6 +251,12 @@ def compare_reports(
         "latency_threshold_seconds": latency_threshold_seconds,
         "faster_scenarios": faster_scenarios,
         "slower_scenarios": slower_scenarios,
+        "performance_claim_eligible": not replay_comparison,
+        "performance_claim_reason": (
+            "Both reports must be live-LLM product-path measurements; Replay timing is diagnostic only."
+            if replay_comparison
+            else "Both reports are marked as live-LLM product-path measurements."
+        ),
         "quality_regressions": quality_regressions,
         "quality_improvements": quality_improvements,
         "baseline": baseline_summary,
@@ -457,20 +492,20 @@ def _render_markdown(report: dict[str, Any]) -> str:
     for name, item in report["summary"]["scenarios"].items():
         latency = item["latency_seconds"]
         lines.append(f"| {name} | {item['runs']} | {_pct(item['run_success_rate'])} | {_pct(item['contract_pass_rate'])} | {_pct(item['check_pass_rate'])} | {latency['p50']:.3f}s | {latency['p95']:.3f}s |")
-    lines.extend(["", "## Evidence-gated optimization verdict", ""])
+    lines.extend(["", "## Contract comparison", ""])
     comparison = report.get("comparison")
     if comparison is None:
-        lines.append("No candidate/baseline comparison was supplied. This run establishes a measured baseline; it makes no optimization claim.")
+        lines.append("No candidate/baseline comparison was supplied. This run establishes a deterministic contract baseline; it makes no optimization claim.")
     else:
         lines.append(f"**Verdict:** `{comparison['verdict']}`")
+        lines.append(f"\n**Performance claim eligible:** `{str(comparison['performance_claim_eligible']).lower()}` — {comparison['performance_claim_reason']}")
         if comparison["latency_changes_pct"]:
-            lines.append(f"\nP50 latency changes (negative means faster; material only when both `{comparison['latency_threshold_pct']:.1f}%` and `{comparison['latency_threshold_seconds']:.3f}s` thresholds are met):")
+            lines.append("\nDiagnostic Replay P50 timing changes (negative means the deterministic harness completed sooner; these numbers cannot support a product performance claim):")
             for name, change in comparison["latency_changes_pct"].items():
                 baseline_p50 = comparison["baseline_p50_seconds"][name]
                 candidate_p50 = comparison["candidate_p50_seconds"][name]
                 delta_seconds = comparison["latency_changes_seconds"][name]
-                material = name in comparison["faster_scenarios"] or name in comparison["slower_scenarios"]
-                lines.append(f"- `{name}`: `{baseline_p50:.3f}s -> {candidate_p50:.3f}s`; `{change:.2f}%` / `{delta_seconds:+.3f}s` ({'material' if material else 'below gate'})")
+                lines.append(f"- `{name}`: `{baseline_p50:.3f}s -> {candidate_p50:.3f}s`; `{change:.2f}%` / `{delta_seconds:+.3f}s` (diagnostic only)")
         if comparison["quality_regressions"]:
             lines.append("\nQuality regressions were detected and speed changes are rejected:")
             for key, values in comparison["quality_regressions"].items():
@@ -513,14 +548,15 @@ def _render_html(report: dict[str, Any]) -> str:
             baseline_p50 = comparison["baseline_p50_seconds"][name]
             candidate_p50 = comparison["candidate_p50_seconds"][name]
             delta_seconds = comparison["latency_changes_seconds"][name]
-            material = name in comparison["faster_scenarios"] or name in comparison["slower_scenarios"]
             change_items.append(
-                f"<li><code>{html.escape(name)}</code>: <code>{baseline_p50:.3f}s -&gt; {candidate_p50:.3f}s</code>; <code>{change:.2f}%</code> / <code>{delta_seconds:+.3f}s</code> ({'material' if material else 'below gate'})</li>"
+                f"<li><code>{html.escape(name)}</code>: <code>{baseline_p50:.3f}s -&gt; {candidate_p50:.3f}s</code>; <code>{change:.2f}%</code> / <code>{delta_seconds:+.3f}s</code> (diagnostic only)</li>"
             )
         comparison_html = (
-            "<h2>Optimization comparison</h2>"
-            f"<p>Verdict: <code>{html.escape(verdict)}</code>. A latency change is material only when it reaches both "
-            f"<code>{comparison['latency_threshold_pct']:.1f}%</code> and <code>{comparison['latency_threshold_seconds']:.3f}s</code>.</p>"
+            "<h2>Contract comparison</h2>"
+            f"<p>Verdict: <code>{html.escape(verdict)}</code>. Performance claim eligible: "
+            f"<code>{str(comparison['performance_claim_eligible']).lower()}</code>. "
+            f"{html.escape(str(comparison['performance_claim_reason']))}</p>"
+            "<p>Replay P50 changes below are diagnostic only; they cannot support a product performance claim.</p>"
             f"<ul>{''.join(change_items)}</ul>"
         )
     return f"""<!doctype html>
@@ -545,7 +581,7 @@ code{{background:#f3eee7;padding:2px 5px;border-radius:5px}}
 <tr><th>Run success rate</th><td><span class="pill">{_pct(summary["run_success_rate"])}</span></td></tr>
 <tr><th>Contract-complete run rate</th><td><span class="pill">{_pct(summary["contract_pass_rate"])}</span></td></tr>
 <tr><th>Contract check pass rate</th><td><span class="pill">{_pct(summary["check_pass_rate"])}</span></td></tr>
-<tr><th>Optimization verdict</th><td><code>{html.escape(verdict)}</code></td></tr>
+<tr><th>Contract comparison verdict</th><td><code>{html.escape(verdict)}</code></td></tr>
 </tbody></table>
 <h2>Scenario summary</h2><table><thead><tr><th>Scenario</th><th>Runs</th><th>Run success</th><th>Contract-complete</th><th>Checks</th><th>P50</th><th>P95</th></tr></thead><tbody>{"".join(rows)}</tbody></table>
 {comparison_html}
@@ -700,6 +736,7 @@ def main(argv: list[str] | None = None) -> int:
         if isinstance(comparison, dict) and comparison.get("verdict") in {
             "reject_quality_regression",
             "reject_efficiency_regression",
+            "replay_contract_regression",
         }:
             return 1
         return 0

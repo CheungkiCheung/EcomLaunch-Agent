@@ -33,6 +33,7 @@ run_budget:
   max_subagent_calls: 0
   max_total_tokens: 250000
   max_execution_seconds: 120
+  max_model_call_seconds: 45
   direct_answer_patterns:
     - '(?:最先|首先|第一步|优先).{0,32}(?:验证|假设|测试|检查|改进)'
     - '(?:哪一个|哪个|什么).{0,32}(?:假设|风险|指标|问题).{0,16}(?:最先|优先|先)'

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, call
 
 import pytest
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.checkpoint.base import empty_checkpoint
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -14,6 +14,7 @@ from deerflow.runtime.runs.worker import (
     _agent_factory_supports_app_config,
     _build_runtime_context,
     _extract_llm_error_fallback_message,
+    _has_successful_terminal_delivery,
     _install_runtime_context,
     _rollback_to_pre_run_checkpoint,
     _try_extract_from_message,
@@ -148,6 +149,64 @@ async def test_run_agent_marks_llm_error_fallback_as_error_status():
     assert fetched is not None
     assert fetched.status == RunStatus.error
     assert fetched.error == "Connection error."
+
+
+@pytest.mark.anyio
+async def test_run_agent_treats_successful_terminal_delivery_as_recovered() -> None:
+    run_manager = RunManager()
+    record = await run_manager.create("thread-1")
+    bridge = SimpleNamespace(
+        publish=AsyncMock(),
+        publish_end=AsyncMock(),
+        cleanup=AsyncMock(),
+    )
+
+    timeout = AIMessage(
+        content="hidden timeout",
+        additional_kwargs={
+            "deerflow_error_fallback": True,
+            "hide_from_ui": True,
+            "error_detail": "Lead model call exceeded its budget",
+        },
+    )
+    delivery_call = AIMessage(
+        content="",
+        tool_calls=[
+            {
+                "name": "render_launch_pack",
+                "id": "render-1",
+                "args": {},
+                "type": "tool_call",
+            }
+        ],
+    )
+    delivery_result = ToolMessage(
+        content="Successfully presented files: launch-war-room.html",
+        tool_call_id="render-1",
+    )
+
+    class DummyAgent:
+        async def astream(self, graph_input, config=None, stream_mode=None, subgraphs=False):
+            yield {"messages": [timeout]}
+            yield {"messages": [timeout, delivery_call, delivery_result]}
+
+    def factory(*, config):
+        return DummyAgent()
+
+    await run_agent(
+        bridge,
+        run_manager,
+        record,
+        ctx=RunContext(checkpointer=None),
+        agent_factory=factory,
+        graph_input={},
+        config={},
+    )
+
+    fetched = await run_manager.get(record.run_id)
+    assert fetched is not None
+    assert fetched.status == RunStatus.success
+    assert fetched.error is None
     bridge.publish_end.assert_awaited_once_with(record.run_id)
 
 
@@ -672,3 +731,52 @@ def test_extract_llm_error_fallback_message_updates_mode_no_fallback():
         ]
     }
     assert _extract_llm_error_fallback_message(update_chunk) is None
+
+
+def test_successful_terminal_delivery_detection_supports_serialized_messages() -> None:
+    state = {
+        "messages": [
+            {
+                "type": "ai",
+                "tool_calls": [
+                    {
+                        "name": "render_launch_pack",
+                        "id": "render-1",
+                        "args": {},
+                    }
+                ],
+            },
+            {
+                "type": "tool",
+                "tool_call_id": "render-1",
+                "content": "Successfully presented files: seven artifacts",
+            },
+        ]
+    }
+
+    assert _has_successful_terminal_delivery(state) is True
+
+
+def test_successful_terminal_delivery_detection_ignores_previous_user_turn() -> None:
+    state = {
+        "messages": [
+            {"type": "human", "content": "old request"},
+            {
+                "type": "ai",
+                "tool_calls": [{"name": "render_launch_pack", "id": "old-render", "args": {}}],
+            },
+            {
+                "type": "tool",
+                "tool_call_id": "old-render",
+                "content": "Successfully presented files: old pack",
+            },
+            {"type": "human", "content": "new request"},
+            {
+                "type": "ai",
+                "content": "provider unavailable",
+                "additional_kwargs": {"deerflow_error_fallback": True},
+            },
+        ]
+    }
+
+    assert _has_successful_terminal_delivery(state) is False

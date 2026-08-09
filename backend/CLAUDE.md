@@ -201,7 +201,8 @@ from deerflow.config import get_app_config
 
 Repository-defined agent configs may also set `run_budget` with
 `max_lead_model_calls`, `max_subagent_calls`, `max_total_tokens`,
-`max_execution_seconds`, `deduplicate_subagents`, and an optional
+`max_execution_seconds`, optional `max_model_call_seconds`,
+`deduplicate_subagents`, and an optional
 `allowed_subagent_types` allowlist. When the allowlist is present, a task call
 for another type is rejected before the execution slot is reserved or a
 `SubagentExecutor` is started. Complete-pack agents may additionally configure
@@ -216,6 +217,9 @@ only the next dependency-safe `task` call, so a lead cannot waste a turn rereadi
 an already-loaded Skill. After the first compatibility write and before
 completeness, read/grep/research/delegation/presentation remain unavailable and
 only the bounded write/edit path may complete the configured artifacts.
+The async product runtime clamps each lead-model call to the smaller of the
+remaining run budget and `max_model_call_seconds`; an upstream provider timeout
+therefore cannot silently exceed the advertised request budget.
 If deterministic preflight fails, only `write_file`/`str_replace` remain until
 every attempted revision in the latest batch succeeds, after which
 `present_files` is forced again.
@@ -643,14 +647,18 @@ The Launch Ultra replay requires the three configured specialists, seven artifac
 
 The replay benchmark executes those same real Gateway paths repeatedly and emits
 sanitized `latest-summary.json`, `latest-report.md`, and `latest-report.html`
-files under `benchmarks/opensku-replay/`. It is an evidence gate: a candidate
-optimization is accepted only when it does not regress run success or contract
-checks and shows a material quality or latency improvement. Latency must pass
-both the relative threshold (default 5%) and absolute threshold (default 50 ms),
-so millisecond noise on already-fast scenarios is not counted as an optimization.
-Replay token counts
-are intentionally marked unavailable because the deterministic fixture disables
+files under `benchmarks/opensku-replay/`. It is a deterministic contract gate,
+not a performance benchmark. Replay timing remains visible for harness diagnosis,
+but the comparator hard-blocks `candidate_faster` and every other performance
+claim whenever either report has `replay: true`. Replay token counts are
+intentionally marked unavailable because the deterministic fixture disables
 token accounting.
+
+Use `scripts/run_opensku_benchmark.py` for performance evidence. A publishable
+latency or efficiency claim requires repeated real-LLM runs through the real
+Gateway and product workflow (`replay: false`), using the same prompt/model and
+passing the run, successful-specialist, artifact, specialist-order, and Preflight quality gates. If
+Live evidence is absent, noisy, or quality regresses, record no improvement.
 
 `.github/workflows/live-llm-canary.yml` runs weekly and on manual dispatch. It requires `OPENSKU_CANARY_API_KEY` (or the legacy `OPENAI_API_KEY` secret), optionally `OPENSKU_CANARY_BASE_URL`, and `OPENSKU_CANARY_MODEL`. The canary explicitly records `replay: false`, enforces model-call/token/tool budgets, and uploads state, events, metrics, artifacts, and a summary. Missing credentials produce an explicit skipped result rather than a false pass.
 

@@ -72,9 +72,65 @@ def test_comparison_rejects_quality_regression_even_when_candidate_is_faster() -
 
     comparison = compare_reports(baseline, candidate)
 
-    assert comparison["verdict"] == "reject_quality_regression"
+    assert comparison["verdict"] == "replay_contract_regression"
     assert "contract_pass_rate" in comparison["quality_regressions"]
+    assert comparison["faster_scenarios"] == []
+    assert comparison["performance_claim_eligible"] is False
+
+
+def test_replay_comparison_never_claims_candidate_is_faster() -> None:
+    baseline = _build_report(
+        {"launch": [_row(elapsed=20.0)], "growth": [_row(elapsed=10.0)]},
+        repeats=1,
+        replay_misses=0,
+    )
+    candidate = _build_report(
+        {"launch": [_row(elapsed=1.0)], "growth": [_row(elapsed=1.0)]},
+        repeats=1,
+        replay_misses=0,
+    )
+
+    comparison = compare_reports(baseline, candidate)
+
+    assert comparison["verdict"] == "replay_contract_only"
+    assert comparison["latency_changes_pct"] == {"growth": -90.0, "launch": -95.0}
+    assert comparison["faster_scenarios"] == []
+    assert comparison["slower_scenarios"] == []
+    assert comparison["performance_claim_eligible"] is False
+    assert "diagnostic only" in comparison["performance_claim_reason"]
+
+
+def test_only_live_reports_are_eligible_for_latency_verdict() -> None:
+    baseline = _build_report(
+        {"launch": [_row(elapsed=20.0)], "growth": [_row(elapsed=10.0)]},
+        repeats=3,
+        replay_misses=0,
+    )
+    candidate = _build_report(
+        {"launch": [_row(elapsed=10.0)], "growth": [_row(elapsed=5.0)]},
+        repeats=3,
+        replay_misses=0,
+    )
+    baseline["replay"] = False
+    candidate["replay"] = False
+
+    comparison = compare_reports(baseline, candidate)
+
+    assert comparison["verdict"] == "candidate_faster"
     assert comparison["faster_scenarios"] == ["growth", "launch"]
+    assert comparison["performance_claim_eligible"] is True
+
+
+def test_missing_replay_metadata_is_not_eligible_for_latency_verdict() -> None:
+    baseline = _build_report({"launch": [_row(elapsed=20.0)]}, repeats=3, replay_misses=0)
+    candidate = _build_report({"launch": [_row(elapsed=1.0)]}, repeats=3, replay_misses=0)
+    baseline.pop("replay")
+    candidate.pop("replay")
+
+    comparison = compare_reports(baseline, candidate)
+
+    assert comparison["verdict"] == "replay_contract_only"
+    assert comparison["performance_claim_eligible"] is False
 
 
 def test_comparison_marks_small_latency_changes_as_no_material_improvement() -> None:
@@ -91,7 +147,7 @@ def test_comparison_marks_small_latency_changes_as_no_material_improvement() -> 
 
     comparison = compare_reports(baseline, candidate)
 
-    assert comparison["verdict"] == "no_material_improvement"
+    assert comparison["verdict"] == "replay_contract_only"
     assert comparison["quality_regressions"] == {}
     assert comparison["faster_scenarios"] == []
 
@@ -114,7 +170,7 @@ def test_comparison_ignores_large_percentage_on_tiny_absolute_latency_change() -
     assert comparison["candidate_p50_seconds"]["growth"] == 0.05
     assert comparison["latency_changes_pct"]["growth"] < -5.0
     assert comparison["latency_changes_seconds"]["growth"] == -0.007
-    assert comparison["verdict"] == "no_material_improvement"
+    assert comparison["verdict"] == "replay_contract_only"
     assert comparison["faster_scenarios"] == []
 
 

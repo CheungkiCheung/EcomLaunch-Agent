@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import time
@@ -39,6 +40,7 @@ DELIVERY_FINALIZATION_MESSAGE = """Terminal delivery finalization:
 - Do not start another phase, propose automatic follow-up work, offer options, ask for confirmation, or end with a question.
 - Do not claim an audit passed unless the exact delivered files were audited."""
 DELIVERY_COMPLETE_CONTENT = "文件已经交付，本次请求到此结束。"
+MODEL_CALL_TIMEOUT_CONTENT = "模型服务未能在本次运行预算内返回结果，已停止等待。请稍后重试；本次没有生成可交付文件。"
 DIRECT_ANSWER_TOOL_BLOCKED_CONTENT = "本次短问题未生成有效文本回答；已停止异常工具调用，未执行搜索、子智能体或文件操作。"
 DIRECT_ANSWER_MESSAGE = """Configured direct-answer scope:
 - Answer this short question now without tools, subagents, files, or additional research.
@@ -283,6 +285,32 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
             "subagent_types_completed": set(),
             "required_output_files_written": set(),
         }
+
+    def _remaining_model_call_seconds(self, runtime: Runtime) -> float | None:
+        context = getattr(runtime, "context", None)
+        budget_state = context.get(RUN_BUDGET_CONTEXT_KEY) if isinstance(context, dict) else None
+        if not isinstance(budget_state, dict):
+            return None
+        deadline = budget_state.get("deadline_monotonic")
+        if not isinstance(deadline, (int, float)):
+            return None
+        remaining = max(0.0, float(deadline) - time.monotonic())
+        if self.config.max_model_call_seconds is None:
+            return remaining
+        return min(remaining, float(self.config.max_model_call_seconds))
+
+    @staticmethod
+    def _model_call_timeout_response(timeout_seconds: float) -> AIMessage:
+        return AIMessage(
+            content=MODEL_CALL_TIMEOUT_CONTENT,
+            additional_kwargs={
+                "deerflow_error_fallback": True,
+                "hide_from_ui": True,
+                "error_type": "RunBudgetModelTimeout",
+                "error_reason": "run_budget_timeout",
+                "error_detail": f"Lead model call exceeded its {timeout_seconds:.1f}s effective run-budget cap",
+            },
+        )
 
     @override
     def before_agent(self, state: AgentState, runtime: Runtime) -> dict | None:
@@ -964,4 +992,17 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
         request: ModelRequest,
         handler: Callable[[ModelRequest], Awaitable[ModelResponse]],
     ) -> ModelCallResult:
-        return await handler(self._augment_request(request))
+        updated_request = self._augment_request(request)
+        timeout_seconds = self._remaining_model_call_seconds(request.runtime)
+        if timeout_seconds is None:
+            return await handler(updated_request)
+        if timeout_seconds <= 0:
+            return self._model_call_timeout_response(0.0)
+        timeout_scope = asyncio.timeout(timeout_seconds)
+        try:
+            async with timeout_scope:
+                return await handler(updated_request)
+        except TimeoutError:
+            if not timeout_scope.expired():
+                raise
+            return self._model_call_timeout_response(timeout_seconds)

@@ -14,6 +14,7 @@ run_budget:
   max_subagent_calls: 3
   max_total_tokens: 500000
   max_execution_seconds: 270
+  max_model_call_seconds: 75
   deduplicate_subagents: true
   allowed_subagent_types:
   - market-voc-researcher

@@ -27,7 +27,15 @@ class AgentRunBudgetConfig(BaseModel):
     )
     max_execution_seconds: int = Field(
         ge=1,
-        description="Wall-time budget used to clamp subagent timeouts and stop further tool work",
+        description="Wall-time budget used to clamp model/subagent calls and stop further tool work",
+    )
+    max_model_call_seconds: int | None = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Optional per-lead-model-call wall-time cap. The effective cap is the smaller of this value and the remaining run budget. "
+            "None uses only the remaining run budget."
+        ),
     )
     deduplicate_subagents: bool = Field(
         default=True,

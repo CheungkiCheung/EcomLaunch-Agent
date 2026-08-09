@@ -189,6 +189,7 @@ def test_ecom_launch_agent_loads_only_its_router_skill() -> None:
         "max_subagent_calls": 3,
         "max_total_tokens": 500000,
         "max_execution_seconds": 270,
+        "max_model_call_seconds": 75,
         "deduplicate_subagents": True,
         "allowed_subagent_types": [
             "market-voc-researcher",
@@ -288,6 +289,7 @@ def test_openskufast_agent_config_loads() -> None:
     rb = cfg["run_budget"]
     assert rb["max_lead_model_calls"] == 16
     assert rb["max_total_tokens"] == 250000
+    assert rb["max_model_call_seconds"] == 45
     assert rb["complete_pack_initial_research_calls"] == 2
     assert rb["compact_write_file_history"] is True
 
