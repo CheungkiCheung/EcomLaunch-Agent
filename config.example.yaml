@@ -509,7 +509,8 @@ tools:
     group: web
     use: deerflow.community.ddg_search.tools:web_search_tool
     max_results: 5
-    # backend: auto          # DDGS backend(s): auto, duckduckgo, brave, wikipedia, etc.
+    backend: yandex           # Single bounded backend; avoid auto's multi-engine timeout cascade.
+    timeout: 5                # Per-search seconds; unavailable sources are returned as evidence gaps.
     # region: wt-wt          # wt-wt is normalized for Wikipedia when backend includes auto/all/wikipedia.
     # safesearch: moderate   # on, moderate, off
 
@@ -657,6 +658,14 @@ tools:
   - name: write_file
     group: file:write
     use: deerflow.sandbox.tools:write_file_tool
+
+  - name: write_launch_pack
+    group: file:write
+    use: deerflow.sandbox.tools:write_launch_pack_tool
+
+  - name: render_launch_pack
+    group: file:write
+    use: deerflow.sandbox.tools:render_launch_pack_tool
 
   - name: str_replace
     group: file:write
@@ -925,9 +934,10 @@ sandbox:
 #   # they reserve a slot or start a SubagentExecutor.
 #   # The same agent config may set run_budget.required_output_files plus
 #   # auto_present_complete_pack=true and validate_pack_before_present=true.
-#   # After the first current-request Pack write, the lead keeps only write/edit
-#   # tools until every configured file has been written, then keeps only
-#   # present_files. A failed deterministic preflight temporarily permits only
+#   # After the configured specialists complete, prefer render_launch_pack with
+#   # one compact structured spec. It deterministically renders, preflights, and
+#   # presents the canonical seven files in one tool call. Compatibility writes
+#   # remain available, and a failed deterministic preflight temporarily permits only
 #   # targeted file revision before presentation is retried. require_evidence_checker remains
 #   # an optional independent-audit gate and may stay false. Ordinary short
 #   # answers and one-off artifacts are not forced through this Pack contract.
@@ -947,11 +957,12 @@ sandbox:
 #   #       - competitor-analysis
 #   #       - market-segments
 #   #       - sentiment-analysis
-#   #     model: inherit
+#   #     model: deepseek-chat
 #   #     max_turns: 50
 #   #     timeout_seconds: 90
 #   #     max_model_calls: 4
 #   #     max_total_tokens: 45000
+#   #     max_output_tokens: 1200
 #   #
 #   #   offer-architect:
 #   #     description: "Turn evidence into an audience wedge, offer, pricing hypothesis, assumptions, and experiments"
@@ -967,11 +978,12 @@ sandbox:
 #   #       - identify-assumptions-new
 #   #       - prioritize-assumptions
 #   #       - brainstorm-experiments-new
-#   #     model: inherit
+#   #     model: deepseek-chat
 #   #     max_turns: 50
 #   #     timeout_seconds: 60
 #   #     max_model_calls: 2
 #   #     max_total_tokens: 30000
+#   #     max_output_tokens: 1000
 #   #
 #   #   asset-studio:
 #   #     description: "Create ecommerce and content assets from an approved launch brief"
@@ -989,11 +1001,12 @@ sandbox:
 #   #       - positioning-ideas
 #   #       - value-prop-statements
 #   #       - marketing-ideas
-#   #     model: inherit
+#   #     model: deepseek-chat
 #   #     max_turns: 50
 #   #     timeout_seconds: 60
 #   #     max_model_calls: 2
 #   #     max_total_tokens: 30000
+#   #     max_output_tokens: 900
 #   #
 #   #   evidence-checker:
 #   #     description: "Black-box audit final recommendations, claims, citations, and deliverables"

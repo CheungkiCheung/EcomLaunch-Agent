@@ -19,7 +19,7 @@ from deerflow.agents.middlewares.tool_call_metadata import clone_ai_message_with
 from deerflow.config.agent_run_budget_config import AgentRunBudgetConfig
 
 RUN_BUDGET_CONTEXT_KEY = "__deerflow_agent_run_budget"
-TERMINAL_DELIVERY_TOOLS = frozenset({"present_files"})
+TERMINAL_DELIVERY_TOOLS = frozenset({"present_files", "render_launch_pack"})
 FINALIZATION_MESSAGE = """Execution budget finalization:
 - This is the final model response available before the hard execution limit.
 - Do not call more research or drafting tools.
@@ -34,9 +34,12 @@ SPECIALIST_FINALIZATION_MESSAGE = """Specialist execution finalization:
 DELIVERY_FINALIZATION_MESSAGE = """Terminal delivery finalization:
 - `present_files` has already succeeded for this user request. Do not call any more tools.
 - Return one concise, declarative delivery summary and the evidence-bounded decision.
+- Tell the user the delivered files are visible in the file card below and in the header Files control.
+- Do not expose `/mnt/user-data/outputs` or another internal sandbox path as the user's way to find the files.
 - Do not start another phase, propose automatic follow-up work, offer options, ask for confirmation, or end with a question.
 - Do not claim an audit passed unless the exact delivered files were audited."""
 DELIVERY_COMPLETE_CONTENT = "文件已经交付，本次请求到此结束。"
+DIRECT_ANSWER_TOOL_BLOCKED_CONTENT = "本次短问题未生成有效文本回答；已停止异常工具调用，未执行搜索、子智能体或文件操作。"
 DIRECT_ANSWER_MESSAGE = """Configured direct-answer scope:
 - Answer this short question now without tools, subagents, files, or additional research.
 - Give one clear decision, the reason, and the smallest honest validation action.
@@ -51,18 +54,32 @@ COMPLETE_PACK_PRESENTATION_MESSAGE = """Configured complete Pack is ready for de
 - Every required output file is present and the configured specialist sequence has completed.
 - Do not read or grep the files, rewrite them, research, or call another specialist.
 - Call present_files now with the complete configured file set; it performs the authoritative deterministic preflight."""
+COMPLETE_PACK_RESEARCH_MESSAGE = """Configured Flash Pack public-signal research starts now:
+- Run the remaining bounded web_search/web_fetch attempts now, batching independent searches in one response.
+- Search only for directly relevant demand, competitor/price, scenario, or objection signals for the user's product and market.
+- Do not read skills, inspect files, draft artifacts, call a subagent, or narrate future research.
+- Search failures and blocked pages are valid unavailable evidence; do not retry equivalent queries beyond this bounded phase.
+- Search snippets are discovery signals, not verified observed_public claims. Preserve exact URLs and downgrade unsupported conclusions to estimated or unavailable."""
+COMPLETE_PACK_SPECIALIST_MESSAGE = """Configured complete Pack specialist orchestration is active:
+- The launch Skill is already loaded in context. Do not read `/mnt/skills`, inspect files, draft artifacts, search from the lead agent, or narrate future work.
+- Call exactly the next required specialist with `task`, one dependency-safe specialist per model response.
+- Give that specialist a compact brief using the user request and already-returned prerequisite findings.
+- Do not call any other specialist or tool in this response."""
 COMPLETE_PACK_DRAFT_MESSAGE = """Configured complete Pack drafting starts now:
 - All configured specialists completed. Use only their returned findings; do not start new research.
-- Write all seven configured files in no more than two model responses and batch independent write_file calls.
-- evidence-ledger.json must be {\"entries\": [...]}.
-- Evidence labels must be exactly observed_public, uploaded_real, estimated, assumption, or unavailable.
-- Search-result and image-search URLs are discovery aids, never observed_public evidence; label those claims estimated or unavailable.
-- competitor-table.csv must contain evidence_label and source_url on every row; evidence_label cannot be blank.
-- Reuse asset-studio's listing/content copy; do not add features, first-person experience, testimonials, demonstrations, tests, or performance promises, including inside disclaimers.
-- When the request says there is no sample or specification, consumer copy may contain only category, target price, user problem, alternatives, and neutral validation questions.
-- Omit product-existence/persona phrasing and forbidden-term or safety-list sections entirely.
-- launch-war-room.html must be real self-contained HTML, never a summary or [compacted ...] marker.
-- Do not read, grep, research, call task, or present until all files are written."""
+- Call render_launch_pack exactly once with one compact `spec` object; do not generate or pass full file contents.
+- Include category, target_price, decision, decision_rationale, audience, and validation_goal. Add only concise evidence, competitors, hypotheses, and experiments already supported by specialist results.
+- Evidence labels must be exactly observed_public, uploaded_real, estimated, assumption, or unavailable. observed_public requires a direct source URL; search-result and image-search URLs are discovery aids, never observed_public evidence.
+- Keep the whole tool argument compact (normally under 1,500 output tokens). The renderer creates canonical files, runs deterministic preflight, and presents all seven artifacts in the same tool call.
+- Use write_launch_pack or write_file only as a compatibility fallback when render_launch_pack is unavailable.
+- Do not read, grep, research, call task, or call present_files separately."""
+COMPLETE_PACK_FLASH_DRAFT_MESSAGE = """Configured Flash Pack drafting starts now:
+- The bounded public-signal research stage completed or degraded. Use only those findings; do not start new research.
+- Call render_launch_pack exactly once with one compact `spec` object; do not generate or pass full file contents.
+- Include category, target_price, decision, decision_rationale, audience, and validation_goal. Keep evidence and competitor rows concise; observed_public requires a direct source URL, while search snippets must be estimated or unavailable.
+- Keep the whole tool argument compact (normally under 1,200 output tokens). The renderer creates, preflights, and presents all seven canonical files in the same tool call.
+- Use write_launch_pack or write_file only as a compatibility fallback when render_launch_pack is unavailable.
+- Do not read, grep, research, call task, or call present_files separately."""
 COMPLETE_PACK_ASSEMBLY_MESSAGE = """Configured complete Pack assembly is in progress:
 - At least one required output file was written successfully in this request; use the latest write_file result's missing-file list.
 - Do not read, grep, research, present an incomplete Pack, or call another specialist.
@@ -100,7 +117,9 @@ INTERNAL_HUMAN_MESSAGE_NAMES = frozenset(
         "complete_pack_draft",
         "complete_pack_assembly",
         "complete_pack_presentation",
+        "complete_pack_research",
         "complete_pack_revision",
+        "complete_pack_specialist",
         "post_subagent_failure",
         "post_subagent_finalization",
         "run_budget_finalization",
@@ -223,11 +242,23 @@ def _compact_write_file_history(messages: list[Any]) -> tuple[list[Any], list[di
 def _has_completed_terminal_delivery(messages: list[Any]) -> bool:
     """Return whether ``present_files`` succeeded in the latest user turn."""
     turn_messages = _current_turn_messages(messages)
-    present_call_ids = {str(tool_call.get("id")) for message in turn_messages if isinstance(message, AIMessage) for tool_call in (message.tool_calls or []) if tool_call.get("name") == "present_files" and tool_call.get("id")}
-    if not present_call_ids:
+    delivery_call_ids = {
+        str(tool_call.get("id"))
+        for message in turn_messages
+        if isinstance(message, AIMessage)
+        for tool_call in (message.tool_calls or [])
+        if tool_call.get("name") in TERMINAL_DELIVERY_TOOLS and tool_call.get("id")
+    }
+    if not delivery_call_ids:
         return False
 
-    return any(isinstance(message, ToolMessage) and str(message.tool_call_id) in present_call_ids and message.status != "error" and "Successfully presented files" in str(message.content) for message in turn_messages)
+    return any(
+        isinstance(message, ToolMessage)
+        and str(message.tool_call_id) in delivery_call_ids
+        and message.status != "error"
+        and "Successfully presented files" in str(message.content)
+        for message in turn_messages
+    )
 
 
 class RunBudgetMiddleware(AgentMiddleware[AgentState]):
@@ -341,7 +372,7 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
         must stop forcing the model back into that loop after a later retry has
         successfully delivered the pack.
         """
-        present_outcomes = [result for _, name, _args, result in self._tool_outcomes(messages) if name == "present_files"]
+        present_outcomes = [result for _, name, _args, result in self._tool_outcomes(messages) if name in TERMINAL_DELIVERY_TOOLS]
         return bool(present_outcomes) and not self._tool_succeeded(present_outcomes[-1])
 
     def _terminal_subagent_completed(self, runtime: Runtime) -> bool:
@@ -396,7 +427,24 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
         completed = budget_state.get("subagent_types_completed", set())
         if not isinstance(completed, set):
             completed = set(completed) if isinstance(completed, (list, tuple)) else set()
-        return all(name in completed for name in required)
+        degraded = budget_state.get("subagent_types_degraded", {})
+        degraded_names = set(degraded) if isinstance(degraded, dict) else set()
+        return all(name in completed or name in degraded_names for name in required)
+
+    def _next_required_subagent(self, runtime: Runtime) -> str | None:
+        required = self.config.required_completed_subagents or []
+        if not required:
+            return None
+        context = getattr(runtime, "context", None)
+        budget_state = context.get(RUN_BUDGET_CONTEXT_KEY) if isinstance(context, dict) else None
+        if not isinstance(budget_state, dict):
+            return required[0]
+        completed = budget_state.get("subagent_types_completed", set())
+        if not isinstance(completed, set):
+            completed = set(completed) if isinstance(completed, (list, tuple)) else set()
+        degraded = budget_state.get("subagent_types_degraded", {})
+        degraded_names = set(degraded) if isinstance(degraded, dict) else set()
+        return next((name for name in required if name not in completed and name not in degraded_names), None)
 
     def _terminal_delivery_is_ready(self, runtime: Runtime) -> bool:
         if not self._required_subagents_completed(runtime):
@@ -432,6 +480,33 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
             "id": f"call_terminal_present_{uuid.uuid4().hex}",
             "type": "tool_call",
         }
+
+    def _configured_complete_pack_research_calls(self, messages: list[Any]) -> list[dict[str, Any]]:
+        remaining = max(
+            0,
+            self.config.complete_pack_initial_research_calls - self._complete_pack_research_attempts(messages),
+        )
+        if remaining == 0:
+            return []
+        user_text = re.sub(r"\s+", " ", _latest_user_text(messages)).strip()
+        if not user_text:
+            return []
+        query_suffixes = [
+            "市场需求 竞品 价格 公开信号",
+            "用户痛点 使用场景 公开评价",
+        ]
+        calls: list[dict[str, Any]] = []
+        for index in range(remaining):
+            suffix = query_suffixes[index % len(query_suffixes)]
+            calls.append(
+                {
+                    "name": "web_search",
+                    "args": {"query": f"{user_text[:240]} {suffix}", "max_results": 5},
+                    "id": f"call_complete_pack_search_{uuid.uuid4().hex}",
+                    "type": "tool_call",
+                }
+            )
+        return calls
 
     @staticmethod
     def _tool_outcomes(messages: list[Any]) -> list[tuple[int, str, dict[str, Any], ToolMessage]]:
@@ -497,16 +572,30 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
             return True
         return required_names.issubset(self._complete_pack_written_names(messages, runtime))
 
+    def _complete_pack_research_attempts(self, messages: list[Any]) -> int:
+        return sum(
+            1
+            for _, name, _args, _result in self._tool_outcomes(messages)
+            if name in {"web_search", "web_fetch"}
+        )
+
     def _complete_pack_phase(self, messages: list[Any], runtime: Runtime) -> str | None:
         if not self.config.auto_present_complete_pack:
             return None
         if not self._terminal_delivery_is_ready(runtime):
             return None
+        required_research = self.config.complete_pack_initial_research_calls
+        if (
+            required_research > 0
+            and not self._complete_pack_written_names(messages, runtime)
+            and self._complete_pack_research_attempts(messages) < required_research
+        ):
+            return "research"
         if not self._complete_pack_files_ready(messages, runtime):
             return "assemble" if self._complete_pack_written_names(messages, runtime) else "draft"
 
         outcomes = self._tool_outcomes(messages)
-        present_outcomes = [outcome for outcome in outcomes if outcome[1] == "present_files"]
+        present_outcomes = [outcome for outcome in outcomes if outcome[1] in TERMINAL_DELIVERY_TOOLS]
         if not present_outcomes:
             return "present"
 
@@ -586,7 +675,12 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
             ]
             return request.override(messages=messages, tools=[])
 
-        if _has_completed_terminal_delivery(request.messages):
+        next_required_subagent = self._next_required_subagent(request.runtime)
+        if self._is_complete_workflow_request(request.messages) and next_required_subagent is not None:
+            finalization_message = f"{COMPLETE_PACK_SPECIALIST_MESSAGE}\n- Next required specialist: {next_required_subagent}."
+            finalization_name = "complete_pack_specialist"
+            request = request.override(tools=[tool for tool in request.tools if getattr(tool, "name", None) == "task"])
+        elif _has_completed_terminal_delivery(request.messages):
             finalization_message = DELIVERY_FINALIZATION_MESSAGE
             finalization_name = "terminal_delivery_finalization"
         elif self._terminal_subagent_finished(request.runtime):
@@ -620,9 +714,19 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
                 finalization_name = "complete_pack_revision"
                 allowed_tools = {"write_file", "str_replace"}
             elif complete_pack_phase == "draft":
-                finalization_message = COMPLETE_PACK_DRAFT_MESSAGE
+                finalization_message = (
+                    COMPLETE_PACK_FLASH_DRAFT_MESSAGE
+                    if self.config.complete_pack_initial_research_calls > 0
+                    else COMPLETE_PACK_DRAFT_MESSAGE
+                )
                 finalization_name = "complete_pack_draft"
-                allowed_tools = {"write_file"}
+                allowed_tools = {"render_launch_pack", "write_launch_pack", "write_file"}
+            elif complete_pack_phase == "research":
+                completed_research = self._complete_pack_research_attempts(request.messages)
+                remaining_research = max(0, self.config.complete_pack_initial_research_calls - completed_research)
+                finalization_message = f"{COMPLETE_PACK_RESEARCH_MESSAGE}\n- Remaining research attempts in this phase: {remaining_research}."
+                finalization_name = "complete_pack_research"
+                allowed_tools = {"web_search", "web_fetch"}
             else:
                 finalization_message = COMPLETE_PACK_ASSEMBLY_MESSAGE
                 finalization_name = "complete_pack_assembly"
@@ -655,6 +759,24 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
             return None
 
         tool_calls = list(last.tool_calls or [])
+        # Direct-answer routing is terminal after exactly one model response.
+        # The pre-model hook removes all tools, but this guard is still needed
+        # before the generic complete-Pack state machine below: otherwise an
+        # agent with auto_present_complete_pack enabled can inject research and
+        # renderer calls after a valid short answer, causing an endless loop.
+        if self._is_direct_answer_request(messages[:-1]):
+            if not tool_calls:
+                return None
+            existing_content = last.content.strip() if isinstance(last.content, str) else ""
+            return {
+                "messages": [
+                    clone_ai_message_with_tool_calls(
+                        last,
+                        [],
+                        content=existing_content or DIRECT_ANSWER_TOOL_BLOCKED_CONTENT,
+                    )
+                ]
+            }
         self._mark_candidate_preflight_revision(tool_calls, runtime)
         if self._terminal_subagent_finished(runtime) and not _has_completed_terminal_delivery(messages[:-1]):
             filtered_calls = self._filter_post_subagent_tool_calls(tool_calls, runtime)
@@ -664,23 +786,88 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
                     existing_content = "证据审计未完成或已阻止交付；文件未向用户展示，本次请求以部分完成状态结束。"
                 return {"messages": [clone_ai_message_with_tool_calls(last, filtered_calls, content=existing_content)]}
 
+        next_required_subagent = self._next_required_subagent(runtime)
+        if self._is_complete_workflow_request(messages[:-1]) and next_required_subagent is not None and tool_calls:
+            task_calls = [
+                call
+                for call in tool_calls
+                if call.get("name") == "task"
+                and isinstance(call.get("args"), dict)
+                and call["args"].get("subagent_type") == next_required_subagent
+            ][:1]
+            if task_calls != tool_calls:
+                if task_calls:
+                    return {"messages": [clone_ai_message_with_tool_calls(last, task_calls, content="")]}
+                reason = self._stop_reason(messages, runtime)
+                if reason is None:
+                    return {"jump_to": "model"}
+                return {
+                    "messages": [
+                        clone_ai_message_with_tool_calls(
+                            last,
+                            [],
+                            content=f"Launch Pack 专家流程未完成。停止原因：{reason}。",
+                        )
+                    ]
+                }
+
         complete_pack_phase = self._complete_pack_phase(messages[:-1], runtime)
         if complete_pack_phase == "present":
             present_calls = [call for call in tool_calls if call.get("name") == "present_files"]
+            configured_call = self._configured_present_files_call(runtime)
+            # Always use the configured canonical filename set. Some providers
+            # normalize hyphens to underscores in tool arguments, which used to
+            # present non-existent aliases and report a false success.
             filtered_calls = present_calls[:1]
-            if not filtered_calls:
-                configured_call = self._configured_present_files_call(runtime)
-                filtered_calls = [configured_call] if configured_call is not None else []
+            if configured_call is not None:
+                configured_paths = configured_call["args"]["filepaths"]
+                presented_paths = (
+                    filtered_calls[0].get("args", {}).get("filepaths")
+                    if filtered_calls
+                    else None
+                )
+                if presented_paths != configured_paths:
+                    filtered_calls = [configured_call]
             if filtered_calls != tool_calls:
                 return {"messages": [clone_ai_message_with_tool_calls(last, filtered_calls, content="")]}
-        elif complete_pack_phase in {"draft", "assemble", "revise"} and tool_calls:
-            allowed_revision_tools = {"write_file"} if complete_pack_phase == "draft" else {"write_file", "str_replace"}
+        elif complete_pack_phase in {"research", "draft", "assemble", "revise"} and tool_calls:
+            if complete_pack_phase == "research":
+                allowed_revision_tools = {"web_search", "web_fetch"}
+            else:
+                allowed_revision_tools = {"render_launch_pack", "write_launch_pack", "write_file"} if complete_pack_phase == "draft" else {"write_file", "str_replace"}
             revision_calls = [call for call in tool_calls if call.get("name") in allowed_revision_tools]
             if revision_calls != tool_calls:
+                # A model can still emit a forbidden read/search/task call even
+                # after the complete-Pack phase has restricted the tool set.
+                # Returning an empty AI message would make LangGraph treat the
+                # run as successfully completed with no artifacts. Re-enter the
+                # model while budget remains so the phase instruction can steer
+                # it toward the required write_file calls.
+                if not revision_calls:
+                    if complete_pack_phase == "research":
+                        configured_calls = self._configured_complete_pack_research_calls(messages[:-1])
+                        if configured_calls:
+                            return {"messages": [clone_ai_message_with_tool_calls(last, configured_calls, content="")]}
+                    reason = self._stop_reason(messages, runtime)
+                    if reason is None:
+                        return {"jump_to": "model"}
+                    stopped = clone_ai_message_with_tool_calls(
+                        last,
+                        [],
+                        content=(
+                            f"Launch Pack 未完成修订或交付，仍有必需文件未通过确定性预检。\n\n"
+                            f"停止原因：{reason}。"
+                        ),
+                    )
+                    return {"messages": [stopped]}
                 existing_content = last.content.strip() if isinstance(last.content, str) else ""
                 return {"messages": [clone_ai_message_with_tool_calls(last, revision_calls, content=existing_content)]}
 
-        if complete_pack_phase in {"draft", "assemble", "revise"} and not tool_calls:
+        if complete_pack_phase in {"research", "draft", "assemble", "revise"} and not tool_calls:
+            if complete_pack_phase == "research":
+                configured_calls = self._configured_complete_pack_research_calls(messages[:-1])
+                if configured_calls:
+                    return {"messages": [clone_ai_message_with_tool_calls(last, configured_calls, content="")]}
             reason = self._stop_reason(messages, runtime)
             if reason is None:
                 # A toolless model response is an intent, not a terminal result:

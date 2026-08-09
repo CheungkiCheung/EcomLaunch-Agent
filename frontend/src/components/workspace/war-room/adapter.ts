@@ -181,7 +181,8 @@ function activityFromTool(
     return "analyzing";
   }
   if (tool === "write_file") return "writing";
-  if (tool === "present_files") return "delivering";
+  if (tool === "present_files" || tool === "render_launch_pack")
+    return "delivering";
   return fallback;
 }
 
@@ -312,6 +313,7 @@ function buildStages(
     { id: "offer-architect", label: copy.stages.offer },
     { id: "asset-studio", label: copy.stages.content },
     { id: "pack", label: copy.stages.pack },
+    { id: "preflight", label: copy.stages.preflight },
     { id: "done", label: copy.stages.done },
   ] as const;
 
@@ -319,6 +321,24 @@ function buildStages(
     const task = latestTaskForRole(tasks, id as WarRoomActorId);
     return task?.status;
   };
+  const launchMessages = messagesOf(source.ecomThread);
+  const rendererCallIds = new Set(
+    launchMessages.flatMap((message) =>
+      message.type === "ai"
+        ? (message.tool_calls ?? [])
+            .filter((call) => call.name === "render_launch_pack" && call.id)
+            .map((call) => call.id!)
+        : [],
+    ),
+  );
+  const rendererCall = rendererCallIds.size > 0;
+  const rendererSucceeded = launchMessages.some(
+    (message) =>
+      message.type === "tool" &&
+      typeof message.tool_call_id === "string" &&
+      rendererCallIds.has(message.tool_call_id) &&
+      extractTextFromMessage(message).includes("Successfully presented files"),
+  );
 
   let currentIndex = 0;
   if (source.ecomRunStatus === "success") {
@@ -331,6 +351,10 @@ function buildStages(
     currentIndex = taskStatus("asset-studio") === "in_progress" ? 3 : 4;
   } else if (taskStatus("asset-studio") === "completed") {
     currentIndex = 4;
+  }
+  if (rendererCall) {
+    currentIndex =
+      rendererSucceeded && source.ecomRunStatus === "success" ? 6 : 5;
   }
 
   return definitions.map((stage, index) => ({
@@ -355,7 +379,9 @@ function buildMetrics(source: WarRoomSource): WarRoomMetrics {
       if (call.name === "web_search") webSearches += 1;
       if (call.name === "web_fetch") webFetches += 1;
       if (call.name === "write_file") writeFiles += 1;
-      if (call.name === "present_files") presentCalls += 1;
+      if (call.name === "present_files" || call.name === "render_launch_pack") {
+        presentCalls += 1;
+      }
     }
   }
   let durationSeconds: number | undefined;

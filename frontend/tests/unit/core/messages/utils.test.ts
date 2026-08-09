@@ -3,15 +3,28 @@ import { describe, expect, test } from "vitest";
 
 import {
   extractContentFromMessage,
+  extractPresentFilesFromMessage,
+  extractPresentedFilesFromMessages,
   extractReasoningContentFromMessage,
   getAssistantTurnCopyData,
   getAssistantTurnUsageMessages,
   getMessageGroups,
   getStreamingMessageLookup,
   hasContent,
+  hasPresentFiles,
   hasReasoning,
   isAssistantMessageGroupStreaming,
 } from "@/core/messages/utils";
+
+const LAUNCH_PACK_PATHS = [
+  "/mnt/user-data/outputs/launch-war-room.html",
+  "/mnt/user-data/outputs/evidence-ledger.json",
+  "/mnt/user-data/outputs/competitor-table.csv",
+  "/mnt/user-data/outputs/positioning-brief.md",
+  "/mnt/user-data/outputs/listing-pack.md",
+  "/mnt/user-data/outputs/content-pack.md",
+  "/mnt/user-data/outputs/launch-calendar.csv",
+];
 
 function aiMessage(content: string): Message {
   return {
@@ -20,6 +33,44 @@ function aiMessage(content: string): Message {
     content,
   } as Message;
 }
+
+test("treats the atomic Launch Pack renderer as a file delivery", () => {
+  const rendererMessage = {
+    id: "ai-render-pack",
+    type: "ai",
+    content: "",
+    tool_calls: [
+      {
+        id: "render-pack",
+        name: "render_launch_pack",
+        args: { spec: { category: "通勤咖啡杯" } },
+      },
+    ],
+  } as Message;
+
+  expect(hasPresentFiles(rendererMessage)).toBe(true);
+  expect(extractPresentFilesFromMessage(rendererMessage)).toEqual(
+    LAUNCH_PACK_PATHS,
+  );
+  expect(getMessageGroups([rendererMessage])[0]?.type).toBe(
+    "assistant:present-files",
+  );
+});
+
+test("reads authoritative artifact paths from a successful tool result", () => {
+  const toolMessage = {
+    id: "tool-render-pack",
+    type: "tool",
+    content: "Successfully presented files",
+    tool_call_id: "render-pack",
+    additional_kwargs: { artifacts: LAUNCH_PACK_PATHS },
+  } as Message;
+
+  expect(hasPresentFiles(toolMessage)).toBe(true);
+  expect(extractPresentedFilesFromMessages([toolMessage, toolMessage])).toEqual(
+    LAUNCH_PACK_PATHS,
+  );
+});
 
 test("aggregates token usage messages once per assistant turn", () => {
   const messages = [

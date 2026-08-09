@@ -23,6 +23,19 @@ SUBAGENT_TOOLS = [
 ]
 
 
+def _tool_group_requested(tool_config: object, groups: list[str] | None) -> bool:
+    """Match configured tools, including OpenSKU's fast web subset."""
+    if groups is None:
+        return True
+    requested_groups = set(groups)
+    group = getattr(tool_config, "group", None)
+    if group in requested_groups:
+        return True
+    # The fast launch path uses normal web tools but excludes last30days,
+    # whose external subprocess can block for minutes.
+    return "web_fast" in requested_groups and group == "web" and getattr(tool_config, "name", None) != "last30days"
+
+
 def _is_host_bash_tool(tool: object) -> bool:
     """Return True if the tool config represents a host-bash execution surface."""
     group = getattr(tool, "group", None)
@@ -64,7 +77,7 @@ def get_available_tools(
         List of available tools.
     """
     config = app_config or get_app_config()
-    tool_configs = [tool for tool in config.tools if groups is None or tool.group in groups]
+    tool_configs = [tool for tool in config.tools if _tool_group_requested(tool, groups)]
 
     # Do not expose host bash by default when LocalSandboxProvider is active.
     if not is_host_bash_allowed(config):

@@ -393,7 +393,9 @@ def _available_skill_names(agent_config, is_bootstrap: bool, *, runtime_config: 
         skills = set(agent_config.skills)
         mode = (runtime_config or {}).get("mode")
         if mode == "flash" and agent_config.flash_skills:
-            skills = set(agent_config.flash_skills)
+            # Flash PM skills extend the top-level router skill. Replacing it
+            # removed write_file/present_files from complete-Pack requests.
+            skills |= set(agent_config.flash_skills)
         return skills
     return None
 
@@ -452,8 +454,16 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
     if mode == "flash" and agent_config is not None and agent_config.flash_skills:
         try:
             flash_cfg = load_agent_config("openskufast", user_id=user_id if user_id is not None else None)
-            if flash_cfg is not None and flash_cfg.run_budget is not None:
-                agent_config = agent_config.model_copy(update={"run_budget": flash_cfg.run_budget})
+            if flash_cfg is not None:
+                flash_overrides = {}
+                if flash_cfg.run_budget is not None:
+                    flash_overrides["run_budget"] = flash_cfg.run_budget
+                # Keep the public openskufast config compatible with the
+                # existing web group contract, while excluding last30days at
+                # runtime for Flash requests.
+                flash_overrides["tool_groups"] = ["web_fast", "file:read", "file:write"]
+                if flash_overrides:
+                    agent_config = agent_config.model_copy(update=flash_overrides)
         except (FileNotFoundError, ValueError):
             pass
     available_skills = _available_skill_names(agent_config, is_bootstrap, runtime_config=cfg)
@@ -539,6 +549,16 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
     # Default lead agent (unchanged behavior)
     raw_tools = get_available_tools(model_name=model_name, groups=agent_config.tool_groups if agent_config else None, subagent_enabled=subagent_enabled, app_config=resolved_app_config)
     filtered = filter_tools_by_skill_allowed_tools(raw_tools + extra_tools, skills_for_tool_policy)
+    # Flash's complete-Pack runtime needs bounded public search and the atomic
+    # seven-file writer, but those tools are intentionally not added to the
+    # shared ecom-launch skill prompt (which keeps Ultra/Replay prompt hashes
+    # stable). Add the explicit runtime-only tools after normal skill policy.
+    if mode == "flash":
+        flash_runtime_tools = {"web_search", "web_fetch", "render_launch_pack", "write_launch_pack"}
+        existing_names = {getattr(tool, "name", None) for tool in filtered}
+        filtered.extend(
+            tool for tool in raw_tools if getattr(tool, "name", None) in flash_runtime_tools and getattr(tool, "name", None) not in existing_names
+        )
     final_tools, setup = assemble_deferred_tools(filtered, enabled=resolved_app_config.tool_search.enabled)
     return create_agent(
         model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, reasoning_effort=reasoning_effort, app_config=resolved_app_config, attach_tracing=False),

@@ -24,6 +24,7 @@ class SubagentConfig:
         timeout_seconds: Maximum execution time in seconds (default: 900 = 15 minutes).
         max_model_calls: Optional model-response budget that forces a final text response before recursion exhaustion.
         max_total_tokens: Optional observed token budget that forces a final text response.
+        max_output_tokens: Optional output-token cap applied to every model response.
     """
 
     name: str
@@ -37,6 +38,7 @@ class SubagentConfig:
     timeout_seconds: int = 900
     max_model_calls: int | None = None
     max_total_tokens: int | None = None
+    max_output_tokens: int | None = None
 
 
 def _default_model_name(app_config: "AppConfig") -> str:

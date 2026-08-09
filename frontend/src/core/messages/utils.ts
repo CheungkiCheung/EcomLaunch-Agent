@@ -1,5 +1,7 @@
 import type { AIMessage, Message } from "@langchain/langgraph-sdk";
 
+import { LAUNCH_PACK_FILEPATHS } from "@/core/artifacts/launch-pack";
+
 interface GenericMessageGroup<T = string> {
   type: T;
   id: string | undefined;
@@ -421,9 +423,20 @@ export function hasToolCalls(message: Message) {
 }
 
 export function hasPresentFiles(message: Message) {
+  if (message.type === "ai") {
+    return message.tool_calls?.some(
+      (toolCall) =>
+        toolCall.name === "present_files" ||
+        toolCall.name === "render_launch_pack",
+    );
+  }
+
+  // The backend records the canonical paths on the successful ToolMessage as
+  // well. This keeps the fallback resilient when a provider omits the tool
+  // name while serializing a nested Command update.
   return (
-    message.type === "ai" &&
-    message.tool_calls?.some((toolCall) => toolCall.name === "present_files")
+    message.type === "tool" &&
+    Array.isArray(message.additional_kwargs?.artifacts)
   );
 }
 
@@ -432,19 +445,40 @@ export function isClarificationToolMessage(message: Message) {
 }
 
 export function extractPresentFilesFromMessage(message: Message) {
+  if (message.type === "tool") {
+    const artifacts = message.additional_kwargs?.artifacts;
+    return Array.isArray(artifacts)
+      ? artifacts.filter(
+          (filepath): filepath is string => typeof filepath === "string",
+        )
+      : [];
+  }
+
   if (message.type !== "ai" || !hasPresentFiles(message)) {
     return [];
   }
   const files: string[] = [];
   for (const toolCall of message.tool_calls ?? []) {
-    if (
+    if (toolCall.name === "render_launch_pack") {
+      files.push(...LAUNCH_PACK_FILEPATHS);
+    } else if (
       toolCall.name === "present_files" &&
       Array.isArray(toolCall.args.filepaths)
     ) {
       files.push(...(toolCall.args.filepaths as string[]));
     }
   }
-  return files;
+  return [...new Set(files)];
+}
+
+export function extractPresentedFilesFromMessages(messages: Message[]) {
+  return [
+    ...new Set(
+      messages.flatMap((message) =>
+        hasPresentFiles(message) ? extractPresentFilesFromMessage(message) : [],
+      ),
+    ),
+  ];
 }
 
 export function hasSubagent(message: AIMessage) {

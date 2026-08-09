@@ -1001,6 +1001,47 @@ def test_task_tool_returns_timed_out_message(monkeypatch):
     assert events[-1]["error"] == "timeout"
 
 
+def test_complete_pack_timeout_is_degraded_and_keeps_dependency_chain_alive(monkeypatch):
+    runtime = _make_runtime()
+    runtime.state["messages"] = [HumanMessage(content="输出 Launch Validation Pack")]
+    _install_run_budget(
+        runtime,
+        complete_workflow_patterns=["Launch Validation Pack"],
+        required_completed_subagents=["market-voc-researcher"],
+        subagent_dependencies={"offer-architect": ["market-voc-researcher"]},
+    )
+    config = _make_subagent_config(name="market-voc-researcher")
+    events = []
+
+    monkeypatch.setattr(task_tool_module, "SubagentStatus", FakeSubagentStatus)
+    monkeypatch.setattr(
+        task_tool_module,
+        "SubagentExecutor",
+        type("DummyExecutor", (), {"__init__": lambda self, **kwargs: None, "execute_async": lambda self, prompt, task_id=None: task_id}),
+    )
+    monkeypatch.setattr(task_tool_module, "get_subagent_config", lambda _: config)
+    monkeypatch.setattr(
+        task_tool_module,
+        "get_background_task_result",
+        lambda _: _make_result(FakeSubagentStatus.TIMED_OUT, error="public search timeout"),
+    )
+    monkeypatch.setattr(task_tool_module, "get_stream_writer", lambda: events.append)
+    monkeypatch.setattr(task_tool_module.asyncio, "sleep", _no_sleep)
+    monkeypatch.setattr("deerflow.tools.get_available_tools", lambda **kwargs: [])
+
+    output = _run_task_tool(
+        runtime=runtime,
+        description="公开信号研究",
+        prompt="research public signals",
+        subagent_type="market-voc-researcher",
+        tool_call_id="tc-degraded-pack",
+    )
+
+    assert output.startswith("Task degraded: market-voc-researcher")
+    degraded = runtime.context[task_tool_module.RUN_BUDGET_CONTEXT_KEY]["subagent_types_degraded"]
+    assert degraded["market-voc-researcher"] == "public search timeout"
+
+
 def test_task_tool_polling_safety_timeout(monkeypatch):
     config = _make_subagent_config()
     # Keep max_poll_count small for test speed: (1 + 60) // 5 = 12

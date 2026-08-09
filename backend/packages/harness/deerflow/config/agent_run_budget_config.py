@@ -53,6 +53,14 @@ class AgentRunBudgetConfig(BaseModel):
         default=None,
         description="Optional regular expressions that activate all configured specialist dependencies for a complete workflow request",
     )
+    complete_pack_initial_research_calls: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Number of bounded web_search/web_fetch attempts required before a single-agent complete Pack starts drafting. "
+            "Failed attempts still count so unavailable public search degrades instead of blocking delivery."
+        ),
+    )
     required_completed_subagents: list[str] | None = Field(
         default=None,
         description="Optional specialist types that must complete before a configured complete pack can be presented",

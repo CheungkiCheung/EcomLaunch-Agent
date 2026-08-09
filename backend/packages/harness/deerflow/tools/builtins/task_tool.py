@@ -385,6 +385,8 @@ def _apply_run_budget_to_subagent(runtime: Any, config: Any, subagent_type: str)
         budget_state["subagent_types_completed"] = completed_types
 
     dependency_config = budget_config.get("subagent_dependencies")
+    degraded_types = budget_state.setdefault("subagent_types_degraded", {})
+    degraded_names = set(degraded_types) if isinstance(degraded_types, dict) else set()
     if isinstance(dependency_config, dict):
         raw_dependencies = dependency_config.get(subagent_type)
         if isinstance(raw_dependencies, list):
@@ -393,7 +395,7 @@ def _apply_run_budget_to_subagent(runtime: Any, config: Any, subagent_type: str)
                 active_dependencies = dependencies
             else:
                 active_dependencies = dependencies.intersection(started_types | _scheduled_sibling_subagent_types(runtime))
-            incomplete_dependencies = sorted(active_dependencies - completed_types)
+            incomplete_dependencies = sorted(active_dependencies - completed_types - degraded_names)
             if incomplete_dependencies:
                 dependency_display = ", ".join(incomplete_dependencies)
                 return config, (f"Task skipped: specialist '{subagent_type}' must wait for prerequisite(s) {dependency_display} to complete. Call it again after those results are available.")
@@ -450,6 +452,22 @@ def _mark_completed_subagent(runtime: Any, subagent_type: str, result: str | Non
         budget_state["evidence_checker_completed"] = valid_verdict
         budget_state["evidence_checker_verdict"] = verdict_match.group(1).lower() if valid_verdict and verdict_match else None
         budget_state["evidence_checker_result"] = result_text
+
+
+def _mark_degraded_subagent(runtime: Any, subagent_type: str, reason: str) -> None:
+    """Record an optional specialist failure without dead-ending a launch pack."""
+    context = getattr(runtime, "context", None)
+    budget_state = context.get(RUN_BUDGET_CONTEXT_KEY) if isinstance(context, dict) else None
+    if not isinstance(budget_state, dict):
+        return
+    budget_config = budget_state.get("config")
+    if not isinstance(budget_config, dict) or not _complete_workflow_requested(runtime, budget_config):
+        return
+    degraded = budget_state.setdefault("subagent_types_degraded", {})
+    if not isinstance(degraded, dict):
+        degraded = {}
+        budget_state["subagent_types_degraded"] = degraded
+    degraded[subagent_type] = reason or "specialist unavailable"
 
 
 @tool("task", parse_docstring=True)
@@ -659,7 +677,11 @@ async def task_tool(
                 _report_subagent_usage(runtime, result)
                 writer({"type": "task_failed", "task_id": task_id, "error": result.error, "usage": usage})
                 logger.error(f"[trace={trace_id}] Task {task_id} failed: {result.error}")
+                degraded_workflow = _complete_workflow_requested(runtime, (runtime.context or {}).get(RUN_BUDGET_CONTEXT_KEY, {}).get("config", {})) if runtime is not None else False
+                _mark_degraded_subagent(runtime, subagent_type, result.error or "specialist failed")
                 cleanup_background_task(task_id)
+                if degraded_workflow:
+                    return f"Task degraded: {subagent_type} unavailable. Continue with explicit unavailable/assumption labels."
                 return f"Task failed. Error: {result.error}"
             elif result.status == SubagentStatus.CANCELLED:
                 _cache_subagent_usage(tool_call_id, usage, enabled=cache_token_usage)
@@ -673,7 +695,11 @@ async def task_tool(
                 _report_subagent_usage(runtime, result)
                 writer({"type": "task_timed_out", "task_id": task_id, "error": result.error, "usage": usage})
                 logger.warning(f"[trace={trace_id}] Task {task_id} timed out: {result.error}")
+                degraded_workflow = _complete_workflow_requested(runtime, (runtime.context or {}).get(RUN_BUDGET_CONTEXT_KEY, {}).get("config", {})) if runtime is not None else False
+                _mark_degraded_subagent(runtime, subagent_type, result.error or "specialist timed out")
                 cleanup_background_task(task_id)
+                if degraded_workflow:
+                    return f"Task degraded: {subagent_type} timed out. Continue with explicit unavailable/assumption labels."
                 return f"Task timed out. Error: {result.error}"
 
             # Still running, wait before next poll

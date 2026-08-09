@@ -58,8 +58,108 @@ describe("buildWarRoomSnapshot", () => {
       "方案设计",
       "内容生成",
       "打包交付",
+      "确定性预检",
       "完成",
     ]);
+  });
+
+  it("shows the deterministic preflight stage while the atomic renderer is running", () => {
+    const messages = [
+      { id: "human-1", type: "human", content: "输出 Launch Validation Pack" },
+      {
+        id: "ai-1",
+        type: "ai",
+        content: "",
+        tool_calls: [
+          {
+            id: "render-1",
+            name: "render_launch_pack",
+            args: { spec: { category: "coffee mug" } },
+          },
+        ],
+      },
+    ] as Message[];
+
+    const snapshot = buildWarRoomSnapshot({
+      ecomThread: thread("ecom-launch", messages),
+      ecomRunStatus: "running",
+    });
+
+    expect(
+      snapshot.stages.find((stage) => stage.id === "preflight"),
+    ).toMatchObject({
+      current: true,
+      done: false,
+    });
+  });
+
+  it("marks preflight complete after the renderer returns its success result", () => {
+    const messages = [
+      { id: "human-1", type: "human", content: "输出 Launch Validation Pack" },
+      {
+        id: "ai-1",
+        type: "ai",
+        content: "",
+        tool_calls: [
+          { id: "render-1", name: "render_launch_pack", args: { spec: {} } },
+        ],
+      },
+      {
+        id: "tool-1",
+        type: "tool",
+        tool_call_id: "render-1",
+        content: "Successfully presented files",
+      },
+    ] as Message[];
+
+    const snapshot = buildWarRoomSnapshot({
+      ecomThread: thread("ecom-launch", messages),
+      ecomRunStatus: "success",
+    });
+
+    expect(
+      snapshot.stages.find((stage) => stage.id === "preflight"),
+    ).toMatchObject({
+      current: false,
+      done: true,
+    });
+    expect(snapshot.stages.at(-1)).toMatchObject({ id: "done", current: true });
+  });
+
+  it("keeps the final stage pending until the run itself succeeds", () => {
+    const messages = [
+      { id: "human-1", type: "human", content: "输出 Launch Validation Pack" },
+      {
+        id: "ai-1",
+        type: "ai",
+        content: "",
+        tool_calls: [
+          { id: "render-1", name: "render_launch_pack", args: { spec: {} } },
+        ],
+      },
+      {
+        id: "tool-1",
+        type: "tool",
+        tool_call_id: "render-1",
+        content: "Successfully presented files",
+      },
+    ] as Message[];
+
+    const snapshot = buildWarRoomSnapshot({
+      ecomThread: thread("ecom-launch", messages),
+      ecomRunStatus: "running",
+    });
+
+    expect(
+      snapshot.stages.find((stage) => stage.id === "preflight"),
+    ).toMatchObject({
+      current: true,
+      done: false,
+    });
+    expect(snapshot.stages.at(-1)).toMatchObject({
+      id: "done",
+      current: false,
+    });
   });
 
   it("maps a real EcomLaunch task call and result to its configured actor", () => {

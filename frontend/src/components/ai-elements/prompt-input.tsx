@@ -402,6 +402,7 @@ export function PromptInputAttachments({
 
   return (
     <div
+      data-testid="prompt-input-attachments"
       className={cn("flex w-full flex-wrap items-center gap-2 p-3", className)}
       {...props}
     >

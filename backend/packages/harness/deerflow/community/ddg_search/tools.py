@@ -15,6 +15,7 @@ DEFAULT_BACKEND = "auto"
 DEFAULT_REGION = "wt-wt"
 DEFAULT_SAFESEARCH = "moderate"
 DEFAULT_WIKIPEDIA_REGION = "us-en"
+DEFAULT_TIMEOUT_SECONDS = 5
 
 WIKIPEDIA_BACKENDS = {"auto", "all", "wikipedia"}
 WIKIPEDIA_LANGUAGE_ALIASES = {
@@ -90,6 +91,7 @@ def _search_text(
     region: str | None = DEFAULT_REGION,
     safesearch: str | None = DEFAULT_SAFESEARCH,
     backend: str | list[str] | tuple[str, ...] | None = DEFAULT_BACKEND,
+    timeout: int | float = DEFAULT_TIMEOUT_SECONDS,
 ) -> list[dict]:
     """
     Execute text search using DuckDuckGo.
@@ -110,7 +112,13 @@ def _search_text(
         logger.error("ddgs library not installed. Run: pip install ddgs")
         return []
 
-    ddgs = DDGS(timeout=30)
+    # DDGS is a metasearch client. Bound each tool call so unavailable public
+    # providers become an evidence gap instead of consuming the agent run.
+    try:
+        timeout_seconds = max(1, min(int(timeout), 15))
+    except (TypeError, ValueError):
+        timeout_seconds = DEFAULT_TIMEOUT_SECONDS
+    ddgs = DDGS(timeout=timeout_seconds)
 
     try:
         backend = _normalize_backend(backend)
@@ -145,6 +153,7 @@ def web_search_tool(
     region = DEFAULT_REGION
     safesearch = DEFAULT_SAFESEARCH
     backend = DEFAULT_BACKEND
+    timeout = DEFAULT_TIMEOUT_SECONDS
 
     if config is not None:
         # Override tool call defaults from config if set.
@@ -152,6 +161,7 @@ def web_search_tool(
         region = config.model_extra.get("region", region)
         safesearch = config.model_extra.get("safesearch", safesearch)
         backend = config.model_extra.get("backend", backend)
+        timeout = config.model_extra.get("timeout", timeout)
 
     results = _search_text(
         query=query,
@@ -159,6 +169,7 @@ def web_search_tool(
         region=region,
         safesearch=safesearch,
         backend=backend,
+        timeout=timeout,
     )
 
     if not results:

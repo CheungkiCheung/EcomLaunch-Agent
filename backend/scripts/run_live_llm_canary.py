@@ -31,9 +31,11 @@ PACK_FILES = {
     "content-pack.md",
     "launch-calendar.csv",
 }
-CANARY_TOOLS = {"task", "read_file", "write_file", "str_replace", "present_files"}
+CANARY_TOOLS = {"task", "read_file", "render_launch_pack", "write_file", "str_replace", "present_files"}
 
-FLASH_PROMPT = """OpenSKU live canary. Do not call any tool. Reply with exactly:
+FLASH_PROMPT = """OpenSKU live canary. For a concept-stage reusable desk cable
+organizer, which should be tested first: the demand hypothesis or the price
+hypothesis? Do not call any tool. End your response with this line exactly:
 OPENSKU_CANARY_OK
 """
 
@@ -118,6 +120,7 @@ def _build_live_config(*, home: Path, api_key: str, base_url: str, model: str) -
     for specialist in source.get("subagents", {}).get("custom_agents", {}).values():
         if isinstance(specialist, dict):
             specialist["tools"] = []
+            specialist["model"] = "opensku-live-canary"
 
     return yaml.safe_dump(source, allow_unicode=True, sort_keys=False)
 
@@ -300,7 +303,14 @@ def _assert_ultra(result: dict[str, Any]) -> None:
         raise AssertionError(f"ultra canary expected three specialists: {result['tool_names']}")
     if set(result["artifacts"]) != PACK_FILES:
         raise AssertionError(f"ultra canary did not deliver 7/7 pack: {result['artifacts']}")
-    present_results = result["tool_results"].get("present_files", [])
+    # The compact renderer invokes the authoritative presenter internally, so
+    # the successful preflight result is attached to `render_launch_pack` in
+    # the public trace. Keep the legacy `present_files` shape for compatibility
+    # with older canary fixtures.
+    present_results = [
+        *result["tool_results"].get("present_files", []),
+        *result["tool_results"].get("render_launch_pack", []),
+    ]
     if not present_results or "Successfully presented files" not in present_results[-1]:
         raise AssertionError(f"ultra canary did not finish with a passing preflight: {present_results}")
     max_calls = int(os.environ.get("OPENSKU_CANARY_MAX_MODEL_CALLS", "15"))

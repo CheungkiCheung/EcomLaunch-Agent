@@ -24,6 +24,7 @@ from deerflow.sandbox.tools import (
     grep_tool,
     ls_tool,
     read_file_tool,
+    render_launch_pack_tool,
     str_replace_tool,
     write_file_tool,
 )
@@ -54,6 +55,7 @@ _TOOL_CASES = [
     (grep_tool, {"description": "search", "pattern": "x", "path": "/tmp"}),
     (read_file_tool, {"description": "read", "path": "/tmp/x"}),
     (write_file_tool, {"description": "write", "path": "/tmp/x", "content": "hi"}),
+    (render_launch_pack_tool, {"spec": {"category": "cup", "decision": "test_now"}}),
     (str_replace_tool, {"description": "replace", "path": "/tmp/x", "old_str": "a", "new_str": "b"}),
     (present_file_tool, {"filepaths": ["/tmp/x"], "tool_call_id": "call-1"}),
     (view_image_tool, {"image_path": "/tmp/img.png", "tool_call_id": "call-1"}),

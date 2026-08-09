@@ -15,14 +15,13 @@ import {
 } from "@/core/messages/usage-model";
 import {
   extractContentFromMessage,
-  extractPresentFilesFromMessage,
+  extractPresentedFilesFromMessages,
   extractTextFromMessage,
   getAssistantTurnCopyData,
   getAssistantTurnUsageMessages,
   getMessageGroups,
   getStreamingMessageLookup,
   hasContent,
-  hasPresentFiles,
   hasReasoning,
   isAssistantMessageGroupStreaming,
 } from "@/core/messages/utils";
@@ -45,6 +44,7 @@ import {
   MessageTokenUsageList,
 } from "./message-token-usage";
 import { MessageListSkeleton } from "./skeleton";
+import { deriveStreamingStatus } from "./streaming-status";
 import { SubtaskCard } from "./subtask-card";
 
 export const MESSAGE_LIST_DEFAULT_PADDING_BOTTOM = 24;
@@ -179,6 +179,10 @@ export function MessageList({
   const rehypePlugins = useRehypeSplitWordsIntoSpans(thread.isLoading);
   const updateSubtask = useUpdateSubtask();
   const messages = thread.messages;
+  const streamingStatus = useMemo(
+    () => deriveStreamingStatus(messages, { hasError: Boolean(thread.error) }),
+    [messages, thread.error],
+  );
   const groupedMessages = getMessageGroups(messages);
   const turnUsageMessagesByGroupIndex =
     getAssistantTurnUsageMessages(groupedMessages);
@@ -329,13 +333,7 @@ export function MessageList({
             }
             return null;
           } else if (group.type === "assistant:present-files") {
-            const files: string[] = [];
-            for (const message of group.messages) {
-              if (hasPresentFiles(message)) {
-                const presentFiles = extractPresentFilesFromMessage(message);
-                files.push(...presentFiles);
-              }
-            }
+            const files = extractPresentedFilesFromMessages(group.messages);
             return (
               <div className="w-full" key={group.id}>
                 {group.messages[0] && hasContent(group.messages[0]) && (
@@ -346,7 +344,11 @@ export function MessageList({
                     className="mb-4"
                   />
                 )}
-                <ArtifactFileList files={files} threadId={threadId} />
+                <ArtifactFileList
+                  files={files}
+                  threadId={threadId}
+                  variant="delivery"
+                />
                 {renderTokenUsage({
                   messages: group.messages,
                   turnUsageMessages,
@@ -461,7 +463,18 @@ export function MessageList({
             </div>
           );
         })}
-        {thread.isLoading && <StreamingIndicator className="my-4" />}
+        {(thread.isLoading || Boolean(thread.error)) && (
+          <div
+            className="text-muted-foreground my-4 flex items-center gap-2 text-sm"
+            data-testid="streaming-status"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2Icon className="text-primary size-4 animate-spin" />
+            <span>{t.common.streamingStatus[streamingStatus.key]}</span>
+            <StreamingIndicator className="ml-0.5" size="sm" />
+          </div>
+        )}
         <div style={{ height: `${paddingBottom}px` }} />
       </ConversationContent>
     </Conversation>

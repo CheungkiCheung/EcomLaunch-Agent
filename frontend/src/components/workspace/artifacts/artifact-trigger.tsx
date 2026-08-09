@@ -1,5 +1,6 @@
 import { FilesIcon } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/workspace/tooltip";
 import { useI18n } from "@/core/i18n/hooks";
@@ -14,8 +15,9 @@ export const ArtifactTrigger = () => {
     return null;
   }
   return (
-    <Tooltip content="Show artifacts of this conversation">
+    <Tooltip content={t.warRoom.artifactFiles(artifacts.length)}>
       <Button
+        data-testid="artifact-trigger"
         className="text-muted-foreground hover:text-foreground"
         variant="ghost"
         onClick={() => {
@@ -24,6 +26,9 @@ export const ArtifactTrigger = () => {
       >
         <FilesIcon />
         {t.common.artifacts}
+        <Badge variant="secondary" className="min-w-5 justify-center px-1.5">
+          {artifacts.length}
+        </Badge>
       </Button>
     </Tooltip>
   );

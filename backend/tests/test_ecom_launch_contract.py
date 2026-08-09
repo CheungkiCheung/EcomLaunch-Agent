@@ -17,6 +17,8 @@ EXPECTED_SUBAGENTS = {
         ],
         "max_model_calls": 4,
         "max_total_tokens": 45000,
+        "model": "deepseek-chat",
+        "max_output_tokens": 1200,
     },
     "offer-architect": {
         "tools": ["read_file"],
@@ -30,6 +32,8 @@ EXPECTED_SUBAGENTS = {
         ],
         "max_model_calls": 2,
         "max_total_tokens": 30000,
+        "model": "deepseek-chat",
+        "max_output_tokens": 1000,
     },
     "asset-studio": {
         "tools": ["read_file"],
@@ -40,12 +44,16 @@ EXPECTED_SUBAGENTS = {
         ],
         "max_model_calls": 2,
         "max_total_tokens": 30000,
+        "model": "deepseek-chat",
+        "max_output_tokens": 900,
     },
     "evidence-checker": {
         "tools": ["read_file", "grep", "web_fetch"],
         "skills": ["strategy-red-team", "pre-mortem", "test-scenarios"],
         "max_model_calls": 4,
         "max_total_tokens": 55000,
+        "model": "inherit",
+        "max_output_tokens": None,
     },
 }
 
@@ -85,11 +93,12 @@ def test_ecom_launch_retains_four_bounded_specialist_definitions() -> None:
     for name, expected in EXPECTED_SUBAGENTS.items():
         assert custom_agents[name]["tools"] == expected["tools"]
         assert custom_agents[name]["skills"] == expected["skills"]
-        assert custom_agents[name]["model"] == "inherit"
+        assert custom_agents[name]["model"] == expected["model"]
         assert custom_agents[name]["max_turns"] == 50
         assert custom_agents[name]["timeout_seconds"] <= 150
         assert custom_agents[name]["max_model_calls"] == expected["max_model_calls"]
         assert custom_agents[name]["max_total_tokens"] == expected["max_total_tokens"]
+        assert custom_agents[name].get("max_output_tokens") == expected["max_output_tokens"]
 
     researcher_prompt = custom_agents["market-voc-researcher"]["system_prompt"]
     assert "at most 2 web_search" in researcher_prompt
@@ -120,6 +129,8 @@ def test_opensku_launch_soul_is_shallow_and_mode_agnostic() -> None:
     assert "DeerFlow" not in soul
     assert "growth-analyst" not in soul
     assert "launch-war-room.html" not in soul
+    assert "Flash 用单智能体直接生成" in soul
+    assert "不能停止交付" in soul
 
 
 def test_ecom_launch_skill_uses_minimum_needed_workflow() -> None:
@@ -134,6 +145,7 @@ def test_ecom_launch_skill_uses_minimum_needed_workflow() -> None:
         "read_file",
         "grep",
         "write_file",
+        "render_launch_pack",
         "str_replace",
         "present_files",
         "task",
@@ -160,6 +172,8 @@ def test_ecom_launch_skill_uses_minimum_needed_workflow() -> None:
     assert "stop" in skill.lower()
     assert "growth-analyst" not in skill
     assert "last30days" not in skill
+    assert "No store dataset is a supported concept-validation input" in skill
+    assert "If public search is also unavailable" in skill
     assert "Ultra" not in skill
     assert "calibrate-content" not in skill
 
@@ -272,8 +286,18 @@ def test_openskufast_agent_config_loads() -> None:
     assert len(cfg["skills"]) == 22
     assert set(cfg["skills"]) == {d.name for d in PM_SKILLS_ROOT.iterdir() if d.is_dir()}
     rb = cfg["run_budget"]
-    assert rb["max_lead_model_calls"] == 12
+    assert rb["max_lead_model_calls"] == 16
     assert rb["max_total_tokens"] == 250000
+    assert rb["complete_pack_initial_research_calls"] == 2
+    assert rb["compact_write_file_history"] is True
+
+
+def test_flash_and_ultra_share_short_question_routing_contract() -> None:
+    launch = yaml.safe_load((REPO_ROOT / "agents" / "ecom-launch" / "config.yaml").read_text(encoding="utf-8"))
+    flash = yaml.safe_load((REPO_ROOT / "agents" / "openskufast" / "config.yaml").read_text(encoding="utf-8"))
+
+    assert flash["run_budget"]["direct_answer_patterns"] == launch["run_budget"]["direct_answer_patterns"]
+    assert flash["run_budget"]["direct_answer_exclude_patterns"] == launch["run_budget"]["direct_answer_exclude_patterns"]
 
 
 def test_openskufast_soul_exists() -> None:
@@ -283,6 +307,7 @@ def test_openskufast_soul_exists() -> None:
 
 
 def test_flash_skills_runtime_swap() -> None:
+    from deerflow.agents.lead_agent.agent import _available_skill_names
     from deerflow.config.agents_config import AgentConfig
 
     cfg = AgentConfig(
@@ -295,3 +320,8 @@ def test_flash_skills_runtime_swap() -> None:
     # here we verify the config carries both fields.
     assert cfg.skills == ["ecom-launch"]
     assert cfg.flash_skills == ["beachhead-segment", "competitor-analysis"]
+    assert _available_skill_names(cfg, False, runtime_config={"mode": "flash"}) == {
+        "ecom-launch",
+        "beachhead-segment",
+        "competitor-analysis",
+    }

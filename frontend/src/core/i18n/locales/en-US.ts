@@ -53,6 +53,24 @@ export const enUS: Translations = {
     exportAsMarkdown: "Export as Markdown",
     exportAsJSON: "Export as JSON",
     exportSuccess: "Conversation exported",
+    streamingStatus: {
+      preparing: "Preparing a response",
+      thinking: "Structuring the question and constraints",
+      searching: "Searching public signals",
+      reading: "Reading a public page",
+      researcher: "Market Researcher is working",
+      offer: "Offer Architect is working",
+      assets: "Asset Studio is working",
+      analyzing: "Inspecting uploaded data",
+      joining: "Joining multiple data files",
+      experiment: "Calculating experiment results",
+      rendering: "Generating the Launch Pack",
+      writing: "Writing delivery files",
+      preflight: "Running deterministic preflight",
+      repairing: "Repairing files from preflight observations",
+      finalizing: "Preparing the final delivery",
+      failed: "The run encountered an error",
+    },
   },
 
   // Home
@@ -295,6 +313,46 @@ export const enUS: Translations = {
         icon: ListChecksIcon,
       },
     ],
+    dataInspectorDemo: {
+      title: "Choose a demo scenario",
+      description: "Load real CSVs and a complete analysis prompt in one click",
+      selectorLabel: "Growth Analyst demo scenarios",
+      note: "Only demo attachments from this card are replaced; manual files stay. Demo data only.",
+      load: "Load selected data",
+      loaded: "Selected data loaded",
+      scenarios: {
+        experiment: {
+          label: "A/B test",
+          description: "3 CSVs · 200 users · conversion experiment",
+          preview: "control 100 / 10 conversions · variant 100 / 20 conversions",
+          prompt:
+            "Analyze these 3 demo files end to end: inspect fields and data quality; join customers, assignments, and outcomes; compare control vs variant conversion rate, absolute difference, relative lift, p-value, 95% confidence interval, and SRM; then give a ship / extend / stop decision with next steps.",
+        },
+        channel: {
+          label: "Channel ROI",
+          description: "3 CSVs · 30 days · 4 channels · 12 campaigns",
+          preview: "Xiaohongshu ROAS ≈ 3.7 · search ≈ 3.0 · display < 1",
+          prompt:
+            "Analyze these 3 channel-performance demo files: inspect data quality, then join ad_spend, sessions, and orders by date, channel, and campaign. Calculate CTR, visit conversion, order conversion, CAC, ROAS, refunds, and net revenue by channel and campaign; identify high-spend low-conversion traffic and recommend which budgets to increase, hold, or pause next week.",
+        },
+        retention: {
+          label: "Retention",
+          description: "3 CSVs · 12 weekly cohorts · 240 users",
+          preview:
+            "referral D30 40% · organic / Xiaohongshu 20% · paid display 0%",
+          prompt:
+            "Analyze these 3 retention demo files: inspect fields and data quality; join users, events, and subscriptions; build signup-week cohorts and calculate D1, D7, and D30 retention, purchase rate, and subscription conversion. Compare acquisition-channel quality, locate the largest drop-off, and recommend prioritized retention experiments.",
+        },
+        product: {
+          label: "Merchandising",
+          description: "3 CSVs · 8 SKUs · 240 orders",
+          preview:
+            "sku-001 high-volume low-margin · sku-002 high-margin low-volume · sku-008 inventory risk",
+          prompt:
+            "Analyze these 3 merchandising demo files: inspect fields and data quality; join products, orders, and order_items; calculate GMV, units, AOV, refunds, gross profit, gross margin, and inventory risk by SKU. Identify high-volume low-margin, high-margin low-volume, and high-inventory low-velocity products, then recommend expansion, pricing, promotion, or clearance actions.",
+        },
+      },
+    },
     openskufastSuggestions: [
       {
         suggestion: "New product",
@@ -405,6 +463,7 @@ export const enUS: Translations = {
       offer: "Offer design",
       content: "Asset production",
       pack: "Launch pack",
+      preflight: "Preflight",
       done: "Complete",
     },
     metrics: {
@@ -489,6 +548,7 @@ export const enUS: Translations = {
     collaborating: "Collaborating",
     synced: "Synced",
     collaborationProgress: "Team progress",
+    deliveryProgress: "Delivery progress",
     validationStage: "Validation stage",
     complete: "Complete",
     waiting: "Waiting",
@@ -502,6 +562,9 @@ export const enUS: Translations = {
     emptyTitle: "Waiting for the first launch-validation task",
     emptyDescription:
       "Flash keeps specialist capability available without extra planning overhead. Active roles appear here only when real work is assigned.",
+    packCompleteTitle: "Launch Validation Pack is ready",
+    packCompleteDescription:
+      "This Flash delivery was completed by the OpenSKU Launch Director and deterministic renderer. Open all seven files from the chat card or the Files control above.",
     assignedTask: "Assigned task",
     currentAction: "Current action",
     deliverables: "Deliverables",

@@ -1,4 +1,10 @@
-import { DownloadIcon, LoaderIcon, PackageIcon } from "lucide-react";
+import {
+  DownloadIcon,
+  EyeIcon,
+  LoaderIcon,
+  PackageCheckIcon,
+  PackageIcon,
+} from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
@@ -10,6 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { isCompleteLaunchPack } from "@/core/artifacts/launch-pack";
 import { urlOfArtifact } from "@/core/artifacts/utils";
 import { useI18n } from "@/core/i18n/hooks";
 import { installSkill } from "@/core/skills/api";
@@ -26,10 +33,12 @@ export function ArtifactFileList({
   className,
   files,
   threadId,
+  variant = "list",
 }: {
   className?: string;
   files: string[];
   threadId: string;
+  variant?: "list" | "delivery";
 }) {
   const { t } = useI18n();
   const { select: selectArtifact, setOpen } = useArtifacts();
@@ -71,12 +80,28 @@ export function ArtifactFileList({
     [threadId, installingFile],
   );
 
-  return (
-    <ul className={cn("flex w-full flex-col gap-4", className)}>
-      {files.map((file) => (
+  const uniqueFiles = [...new Set(files)];
+  const completeLaunchPack = isCompleteLaunchPack(uniqueFiles);
+  const primaryFile =
+    uniqueFiles.find((file) => file.endsWith("/launch-war-room.html")) ??
+    uniqueFiles[0];
+
+  const fileList = (
+    <ul
+      className={cn(
+        "flex w-full flex-col gap-4",
+        variant === "delivery" &&
+          "grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-2",
+        className,
+      )}
+    >
+      {uniqueFiles.map((file) => (
         <Card
           key={file}
-          className="relative cursor-pointer p-3"
+          className={cn(
+            "hover:bg-muted/40 relative cursor-pointer p-3 transition-colors",
+            variant === "delivery" && "py-2",
+          )}
           onClick={() => handleClick(file)}
         >
           <CardHeader className="grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 pr-2 pl-1">
@@ -87,7 +112,7 @@ export function ArtifactFileList({
               </div>
             </CardTitle>
             <CardDescription className="min-w-0 pl-8 text-xs">
-              {getFileExtensionDisplayName(file)} file
+              {getFileExtensionDisplayName(file)}
             </CardDescription>
             <CardAction className="row-span-1 self-center">
               {file.endsWith(".skill") && (
@@ -124,5 +149,47 @@ export function ArtifactFileList({
         </Card>
       ))}
     </ul>
+  );
+
+  if (variant !== "delivery") {
+    return fileList;
+  }
+
+  return (
+    <section
+      data-testid="artifact-delivery"
+      className="border-border/80 bg-card overflow-hidden rounded-xl border shadow-sm"
+    >
+      <header className="border-border/70 bg-muted/25 flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
+            <PackageCheckIcon className="size-5" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold">
+              {completeLaunchPack
+                ? "Launch Validation Pack"
+                : t.common.artifacts}
+            </h3>
+            <p className="text-muted-foreground text-xs">
+              {t.warRoom.artifactFiles(uniqueFiles.length)}
+            </p>
+          </div>
+        </div>
+        {primaryFile && (
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={() => handleClick(primaryFile)}
+          >
+            <EyeIcon className="size-4" />
+            {t.common.preview}
+            {completeLaunchPack ? " War Room" : ""}
+          </Button>
+        )}
+      </header>
+      <div className="p-3">{fileList}</div>
+    </section>
   );
 }

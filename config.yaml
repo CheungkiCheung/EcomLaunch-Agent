@@ -44,11 +44,13 @@ tools:
   group: web
   use: deerflow.community.ddg_search.tools:web_search_tool
   max_results: 5
+  backend: yandex
+  timeout: 5
 - name: web_fetch
   group: web
   use: deerflow.community.local_fetch.tools:web_fetch_tool
-  timeout: 15
-  render_timeout: 25
+  timeout: 8
+  render_timeout: 12
   render_mode: auto
   wait_until: domcontentloaded
   render_wait_ms: 1200
@@ -76,6 +78,12 @@ tools:
 - name: write_file
   group: file:write
   use: deerflow.sandbox.tools:write_file_tool
+- name: write_launch_pack
+  group: file:write
+  use: deerflow.sandbox.tools:write_launch_pack_tool
+- name: render_launch_pack
+  group: file:write
+  use: deerflow.sandbox.tools:render_launch_pack_tool
 - name: str_replace
   group: file:write
   use: deerflow.sandbox.tools:str_replace_tool
@@ -198,6 +206,8 @@ subagents:
 
         Keep the run bounded: use at most 2 web_search calls across at most two tool rounds, fetch at most 4 direct candidate sources, and use at most 1 image_search call. After those tool rounds, use the next model response for concise final findings. Stop when the evidence is sufficient or sources are blocked; do not repeat similar queries or try many fallback search phrasings.
 
+        A missing store dataset is normal for concept validation. If the first search fails or times out, stop external research immediately and return the requested structure with observed_public marked unavailable plus explicit assumptions; never let search failure block downstream specialists or the seven-file Pack.
+
         Return concise structured findings with:
         - market patterns and competitor landscape
         - price bands and recurring promises
@@ -216,11 +226,12 @@ subagents:
         - competitor-analysis
         - market-segments
         - sentiment-analysis
-      model: inherit
+      model: deepseek-chat
       max_turns: 50
-      timeout_seconds: 150
+      timeout_seconds: 60
       max_model_calls: 4
       max_total_tokens: 45000
+      max_output_tokens: 1200
 
     offer-architect:
       description: Turn available evidence into an audience wedge, offer, pricing hypothesis, risky assumptions, and launch experiments
@@ -249,11 +260,12 @@ subagents:
         - identify-assumptions-new
         - prioritize-assumptions
         - brainstorm-experiments-new
-      model: inherit
+      model: deepseek-chat
       max_turns: 50
       timeout_seconds: 60
       max_model_calls: 2
       max_total_tokens: 30000
+      max_output_tokens: 1000
     asset-studio:
       description: Create ecommerce listing, social, short-video, livestream, and creator assets from an approved launch brief
       system_prompt: |
@@ -272,11 +284,12 @@ subagents:
         - positioning-ideas
         - value-prop-statements
         - marketing-ideas
-      model: inherit
+      model: deepseek-chat
       max_turns: 50
       timeout_seconds: 60
       max_model_calls: 2
       max_total_tokens: 30000
+      max_output_tokens: 900
 
     evidence-checker:
       description: Black-box audit final ecommerce recommendations, claims, citations, and deliverables before release

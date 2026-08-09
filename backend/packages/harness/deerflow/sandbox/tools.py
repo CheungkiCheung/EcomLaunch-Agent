@@ -60,6 +60,7 @@ _COMPACTED_WRITE_PLACEHOLDER_PATTERN = re.compile(
 )
 _RUN_BUDGET_CONTEXT_KEY = "__deerflow_agent_run_budget"
 _OUTPUTS_VIRTUAL_DIR = f"{VIRTUAL_PATH_PREFIX}/outputs"
+_COMPLETE_PACK_REQUEST_PATTERN = re.compile(r"Launch Validation Pack|验证包|七件套|7\s*件", re.IGNORECASE)
 _LOCAL_BASH_CWD_COMMANDS = {"cd", "pushd"}
 _LOCAL_BASH_COMMAND_WRAPPERS = {"command", "builtin"}
 _LOCAL_BASH_COMMAND_PREFIX_KEYWORDS = {"!", "{", "case", "do", "elif", "else", "for", "if", "select", "then", "time", "until", "while"}
@@ -1756,6 +1757,39 @@ def _configured_pack_write_result(
     return f"{prefix}\nConfigured Pack status: complete ({len(required_names)}/{len(required_names)}). All required files were written in this request. Do not read or grep them again; call present_files now for deterministic validation."
 
 
+def _complete_pack_path_error(runtime: Runtime, path: str) -> str | None:
+    """Reject scratch and skill writes during a configured complete-Pack run."""
+    context = getattr(runtime, "context", None)
+    budget_state = context.get(_RUN_BUDGET_CONTEXT_KEY) if isinstance(context, dict) else None
+    if not isinstance(budget_state, dict):
+        return None
+    budget_config = budget_state.get("config")
+    if not isinstance(budget_config, dict) or not budget_config.get("auto_present_complete_pack"):
+        return None
+    messages = getattr(runtime, "state", {}).get("messages", []) if getattr(runtime, "state", None) else []
+    latest_user_text = ""
+    for message in reversed(messages if isinstance(messages, (list, tuple)) else []):
+        if getattr(message, "type", None) != "human":
+            continue
+        content = getattr(message, "content", "")
+        candidate = content if isinstance(content, str) else ""
+        if _COMPLETE_PACK_REQUEST_PATTERN.search(candidate):
+            latest_user_text = candidate
+            break
+    if not _COMPLETE_PACK_REQUEST_PATTERN.search(latest_user_text):
+        return None
+    required = {name for name in budget_config.get("required_output_files", []) if isinstance(name, str) and name}
+    normalized = posixpath.normpath(path)
+    if normalized.startswith("/mnt/skills/"):
+        return "Error: skills are already preloaded; do not use write_file on /mnt/skills. Write the seven requested artifacts under /mnt/user-data/outputs only."
+    if posixpath.dirname(normalized) != _OUTPUTS_VIRTUAL_DIR:
+        return f"Error: complete Launch Validation Pack runs may write only under {_OUTPUTS_VIRTUAL_DIR}. Do not create placeholder or scratch files."
+    filename = posixpath.basename(normalized)
+    if required and filename not in required:
+        return f"Error: {filename} is not part of the configured seven-file Pack. Write one of: {', '.join(sorted(required))}."
+    return None
+
+
 @tool("write_file", parse_docstring=True)
 def write_file_tool(
     runtime: Runtime,
@@ -1793,6 +1827,9 @@ def write_file_tool(
         append: Whether to append content to the end of the file instead of overwriting it. Defaults to False.
     """
     content_bytes = len(content.encode("utf-8"))
+    path_error = _complete_pack_path_error(runtime, path)
+    if path_error:
+        return path_error
     if _COMPACTED_WRITE_PLACEHOLDER_PATTERN.fullmatch(content):
         return "Error: write_file content is an internal history-compaction marker, not artifact content. Regenerate and write the real file content; never copy a [compacted ...] marker into a file."
     if not append:
@@ -1858,6 +1895,199 @@ async def _write_file_tool_async(
 
 
 write_file_tool.coroutine = _write_file_tool_async
+
+
+_STANDARD_LAUNCH_PACK_FILES = (
+    "launch-war-room.html",
+    "evidence-ledger.json",
+    "competitor-table.csv",
+    "positioning-brief.md",
+    "listing-pack.md",
+    "content-pack.md",
+    "launch-calendar.csv",
+)
+
+
+def _latest_visible_user_request(runtime: Runtime) -> str:
+    state = getattr(runtime, "state", None)
+    messages = state.get("messages", []) if isinstance(state, dict) else []
+    for message in reversed(messages if isinstance(messages, (list, tuple)) else []):
+        if getattr(message, "type", None) != "human":
+            continue
+        additional_kwargs = getattr(message, "additional_kwargs", {})
+        if isinstance(additional_kwargs, dict) and additional_kwargs.get("hide_from_ui") is True:
+            continue
+        content = getattr(message, "content", "")
+        if isinstance(content, str) and content.strip():
+            return content.strip()
+    return ""
+
+
+def _write_complete_launch_pack(runtime: Runtime, expected: dict[str, str]) -> str:
+    """Write a canonical seven-file Pack and update deterministic budget state."""
+    context = getattr(runtime, "context", None)
+    budget_state = context.get(_RUN_BUDGET_CONTEXT_KEY) if isinstance(context, dict) else None
+    budget_config = budget_state.get("config") if isinstance(budget_state, dict) else None
+    required = budget_config.get("required_output_files") if isinstance(budget_config, dict) else None
+    required_names = [name for name in required if isinstance(name, str) and name] if isinstance(required, list) else []
+    if not required_names or not (isinstance(budget_config, dict) and budget_config.get("auto_present_complete_pack")):
+        return "Error: complete Launch Pack writing is available only during a configured complete Launch Validation Pack run."
+    if set(required_names) != set(_STANDARD_LAUNCH_PACK_FILES) or set(expected) != set(_STANDARD_LAUNCH_PACK_FILES):
+        return "Error: configured complete Pack must contain the standard seven output filenames."
+    for filename, content in expected.items():
+        if not isinstance(content, str) or not content.strip():
+            return f"Error: {filename} content is empty; provide the complete artifact content."
+        if _COMPACTED_WRITE_PLACEHOLDER_PATTERN.fullmatch(content):
+            return f"Error: {filename} contains an internal compaction marker; regenerate the real artifact content."
+        if len(content.encode("utf-8")) > _effective_write_file_max_bytes() > 0:
+            return f"Error: {filename} exceeds the single-file write size limit; use write_file for a targeted smaller rewrite."
+
+    sandbox = ensure_sandbox_initialized(runtime)
+    ensure_thread_directories_exist(runtime)
+    for filename in required_names:
+        path = f"{_OUTPUTS_VIRTUAL_DIR}/{filename}"
+        path_error = _complete_pack_path_error(runtime, path)
+        if path_error:
+            return path_error
+        requested_path = path
+        local_path = path
+        if is_local_sandbox(runtime):
+            thread_data = get_thread_data(runtime)
+            validate_local_tool_path(path, thread_data)
+            if not _is_custom_mount_path(path):
+                local_path = _resolve_and_validate_user_data_path(path, thread_data)
+        try:
+            with get_file_operation_lock(sandbox, local_path):
+                sandbox.write_file(local_path, expected[filename], False)
+        except SandboxError as e:
+            return _format_write_file_error(requested_path, e, runtime)
+        except PermissionError:
+            return _truncate_write_file_error_detail(
+                f"Error: Permission denied writing to file: {requested_path}",
+                _DEFAULT_WRITE_FILE_ERROR_MAX_CHARS,
+            )
+        except OSError as e:
+            return _format_write_file_error(requested_path, e, runtime)
+        except Exception as e:
+            return _format_write_file_error(requested_path, e, runtime)
+
+    if isinstance(budget_state, dict):
+        budget_state["required_output_files_written"] = set(required_names)
+        budget_state["required_output_files_missing"] = []
+        budget_state["required_output_files_ready"] = True
+    total_bytes = sum(len(expected[name].encode("utf-8")) for name in required_names)
+    return (
+        f"OK: wrote complete Launch Validation Pack ({total_bytes} bytes). "
+        "All seven required files are ready; call present_files now for deterministic validation."
+    )
+
+
+@tool("render_launch_pack", parse_docstring=True)
+def render_launch_pack_tool(runtime: Runtime, spec: dict[str, object]):
+    """Render, preflight, and present all seven Launch Pack files from one compact specification.
+
+    Use this for a complete Launch Validation Pack after research or configured
+    specialists finish. Pass one small object; Python deterministically renders
+    valid HTML, JSON, CSV, positioning, safe no-sample listing/content copy, and
+    a seven-day calendar, then runs the authoritative deterministic preflight
+    and presents the files. Do not put full file contents in the object.
+
+    Args:
+        spec: Compact object with category, target_price, decision,
+            decision_rationale, audience, validation_goal, and optional evidence,
+            competitors, hypotheses, experiments, and language. Evidence items
+            may contain claim, evidence_label, source_urls, confidence, and
+            limitation. Competitor items may contain name, price_signal,
+            positioning_signal, evidence_label, source_url, and notes.
+    """
+    if not isinstance(spec, dict):
+        return "Error: spec must be one compact JSON object."
+    from deerflow.tools.builtins.launch_pack_renderer import render_launch_pack
+
+    try:
+        expected = render_launch_pack(spec, user_request=_latest_visible_user_request(runtime))
+    except (TypeError, ValueError) as exc:
+        return f"Error: invalid compact Launch Pack specification: {exc}"
+    write_result = _write_complete_launch_pack(runtime, expected)
+    if write_result.startswith("Error:"):
+        return write_result
+
+    from deerflow.tools.builtins.present_file_tool import present_file_tool
+
+    filepaths = [f"{_OUTPUTS_VIRTUAL_DIR}/{name}" for name in _STANDARD_LAUNCH_PACK_FILES]
+    tool_call_id = getattr(runtime, "tool_call_id", None) or "render_launch_pack"
+    return present_file_tool.func(runtime, filepaths=filepaths, tool_call_id=tool_call_id)
+
+
+async def _render_launch_pack_tool_async(runtime: Runtime, spec: dict[str, object]):
+    return await _run_sync_tool_after_async_sandbox_init(render_launch_pack_tool.func, runtime, spec)
+
+
+render_launch_pack_tool.coroutine = _render_launch_pack_tool_async
+
+
+@tool("write_launch_pack", parse_docstring=True)
+def write_launch_pack_tool(
+    runtime: Runtime,
+    launch_war_room_html: str,
+    evidence_ledger_json: str,
+    competitor_table_csv: str,
+    positioning_brief_md: str,
+    listing_pack_md: str,
+    content_pack_md: str,
+    launch_calendar_csv: str,
+) -> str:
+    """Write all seven configured Launch Validation Pack files in one bounded operation.
+
+    Use this tool when the user explicitly requests a complete Launch Validation Pack.
+    It writes only the standard files under /mnt/user-data/outputs and then returns
+    the configured seven-file progress status. Do not use it for ordinary answers.
+
+    Args:
+        launch_war_room_html: Self-contained launch-war-room.html content.
+        evidence_ledger_json: evidence-ledger.json content.
+        competitor_table_csv: competitor-table.csv content.
+        positioning_brief_md: positioning-brief.md content.
+        listing_pack_md: listing-pack.md content.
+        content_pack_md: content-pack.md content.
+        launch_calendar_csv: launch-calendar.csv content.
+    """
+    expected = {
+        "launch-war-room.html": launch_war_room_html,
+        "evidence-ledger.json": evidence_ledger_json,
+        "competitor-table.csv": competitor_table_csv,
+        "positioning-brief.md": positioning_brief_md,
+        "listing-pack.md": listing_pack_md,
+        "content-pack.md": content_pack_md,
+        "launch-calendar.csv": launch_calendar_csv,
+    }
+    return _write_complete_launch_pack(runtime, expected)
+
+
+async def _write_launch_pack_tool_async(
+    runtime: Runtime,
+    launch_war_room_html: str,
+    evidence_ledger_json: str,
+    competitor_table_csv: str,
+    positioning_brief_md: str,
+    listing_pack_md: str,
+    content_pack_md: str,
+    launch_calendar_csv: str,
+) -> str:
+    return await _run_sync_tool_after_async_sandbox_init(
+        write_launch_pack_tool.func,
+        runtime,
+        launch_war_room_html,
+        evidence_ledger_json,
+        competitor_table_csv,
+        positioning_brief_md,
+        listing_pack_md,
+        content_pack_md,
+        launch_calendar_csv,
+    )
+
+
+write_launch_pack_tool.coroutine = _write_launch_pack_tool_async
 
 
 @tool("str_replace", parse_docstring=True)

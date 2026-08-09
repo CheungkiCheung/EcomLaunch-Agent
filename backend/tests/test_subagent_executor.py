@@ -319,6 +319,51 @@ class TestAgentConstruction:
         assert captured["agent"]["tools"] == []
         assert captured["agent"]["system_prompt"] is None  # system_prompt is merged into initial state messages
 
+    def test_create_agent_applies_per_subagent_output_token_cap(
+        self,
+        classes,
+        base_config,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        from dataclasses import replace
+
+        from deerflow.subagents import executor as executor_module
+
+        SubagentExecutor = classes["SubagentExecutor"]
+        bounded_config = replace(base_config, max_output_tokens=900)
+        app_config = SimpleNamespace(models=[SimpleNamespace(name="default-model")])
+        captured = {}
+
+        class FakeModel:
+            model_fields = {"max_tokens": object()}
+
+            def __init__(self, max_tokens=8192):
+                self.max_tokens = max_tokens
+
+            def model_copy(self, *, update):
+                return FakeModel(max_tokens=update["max_tokens"])
+
+        monkeypatch.setattr(executor_module, "create_chat_model", lambda **_: FakeModel())
+        monkeypatch.setattr(executor_module, "create_agent", lambda **kwargs: captured.setdefault("agent", kwargs))
+        monkeypatch.setitem(
+            sys.modules,
+            "deerflow.agents.middlewares.tool_error_handling_middleware",
+            _module(
+                "deerflow.agents.middlewares.tool_error_handling_middleware",
+                build_subagent_runtime_middlewares=lambda **_: [],
+            ),
+        )
+
+        executor = SubagentExecutor(
+            config=bounded_config,
+            tools=[],
+            app_config=app_config,
+            parent_model="parent-model",
+        )
+        executor._create_agent()
+
+        assert captured["agent"]["model"].max_tokens == 900
+
     def test_create_agent_adds_subagent_finalization_budget_middleware(
         self,
         classes,

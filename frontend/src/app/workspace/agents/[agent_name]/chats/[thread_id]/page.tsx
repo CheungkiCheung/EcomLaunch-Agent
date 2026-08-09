@@ -332,6 +332,7 @@ export default function AgentChatPage() {
                   }
                   context={effectiveContext}
                   availableModes={isEcomLaunch ? ["flash", "ultra"] : undefined}
+                  expandedWelcomeHeader={isDataInspector}
                   extraHeader={
                     isWelcomeMode && (
                       <AgentWelcome agent={agent} agentName={agent_name} />

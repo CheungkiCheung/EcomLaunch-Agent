@@ -76,6 +76,11 @@ class CustomSubagentConfig(BaseModel):
         ge=1,
         description="Observed token budget before the subagent is instructed to finalize",
     )
+    max_output_tokens: int | None = Field(
+        default=None,
+        ge=128,
+        description="Optional per-response output-token cap for this subagent model",
+    )
 
 
 class SubagentsAppConfig(BaseModel):

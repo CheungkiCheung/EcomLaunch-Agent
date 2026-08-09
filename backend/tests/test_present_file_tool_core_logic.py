@@ -103,6 +103,20 @@ def test_present_files_rejects_paths_outside_outputs(tmp_path):
     assert result.update["messages"][0].content == f"Error: Only files in /mnt/user-data/outputs can be presented: {leaked_path}"
 
 
+def test_present_files_rejects_missing_file_inside_outputs(tmp_path):
+    outputs_dir = tmp_path / "threads" / "thread-1" / "user-data" / "outputs"
+    outputs_dir.mkdir(parents=True)
+
+    result = present_file_tool_module.present_file_tool.func(
+        runtime=_make_runtime(str(outputs_dir)),
+        filepaths=[str(outputs_dir / "missing.md")],
+        tool_call_id="tc-missing",
+    )
+
+    assert "artifacts" not in result.update
+    assert result.update["messages"][0].content == f"Error: Presented file does not exist: {outputs_dir / 'missing.md'}"
+
+
 PACK_FILES = [
     "launch-war-room.html",
     "evidence-ledger.json",
@@ -202,6 +216,30 @@ def _active_ecom_pack_runtime(outputs_dir):
     return runtime
 
 
+def _legacy_complete_pack_runtime(outputs_dir):
+    """Model an older/custom run config that omitted the validation flag."""
+    runtime = _make_runtime(str(outputs_dir))
+    runtime.context["__deerflow_agent_run_budget"] = {
+        "config": {
+            "required_output_files": PACK_FILES,
+            "required_completed_subagents": [
+                "market-voc-researcher",
+                "offer-architect",
+                "asset-studio",
+            ],
+            "require_evidence_checker": False,
+            "auto_present_complete_pack": True,
+            # Intentionally absent: the terminal workflow must still audit.
+        },
+        "subagent_types_completed": {
+            "market-voc-researcher",
+            "offer-architect",
+            "asset-studio",
+        },
+    }
+    return runtime
+
+
 def test_complete_launch_pack_requires_evidence_checker(tmp_path):
     outputs_dir = tmp_path / "outputs"
     outputs_dir.mkdir()
@@ -230,6 +268,49 @@ def test_active_ecom_pack_delivers_without_evidence_checker(tmp_path):
 
     assert result.update["artifacts"] == [f"/mnt/user-data/outputs/{name}" for name in PACK_FILES]
     assert result.update["messages"][0].content == "Successfully presented files"
+
+
+def test_complete_pack_canonicalizes_underscore_filename_aliases(tmp_path):
+    outputs_dir = tmp_path / "outputs"
+    outputs_dir.mkdir()
+    _write_safe_pack(outputs_dir)
+
+    underscore_paths = [
+        str(outputs_dir / name.replace("-", "_"))
+        for name in PACK_FILES
+    ]
+    result = present_file_tool_module.present_file_tool.func(
+        runtime=_active_ecom_pack_runtime(outputs_dir),
+        filepaths=underscore_paths,
+        tool_call_id="tc-pack-underscore-alias",
+    )
+
+    assert result.update["artifacts"] == [f"/mnt/user-data/outputs/{name}" for name in PACK_FILES]
+    assert result.update["messages"][0].content == "Successfully presented files"
+
+
+def test_complete_pack_audits_even_when_validation_flag_is_omitted(tmp_path):
+    """An old/custom config must not turn seven file existence into fake success."""
+    outputs_dir = tmp_path / "outputs"
+    outputs_dir.mkdir()
+    _write_safe_pack(outputs_dir)
+    (outputs_dir / "evidence-ledger.json").write_text('{"entries": []}', encoding="utf-8")
+    (outputs_dir / "competitor-table.csv").write_text(
+        "name,price\n竞品A,99\n",
+        encoding="utf-8",
+    )
+
+    result = present_file_tool_module.present_file_tool.func(
+        runtime=_legacy_complete_pack_runtime(outputs_dir),
+        filepaths=[str(outputs_dir / name) for name in PACK_FILES],
+        tool_call_id="tc-pack-legacy-contract",
+    )
+
+    message = result.update["messages"][0].content
+    assert "artifacts" not in result.update
+    assert "entries must contain at least one effective record" in message
+    assert "missing the source_url column" in message
+    assert "missing the evidence_label column" in message
 
 
 def test_active_ecom_pack_normalizes_unsafe_no_sample_copy_without_checker(tmp_path):

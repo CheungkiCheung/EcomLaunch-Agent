@@ -10,6 +10,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { extractPresentedFilesFromMessages } from "@/core/messages/utils";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,15 @@ const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
   } = useArtifacts();
 
   const [autoSelectFirstArtifact, setAutoSelectFirstArtifact] = useState(true);
+  const discoveredArtifacts = useMemo(
+    () => [
+      ...new Set([
+        ...(thread.values.artifacts ?? []),
+        ...extractPresentedFilesFromMessages(thread.messages),
+      ]),
+    ],
+    [thread.messages, thread.values.artifacts],
+  );
   useEffect(() => {
     if (threadIdRef.current !== threadId) {
       threadIdRef.current = threadId;
@@ -50,7 +60,7 @@ const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
     }
 
     // Update artifacts from the current thread
-    setArtifacts(thread.values.artifacts);
+    setArtifacts(discoveredArtifacts);
 
     // DO NOT automatically deselect the artifact when switching threads, because the artifacts auto discovering is not work now.
     // if (
@@ -64,19 +74,19 @@ const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
       env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" &&
       autoSelectFirstArtifact
     ) {
-      if (thread?.values?.artifacts?.length > 0) {
+      if (discoveredArtifacts.length > 0) {
         setAutoSelectFirstArtifact(false);
-        selectArtifact(thread.values.artifacts[0]!);
+        selectArtifact(discoveredArtifacts[0]!);
       }
     }
   }, [
     threadId,
     autoSelectFirstArtifact,
     deselect,
+    discoveredArtifacts,
     selectArtifact,
     selectedArtifact,
     setArtifacts,
-    thread.values.artifacts,
   ]);
 
   const artifactPanelOpen = useMemo(() => {
@@ -149,7 +159,7 @@ const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
                   <XIcon />
                 </Button>
               </div>
-              {thread.values.artifacts?.length === 0 ? (
+              {artifacts.length === 0 ? (
                 <ConversationEmptyState
                   icon={<FilesIcon />}
                   title="No artifact selected"
@@ -163,7 +173,7 @@ const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
                   <main className="min-h-0 grow">
                     <ArtifactFileList
                       className="max-w-(--container-width-sm) p-4 pt-12"
-                      files={thread.values.artifacts ?? []}
+                      files={artifacts}
                       threadId={threadId}
                     />
                   </main>

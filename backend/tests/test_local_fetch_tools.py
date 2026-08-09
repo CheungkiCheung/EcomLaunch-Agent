@@ -51,6 +51,11 @@ def mock_config(monkeypatch):
 
 @pytest.mark.anyio
 async def test_web_fetch_tool_returns_local_markdown(monkeypatch):
+    app_config = MagicMock()
+    tool_config = MagicMock()
+    tool_config.model_extra = {"render_mode": "never"}
+    app_config.get_tool_config.return_value = tool_config
+    monkeypatch.setattr(tools, "get_app_config", lambda: app_config)
     monkeypatch.setattr(tools.httpx, "AsyncClient", MockAsyncClient)
 
     result = await web_fetch_tool.ainvoke("https://example.com")

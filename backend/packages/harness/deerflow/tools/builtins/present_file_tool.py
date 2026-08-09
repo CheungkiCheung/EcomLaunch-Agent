@@ -99,7 +99,46 @@ def _normalize_presented_filepath(
     except ValueError as exc:
         raise ValueError(f"Only files in {OUTPUTS_VIRTUAL_PREFIX} can be presented: {filepath}") from exc
 
+    if not actual_path.is_file():
+        raise ValueError(f"Presented file does not exist: {filepath}")
+
     return f"{OUTPUTS_VIRTUAL_PREFIX}/{relative_path.as_posix()}"
+
+
+def _canonicalize_complete_pack_filepaths(runtime: Runtime, filepaths: list[str]) -> list[str]:
+    """Normalize common model-produced underscore aliases to the seven names.
+
+    LLMs occasionally emit ``launch_war_room.html`` even though the configured
+    contract uses ``launch-war-room.html``.  The atomic writer correctly writes
+    the configured name; canonicalizing only at the presentation boundary
+    keeps the user-facing artifact contract stable without creating duplicate
+    files or weakening path safety.  Other files and ordinary non-pack
+    presentations are left untouched.
+    """
+    context = getattr(runtime, "context", None)
+    budget_state = context.get(RUN_BUDGET_CONTEXT_KEY) if isinstance(context, dict) else None
+    budget_config = budget_state.get("config") if isinstance(budget_state, dict) else None
+    required_files = budget_config.get("required_output_files") if isinstance(budget_config, dict) else None
+    required_names = (
+        {name for name in required_files if isinstance(name, str) and name}
+        if isinstance(required_files, list)
+        else set()
+    )
+    if not required_names:
+        return list(filepaths)
+
+    canonical: list[str] = []
+    for filepath in filepaths:
+        name = Path(filepath).name
+        if name in required_names:
+            canonical.append(filepath)
+            continue
+        hyphenated = name.replace("_", "-")
+        if hyphenated in required_names:
+            canonical.append(str(Path(filepath).with_name(hyphenated)))
+        else:
+            canonical.append(filepath)
+    return canonical
 
 
 def _complete_pack_preflight(runtime: Runtime, filepaths: list[str]) -> list[str]:
@@ -128,7 +167,12 @@ def _complete_pack_preflight(runtime: Runtime, filepaths: list[str]) -> list[str
         completed_subagents = budget_state.get("subagent_types_completed", set())
         if not isinstance(completed_subagents, set):
             completed_subagents = set(completed_subagents) if isinstance(completed_subagents, (list, tuple)) else set()
-        missing_subagents = sorted(name for name in required_subagents if isinstance(name, str) and name and name not in completed_subagents)
+        degraded_subagents = budget_state.get("subagent_types_degraded", {})
+        degraded_names = set(degraded_subagents) if isinstance(degraded_subagents, dict) else set()
+        missing_subagents = sorted(
+            name for name in required_subagents
+            if isinstance(name, str) and name and name not in completed_subagents and name not in degraded_names
+        )
         if missing_subagents:
             issues.append(f"configured specialist(s) have not completed for this user request: {', '.join(missing_subagents)}")
 
@@ -137,7 +181,15 @@ def _complete_pack_preflight(runtime: Runtime, filepaths: list[str]) -> list[str
     if budget_config.get("require_evidence_checker") and budget_state.get("evidence_checker_verdict") == "blocked":
         issues.append("the configured evidence-checker returned blocked and did not authorize delivery")
 
-    if budget_config.get("validate_pack_before_present"):
+    # A complete-pack run must never be allowed to bypass the authoritative
+    # content contract just because an older/custom config omitted the newer
+    # ``validate_pack_before_present`` flag. ``auto_present_complete_pack`` is
+    # the durable marker that this is the seven-file terminal workflow; use it
+    # as a safe fallback while preserving ordinary single-file presentation.
+    should_validate_pack = budget_config.get("validate_pack_before_present") or budget_config.get(
+        "auto_present_complete_pack"
+    )
+    if should_validate_pack:
         thread_data = runtime.state.get("thread_data") if runtime.state else None
         outputs_path = thread_data.get("outputs_path") if isinstance(thread_data, dict) else None
         if not outputs_path:
@@ -186,6 +238,7 @@ def present_file_tool(
     Args:
         filepaths: List of absolute file paths to present to the user. **Only** files in `/mnt/user-data/outputs` can be presented.
     """
+    filepaths = _canonicalize_complete_pack_filepaths(runtime, filepaths)
     preflight_issues = _complete_pack_preflight(runtime, filepaths)
     if preflight_issues:
         formatted = "\n".join(f"- {issue}" for issue in preflight_issues)
@@ -254,6 +307,12 @@ def present_file_tool(
     return Command(
         update={
             "artifacts": normalized_paths,
-            "messages": [ToolMessage("Successfully presented files", tool_call_id=tool_call_id, status="success")],
+            "messages": [
+                ToolMessage(
+                    "Successfully presented files",
+                    tool_call_id=tool_call_id,
+                    status="success",
+                )
+            ],
         },
     )

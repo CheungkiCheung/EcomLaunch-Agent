@@ -18,12 +18,12 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { useArtifacts } from "@/components/workspace/artifacts";
+import { isCompleteLaunchPack } from "@/core/artifacts/launch-pack";
 import { useI18n } from "@/core/i18n/hooks";
 import type { Translations } from "@/core/i18n/locales/types";
 import {
-  extractPresentFilesFromMessage,
+  extractPresentedFilesFromMessages,
   extractTextFromMessage,
-  hasPresentFiles,
 } from "@/core/messages/utils";
 import { useSubtaskContext } from "@/core/tasks/context";
 import { parseSubtaskResult } from "@/core/tasks/subtask-result";
@@ -291,13 +291,7 @@ function fallbackTasksFromMessages(messages: Message[]) {
 }
 
 function fallbackArtifactsFromMessages(messages: Message[]) {
-  const files: string[] = [];
-  for (const message of messages) {
-    if (hasPresentFiles(message)) {
-      files.push(...extractPresentFilesFromMessage(message));
-    }
-  }
-  return [...new Set(files)];
+  return extractPresentedFilesFromMessages(messages);
 }
 
 function getToolName(task: Subtask | undefined) {
@@ -531,28 +525,22 @@ export function LaunchCrewPanel({
         roles.add(role);
       }
     }
-    for (const artifact of mappedArtifacts) {
-      if (artifact.role !== "launch-director") {
-        roles.add(artifact.role);
-      }
-    }
     return roles;
-  }, [mappedArtifacts, taskList]);
+  }, [taskList]);
 
   const roleViews = ROLE_CONFIGS.map((config) => {
     const task = latestTaskForRole(taskList, config.id);
     const roleArtifacts = mappedArtifacts.filter(
       (artifact) => artifact.role === config.id,
     );
-    const status =
-      roleArtifacts.length > 0 && !task
-        ? "delivered"
-        : roleArtifacts.length > 0 && task?.status === "completed"
-          ? "done"
-          : statusForTask(
-              task,
-              roleArtifacts.map((artifact) => artifact.filepath),
-            );
+    const status = !task
+      ? "idle"
+      : roleArtifacts.length > 0 && task.status === "completed"
+        ? "done"
+        : statusForTask(
+            task,
+            roleArtifacts.map((artifact) => artifact.filepath),
+          );
     return {
       ...config,
       ...copy.roles[config.id],
@@ -563,7 +551,9 @@ export function LaunchCrewPanel({
         task?.latestMessage && task.status === "in_progress"
           ? explainLastToolCall(task.latestMessage, t)
           : null,
-      visible: activeRoles.has(config.id) || isStreaming,
+      // Flash uses the deterministic renderer without specialist task events.
+      // Do not make an artifact's ownership look like a specialist actually ran.
+      visible: activeRoles.has(config.id) || (isStreaming && Boolean(task)),
     };
   });
 
@@ -574,16 +564,23 @@ export function LaunchCrewPanel({
   const assignedCount = roleViews.filter(
     (role) => role.status !== "idle",
   ).length;
-  const progress =
-    assignedCount === 0
-      ? 0
-      : Math.round((completedCount / Math.max(assignedCount, 1)) * 100);
   const deliverableProgress =
     requiredDeliverables.length === 0
       ? 0
       : Math.round(
           (completedDeliverableCount / requiredDeliverables.length) * 100,
         );
+  const hasCompletePack = isCompleteLaunchPack(artifacts);
+  const progress =
+    assignedCount > 0
+      ? Math.round((completedCount / Math.max(assignedCount, 1)) * 100)
+      : deliverableProgress;
+  const progressLabel =
+    assignedCount > 0 ? copy.collaborationProgress : copy.deliveryProgress;
+  const progressCount =
+    assignedCount > 0
+      ? `${completedCount}/${Math.max(assignedCount, 1)}`
+      : `${completedDeliverableCount}/${requiredDeliverables.length}`;
 
   const openArtifact = (filepath: string) => {
     selectArtifact(filepath);
@@ -593,7 +590,7 @@ export function LaunchCrewPanel({
   return (
     <aside
       className={cn(
-        "border-border/80 bg-background/80 hidden h-full min-h-0 w-[380px] shrink-0 border-l backdrop-blur xl:flex",
+        "border-border/80 bg-background/80 hidden h-full min-h-0 w-[380px] shrink-0 border-l pt-12 backdrop-blur xl:flex",
         className,
       )}
     >
@@ -614,12 +611,8 @@ export function LaunchCrewPanel({
           </div>
           <div className="mt-3 space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">
-                {copy.collaborationProgress}
-              </span>
-              <span className="font-medium">
-                {completedCount}/{Math.max(assignedCount, 1)}
-              </span>
+              <span className="text-muted-foreground">{progressLabel}</span>
+              <span className="font-medium">{progressCount}</span>
             </div>
             <Progress className="h-1.5" value={progress} />
           </div>
@@ -658,7 +651,11 @@ export function LaunchCrewPanel({
         <div className="shrink-0 px-4 py-3">
           <PixelOffice
             agentStatuses={{
-              "launch-director": isStreaming ? "working" : "idle",
+              "launch-director": isStreaming
+                ? "working"
+                : hasCompletePack
+                  ? "done"
+                  : "idle",
               "market-voc-researcher": visibleRoles.some(
                 (r) =>
                   r.id === "market-voc-researcher" && isWorkingStatus(r.status),
@@ -695,7 +692,11 @@ export function LaunchCrewPanel({
                   : "idle",
             }}
             progress={progress}
-            currentStage={currentStage?.label ?? copy.waiting}
+            progressLabel={progressLabel}
+            currentStage={
+              currentStage?.label ??
+              (hasCompletePack ? copy.complete : copy.waiting)
+            }
           />
         </div>
 
@@ -760,9 +761,13 @@ export function LaunchCrewPanel({
           <section className="space-y-3">
             {visibleRoles.length === 0 ? (
               <div className="border-border/80 bg-muted/20 rounded-lg border p-4 text-sm">
-                <div className="font-medium">{copy.emptyTitle}</div>
+                <div className="font-medium">
+                  {hasCompletePack ? copy.packCompleteTitle : copy.emptyTitle}
+                </div>
                 <p className="text-muted-foreground mt-1 text-xs leading-5">
-                  {copy.emptyDescription}
+                  {hasCompletePack
+                    ? copy.packCompleteDescription
+                    : copy.emptyDescription}
                 </p>
               </div>
             ) : (

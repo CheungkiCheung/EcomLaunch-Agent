@@ -116,6 +116,7 @@ export function InputBox({
   status = "ready",
   context,
   extraHeader,
+  expandedWelcomeHeader,
   isWelcomeMode,
   threadId,
   initialValue,
@@ -132,6 +133,7 @@ export function InputBox({
   disabled?: boolean;
   context: InputBoxContext;
   extraHeader?: React.ReactNode;
+  expandedWelcomeHeader?: boolean;
   /**
    * Whether to render the input in welcome layout (vertically centered,
    * with hero + quick action suggestions).  This is purely a visual flag,
@@ -147,6 +149,7 @@ export function InputBox({
   onSubmit?: (message: PromptInputMessage) => void | Promise<void>;
   onStop?: () => void;
 }) {
+  const promptAttachments = usePromptInputAttachments();
   const { t } = useI18n();
   const searchParams = useSearchParams();
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
@@ -460,8 +463,13 @@ export function InputBox({
     <div
       ref={promptRootRef}
       className={cn(
-        "relative flex flex-col",
+        "relative flex flex-col transition-transform duration-300 ease-out",
         isWelcomeMode ? "gap-4" : "gap-2",
+        isWelcomeMode &&
+          expandedWelcomeHeader &&
+          (promptAttachments.files.length > 0
+            ? "translate-y-52"
+            : "translate-y-16"),
       )}
     >
       {showFollowups && (

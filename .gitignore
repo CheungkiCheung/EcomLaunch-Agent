@@ -70,5 +70,7 @@ config.yaml.bak
 .playwright-mcp
 /frontend/test-results/
 /frontend/playwright-report/
+/backend/benchmark-results/
+/backend/canary-results/
 .gstack/
 .worktrees

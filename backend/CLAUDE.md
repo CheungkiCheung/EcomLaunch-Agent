@@ -207,15 +207,15 @@ for another type is rejected before the execution slot is reserved or a
 `SubagentExecutor` is started. Complete-pack agents may additionally configure
 `required_output_files`, `require_evidence_checker`, and
 `validate_pack_before_present`. A complete-pack agent may enable
-`auto_present_complete_pack`; successful writes then return the configured
-filename-set progress for the current user request, and once all required files
-have been written in that request plus all specialists are ready,
-RunBudget permits only `present_files`. After the first required-file write and
-before completeness, it removes read/grep/research/delegation/presentation and
-keeps only `write_file`/`str_replace` for the remaining configured artifacts.
-Once every required specialist is ready, the same boundary now starts before
-the first artifact write: only `write_file` is available for the initial Pack
-draft, using specialist results already present in the lead context.
+`auto_present_complete_pack`; once every required specialist is ready, RunBudget
+prefers `render_launch_pack`, which accepts one compact structured spec and
+deterministically renders, validates, and presents the canonical seven files in
+one tool call. `write_launch_pack` and bounded `write_file` calls remain as
+compatibility fallbacks. Before specialist completion, a complete workflow exposes
+only the next dependency-safe `task` call, so a lead cannot waste a turn rereading
+an already-loaded Skill. After the first compatibility write and before
+completeness, read/grep/research/delegation/presentation remain unavailable and
+only the bounded write/edit path may complete the configured artifacts.
 If deterministic preflight fails, only `write_file`/`str_replace` remain until
 every attempted revision in the latest batch succeeds, after which
 `present_files` is forced again.

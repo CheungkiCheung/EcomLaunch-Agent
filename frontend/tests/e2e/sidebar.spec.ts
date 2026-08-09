@@ -25,6 +25,30 @@ test.describe("Sidebar navigation", () => {
     ).toBeVisible();
   });
 
+  test("collapsed sidebar keeps icons without clipping navigation labels", async ({
+    page,
+  }) => {
+    mockLangGraphAPI(page);
+    await page.setViewportSize({ width: 1100, height: 800 });
+    await page.goto("/workspace/chats/new");
+
+    const sidebar = page.locator("[data-sidebar='sidebar']");
+    const trigger = sidebar.locator("[data-sidebar='trigger']");
+    await expect(trigger).toHaveCount(1);
+    await trigger.click();
+
+    const launchLink = sidebar.locator(
+      "a[href='/workspace/agents/ecom-launch/chats/new']",
+    );
+    const growthLink = sidebar.locator(
+      "a[href='/workspace/agents/data-inspector/chats/new']",
+    );
+    await expect(launchLink.locator("span")).toBeHidden();
+    await expect(growthLink.locator("span")).toBeHidden();
+    await expect(launchLink.locator("svg")).toBeVisible();
+    await expect(growthLink.locator("svg")).toBeVisible();
+  });
+
   test("War Room opens as a standalone workspace above agent chats", async ({
     page,
   }) => {

@@ -138,6 +138,11 @@ def build_opensku_config_yaml(*, model_use: str, home: Path, repo_root: Path) ->
             "supports_vision": False,
         }
     ]
+    custom_agents = source.get("subagents", {}).get("custom_agents", {})
+    if isinstance(custom_agents, dict):
+        for custom_agent in custom_agents.values():
+            if isinstance(custom_agent, dict) and custom_agent.get("model") != "inherit":
+                custom_agent["model"] = "scenario-model"
     source.setdefault("skills", {})["path"] = str(repo_root / "skills")
     source["skills"]["container_path"] = "/mnt/skills"
     source.setdefault("database", {})["backend"] = "sqlite"

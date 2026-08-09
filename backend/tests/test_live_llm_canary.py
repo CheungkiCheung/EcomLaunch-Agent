@@ -6,7 +6,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 import yaml
+from langchain_core.messages import HumanMessage
 
+from deerflow.agents.middlewares.run_budget_middleware import RunBudgetMiddleware
+from deerflow.config.agent_run_budget_config import AgentRunBudgetConfig
 from scripts import run_live_llm_canary as canary
 
 
@@ -46,6 +49,7 @@ def test_live_canary_config_is_real_bounded_and_offline(tmp_path: Path) -> None:
     assert config["summarization"]["enabled"] is False
     assert config["title"]["enabled"] is False
     assert all(specialist["tools"] == [] for specialist in config["subagents"]["custom_agents"].values())
+    assert all(specialist["model"] == "opensku-live-canary" for specialist in config["subagents"]["custom_agents"].values())
 
 
 def test_live_canary_extracts_tool_results_by_call_id() -> None:
@@ -67,6 +71,35 @@ def test_live_canary_extracts_tool_results_by_call_id() -> None:
     }
 
     assert canary._tool_results(state) == {"present_files": ["Successfully presented files"]}
+
+
+def test_live_canary_accepts_renderer_preflight_result() -> None:
+    result = {
+        "tool_names": ["task", "task", "task", "render_launch_pack"],
+        "artifacts": sorted(canary.PACK_FILES),
+        "tool_results": {"render_launch_pack": ["Successfully presented files"]},
+        "llm_call_count": 6,
+        "total_tokens": 100,
+    }
+
+    canary._assert_ultra(result)
+
+
+def test_live_canary_flash_prompt_is_direct_answer_shape() -> None:
+    middleware = RunBudgetMiddleware(
+        AgentRunBudgetConfig(
+            max_lead_model_calls=4,
+            max_subagent_calls=0,
+            max_total_tokens=10_000,
+            max_execution_seconds=30,
+            direct_answer_patterns=[
+                r"(?:what|which).{0,40}(?:first|priority|hypothesis|risk)"
+            ],
+            direct_answer_exclude_patterns=[r"Launch Validation Pack"],
+        )
+    )
+
+    assert middleware._is_direct_answer_request([HumanMessage(content=canary.FLASH_PROMPT)])
 
 
 def test_live_canary_applies_hard_runtime_budgets(

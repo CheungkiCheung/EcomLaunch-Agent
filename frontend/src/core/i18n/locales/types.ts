@@ -39,6 +39,24 @@ export interface Translations {
     exportAsMarkdown: string;
     exportAsJSON: string;
     exportSuccess: string;
+    streamingStatus: {
+      preparing: string;
+      thinking: string;
+      searching: string;
+      reading: string;
+      researcher: string;
+      offer: string;
+      assets: string;
+      analyzing: string;
+      joining: string;
+      experiment: string;
+      rendering: string;
+      writing: string;
+      preflight: string;
+      repairing: string;
+      finalizing: string;
+      failed: string;
+    };
   };
 
   home: {
@@ -177,6 +195,40 @@ export interface Translations {
       prompt: string;
       icon: LucideIcon;
     }[];
+    dataInspectorDemo: {
+      title: string;
+      description: string;
+      selectorLabel: string;
+      note: string;
+      load: string;
+      loaded: string;
+      scenarios: {
+        experiment: {
+          label: string;
+          description: string;
+          preview: string;
+          prompt: string;
+        };
+        channel: {
+          label: string;
+          description: string;
+          preview: string;
+          prompt: string;
+        };
+        retention: {
+          label: string;
+          description: string;
+          preview: string;
+          prompt: string;
+        };
+        product: {
+          label: string;
+          description: string;
+          preview: string;
+          prompt: string;
+        };
+      };
+    };
     openskufastSuggestions: {
       suggestion: string;
       prompt: string;
@@ -269,6 +321,7 @@ export interface Translations {
       offer: string;
       content: string;
       pack: string;
+      preflight: string;
       done: string;
     };
     metrics: {
@@ -348,6 +401,7 @@ export interface Translations {
     collaborating: string;
     synced: string;
     collaborationProgress: string;
+    deliveryProgress: string;
     validationStage: string;
     complete: string;
     waiting: string;
@@ -359,6 +413,8 @@ export interface Translations {
     pendingGeneration: string;
     emptyTitle: string;
     emptyDescription: string;
+    packCompleteTitle: string;
+    packCompleteDescription: string;
     assignedTask: string;
     currentAction: string;
     deliverables: string;

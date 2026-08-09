@@ -16,6 +16,7 @@ type PixelOfficeProps = {
   className?: string;
   agentStatuses?: Record<AgentRole, AgentStatus>;
   progress?: number;
+  progressLabel?: string;
   currentStage?: string;
 };
 
@@ -143,10 +144,10 @@ function WhiteBoard({
       {/* 任务进度 */}
       <div className="space-y-1">
         {copy.pixel.tasks.map((task, index) => {
-          const taskProgress = Math.min(
-            100,
-            Math.max(0, progress - index * 15),
-          );
+          const taskProgress =
+            progress >= 100
+              ? 100
+              : Math.min(100, Math.max(0, progress - index * 15));
           const status =
             taskProgress >= 100
               ? "done"
@@ -194,6 +195,7 @@ export function PixelOffice({
     "asset-studio": "idle",
   },
   progress = 0,
+  progressLabel,
   currentStage,
 }: PixelOfficeProps) {
   const { t } = useI18n();
@@ -264,7 +266,7 @@ export function PixelOffice({
         <div className="mt-4 rounded-lg border bg-white/80 p-3">
           <div className="flex items-center justify-between">
             <div className="text-muted-foreground text-xs">
-              {copy.collaborationProgress}
+              {progressLabel ?? copy.collaborationProgress}
             </div>
             <div className="text-xs font-medium">{progress}%</div>
           </div>

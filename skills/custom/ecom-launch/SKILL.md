@@ -5,6 +5,7 @@ allowed-tools:
   - read_file
   - grep
   - write_file
+  - render_launch_pack
   - str_replace
   - present_files
   - task
@@ -14,6 +15,8 @@ allowed-tools:
 # OpenSKU Launch Team
 
 Turn an ecommerce product idea into the smallest useful decision, experiment, or launch asset.
+
+The skill instructions are already loaded into the agent context. Never call `read_file` on `/mnt/skills/custom/ecom-launch/SKILL.md` before starting a complete Pack; begin the configured specialist sequence directly.
 
 ## Choose the smallest useful scope
 
@@ -91,6 +94,8 @@ A public customer complaint may inform positioning, but it does not prove a feat
 Stop research when the configured budget is reached, sources are blocked, or the evidence is sufficient. Record limitations instead of repeating similar searches.
 
 If a specialist fails, times out, or returns weak evidence, keep the result partial, lower confidence, and expose the gap. Never replace a failed evidence path with confident unsupported numbers.
+
+No store dataset is a supported concept-validation input, not a blocker. If public search is also unavailable, continue through offer design, safe concept-test assets, the seven-file Pack, and deterministic preflight using `unavailable` and `assumption` labels.
 
 Validation experiments must be transparent. Do not recommend fake listings, undisclosed fake preorders, fabricated reviews, false scarcity, or pretending that an unbuilt product is already available. Use clearly labeled concept tests, waitlists, surveys, interviews, or non-transactional landing pages instead.
 

@@ -43,7 +43,7 @@ def test_search_text_passes_wikipedia_safe_region_to_ddgs(monkeypatch) -> None:
     results = tools._search_text("\u4e16\u754c\u676f\u65b0\u95fb 2026", backend="auto")
 
     assert results == [{"title": "Result", "href": "https://example.com", "body": "Snippet"}]
-    assert calls["timeout"] == 30
+    assert calls["timeout"] == 5
     assert calls["region"] == "cn-zh"
     assert calls["backend"] == "auto"
 
@@ -72,4 +72,5 @@ def test_web_search_tool_reads_ddgs_options_from_config() -> None:
         region="us-en",
         safesearch="off",
         backend="auto",
+        timeout=5,
     )

@@ -337,6 +337,12 @@ class SubagentExecutor:
         if self.model_name is None:
             self.model_name = resolve_subagent_model_name(self.config, self.parent_model, app_config=app_config)
         model = create_chat_model(name=self.model_name, thinking_enabled=False, app_config=app_config)
+        if self.config.max_output_tokens is not None:
+            model_fields = getattr(type(model), "model_fields", {})
+            if "max_tokens" in model_fields:
+                model = model.model_copy(update={"max_tokens": self.config.max_output_tokens})
+            elif "max_output_tokens" in model_fields:
+                model = model.model_copy(update={"max_output_tokens": self.config.max_output_tokens})
 
         from deerflow.agents.middlewares.tool_error_handling_middleware import build_subagent_runtime_middlewares
 

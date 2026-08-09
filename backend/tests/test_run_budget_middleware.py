@@ -418,6 +418,66 @@ def test_direct_answer_exclusion_keeps_tools_for_explicit_public_research() -> N
     assert middleware._is_direct_answer_request([HumanMessage(content="用公开数据判断最先验证哪个假设")]) is False
 
 
+def test_direct_answer_stops_before_auto_pack_state_machine() -> None:
+    middleware = RunBudgetMiddleware(
+        AgentRunBudgetConfig(
+            max_lead_model_calls=20,
+            max_subagent_calls=0,
+            max_total_tokens=200_000,
+            max_execution_seconds=240,
+            direct_answer_patterns=["最先.*验证"],
+            complete_pack_initial_research_calls=2,
+            required_output_files=["launch-war-room.html"],
+            auto_present_complete_pack=True,
+        )
+    )
+    runtime = _runtime()
+    middleware.before_agent({}, runtime)
+
+    update = middleware.after_model(
+        {
+            "messages": [
+                HumanMessage(content="最先应该验证哪一个假设？"),
+                AIMessage(content="先验证需求假设。"),
+            ]
+        },
+        runtime,
+    )
+
+    assert update is None
+
+
+def test_direct_answer_strips_unexpected_model_tool_call() -> None:
+    middleware = RunBudgetMiddleware(
+        AgentRunBudgetConfig(
+            max_lead_model_calls=20,
+            max_subagent_calls=0,
+            max_total_tokens=200_000,
+            max_execution_seconds=240,
+            direct_answer_patterns=["最先.*验证"],
+            required_output_files=["launch-war-room.html"],
+            auto_present_complete_pack=True,
+        )
+    )
+    runtime = _runtime()
+    middleware.before_agent({}, runtime)
+
+    update = middleware.after_model(
+        {
+            "messages": [
+                HumanMessage(content="最先应该验证哪一个假设？"),
+                AIMessage(content="", tool_calls=[_tool_call("web_search", "search-1")]),
+            ]
+        },
+        runtime,
+    )
+
+    assert update is not None
+    stopped = update["messages"][0]
+    assert stopped.tool_calls == []
+    assert "已停止异常工具调用" in stopped.content
+
+
 def test_wrap_model_call_compacts_large_historical_write_file_payloads() -> None:
     middleware = RunBudgetMiddleware(
         AgentRunBudgetConfig(
@@ -606,6 +666,202 @@ def test_started_complete_pack_assembly_reengages_after_toolless_intent() -> Non
     assert update == {"jump_to": "model"}
 
 
+def test_complete_pack_draft_reengages_when_model_calls_disallowed_read() -> None:
+    middleware = RunBudgetMiddleware(
+        AgentRunBudgetConfig(
+            max_lead_model_calls=12,
+            max_subagent_calls=0,
+            max_total_tokens=250_000,
+            max_execution_seconds=120,
+            complete_workflow_patterns=["Launch Validation Pack"],
+            required_output_files=["a.md", "b.csv"],
+            auto_present_complete_pack=True,
+        )
+    )
+    runtime = _runtime()
+    middleware.before_agent({}, runtime)
+    user = HumanMessage(content="请输出 Launch Validation Pack")
+    wrong_tool = AIMessage(
+        content="I will load the skill first.",
+        tool_calls=[
+            _tool_call(
+                "read_file",
+                "read-1",
+                {"path": "/mnt/skills/custom/ecom-launch/SKILL.md"},
+            )
+        ],
+    )
+
+    update = middleware.after_model({"messages": [user, wrong_tool]}, runtime)
+
+    assert update == {"jump_to": "model"}
+
+
+def test_complete_pack_ultra_exposes_only_the_next_required_specialist() -> None:
+    middleware = RunBudgetMiddleware(
+        AgentRunBudgetConfig(
+            max_lead_model_calls=12,
+            max_subagent_calls=3,
+            max_total_tokens=250_000,
+            max_execution_seconds=180,
+            complete_workflow_patterns=["Launch Validation Pack"],
+            required_completed_subagents=["market-voc-researcher", "offer-architect", "asset-studio"],
+            required_output_files=["a.md", "b.csv"],
+            auto_present_complete_pack=True,
+        )
+    )
+    runtime = _runtime()
+    middleware.before_agent({}, runtime)
+    user = HumanMessage(content="请输出 Launch Validation Pack")
+
+    class FakeRequest(SimpleNamespace):
+        def override(self, **updates):
+            return FakeRequest(
+                runtime=self.runtime,
+                messages=updates.get("messages", self.messages),
+                tools=updates.get("tools", self.tools),
+            )
+
+    request = FakeRequest(
+        runtime=runtime,
+        messages=[user],
+        tools=[SimpleNamespace(name="read_file"), SimpleNamespace(name="task"), SimpleNamespace(name="write_file")],
+    )
+    captured = []
+    middleware.wrap_model_call(request, lambda updated: captured.append(updated) or MagicMock())
+
+    assert [tool.name for tool in captured[0].tools] == ["task"]
+    assert captured[0].messages[-1].name == "complete_pack_specialist"
+    assert "Next required specialist: market-voc-researcher" in captured[0].messages[-1].content
+    assert "already loaded" in captured[0].messages[-1].content
+
+    runtime.context[RUN_BUDGET_CONTEXT_KEY]["subagent_types_completed"] = {"market-voc-researcher"}
+    captured.clear()
+    middleware.wrap_model_call(request, lambda updated: captured.append(updated) or MagicMock())
+    assert "Next required specialist: offer-architect" in captured[0].messages[-1].content
+
+
+def test_complete_pack_ultra_rejects_skill_read_before_required_specialist() -> None:
+    middleware = RunBudgetMiddleware(
+        AgentRunBudgetConfig(
+            max_lead_model_calls=12,
+            max_subagent_calls=3,
+            max_total_tokens=250_000,
+            max_execution_seconds=180,
+            complete_workflow_patterns=["Launch Validation Pack"],
+            required_completed_subagents=["market-voc-researcher"],
+            required_output_files=["a.md", "b.csv"],
+            auto_present_complete_pack=True,
+        )
+    )
+    runtime = _runtime()
+    middleware.before_agent({}, runtime)
+    user = HumanMessage(content="请输出 Launch Validation Pack")
+    wrong_tool = AIMessage(
+        content="",
+        tool_calls=[_tool_call("read_file", "read-skill", {"path": "/mnt/skills/custom/ecom-launch/SKILL.md"})],
+    )
+
+    assert middleware.after_model({"messages": [user, wrong_tool]}, runtime) == {"jump_to": "model"}
+
+
+def test_render_launch_pack_success_is_terminal_delivery() -> None:
+    middleware = RunBudgetMiddleware(
+        AgentRunBudgetConfig(
+            max_lead_model_calls=12,
+            max_subagent_calls=0,
+            max_total_tokens=250_000,
+            max_execution_seconds=120,
+            complete_workflow_patterns=["Launch Validation Pack"],
+            required_output_files=["a.md", "b.csv"],
+            auto_present_complete_pack=True,
+        )
+    )
+    runtime = _runtime()
+    middleware.before_agent({}, runtime)
+    runtime.context[RUN_BUDGET_CONTEXT_KEY]["required_output_files_ready"] = True
+    user = HumanMessage(content="请输出 Launch Validation Pack")
+    render = AIMessage(content="", tool_calls=[_tool_call("render_launch_pack", "render-1", {"spec": {"category": "cup"}})])
+    delivered = ToolMessage(content="Successfully presented files", tool_call_id="render-1", status="success")
+
+    assert middleware._complete_pack_phase([user, render, delivered], runtime) is None
+    update = middleware.after_model(
+        {"messages": [user, render, delivered, AIMessage(content="继续搜索", tool_calls=[_tool_call("web_search", "extra")])]},
+        runtime,
+    )
+    assert update is not None
+    assert update["messages"][0].tool_calls == []
+
+
+def test_flash_complete_pack_runs_bounded_public_research_before_drafting() -> None:
+    middleware = RunBudgetMiddleware(
+        AgentRunBudgetConfig(
+            max_lead_model_calls=12,
+            max_subagent_calls=0,
+            max_total_tokens=250_000,
+            max_execution_seconds=120,
+            complete_pack_initial_research_calls=2,
+            required_output_files=["a.md", "b.csv"],
+            auto_present_complete_pack=True,
+        )
+    )
+    runtime = _runtime()
+    middleware.before_agent({}, runtime)
+    user = HumanMessage(content="请用公开信号输出 Launch Validation Pack")
+
+    class FakeRequest(SimpleNamespace):
+        def override(self, **updates):
+            return FakeRequest(
+                runtime=self.runtime,
+                messages=updates.get("messages", self.messages),
+                tools=updates.get("tools", self.tools),
+            )
+
+    request = FakeRequest(
+        runtime=runtime,
+        messages=[user],
+        tools=[
+            SimpleNamespace(name="web_search"),
+            SimpleNamespace(name="web_fetch"),
+            SimpleNamespace(name="render_launch_pack"),
+            SimpleNamespace(name="write_launch_pack"),
+            SimpleNamespace(name="write_file"),
+        ],
+    )
+    captured = []
+    middleware.wrap_model_call(request, lambda updated: captured.append(updated) or MagicMock())
+    assert [tool.name for tool in captured[0].tools] == ["web_search", "web_fetch"]
+    assert captured[0].messages[-1].name == "complete_pack_research"
+
+    # DeepSeek can occasionally emit DSML-looking search markup as plain text
+    # instead of provider tool_calls. The middleware must turn that stalled
+    # response into real bounded web_search calls rather than loop on intent.
+    stalled = AIMessage(content="<tool_calls>web_search ...</tool_calls>")
+    update = middleware.after_model({"messages": [user, stalled]}, runtime)
+    assert update is not None
+    configured_calls = update["messages"][0].tool_calls
+    assert len(configured_calls) == 2
+    assert {call["name"] for call in configured_calls} == {"web_search"}
+    assert all(call["args"]["max_results"] == 5 for call in configured_calls)
+
+    # Once two bounded attempts have returned, the next model turn is drafting
+    # and must no longer receive web research tools.
+    search_1 = AIMessage(content="", tool_calls=[_tool_call("web_search", "s1")])
+    search_2 = AIMessage(content="", tool_calls=[_tool_call("web_search", "s2")])
+    request.messages = [
+        user,
+        search_1,
+        ToolMessage(content="[]", tool_call_id="s1"),
+        search_2,
+        ToolMessage(content="[]", tool_call_id="s2"),
+    ]
+    captured.clear()
+    middleware.wrap_model_call(request, lambda updated: captured.append(updated) or MagicMock())
+    assert [tool.name for tool in captured[0].tools] == ["render_launch_pack", "write_launch_pack", "write_file"]
+    assert captured[0].messages[-1].name == "complete_pack_draft"
+    assert "Call render_launch_pack exactly once" in captured[0].messages[-1].content
+
+
 def test_incomplete_pack_does_not_reengage_after_budget_is_exhausted() -> None:
     middleware = RunBudgetMiddleware(
         AgentRunBudgetConfig(
@@ -668,6 +924,50 @@ def test_complete_pack_ready_replaces_manual_read_with_configured_presentation()
     calls = update["messages"][0].tool_calls
     assert [call["name"] for call in calls] == ["present_files"]
     assert calls[0]["args"]["filepaths"] == ["/mnt/user-data/outputs/a.md", "/mnt/user-data/outputs/b.csv"]
+
+
+def test_complete_pack_ready_replaces_model_filename_aliases_with_configured_names() -> None:
+    middleware = RunBudgetMiddleware(
+        AgentRunBudgetConfig(
+            max_lead_model_calls=20,
+            max_subagent_calls=0,
+            max_total_tokens=250_000,
+            max_execution_seconds=120,
+            required_output_files=["launch-war-room.html", "evidence-ledger.json"],
+            auto_present_complete_pack=True,
+        )
+    )
+    runtime = _runtime()
+    middleware.before_agent({}, runtime)
+    runtime.context[RUN_BUDGET_CONTEXT_KEY]["required_output_files_ready"] = True
+    aliased_present = AIMessage(
+        content="",
+        tool_calls=[
+            _tool_call(
+                "present_files",
+                "present-alias",
+                {
+                    "filepaths": [
+                        "/mnt/user-data/outputs/launch_war_room.html",
+                        "/mnt/user-data/outputs/evidence_ledger.json",
+                    ]
+                },
+            )
+        ],
+    )
+
+    update = middleware.after_model(
+        {"messages": [HumanMessage(content="build pack"), aliased_present]},
+        runtime,
+    )
+
+    assert update is not None
+    calls = update["messages"][0].tool_calls
+    assert [call["name"] for call in calls] == ["present_files"]
+    assert calls[0]["args"]["filepaths"] == [
+        "/mnt/user-data/outputs/launch-war-room.html",
+        "/mnt/user-data/outputs/evidence-ledger.json",
+    ]
 
 
 def test_failed_complete_pack_preflight_allows_only_revision_then_retries_presentation() -> None:
@@ -1065,6 +1365,8 @@ def test_wrap_model_call_makes_a_successful_file_delivery_terminal() -> None:
     assert final_message.name == "terminal_delivery_finalization"
     assert final_message.additional_kwargs["hide_from_ui"] is True
     assert "Do not call any more tools" in final_message.content
+    assert "file card below" in final_message.content
+    assert "Do not expose `/mnt/user-data/outputs`" in final_message.content
     assert "end with a question" in final_message.content
 
 

@@ -151,6 +151,9 @@ test.describe("OpenSKU product flows (real full stack, replay LLM)", () => {
     await expect(textarea).toBeVisible();
     await textarea.fill(fixture.scenarios.launch.prompt);
     await textarea.press("Enter");
+    await expect(page.getByTestId("streaming-status")).toBeVisible({
+      timeout: 30_000,
+    });
 
     await expect(
       page.getByRole("heading", {
@@ -190,8 +193,18 @@ test.describe("OpenSKU product flows (real full stack, replay LLM)", () => {
       ),
     ).toBeVisible();
 
+    // Ultra can emit an initial pack and a final pack after the deterministic
+    // repair loop. Assert against the final delivery card.
+    const deliveryPack = page.getByTestId("artifact-delivery").last();
+    await deliveryPack.scrollIntoViewIfNeeded();
+    await expect(deliveryPack).toBeVisible();
     for (const name of PACK_FILES) {
-      await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
+      // The artifact preview drawer may also render the selected filename in
+      // a hidden combobox/list. Scope this assertion to the visible delivery
+      // card so we verify the user-facing Launch Validation Pack itself.
+      const deliveredFile = deliveryPack.getByText(name, { exact: true });
+      await deliveredFile.scrollIntoViewIfNeeded();
+      await expect(deliveredFile).toBeVisible();
     }
 
     const threadId = new URL(page.url()).pathname.split("/").at(-1);

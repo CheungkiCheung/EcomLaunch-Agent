@@ -53,6 +53,24 @@ export const zhCN: Translations = {
     exportAsMarkdown: "导出为 Markdown",
     exportAsJSON: "导出为 JSON",
     exportSuccess: "对话已导出",
+    streamingStatus: {
+      preparing: "正在准备回答",
+      thinking: "正在整理问题与约束",
+      searching: "正在搜索公开信号",
+      reading: "正在读取公开页面",
+      researcher: "市场研究专家执行中",
+      offer: "方案架构师执行中",
+      assets: "素材工作室执行中",
+      analyzing: "正在检查上传数据",
+      joining: "正在关联多个数据文件",
+      experiment: "正在计算实验结果",
+      rendering: "正在生成 Launch Pack",
+      writing: "正在写入交付文件",
+      preflight: "正在执行确定性预检",
+      repairing: "正在按预检观察修复文件",
+      finalizing: "正在整理最终交付",
+      failed: "运行遇到错误，正在收集信息",
+    },
   },
 
   // Home
@@ -283,6 +301,47 @@ export const zhCN: Translations = {
         icon: ListChecksIcon,
       },
     ],
+    dataInspectorDemo: {
+      title: "选择演示场景",
+      description: "一键载入真实 CSV 与完整分析问题",
+      selectorLabel: "Growth Analyst 演示场景",
+      note: "只替换本卡载入的演示附件，保留手动上传数据；数据仅供演示。",
+      load: "载入所选数据",
+      loaded: "所选数据已载入",
+      scenarios: {
+        experiment: {
+          label: "A/B 实验",
+          description: "3 个 CSV · 200 个用户 · 转化实验",
+          preview:
+            "control 100 人 / 10 次转化 · variant 100 人 / 20 次转化",
+          prompt:
+            "请基于这 3 个演示文件完成一次增长分析：先检查字段和数据质量；关联 customers、assignments、outcomes，比较 control 与 variant 的转化率、绝对差异、相对提升、p 值、95% 置信区间和 SRM；最后给出 ship / extend / stop 决策，并列出下一步建议。",
+        },
+        channel: {
+          label: "渠道 ROI",
+          description: "3 个 CSV · 30 天 · 4 个渠道 · 12 个 Campaign",
+          preview: "小红书 ROAS ≈ 3.7 · 搜索 ≈ 3.0 · 展示广告 < 1",
+          prompt:
+            "请分析这 3 个渠道投放演示文件：先检查数据质量，再按 date、channel、campaign 关联 ad_spend、sessions、orders，计算各渠道和 Campaign 的 CTR、访问转化率、下单转化率、CAC、ROAS、退款金额与净收入；识别高消耗低转化渠道，最后给出下一周预算增加、维持或暂停建议。",
+        },
+        retention: {
+          label: "用户留存",
+          description: "3 个 CSV · 12 周 Cohort · 240 个用户",
+          preview:
+            "referral D30 40% · organic / 小红书 20% · paid display 0%",
+          prompt:
+            "请分析这 3 个用户留存演示文件：先检查字段和数据质量；关联 users、events、subscriptions，按注册周构建 Cohort，计算 D1、D7、D30 留存率、购买率和订阅转化率；比较不同获客渠道的用户质量，识别流失最严重的阶段，并给出优先级明确的留存实验建议。",
+        },
+        product: {
+          label: "商品经营",
+          description: "3 个 CSV · 8 个 SKU · 240 笔订单",
+          preview:
+            "sku-001 高销量低毛利 · sku-002 高毛利低销量 · sku-008 高库存低动销",
+          prompt:
+            "请分析这 3 个商品经营演示文件：先检查字段和数据质量；关联 products、orders、order_items，计算各 SKU 的 GMV、销量、客单价、退款数、毛利额、毛利率和库存周转风险；识别高销量低毛利、高毛利低销量和高库存低动销商品，最后给出扩品、调价、促销或清库存建议。",
+        },
+      },
+    },
     openskufastSuggestions: [
       {
         suggestion: "新品评估",
@@ -390,6 +449,7 @@ export const zhCN: Translations = {
       offer: "方案设计",
       content: "内容生成",
       pack: "打包交付",
+      preflight: "确定性预检",
       done: "完成",
     },
     metrics: {
@@ -468,6 +528,7 @@ export const zhCN: Translations = {
     collaborating: "协作中",
     synced: "已同步",
     collaborationProgress: "协作进度",
+    deliveryProgress: "交付进度",
     validationStage: "验证阶段",
     complete: "完成",
     waiting: "等待中",
@@ -481,6 +542,9 @@ export const zhCN: Translations = {
     emptyTitle: "等待第一条上新验证任务",
     emptyDescription:
       "Flash 保留子智能体能力并关闭额外计划追踪；三个启用角色会按需在这里显示真实分工状态。",
+    packCompleteTitle: "Launch Validation Pack 已生成",
+    packCompleteDescription:
+      "本次 Flash 由 OpenSKU 启动总监和确定性渲染器完成交付；7 个文件已可在对话文件卡或右上角“文件”中打开。",
     assignedTask: "分派任务",
     currentAction: "当前动作",
     deliverables: "交付物",
