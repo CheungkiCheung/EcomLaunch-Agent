@@ -280,6 +280,7 @@ export interface Translations {
     closeChat: string;
     close: string;
     pipeline: string;
+    growthPipeline: string;
     runMetrics: string;
     taskQueue: string;
     artifactFiles: (count: number) => string;
@@ -323,6 +324,11 @@ export interface Translations {
       pack: string;
       preflight: string;
       done: string;
+      dataIntake: string;
+      dataInspect: string;
+      dataJoin: string;
+      dataExperiment: string;
+      dataDecision: string;
     };
     replay: {
       title: string;
@@ -344,6 +350,14 @@ export interface Translations {
       delivery: string;
       completed: string;
       failed: string;
+      launchTeam: string;
+      growthAnalyst: string;
+      inspectData: string;
+      queryData: string;
+      experiment: string;
+      dataProfileReady: string;
+      queryReady: string;
+      experimentReady: string;
     };
     metrics: {
       llmCalls: string;
@@ -352,6 +366,8 @@ export interface Translations {
       searches: string;
       fetches: string;
       filesWritten: string;
+      queries: string;
+      experiments: string;
     };
     actors: {
       "ecom-launch": {

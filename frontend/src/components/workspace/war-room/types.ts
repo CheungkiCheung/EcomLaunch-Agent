@@ -85,22 +85,26 @@ export type WarRoomMetrics = {
   webFetches: number;
   writeFiles: number;
   presentCalls: number;
+  dataQueries: number;
+  experiments: number;
 };
 
 export type WarRoomSnapshot = {
+  /** Team whose run details, stages, and metrics are currently in focus. */
+  focusTeam: WarRoomTeam;
   actors: WarRoomActorSnapshot[];
   activeCount: number;
   completedCount: number;
   failedCount: number;
   artifactCount: number;
   updatedAt: string;
-  /** OpenSKU Launch Team pipeline stages (init → research → design → content → pack → done). */
+  /** Pipeline stages for the focused Launch Team or Growth Analyst run. */
   stages: WarRoomStage[];
-  /** Run metrics for the latest OpenSKU Launch Team run. */
+  /** Run metrics for the focused team's latest run. */
   metrics: WarRoomMetrics;
-  /** Latest run status for the OpenSKU Launch Team thread. */
+  /** Latest run status for the focused team's thread. */
   runStatus?: WarRoomRunStatus;
-  /** Thread title of the latest OpenSKU Launch Team run. */
+  /** Thread title of the focused team's latest run. */
   runTitle?: string;
 };
 
@@ -126,24 +130,27 @@ export type WarRoomReplayEvent = {
 
 export type WarRoomReplay = {
   id: string;
-  team: "ecom-launch";
+  team: WarRoomTeam;
   title: string;
   events: WarRoomReplayEvent[];
+};
+
+export type WarRoomRunRecord = {
+  run_id: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+  llm_call_count?: number;
+  total_tokens?: number;
+  total_input_tokens?: number;
+  total_output_tokens?: number;
 };
 
 export type WarRoomSource = {
   ecomThread?: AgentThread;
   ecomRunStatus?: WarRoomRunStatus;
-  ecomRuns?: Array<{
-    run_id: string;
-    status?: string;
-    created_at?: string;
-    updated_at?: string;
-    llm_call_count?: number;
-    total_tokens?: number;
-    total_input_tokens?: number;
-    total_output_tokens?: number;
-  }>;
+  ecomRuns?: WarRoomRunRecord[];
   dataThread?: AgentThread;
   dataRunStatus?: WarRoomRunStatus;
+  dataRuns?: WarRoomRunRecord[];
 };

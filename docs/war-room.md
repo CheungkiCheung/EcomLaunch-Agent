@@ -27,7 +27,7 @@ shown as actor activities rather than additional characters.
 ```text
 OpenSKU threads and runs
   -> War Room adapter
-  -> six actor snapshots
+  -> team-focused snapshots and persisted-event replay timelines
   -> React HUD + Phaser scene
 ```
 
@@ -35,11 +35,21 @@ The page polls the existing thread and run APIs. It does not introduce the
 Agent Town WebSocket protocol, a player controller, a seat editor, or a second
 local task store.
 
+When a persisted request flow exists, the replay dock can switch between the
+latest Launch Team and Growth Analyst runs. Launch replay reconstructs real
+request, specialist handoff, tool result, preflight, delivery, and terminal
+events. Growth replay reconstructs real data inspection, join/query,
+deterministic experiment analysis, observation, decision, and terminal events.
+If a team has no qualifying thread messages, the War Room does not fabricate a
+replay source for it.
+
 ## Visual implementation
 
 - React renders navigation and metrics over the scene, while the compact actor
   roster, selected-actor summary, chat/task/output actions, and run details live
   in a separate right sidebar so they never cover the playable floor.
+- Run details follow the selected replay source: Launch shows web research and
+  specialist task metrics, while Growth shows data-query and experiment metrics.
 - Phaser 3 renders the original low-resolution office map, four-direction
   actors, movement, collision, A* pathfinding, status bubbles, completion
   feedback, and failure feedback.

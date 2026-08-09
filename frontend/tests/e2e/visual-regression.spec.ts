@@ -206,6 +206,132 @@ test.describe("OpenSKU visual regression", () => {
     await captureVisual(page, testInfo, "war-room-replay-desktop.png");
   });
 
+  test("War Room Growth Analyst replay keeps the data pipeline legible", async ({
+    page,
+  }, testInfo) => {
+    mockLangGraphAPI(page, {
+      threads: [
+        {
+          thread_id: "00000000-0000-0000-0000-000000003129",
+          title: "Launch validation",
+          agent_name: "ecom-launch",
+          messages: [
+            {
+              type: "human",
+              id: "growth-visual-launch-human",
+              content: "Validate a commuter coffee mug",
+            },
+            {
+              type: "ai",
+              id: "growth-visual-launch-ai",
+              content: "Launch signals ready",
+            },
+          ],
+        },
+        {
+          thread_id: "00000000-0000-0000-0000-000000003130",
+          title: "Growth experiment replay",
+          agent_name: "data-inspector",
+          messages: [
+            {
+              type: "human",
+              id: "growth-visual-human",
+              content: "Analyze three growth files and decide whether to ship",
+            },
+            {
+              type: "ai",
+              id: "growth-visual-inspect-call",
+              content: "",
+              tool_calls: [
+                {
+                  id: "growth-visual-inspect-1",
+                  name: "inspect_data",
+                  args: {
+                    filenames: ["users.csv", "events.csv", "orders.csv"],
+                  },
+                },
+              ],
+            },
+            {
+              type: "tool",
+              id: "growth-visual-inspect-result",
+              tool_call_id: "growth-visual-inspect-1",
+              content: "3 tables inspected",
+            },
+            {
+              type: "ai",
+              id: "growth-visual-query-call",
+              content: "",
+              tool_calls: [
+                {
+                  id: "growth-visual-query-1",
+                  name: "query_data",
+                  args: { sql: "SELECT variant, COUNT(*) FROM experiments" },
+                },
+              ],
+            },
+            {
+              type: "tool",
+              id: "growth-visual-query-result",
+              tool_call_id: "growth-visual-query-1",
+              content: "control=100, variant=100",
+            },
+            {
+              type: "ai",
+              id: "growth-visual-experiment-call",
+              content: "",
+              tool_calls: [
+                {
+                  id: "growth-visual-experiment-1",
+                  name: "analyze_ab_test",
+                  args: { control_conversions: 10, variant_conversions: 20 },
+                },
+              ],
+            },
+            {
+              type: "tool",
+              id: "growth-visual-experiment-result",
+              tool_call_id: "growth-visual-experiment-1",
+              content: "p=0.0477; uplift=+10.00 pp; no SRM",
+            },
+            {
+              type: "ai",
+              id: "growth-visual-final",
+              content: "SHIP WITH MONITORING",
+            },
+          ],
+        },
+      ],
+    });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.context().addCookies([
+      {
+        name: "locale",
+        value: "en-US",
+        url: String(testInfo.project.use.baseURL),
+      },
+    ]);
+    await page.goto("/workspace/war-room");
+    const replay = page.getByTestId("war-room-replay");
+    await expect(replay).toBeVisible();
+    await replay
+      .getByTestId("war-room-replay-sources")
+      .getByRole("button", { name: "Growth Analyst", exact: true })
+      .click();
+    await replay.getByRole("button", { name: "Play replay" }).click();
+    await replay.getByRole("button", { name: "Pause replay" }).click();
+    await expect(page.getByTestId("war-room-replay-event-title")).toHaveText(
+      "Brief received",
+    );
+    await expect(page.getByTestId("war-room-canvas")).toHaveAttribute(
+      "data-ready",
+      "true",
+    );
+    await settleVisuals(page);
+
+    await captureVisual(page, testInfo, "war-room-growth-replay-desktop.png");
+  });
+
   test("War Room stacks cleanly at the interview-demo compact size", async ({
     page,
   }, testInfo) => {

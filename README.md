@@ -87,7 +87,7 @@ launch-calendar.csv
 | **Growth Analyst**                        | Analyzes uploaded CSV/XLSX data for changes, anomalies, cohorts, and experiments.                          |
 | **Deterministic Preflight (system gate)** | Checks the seven-file contract, evidence URLs, JSON/CSV structure, and unsupported claims before delivery. |
 
-The War Room is not a fake animation layer. It visualizes the latest real thread, run, task, artifact, and failure state for each agent. The interface supports both English and Chinese, including the Phaser scene labels and interaction menu.
+The War Room is not a fake animation layer. It visualizes the latest real thread, run, task, artifact, and failure state for each agent. Its replay dock can switch between persisted Launch Team and Growth Analyst runs, reconstructing their actual handoffs, tool observations, verification or experiment steps, decisions, and terminal state without inventing agent activity. The interface supports both English and Chinese, including the Phaser scene labels and interaction menu.
 
 The interview demo separates the fixed specialist workflow from the adaptive delivery loop: the first `present_files` call receives two structured preflight violations, the lead agent selects only the affected 2/7 files and bounded edit tools, the second call passes 7/7, and the run stops after using 2/5 available iterations.
 

@@ -421,6 +421,7 @@ export const enUS: Translations = {
     closeChat: "Close chat",
     close: "Close",
     pipeline: "Launch pipeline",
+    growthPipeline: "Growth analysis pipeline",
     runMetrics: "Run metrics",
     taskQueue: "Task queue",
     artifactFiles: (count: number) =>
@@ -466,6 +467,11 @@ export const enUS: Translations = {
       pack: "Launch pack",
       preflight: "Preflight",
       done: "Complete",
+      dataIntake: "Question & files",
+      dataInspect: "Inspect data",
+      dataJoin: "Join and query",
+      dataExperiment: "Experiment analysis",
+      dataDecision: "Decision",
     },
     replay: {
       title: "Run replay",
@@ -488,6 +494,14 @@ export const enUS: Translations = {
       delivery: "Pack delivered",
       completed: "Run completed",
       failed: "Run blocked",
+      launchTeam: "Launch Team",
+      growthAnalyst: "Growth Analyst",
+      inspectData: "Inspect uploaded data",
+      queryData: "Join and query data",
+      experiment: "Run deterministic experiment analysis",
+      dataProfileReady: "Data profile returned",
+      queryReady: "Query result returned",
+      experimentReady: "Experiment result returned",
     },
     metrics: {
       llmCalls: "LLM calls",
@@ -496,6 +510,8 @@ export const enUS: Translations = {
       searches: "Searches",
       fetches: "Fetches",
       filesWritten: "Files written",
+      queries: "Data queries",
+      experiments: "Experiments",
     },
     actors: {
       "ecom-launch": {

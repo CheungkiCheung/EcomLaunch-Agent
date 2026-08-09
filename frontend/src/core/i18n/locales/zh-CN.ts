@@ -406,6 +406,7 @@ export const zhCN: Translations = {
     closeChat: "关闭对话",
     close: "关闭",
     pipeline: "执行流水线",
+    growthPipeline: "增长分析流水线",
     runMetrics: "运行指标",
     taskQueue: "任务队列",
     artifactFiles: (count: number) => `产物文件 (${count})`,
@@ -449,6 +450,11 @@ export const zhCN: Translations = {
       pack: "打包交付",
       preflight: "确定性预检",
       done: "完成",
+      dataIntake: "问题与文件",
+      dataInspect: "读取数据",
+      dataJoin: "Join 与查询",
+      dataExperiment: "实验分析",
+      dataDecision: "决策",
     },
     replay: {
       title: "运行回放",
@@ -470,6 +476,14 @@ export const zhCN: Translations = {
       delivery: "Pack 已交付",
       completed: "运行完成",
       failed: "运行遇到阻塞",
+      launchTeam: "上新团队",
+      growthAnalyst: "增长分析师",
+      inspectData: "检查上传数据",
+      queryData: "跨文件 Join 与查询",
+      experiment: "执行确定性实验分析",
+      dataProfileReady: "数据结构已读取",
+      queryReady: "查询结果已返回",
+      experimentReady: "实验结果已返回",
     },
     metrics: {
       llmCalls: "LLM 调用",
@@ -478,6 +492,8 @@ export const zhCN: Translations = {
       searches: "搜索",
       fetches: "抓取",
       filesWritten: "写文件",
+      queries: "数据查询",
+      experiments: "实验分析",
     },
     actors: {
       "ecom-launch": {

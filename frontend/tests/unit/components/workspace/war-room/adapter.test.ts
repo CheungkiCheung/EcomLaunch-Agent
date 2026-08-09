@@ -225,6 +225,98 @@ describe("buildWarRoomSnapshot", () => {
     expect(snapshot.actors).toHaveLength(6);
   });
 
+  it("focuses the Growth Analyst pipeline and real data metrics", () => {
+    const messages = [
+      { id: "human-1", type: "human", content: "分析增长实验" },
+      {
+        id: "inspect-call",
+        type: "ai",
+        content: "",
+        tool_calls: [
+          { id: "inspect-1", name: "inspect_data", args: { filenames: [] } },
+        ],
+      },
+      {
+        id: "inspect-result",
+        type: "tool",
+        tool_call_id: "inspect-1",
+        content: "schema ready",
+      },
+      {
+        id: "query-call",
+        type: "ai",
+        content: "",
+        tool_calls: [
+          { id: "query-1", name: "query_data", args: { sql: "SELECT 1" } },
+        ],
+      },
+      {
+        id: "query-result",
+        type: "tool",
+        tool_call_id: "query-1",
+        content: "rows ready",
+      },
+      {
+        id: "experiment-call",
+        type: "ai",
+        content: "",
+        tool_calls: [
+          {
+            id: "experiment-1",
+            name: "analyze_ab_test",
+            args: { control: 10, variant: 20 },
+          },
+        ],
+      },
+      {
+        id: "experiment-result",
+        type: "tool",
+        tool_call_id: "experiment-1",
+        content: "p=0.0477",
+      },
+    ] as Message[];
+
+    const snapshot = buildWarRoomSnapshot(
+      {
+        dataThread: thread("data-inspector", messages, ["decision.md"]),
+        dataRunStatus: "success",
+        dataRuns: [
+          {
+            run_id: "growth-run",
+            status: "success",
+            created_at: "2026-08-09T00:00:00Z",
+            updated_at: "2026-08-09T00:00:10Z",
+            llm_call_count: 4,
+            total_tokens: 2600,
+          },
+        ],
+      },
+      zhCN.warRoom,
+      "data-inspector",
+    );
+
+    expect(snapshot.focusTeam).toBe("data-inspector");
+    expect(snapshot.stages.map((stage) => stage.label)).toEqual([
+      "问题与文件",
+      "读取数据",
+      "Join 与查询",
+      "实验分析",
+      "决策",
+    ]);
+    expect(snapshot.stages.at(-1)).toMatchObject({
+      id: "data-decision",
+      current: true,
+    });
+    expect(snapshot.metrics).toMatchObject({
+      llmCalls: 4,
+      totalTokens: 2600,
+      durationSeconds: 10,
+      dataQueries: 2,
+      experiments: 1,
+    });
+    expect(snapshot.runTitle).toBe("Test");
+  });
+
   it("keeps failed and completed paths visible", () => {
     const failed = buildWarRoomSnapshot({
       dataThread: thread("data-inspector", [

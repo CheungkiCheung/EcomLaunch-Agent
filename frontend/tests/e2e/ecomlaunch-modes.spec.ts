@@ -264,6 +264,155 @@ test.describe("War Room", () => {
     ).toBeVisible();
   });
 
+  test("War Room switches to and replays a real Growth Analyst run", async ({
+    page,
+  }) => {
+    mockLangGraphAPI(page, {
+      threads: [
+        {
+          thread_id: "00000000-0000-0000-0000-000000003127",
+          title: "通勤咖啡杯 Launch Validation Pack",
+          agent_name: "ecom-launch",
+          messages: [
+            {
+              type: "human",
+              id: "growth-switch-launch-human",
+              content: "输出上新验证包",
+            },
+            {
+              type: "ai",
+              id: "growth-switch-launch-ai",
+              content: "已完成公开信号研究",
+            },
+          ],
+        },
+        {
+          thread_id: "00000000-0000-0000-0000-000000003128",
+          title: "增长实验分析",
+          agent_name: "data-inspector",
+          messages: [
+            {
+              type: "human",
+              id: "growth-replay-human",
+              content: "分析三份增长数据并判断是否继续投放",
+            },
+            {
+              type: "ai",
+              id: "growth-replay-inspect-call",
+              content: "",
+              tool_calls: [
+                {
+                  id: "growth-replay-inspect-1",
+                  name: "inspect_data",
+                  args: {
+                    filenames: ["users.csv", "events.csv", "orders.csv"],
+                  },
+                },
+              ],
+            },
+            {
+              type: "tool",
+              id: "growth-replay-inspect-result",
+              tool_call_id: "growth-replay-inspect-1",
+              content: "3 tables inspected",
+            },
+            {
+              type: "ai",
+              id: "growth-replay-query-call",
+              content: "",
+              tool_calls: [
+                {
+                  id: "growth-replay-query-1",
+                  name: "query_data",
+                  args: { sql: "SELECT variant, COUNT(*) FROM experiments" },
+                },
+              ],
+            },
+            {
+              type: "tool",
+              id: "growth-replay-query-result",
+              tool_call_id: "growth-replay-query-1",
+              content: "control=100, variant=100",
+            },
+            {
+              type: "ai",
+              id: "growth-replay-experiment-call",
+              content: "",
+              tool_calls: [
+                {
+                  id: "growth-replay-experiment-1",
+                  name: "analyze_ab_test",
+                  args: { control_conversions: 10, variant_conversions: 20 },
+                },
+              ],
+            },
+            {
+              type: "tool",
+              id: "growth-replay-experiment-result",
+              tool_call_id: "growth-replay-experiment-1",
+              content: "p=0.0477; uplift=+10.00 pp; no SRM",
+            },
+            {
+              type: "ai",
+              id: "growth-replay-final",
+              content: "SHIP WITH MONITORING",
+            },
+          ],
+        },
+      ],
+    });
+    await page.context().addCookies([
+      {
+        name: "locale",
+        value: "zh-CN",
+        url: "http://localhost:3000",
+      },
+    ]);
+    await page.goto("/workspace/war-room");
+
+    const replay = page.getByTestId("war-room-replay");
+    await expect(replay).toBeVisible({ timeout: 15_000 });
+    const sources = replay.getByTestId("war-room-replay-sources");
+    await expect(sources).toBeVisible();
+    await expect(
+      sources.getByRole("button", { name: "上新团队", exact: true }),
+    ).toBeVisible();
+    await expect(
+      sources.getByRole("button", { name: "增长分析师", exact: true }),
+    ).toBeVisible();
+
+    await sources
+      .getByRole("button", { name: "增长分析师", exact: true })
+      .click();
+    await expect(
+      replay.getByText("增长实验分析", { exact: true }),
+    ).toBeVisible();
+
+    await replay.getByRole("button", { name: "播放回放" }).click();
+    await replay.getByRole("button", { name: "暂停回放" }).click();
+    await expect(page.getByTestId("war-room-replay-event-title")).toHaveText(
+      "收到任务需求",
+    );
+
+    await replay.getByRole("button", { name: "下一个事件" }).click();
+    await expect(page.getByTestId("war-room-replay-event-title")).toHaveText(
+      "检查上传数据",
+    );
+
+    await page.locator("summary", { hasText: "运行详情" }).click();
+    await expect(
+      page.getByText("增长分析流水线", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText("数据查询", { exact: true })).toBeVisible();
+    await expect(page.getByText("实验分析", { exact: true })).toHaveCount(2);
+    await expect(page.getByText("任务队列", { exact: true })).toHaveCount(0);
+
+    await replay.getByRole("button", { name: "返回实时" }).click();
+    await expect(
+      replay.getByRole("button", { name: "返回实时" }),
+    ).toBeDisabled();
+  });
+
   test("War Room switches languages and keeps a compact layout usable", async ({
     page,
   }, testInfo) => {

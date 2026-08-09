@@ -11,7 +11,7 @@ import {
 
 import { cn } from "@/lib/utils";
 
-import type { WarRoomReplay } from "./types";
+import type { WarRoomReplay, WarRoomTeam } from "./types";
 
 type ReplayLabels = {
   title: string;
@@ -25,10 +25,13 @@ type ReplayLabels = {
   backToLive: string;
   speed: string;
   eventOf: (current: number, total: number) => string;
+  launchTeam: string;
+  growthAnalyst: string;
 };
 
 export function RunReplayPanel({
   replay,
+  replays,
   index,
   playing,
   speed,
@@ -38,9 +41,11 @@ export function RunReplayPanel({
   onPrevious,
   onNext,
   onLive,
+  onReplayChange,
   onSpeedChange,
 }: {
   replay: WarRoomReplay;
+  replays: WarRoomReplay[];
   index: number | null;
   playing: boolean;
   speed: 1 | 2 | 4;
@@ -50,6 +55,7 @@ export function RunReplayPanel({
   onPrevious: () => void;
   onNext: () => void;
   onLive: () => void;
+  onReplayChange: (team: WarRoomTeam) => void;
   onSpeedChange: (speed: 1 | 2 | 4) => void;
 }) {
   const event = index === null ? replay.events.at(-1) : replay.events[index];
@@ -57,6 +63,9 @@ export function RunReplayPanel({
   const current = index === null ? replay.events.length : index + 1;
   const canPrevious = index !== null && index > 0;
   const canNext = index !== null && index < replay.events.length - 1;
+  const isGrowth = replay.team === "data-inspector";
+  const teamLabel = (team: WarRoomTeam) =>
+    team === "data-inspector" ? labels.growthAnalyst : labels.launchTeam;
 
   return (
     <section
@@ -65,7 +74,14 @@ export function RunReplayPanel({
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-white/10 px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-orange-400/20 text-orange-200">
+          <div
+            className={cn(
+              "flex size-7 shrink-0 items-center justify-center rounded-lg",
+              isGrowth
+                ? "bg-teal-300/20 text-teal-100"
+                : "bg-orange-400/20 text-orange-200",
+            )}
+          >
             <HistoryIcon className="size-3.5" />
           </div>
           <div className="min-w-0">
@@ -74,6 +90,29 @@ export function RunReplayPanel({
               {replay.title || labels.latestRun}
             </p>
           </div>
+        </div>
+        <div
+          className="flex items-center rounded-lg border border-white/10 bg-black/10 p-0.5"
+          data-testid="war-room-replay-sources"
+        >
+          {replays.map((candidate) => (
+            <button
+              key={candidate.team}
+              type="button"
+              onClick={() => onReplayChange(candidate.team)}
+              aria-pressed={candidate.team === replay.team}
+              className={cn(
+                "rounded-md px-2 py-1 text-[9px] font-medium transition",
+                candidate.team === replay.team
+                  ? candidate.team === "data-inspector"
+                    ? "bg-teal-300/20 text-teal-100"
+                    : "bg-orange-300/20 text-orange-100"
+                  : "text-[#9e907d] hover:bg-white/5 hover:text-white",
+              )}
+            >
+              {teamLabel(candidate.team)}
+            </button>
+          ))}
         </div>
         <span
           className={cn(
@@ -99,7 +138,12 @@ export function RunReplayPanel({
           <button
             type="button"
             onClick={index === null ? onStart : onToggle}
-            className="flex size-8 items-center justify-center rounded-lg bg-orange-400 text-[#38291c] transition hover:bg-orange-300"
+            className={cn(
+              "flex size-8 items-center justify-center rounded-lg text-[#38291c] transition",
+              isGrowth
+                ? "bg-teal-300 hover:bg-teal-200"
+                : "bg-orange-400 hover:bg-orange-300",
+            )}
             aria-label={
               index === null
                 ? labels.start
@@ -150,7 +194,12 @@ export function RunReplayPanel({
       <div className="flex items-center gap-2 px-3 py-2">
         <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/10">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-orange-300 to-rose-300 transition-[width] duration-300"
+            className={cn(
+              "h-full rounded-full bg-gradient-to-r transition-[width] duration-300",
+              isGrowth
+                ? "from-teal-300 to-cyan-300"
+                : "from-orange-300 to-rose-300",
+            )}
             style={{ width: `${(current / replay.events.length) * 100}%` }}
           />
         </div>
@@ -176,7 +225,10 @@ export function RunReplayPanel({
       {event && (
         <div className="border-t border-white/10 px-3 py-2">
           <p
-            className="truncate text-[10px] font-semibold text-orange-100"
+            className={cn(
+              "truncate text-[10px] font-semibold",
+              isGrowth ? "text-teal-100" : "text-orange-100",
+            )}
             data-testid="war-room-replay-event-title"
           >
             {event.title}

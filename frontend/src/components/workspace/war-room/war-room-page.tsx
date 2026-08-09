@@ -33,7 +33,7 @@ import { ActorChatPanel } from "./actor-chat-panel";
 import { buildWarRoomSnapshot, hydrateWarRoomThread } from "./adapter";
 import { WAR_ROOM_POLL_INTERVAL_MS } from "./config";
 import type { ActorView } from "./office-scene";
-import { buildWarRoomReplay } from "./run-replay";
+import { buildWarRoomReplays } from "./run-replay";
 import { RunReplayPanel } from "./run-replay-panel";
 import type {
   WarRoomActorId,
@@ -41,6 +41,7 @@ import type {
   WarRoomRunStatus,
   WarRoomSource,
   WarRoomStatus,
+  WarRoomTeam,
 } from "./types";
 import { WarRoomCanvas } from "./war-room-canvas";
 
@@ -199,6 +200,7 @@ export function WarRoomPage() {
   const [replayIndex, setReplayIndex] = useState<number | null>(null);
   const [replayPlaying, setReplayPlaying] = useState(false);
   const [replaySpeed, setReplaySpeed] = useState<1 | 2 | 4>(1);
+  const [replayTeam, setReplayTeam] = useState<WarRoomTeam>("ecom-launch");
 
   const handleActorSelect = useCallback(
     (actorId: WarRoomActorId, view: ActorView = "chat") => {
@@ -254,17 +256,27 @@ export function WarRoomPage() {
       ecomRuns: ecomRuns.data as WarRoomSource["ecomRuns"],
       dataThread: hydratedDataThread,
       dataRunStatus: latestRunStatus(dataRuns.data),
+      dataRuns: dataRuns.data as WarRoomSource["dataRuns"],
     }),
     [dataRuns.data, hydratedDataThread, hydratedEcomThread, ecomRuns.data],
   );
+  const replays = useMemo(
+    () => buildWarRoomReplays(source, copy),
+    [copy, source],
+  );
+  const replay = replays.find((candidate) => candidate.team === replayTeam);
+  const focusTeam = replay?.team ?? replays[0]?.team ?? replayTeam;
   const liveSnapshot = useMemo(
-    () => buildWarRoomSnapshot(source, copy),
-    [copy, source],
+    () => buildWarRoomSnapshot(source, copy, focusTeam),
+    [copy, focusTeam, source],
   );
-  const replay = useMemo(
-    () => buildWarRoomReplay(source, copy),
-    [copy, source],
-  );
+
+  useEffect(() => {
+    if (replays.length === 0) return;
+    if (!replays.some((candidate) => candidate.team === replayTeam)) {
+      setReplayTeam(replays[0]!.team);
+    }
+  }, [replayTeam, replays]);
 
   useEffect(() => {
     if (!replay) {
@@ -333,6 +345,15 @@ export function WarRoomPage() {
   const backToLive = useCallback(() => {
     setReplayPlaying(false);
     setReplayIndex(null);
+  }, []);
+
+  const changeReplayTeam = useCallback((team: WarRoomTeam) => {
+    setReplayTeam(team);
+    setReplayPlaying(false);
+    setReplayIndex(null);
+    setSelectedActorId(
+      team === "data-inspector" ? "data-inspector" : "ecom-launch",
+    );
   }, []);
 
   const selectedActor =
@@ -408,6 +429,7 @@ export function WarRoomPage() {
           {replay && (
             <RunReplayPanel
               replay={replay}
+              replays={replays}
               index={replayIndex}
               playing={replayPlaying}
               speed={replaySpeed}
@@ -417,6 +439,7 @@ export function WarRoomPage() {
               onPrevious={previousReplayEvent}
               onNext={nextReplayEvent}
               onLive={backToLive}
+              onReplayChange={changeReplayTeam}
               onSpeedChange={setReplaySpeed}
             />
           )}
@@ -631,10 +654,17 @@ export function WarRoomPage() {
               <StagePanel
                 stages={snapshot.stages}
                 runStatus={snapshot.runStatus}
+                focusTeam={snapshot.focusTeam}
                 copy={copy}
               />
-              <MetricsPanel metrics={snapshot.metrics} copy={copy} />
-              <TaskQueuePanel actors={snapshot.actors} copy={copy} />
+              <MetricsPanel
+                metrics={snapshot.metrics}
+                focusTeam={snapshot.focusTeam}
+                copy={copy}
+              />
+              {snapshot.focusTeam === "ecom-launch" && (
+                <TaskQueuePanel actors={snapshot.actors} copy={copy} />
+              )}
               <ArtifactsPanel
                 artifacts={
                   new Set(snapshot.actors.flatMap((actor) => actor.artifacts))
@@ -662,17 +692,19 @@ export function WarRoomPage() {
 function StagePanel({
   stages,
   runStatus,
+  focusTeam,
   copy,
 }: {
   stages: ReturnType<typeof buildWarRoomSnapshot>["stages"];
   runStatus?: WarRoomRunStatus;
+  focusTeam: WarRoomTeam;
   copy: ReturnType<typeof useI18n>["t"]["warRoom"];
 }) {
   if (stages.length === 0) return null;
   return (
     <div className="rounded-xl border border-white/90 bg-white/85 p-3 shadow-sm">
       <h3 className="mb-2 text-[10px] font-medium tracking-wide text-stone-400 uppercase">
-        {copy.pipeline}
+        {focusTeam === "data-inspector" ? copy.growthPipeline : copy.pipeline}
       </h3>
       <div className="space-y-1.5">
         {stages.map((stage) => (
@@ -713,12 +745,14 @@ function StagePanel({
 
 function MetricsPanel({
   metrics,
+  focusTeam,
   copy,
 }: {
   metrics: ReturnType<typeof buildWarRoomSnapshot>["metrics"];
+  focusTeam: WarRoomTeam;
   copy: ReturnType<typeof useI18n>["t"]["warRoom"];
 }) {
-  const items = [
+  const launchItems = [
     { label: copy.metrics.llmCalls, value: String(metrics.llmCalls) },
     { label: copy.metrics.tokens, value: metrics.totalTokens.toLocaleString() },
     {
@@ -732,6 +766,21 @@ function MetricsPanel({
     { label: copy.metrics.fetches, value: String(metrics.webFetches) },
     { label: copy.metrics.filesWritten, value: String(metrics.writeFiles) },
   ];
+  const growthItems = [
+    { label: copy.metrics.llmCalls, value: String(metrics.llmCalls) },
+    { label: copy.metrics.tokens, value: metrics.totalTokens.toLocaleString() },
+    {
+      label: copy.metrics.duration,
+      value:
+        metrics.durationSeconds !== undefined
+          ? `${metrics.durationSeconds}s`
+          : "—",
+    },
+    { label: copy.metrics.queries, value: String(metrics.dataQueries) },
+    { label: copy.metrics.experiments, value: String(metrics.experiments) },
+    { label: copy.metrics.filesWritten, value: String(metrics.writeFiles) },
+  ];
+  const items = focusTeam === "data-inspector" ? growthItems : launchItems;
   return (
     <div className="rounded-xl border border-white/90 bg-white/85 p-3 shadow-sm">
       <h3 className="mb-2 text-[10px] font-medium tracking-wide text-stone-400 uppercase">
@@ -761,7 +810,9 @@ function TaskQueuePanel({
   actors: WarRoomActorSnapshot[];
   copy: ReturnType<typeof useI18n>["t"]["warRoom"];
 }) {
-  const subagents = actors.filter((a) => a.id !== "ecom-launch");
+  const subagents = actors.filter(
+    (actor) => actor.team === "ecom-launch" && actor.id !== "ecom-launch",
+  );
   return (
     <div className="rounded-xl border border-white/90 bg-white/85 p-3 shadow-sm">
       <h3 className="mb-2 text-[10px] font-medium tracking-wide text-stone-400 uppercase">

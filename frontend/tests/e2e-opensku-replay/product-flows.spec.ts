@@ -256,8 +256,11 @@ test.describe("OpenSKU product flows (real full stack, replay LLM)", () => {
     const textarea = page.getByPlaceholder(/how can i assist|what can i help/i);
     await expect(textarea).toBeVisible({ timeout: 30_000 });
     await page.getByLabel("Upload files").setInputFiles(growthUploads());
+    const uploadedFiles = page.getByTestId("prompt-input-attachments");
     for (const name of ["customers.csv", "assignments.csv", "outcomes.csv"]) {
-      await expect(page.getByText(name, { exact: true })).toBeVisible();
+      await expect(
+        uploadedFiles.getByText(name, { exact: true }),
+      ).toBeVisible();
     }
 
     await textarea.fill(fixture.scenarios.growth.prompt);
@@ -293,5 +296,41 @@ test.describe("OpenSKU product flows (real full stack, replay LLM)", () => {
       "query_data",
       "analyze_ab_test",
     ]);
+
+    const warRoom = await context.newPage();
+    await warRoom.setViewportSize({ width: 1440, height: 900 });
+    await warRoom.goto("/workspace/war-room");
+    await expect(
+      warRoom.getByRole("heading", { name: "OpenSKU War Room", exact: true }),
+    ).toBeVisible({ timeout: 30_000 });
+
+    const replay = warRoom.getByTestId("war-room-replay");
+    await expect(replay).toBeVisible({ timeout: 30_000 });
+    await expect(
+      replay
+        .getByTestId("war-room-replay-sources")
+        .getByRole("button", { name: "Growth Analyst", exact: true }),
+    ).toBeVisible();
+    await replay
+      .getByRole("button", { name: "Play replay", exact: true })
+      .click();
+    await replay
+      .getByRole("button", { name: "Pause replay", exact: true })
+      .click();
+    await expect(warRoom.getByTestId("war-room-replay-event-title")).toHaveText(
+      "Brief received",
+    );
+    await replay
+      .getByRole("button", { name: "Next event", exact: true })
+      .click();
+    await expect(warRoom.getByTestId("war-room-replay-event-title")).toHaveText(
+      "Inspect uploaded data",
+    );
+
+    await warRoom.locator("summary", { hasText: "Run details" }).click();
+    await expect(
+      warRoom.getByText("Growth analysis pipeline", { exact: true }),
+    ).toBeVisible();
+    await warRoom.close();
   });
 });
