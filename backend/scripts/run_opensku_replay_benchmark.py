@@ -157,13 +157,15 @@ def compare_reports(
     latency_threshold_pct: float = 5.0,
     latency_threshold_seconds: float = 0.05,
 ) -> dict[str, Any]:
-    """Compare reports without allowing Replay timing to become a perf claim.
+    """Compare Replay reports without allowing timing to become a perf claim.
 
     Replay is useful for deterministic contract regressions, but it replaces
     the model provider and therefore cannot establish an end-user latency
     improvement.  Latency deltas are still retained as diagnostics so a
     polling or scheduling change can be investigated and then measured with
-    the live benchmark.
+    the separate live benchmark.  This comparator is unconditionally
+    contract-only, even if an input report contains incorrect or spoofed
+    ``replay: false`` metadata.
     """
 
     baseline_summary = _summary_for_report(baseline)
@@ -177,19 +179,10 @@ def compare_reports(
         if candidate_summary[key] < baseline_summary[key]
     }
 
-    quality_improvements = {
-        key: {
-            "baseline": baseline_summary[key],
-            "candidate": candidate_summary[key],
-        }
-        for key in ("run_success_rate", "contract_pass_rate", "check_pass_rate")
-        if candidate_summary[key] > baseline_summary[key]
-    }
     latency_changes_pct: dict[str, float] = {}
     latency_changes_seconds: dict[str, float] = {}
     baseline_p50_seconds: dict[str, float] = {}
     candidate_p50_seconds: dict[str, float] = {}
-    raw_latency_changes_seconds: dict[str, float] = {}
     baseline_scenarios = baseline.get("summary", {}).get("scenarios", {})
     candidate_scenarios = candidate.get("summary", {}).get("scenarios", {})
     for scenario_name in sorted(set(baseline_scenarios) & set(candidate_scenarios)):
@@ -199,47 +192,14 @@ def compare_reports(
             raw_delta_seconds = candidate_p50 - baseline_p50
             baseline_p50_seconds[scenario_name] = round(baseline_p50, 3)
             candidate_p50_seconds[scenario_name] = round(candidate_p50, 3)
-            raw_latency_changes_seconds[scenario_name] = raw_delta_seconds
             latency_changes_seconds[scenario_name] = round(raw_delta_seconds, 3)
             latency_changes_pct[scenario_name] = round(raw_delta_seconds / baseline_p50 * 100, 2)
 
-    # A replay report is intentionally not eligible for any performance
-    # conclusion.  This guard lives in the comparator (rather than only in
-    # README copy) so future reports cannot accidentally publish a deterministic
-    # "candidate_faster" result.
-    # Missing replay metadata is unsafe too: only reports that explicitly say
-    # ``replay: false`` may ever participate in a performance comparison.
-    replay_comparison = baseline.get("replay") is not False or candidate.get("replay") is not False
-    faster_scenarios = []
-    slower_scenarios = []
-    if replay_comparison:
-        verdict = "replay_contract_regression" if quality_regressions else "replay_contract_only"
-    else:
-        faster_scenarios = sorted(
-            name
-            for name, change in latency_changes_pct.items()
-            if change <= -latency_threshold_pct
-            and raw_latency_changes_seconds[name] <= -latency_threshold_seconds
-        )
-        slower_scenarios = sorted(
-            name
-            for name, change in latency_changes_pct.items()
-            if change >= latency_threshold_pct
-            and raw_latency_changes_seconds[name] >= latency_threshold_seconds
-        )
-
-        if quality_regressions:
-            verdict = "reject_quality_regression"
-        elif quality_improvements and slower_scenarios:
-            verdict = "candidate_quality_better_with_latency_cost"
-        elif quality_improvements:
-            verdict = "candidate_quality_better"
-        elif slower_scenarios:
-            verdict = "reject_efficiency_regression"
-        elif faster_scenarios:
-            verdict = "candidate_faster"
-        else:
-            verdict = "no_material_improvement"
+    # The provenance of this comparator is deterministic Replay, regardless of
+    # caller-provided metadata.  Keep timing deltas for harness diagnosis, but
+    # route every real performance comparison through
+    # ``run_opensku_benchmark.compare_live_reports`` instead.
+    verdict = "replay_contract_regression" if quality_regressions else "replay_contract_only"
 
     return {
         "verdict": verdict,
@@ -249,16 +209,14 @@ def compare_reports(
         "latency_changes_seconds": latency_changes_seconds,
         "latency_threshold_pct": latency_threshold_pct,
         "latency_threshold_seconds": latency_threshold_seconds,
-        "faster_scenarios": faster_scenarios,
-        "slower_scenarios": slower_scenarios,
-        "performance_claim_eligible": not replay_comparison,
+        "faster_scenarios": [],
+        "slower_scenarios": [],
+        "performance_claim_eligible": False,
         "performance_claim_reason": (
-            "Both reports must be live-LLM product-path measurements; Replay timing is diagnostic only."
-            if replay_comparison
-            else "Both reports are marked as live-LLM product-path measurements."
+            "This deterministic Replay comparator is contract-only; timing is diagnostic only. "
+            "Use the repeated live-LLM product-path benchmark for any performance claim."
         ),
         "quality_regressions": quality_regressions,
-        "quality_improvements": quality_improvements,
         "baseline": baseline_summary,
         "candidate": candidate_summary,
     }

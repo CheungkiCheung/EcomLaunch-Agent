@@ -649,8 +649,9 @@ The replay benchmark executes those same real Gateway paths repeatedly and emits
 sanitized `latest-summary.json`, `latest-report.md`, and `latest-report.html`
 files under `benchmarks/opensku-replay/`. It is a deterministic contract gate,
 not a performance benchmark. Replay timing remains visible for harness diagnosis,
-but the comparator hard-blocks `candidate_faster` and every other performance
-claim whenever either report has `replay: true`. Replay token counts are
+but the Replay comparator unconditionally hard-blocks `candidate_faster` and every
+other performance claim, including when input metadata is incorrectly or manually
+marked `replay: false`. Replay token counts are
 intentionally marked unavailable because the deterministic fixture disables
 token accounting.
 

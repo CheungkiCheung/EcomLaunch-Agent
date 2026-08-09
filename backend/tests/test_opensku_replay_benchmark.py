@@ -100,7 +100,7 @@ def test_replay_comparison_never_claims_candidate_is_faster() -> None:
     assert "diagnostic only" in comparison["performance_claim_reason"]
 
 
-def test_only_live_reports_are_eligible_for_latency_verdict() -> None:
+def test_spoofed_live_metadata_cannot_make_replay_latency_eligible() -> None:
     baseline = _build_report(
         {"launch": [_row(elapsed=20.0)], "growth": [_row(elapsed=10.0)]},
         repeats=3,
@@ -116,9 +116,11 @@ def test_only_live_reports_are_eligible_for_latency_verdict() -> None:
 
     comparison = compare_reports(baseline, candidate)
 
-    assert comparison["verdict"] == "candidate_faster"
-    assert comparison["faster_scenarios"] == ["growth", "launch"]
-    assert comparison["performance_claim_eligible"] is True
+    assert comparison["verdict"] == "replay_contract_only"
+    assert comparison["faster_scenarios"] == []
+    assert comparison["slower_scenarios"] == []
+    assert comparison["performance_claim_eligible"] is False
+    assert "deterministic Replay comparator" in comparison["performance_claim_reason"]
 
 
 def test_missing_replay_metadata_is_not_eligible_for_latency_verdict() -> None:
