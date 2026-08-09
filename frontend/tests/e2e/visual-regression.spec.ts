@@ -122,6 +122,90 @@ test.describe("OpenSKU visual regression", () => {
     await captureVisual(page, testInfo, "war-room-desktop.png");
   });
 
+  test("War Room replay dock stays readable over the room", async ({
+    page,
+  }, testInfo) => {
+    const threadId = "00000000-0000-0000-0000-000000003126";
+    mockLangGraphAPI(page, {
+      threads: [
+        {
+          thread_id: threadId,
+          title: "Commuter coffee mug launch validation",
+          agent_name: "ecom-launch",
+          messages: [
+            {
+              type: "human",
+              id: "visual-replay-human",
+              content: "Validate a 99-199 RMB commuter coffee mug",
+            },
+            {
+              type: "ai",
+              id: "visual-replay-task",
+              content: "",
+              tool_calls: [
+                {
+                  id: "visual-replay-task-1",
+                  name: "task",
+                  args: {
+                    subagent_type: "market-voc-researcher",
+                    description: "Collect public market and customer signals",
+                  },
+                },
+              ],
+            },
+            {
+              type: "tool",
+              id: "visual-replay-task-result",
+              tool_call_id: "visual-replay-task-1",
+              content: "Task Succeeded. Result: Signals collected",
+              additional_kwargs: { subagent_status: "completed" },
+            },
+            {
+              type: "ai",
+              id: "visual-replay-render",
+              content: "",
+              tool_calls: [
+                {
+                  id: "visual-replay-render-1",
+                  name: "render_launch_pack",
+                  args: { spec: { category: "coffee mug" } },
+                },
+              ],
+            },
+            {
+              type: "tool",
+              id: "visual-replay-render-result",
+              tool_call_id: "visual-replay-render-1",
+              content: "Successfully presented files",
+            },
+            {
+              type: "ai",
+              id: "visual-replay-final",
+              content: "Launch Validation Pack delivered.",
+            },
+          ],
+        },
+      ],
+    });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.context().addCookies([
+      {
+        name: "locale",
+        value: "en-US",
+        url: String(testInfo.project.use.baseURL),
+      },
+    ]);
+    await page.goto("/workspace/war-room");
+    await expect(page.getByTestId("war-room-replay")).toBeVisible();
+    await expect(page.getByTestId("war-room-canvas")).toHaveAttribute(
+      "data-ready",
+      "true",
+    );
+    await settleVisuals(page);
+
+    await captureVisual(page, testInfo, "war-room-replay-desktop.png");
+  });
+
   test("War Room stacks cleanly at the interview-demo compact size", async ({
     page,
   }, testInfo) => {
@@ -279,15 +363,16 @@ test.describe("OpenSKU visual regression", () => {
     ]);
     await page.goto("/workspace/agents/data-inspector/chats/new");
 
-    await page.locator('input[type="file"]').first().setInputFiles({
-      name: "manual.csv",
-      mimeType: "text/csv",
-      buffer: Buffer.from("metric,value\nmanual,1\n"),
-    });
+    await page
+      .locator('input[type="file"]')
+      .first()
+      .setInputFiles({
+        name: "manual.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from("metric,value\nmanual,1\n"),
+      });
     const demoCard = page.getByTestId("growth-demo-data");
-    await demoCard
-      .getByRole("button", { name: "载入所选数据" })
-      .click();
+    await demoCard.getByRole("button", { name: "载入所选数据" }).click();
 
     await expect(
       demoCard.getByRole("tab", { name: "渠道 ROI" }),

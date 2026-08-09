@@ -104,6 +104,33 @@ export type WarRoomSnapshot = {
   runTitle?: string;
 };
 
+export type WarRoomReplayEventKind =
+  | "request"
+  | "handoff"
+  | "tool"
+  | "observation"
+  | "verification"
+  | "delivery"
+  | "completed"
+  | "failed";
+
+export type WarRoomReplayEvent = {
+  id: string;
+  actorId: WarRoomActorId;
+  kind: WarRoomReplayEventKind;
+  title: string;
+  detail?: string;
+  tool?: string;
+  snapshot: WarRoomSnapshot;
+};
+
+export type WarRoomReplay = {
+  id: string;
+  team: "ecom-launch";
+  title: string;
+  events: WarRoomReplayEvent[];
+};
+
 export type WarRoomSource = {
   ecomThread?: AgentThread;
   ecomRunStatus?: WarRoomRunStatus;

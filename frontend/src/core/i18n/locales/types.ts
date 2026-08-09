@@ -324,6 +324,27 @@ export interface Translations {
       preflight: string;
       done: string;
     };
+    replay: {
+      title: string;
+      latestRun: string;
+      live: string;
+      start: string;
+      pause: string;
+      resume: string;
+      previous: string;
+      next: string;
+      backToLive: string;
+      speed: string;
+      eventOf: (current: number, total: number) => string;
+      request: string;
+      handoff: (actorName: string) => string;
+      tool: (toolName: string) => string;
+      observation: string;
+      verification: string;
+      delivery: string;
+      completed: string;
+      failed: string;
+    };
     metrics: {
       llmCalls: string;
       tokens: string;

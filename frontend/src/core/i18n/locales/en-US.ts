@@ -324,7 +324,8 @@ export const enUS: Translations = {
         experiment: {
           label: "A/B test",
           description: "3 CSVs · 200 users · conversion experiment",
-          preview: "control 100 / 10 conversions · variant 100 / 20 conversions",
+          preview:
+            "control 100 / 10 conversions · variant 100 / 20 conversions",
           prompt:
             "Analyze these 3 demo files end to end: inspect fields and data quality; join customers, assignments, and outcomes; compare control vs variant conversion rate, absolute difference, relative lift, p-value, 95% confidence interval, and SRM; then give a ship / extend / stop decision with next steps.",
         },
@@ -465,6 +466,28 @@ export const enUS: Translations = {
       pack: "Launch pack",
       preflight: "Preflight",
       done: "Complete",
+    },
+    replay: {
+      title: "Run replay",
+      latestRun: "Latest real Launch run",
+      live: "Live",
+      start: "Play replay",
+      pause: "Pause replay",
+      resume: "Resume replay",
+      previous: "Previous event",
+      next: "Next event",
+      backToLive: "Back to live",
+      speed: "Replay speed",
+      eventOf: (current: number, total: number) =>
+        `Event ${current} of ${total}`,
+      request: "Brief received",
+      handoff: (actorName: string) => `Handoff to ${actorName}`,
+      tool: (toolName: string) => `Tool call · ${toolName}`,
+      observation: "Observation returned",
+      verification: "Preflight is checking the pack",
+      delivery: "Pack delivered",
+      completed: "Run completed",
+      failed: "Run blocked",
     },
     metrics: {
       llmCalls: "LLM calls",

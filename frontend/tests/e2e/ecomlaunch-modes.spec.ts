@@ -175,6 +175,95 @@ test.describe("War Room", () => {
     await expect(page.getByText("暂无产物文件")).toBeVisible();
   });
 
+  test("War Room replays the latest real Launch run", async ({ page }) => {
+    const threadId = "00000000-0000-0000-0000-000000003125";
+    mockLangGraphAPI(page, {
+      threads: [
+        {
+          thread_id: threadId,
+          title: "通勤咖啡杯 Launch Validation Pack",
+          agent_name: "ecom-launch",
+          messages: [
+            {
+              type: "human",
+              id: "replay-human",
+              content: "判断 99-199 元通勤咖啡杯是否值得做",
+            },
+            {
+              type: "ai",
+              id: "replay-task-call",
+              content: "",
+              tool_calls: [
+                {
+                  id: "replay-task-1",
+                  name: "task",
+                  args: {
+                    subagent_type: "market-voc-researcher",
+                    description: "采集公开市场与用户声音",
+                  },
+                },
+              ],
+            },
+            {
+              type: "tool",
+              id: "replay-task-result",
+              tool_call_id: "replay-task-1",
+              content: "Task Succeeded. Result: 价格带信号已整理",
+              additional_kwargs: { subagent_status: "completed" },
+            },
+            {
+              type: "ai",
+              id: "replay-render-call",
+              content: "",
+              tool_calls: [
+                {
+                  id: "replay-render-1",
+                  name: "render_launch_pack",
+                  args: { spec: { category: "通勤咖啡杯" } },
+                },
+              ],
+            },
+            {
+              type: "tool",
+              id: "replay-render-result",
+              tool_call_id: "replay-render-1",
+              content: "Successfully presented files",
+            },
+            {
+              type: "ai",
+              id: "replay-final",
+              content: "建议进入 7 天轻量验证。",
+            },
+          ],
+        },
+      ],
+    });
+    await page.context().addCookies([
+      {
+        name: "locale",
+        value: "zh-CN",
+        url: "http://localhost:3000",
+      },
+    ]);
+    await page.goto("/workspace/war-room");
+
+    const replay = page.getByTestId("war-room-replay");
+    await expect(replay).toBeVisible({ timeout: 15_000 });
+    await expect(replay.getByText("运行回放", { exact: true })).toBeVisible();
+    await expect(
+      replay.getByRole("button", { name: "播放回放" }),
+    ).toBeVisible();
+    await replay.getByRole("button", { name: "播放回放" }).click();
+    await replay.getByRole("button", { name: "下一个事件" }).click();
+    await expect(page.getByTestId("war-room-replay-event-title")).toHaveText(
+      "分派给市场研究员",
+    );
+    await replay.getByRole("button", { name: "返回实时" }).click();
+    await expect(
+      replay.getByText("实时", { exact: true }).first(),
+    ).toBeVisible();
+  });
+
   test("War Room switches languages and keeps a compact layout usable", async ({
     page,
   }, testInfo) => {

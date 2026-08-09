@@ -33,6 +33,8 @@ import { ActorChatPanel } from "./actor-chat-panel";
 import { buildWarRoomSnapshot, hydrateWarRoomThread } from "./adapter";
 import { WAR_ROOM_POLL_INTERVAL_MS } from "./config";
 import type { ActorView } from "./office-scene";
+import { buildWarRoomReplay } from "./run-replay";
+import { RunReplayPanel } from "./run-replay-panel";
 import type {
   WarRoomActorId,
   WarRoomActorSnapshot,
@@ -194,6 +196,9 @@ export function WarRoomPage() {
   const [selectedView, setSelectedView] = useState<ActorView>("chat");
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMinimized, setChatMinimized] = useState(false);
+  const [replayIndex, setReplayIndex] = useState<number | null>(null);
+  const [replayPlaying, setReplayPlaying] = useState(false);
+  const [replaySpeed, setReplaySpeed] = useState<1 | 2 | 4>(1);
 
   const handleActorSelect = useCallback(
     (actorId: WarRoomActorId, view: ActorView = "chat") => {
@@ -242,26 +247,94 @@ export function WarRoomPage() {
     return () => window.clearInterval(timer);
   }, [refresh]);
 
-  const snapshot = useMemo(
-    () =>
-      buildWarRoomSnapshot(
-        {
-          ecomThread: hydratedEcomThread,
-          ecomRunStatus: latestRunStatus(ecomRuns.data),
-          ecomRuns: ecomRuns.data as WarRoomSource["ecomRuns"],
-          dataThread: hydratedDataThread,
-          dataRunStatus: latestRunStatus(dataRuns.data),
-        },
-        copy,
-      ),
-    [
-      copy,
-      dataRuns.data,
-      ecomRuns.data,
-      hydratedDataThread,
-      hydratedEcomThread,
-    ],
+  const source = useMemo<WarRoomSource>(
+    () => ({
+      ecomThread: hydratedEcomThread,
+      ecomRunStatus: latestRunStatus(ecomRuns.data),
+      ecomRuns: ecomRuns.data as WarRoomSource["ecomRuns"],
+      dataThread: hydratedDataThread,
+      dataRunStatus: latestRunStatus(dataRuns.data),
+    }),
+    [dataRuns.data, hydratedDataThread, hydratedEcomThread, ecomRuns.data],
   );
+  const liveSnapshot = useMemo(
+    () => buildWarRoomSnapshot(source, copy),
+    [copy, source],
+  );
+  const replay = useMemo(
+    () => buildWarRoomReplay(source, copy),
+    [copy, source],
+  );
+
+  useEffect(() => {
+    if (!replay) {
+      setReplayIndex(null);
+      setReplayPlaying(false);
+      return;
+    }
+    setReplayIndex((current) =>
+      current !== null && current >= replay.events.length
+        ? replay.events.length - 1
+        : current,
+    );
+  }, [replay]);
+
+  useEffect(() => {
+    if (!replayPlaying || replayIndex === null || !replay) return;
+    if (replayIndex >= replay.events.length - 1) {
+      setReplayPlaying(false);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setReplayIndex((current) => (current === null ? 0 : current + 1));
+    }, 2200 / replaySpeed);
+    return () => window.clearTimeout(timer);
+  }, [replay, replayIndex, replayPlaying, replaySpeed]);
+
+  const replayEvent =
+    replay && replayIndex !== null ? replay.events[replayIndex] : undefined;
+  const snapshot = replayEvent?.snapshot ?? liveSnapshot;
+  const replayActorId = replayEvent?.actorId;
+
+  useEffect(() => {
+    if (replayActorId) setSelectedActorId(replayActorId);
+  }, [replayActorId]);
+
+  const startReplay = useCallback(() => {
+    if (!replay) return;
+    setReplayIndex(0);
+    setReplayPlaying(true);
+  }, [replay]);
+
+  const toggleReplay = useCallback(() => {
+    if (!replay) return;
+    if (replayIndex === null || replayIndex >= replay.events.length - 1) {
+      setReplayIndex(0);
+      setReplayPlaying(true);
+      return;
+    }
+    setReplayPlaying((playing) => !playing);
+  }, [replay, replayIndex]);
+
+  const previousReplayEvent = useCallback(() => {
+    setReplayPlaying(false);
+    setReplayIndex((current) =>
+      current === null ? 0 : Math.max(0, current - 1),
+    );
+  }, []);
+
+  const nextReplayEvent = useCallback(() => {
+    if (!replay) return;
+    setReplayIndex((current) =>
+      current === null ? 0 : Math.min(replay.events.length - 1, current + 1),
+    );
+  }, [replay]);
+
+  const backToLive = useCallback(() => {
+    setReplayPlaying(false);
+    setReplayIndex(null);
+  }, []);
+
   const selectedActor =
     snapshot.actors.find((actor) => actor.id === selectedActorId) ??
     snapshot.actors[0]!;
@@ -331,6 +404,22 @@ export function WarRoomPage() {
             onActorSelect={handleActorSelect}
             labels={copy}
           />
+
+          {replay && (
+            <RunReplayPanel
+              replay={replay}
+              index={replayIndex}
+              playing={replayPlaying}
+              speed={replaySpeed}
+              labels={copy.replay}
+              onStart={startReplay}
+              onToggle={toggleReplay}
+              onPrevious={previousReplayEvent}
+              onNext={nextReplayEvent}
+              onLive={backToLive}
+              onSpeedChange={setReplaySpeed}
+            />
+          )}
 
           {/* Floating pixel-style chat card over the scene */}
           {chatOpen && (

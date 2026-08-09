@@ -312,8 +312,7 @@ export const zhCN: Translations = {
         experiment: {
           label: "A/B 实验",
           description: "3 个 CSV · 200 个用户 · 转化实验",
-          preview:
-            "control 100 人 / 10 次转化 · variant 100 人 / 20 次转化",
+          preview: "control 100 人 / 10 次转化 · variant 100 人 / 20 次转化",
           prompt:
             "请基于这 3 个演示文件完成一次增长分析：先检查字段和数据质量；关联 customers、assignments、outcomes，比较 control 与 variant 的转化率、绝对差异、相对提升、p 值、95% 置信区间和 SRM；最后给出 ship / extend / stop 决策，并列出下一步建议。",
         },
@@ -327,8 +326,7 @@ export const zhCN: Translations = {
         retention: {
           label: "用户留存",
           description: "3 个 CSV · 12 周 Cohort · 240 个用户",
-          preview:
-            "referral D30 40% · organic / 小红书 20% · paid display 0%",
+          preview: "referral D30 40% · organic / 小红书 20% · paid display 0%",
           prompt:
             "请分析这 3 个用户留存演示文件：先检查字段和数据质量；关联 users、events、subscriptions，按注册周构建 Cohort，计算 D1、D7、D30 留存率、购买率和订阅转化率；比较不同获客渠道的用户质量，识别流失最严重的阶段，并给出优先级明确的留存实验建议。",
         },
@@ -451,6 +449,27 @@ export const zhCN: Translations = {
       pack: "打包交付",
       preflight: "确定性预检",
       done: "完成",
+    },
+    replay: {
+      title: "运行回放",
+      latestRun: "最近一次真实上新运行",
+      live: "实时",
+      start: "播放回放",
+      pause: "暂停回放",
+      resume: "继续回放",
+      previous: "上一个事件",
+      next: "下一个事件",
+      backToLive: "返回实时",
+      speed: "回放速度",
+      eventOf: (current: number, total: number) => `事件 ${current}/${total}`,
+      request: "收到任务需求",
+      handoff: (actorName: string) => `分派给${actorName}`,
+      tool: (toolName: string) => `调用工具 · ${toolName}`,
+      observation: "收到观察结果",
+      verification: "确定性预检正在检查 Pack",
+      delivery: "Pack 已交付",
+      completed: "运行完成",
+      failed: "运行遇到阻塞",
     },
     metrics: {
       llmCalls: "LLM 调用",
