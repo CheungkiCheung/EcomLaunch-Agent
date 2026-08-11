@@ -55,7 +55,19 @@ _TOOL_CASES = [
     (grep_tool, {"description": "search", "pattern": "x", "path": "/tmp"}),
     (read_file_tool, {"description": "read", "path": "/tmp/x"}),
     (write_file_tool, {"description": "write", "path": "/tmp/x", "content": "hi"}),
-    (render_launch_pack_tool, {"spec": {"category": "cup", "decision": "test_now"}}),
+    (
+        render_launch_pack_tool,
+        {
+            "spec": {
+                "category": "cup",
+                "target_price": "99-199",
+                "decision": "test_now",
+                "decision_rationale": "Run a bounded validation.",
+                "audience": "Commuters",
+                "validation_goal": "Validate problem and price",
+            }
+        },
+    ),
     (str_replace_tool, {"description": "replace", "path": "/tmp/x", "old_str": "a", "new_str": "b"}),
     (present_file_tool, {"filepaths": ["/tmp/x"], "tool_call_id": "call-1"}),
     (view_image_tool, {"image_path": "/tmp/img.png", "tool_call_id": "call-1"}),
@@ -91,6 +103,17 @@ def test_tool_args_schema_does_not_emit_pydantic_context_warning(tool_obj, extra
 
     pydantic_warnings = [w for w in caught if "PydanticSerializationUnexpectedValue" in str(w.message)]
     assert not pydantic_warnings, f"{tool_obj.name} args_schema.model_dump() emitted Pydantic context serialization warnings: {[str(w.message) for w in pydantic_warnings]}"
+
+
+def test_render_launch_pack_tool_schema_exposes_canonical_decision_enum() -> None:
+    schema = render_launch_pack_tool.tool_call_schema.model_json_schema()
+
+    assert schema["$defs"]["LaunchPackSpec"]["properties"]["decision"]["enum"] == [
+        "test_now",
+        "test_after_fixing_assumptions",
+        "hold",
+        "insufficient_evidence",
+    ]
 
 
 def test_write_file_append_is_discoverable_in_tool_schema() -> None:

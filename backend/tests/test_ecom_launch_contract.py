@@ -45,7 +45,7 @@ EXPECTED_SUBAGENTS = {
         "max_model_calls": 2,
         "max_total_tokens": 30000,
         "model": "deepseek-chat",
-        "max_output_tokens": 900,
+        "max_output_tokens": 1400,
     },
     "evidence-checker": {
         "tools": ["read_file", "grep", "web_fetch"],
@@ -112,6 +112,8 @@ def test_ecom_launch_retains_four_bounded_specialist_definitions() -> None:
     assert "web_search" not in custom_agents["asset-studio"]["tools"]
     assert "first-person usage history" in custom_agents["asset-studio"]["system_prompt"]
     assert "consumer copy may state only the category, target price, user problem, and validation question" in custom_agents["asset-studio"]["system_prompt"]
+    assert "<launch_pack_spec>" in custom_agents["asset-studio"]["system_prompt"]
+    assert "valid JSON without Markdown fences" in custom_agents["asset-studio"]["system_prompt"]
     assert custom_agents["evidence-checker"]["tools"] == ["read_file", "grep", "web_fetch"]
     assert "exact final files" in custom_agents["evidence-checker"]["system_prompt"]
     assert "observed_public entries without direct source URLs" in custom_agents["evidence-checker"]["system_prompt"]
@@ -227,6 +229,7 @@ def test_ecom_launch_agent_loads_only_its_router_skill() -> None:
             "launch-calendar.csv",
         ],
         "auto_present_complete_pack": True,
+        "auto_render_after_subagent": "asset-studio",
         "require_evidence_checker": False,
         "validate_pack_before_evidence": False,
         "validate_pack_before_present": True,
@@ -291,6 +294,7 @@ def test_openskufast_agent_config_loads() -> None:
     assert rb["max_total_tokens"] == 250000
     assert rb["max_model_call_seconds"] == 45
     assert rb["complete_pack_initial_research_calls"] == 2
+    assert rb["complete_pack_initial_fetch_calls"] == 2
     assert rb["compact_write_file_history"] is True
 
 

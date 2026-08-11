@@ -45,6 +45,7 @@ run_budget:
     - '完整.{0,16}(?:验证包|上市包|七件套|7\s*件)'
     - '7\s*天.{0,20}(?:验证包|Pack)'
   complete_pack_initial_research_calls: 2
+  complete_pack_initial_fetch_calls: 2
   compact_write_file_history: true
   required_output_files:
     - launch-war-room.html

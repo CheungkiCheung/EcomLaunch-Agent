@@ -35,10 +35,7 @@ PACK_FILES = {
     "launch-calendar.csv",
 }
 
-PROMPT = (
-    "我想做一个 99-199 元的通勤咖啡杯，但没有任何店铺后台数据。"
-    "请用公开信号帮我判断是否值得做 7 天轻量验证，并输出 Launch Validation Pack。"
-)
+PROMPT = "我想做一个 99-199 元的通勤咖啡杯，但没有任何店铺后台数据。请用公开信号帮我判断是否值得做 7 天轻量验证，并输出 Launch Validation Pack。"
 PROMPT_ID = "launch-validation-pack-commuter-mug-zh-v1"
 ULTRA_SPECIALISTS = ["market-voc-researcher", "offer-architect", "asset-studio"]
 TIMING_METRICS = (
@@ -100,18 +97,8 @@ def _tool_names(state: dict[str, Any]) -> list[str]:
 
 
 def _tool_results(state: dict[str, Any], tool_name: str) -> list[str]:
-    call_ids = {
-        str(call.get("id"))
-        for call in _tool_calls(state)
-        if call.get("name") == tool_name and call.get("id")
-    }
-    return [
-        str(message.get("content", ""))
-        for message in state.get("messages", [])
-        if isinstance(message, dict)
-        and message.get("type") == "tool"
-        and str(message.get("tool_call_id")) in call_ids
-    ]
+    call_ids = {str(call.get("id")) for call in _tool_calls(state) if call.get("name") == tool_name and call.get("id")}
+    return [str(message.get("content", "")) for message in state.get("messages", []) if isinstance(message, dict) and message.get("type") == "tool" and str(message.get("tool_call_id")) in call_ids]
 
 
 def _artifact_names(state: dict[str, Any]) -> set[str]:
@@ -321,14 +308,10 @@ def _run_once(
         "run_succeeded": run.get("status") == "success",
         "real_llm_called": int(run.get("llm_call_count") or 0) > 0,
         "specialists_in_dependency_order": mode != "ultra" or specialists == ULTRA_SPECIALISTS,
-        "specialists_succeeded": mode != "ultra"
-        or (len(task_results) == len(ULTRA_SPECIALISTS) and all(result.startswith("Task Succeeded.") for result in task_results)),
+        "specialists_succeeded": mode != "ultra" or (len(task_results) == len(ULTRA_SPECIALISTS) and all(result.startswith("Task Succeeded.") for result in task_results)),
         "seven_artifacts_delivered": artifact_names == PACK_FILES,
-        "preflight_passed": any(
-            "Successfully presented files" in str(message.get("content", ""))
-            for message in state.get("messages", [])
-            if isinstance(message, dict) and message.get("type") == "tool"
-        ),
+        "user_visible_completion": timings["first_user_visible_text_seconds"] is not None,
+        "preflight_passed": any("Successfully presented files" in str(message.get("content", "")) for message in state.get("messages", []) if isinstance(message, dict) and message.get("type") == "tool"),
     }
     return {
         "index": index,
@@ -397,26 +380,10 @@ def _summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "min": min(int(row["total_tokens"]) for row in rows) if rows else 0,
             "max": max(int(row["total_tokens"]) for row in rows) if rows else 0,
         },
-        "pack_success_rate": round(
-            sum(bool(row["pack_complete"]) for row in rows) / len(rows), 3
-        )
-        if rows
-        else 0.0,
-        "preflight_success_rate": round(
-            sum(bool(row["preflight_passed"]) for row in rows) / len(rows), 3
-        )
-        if rows
-        else 0.0,
-        "run_success_rate": round(
-            sum(row.get("status") == "success" for row in rows) / len(rows), 3
-        )
-        if rows
-        else 0.0,
-        "quality_gate_pass_rate": round(
-            sum(bool(row.get("quality_gate_passed")) for row in rows) / len(rows), 3
-        )
-        if rows
-        else 0.0,
+        "pack_success_rate": round(sum(bool(row["pack_complete"]) for row in rows) / len(rows), 3) if rows else 0.0,
+        "preflight_success_rate": round(sum(bool(row["preflight_passed"]) for row in rows) / len(rows), 3) if rows else 0.0,
+        "run_success_rate": round(sum(row.get("status") == "success" for row in rows) / len(rows), 3) if rows else 0.0,
+        "quality_gate_pass_rate": round(sum(bool(row.get("quality_gate_passed")) for row in rows) / len(rows), 3) if rows else 0.0,
         "models": sorted({str(row["model_name"]) for row in rows if row.get("model_name")}),
     }
 
@@ -495,17 +462,11 @@ def compare_live_reports(
                 "candidate_p50_seconds": round(float(candidate_p50), 3),
                 "delta_seconds": round(delta_seconds, 3),
                 "delta_pct": round(delta_pct, 2),
-                "material_faster": delta_pct <= -latency_threshold_pct
-                and delta_seconds <= -latency_threshold_seconds,
-                "material_slower": delta_pct >= latency_threshold_pct
-                and delta_seconds >= latency_threshold_seconds,
+                "material_faster": delta_pct <= -latency_threshold_pct and delta_seconds <= -latency_threshold_seconds,
+                "material_slower": delta_pct >= latency_threshold_pct and delta_seconds >= latency_threshold_seconds,
             }
 
-    all_quality_passed = all(
-        float(mode_summary.get("quality_gate_pass_rate") or 0) == 1.0
-        for report in (baseline, candidate)
-        for mode_summary in report.get("summary", {}).values()
-    )
+    all_quality_passed = all(float(mode_summary.get("quality_gate_pass_rate") or 0) == 1.0 for report in (baseline, candidate) for mode_summary in report.get("summary", {}).values())
     materially_faster = sorted(key for key, value in changes.items() if value["material_faster"])
     materially_slower = sorted(key for key, value in changes.items() if value["material_slower"])
     if issues:
@@ -601,11 +562,7 @@ def main() -> int:
         "summary": {mode: _summary(mode_rows) for mode, mode_rows in rows.items()},
         "runs": rows,
     }
-    report["quality_gate_passed"] = all(
-        bool(row.get("quality_gate_passed"))
-        for mode_rows in rows.values()
-        for row in mode_rows
-    )
+    report["quality_gate_passed"] = all(bool(row.get("quality_gate_passed")) for mode_rows in rows.values() for row in mode_rows)
     report["optimization_claim_supported"] = False
     if args.baseline:
         report["comparison"] = compare_live_reports(
@@ -615,10 +572,7 @@ def main() -> int:
             latency_threshold_pct=args.latency_threshold_pct,
             latency_threshold_seconds=args.latency_threshold_seconds,
         )
-        report["optimization_claim_supported"] = (
-            report["comparison"]["verdict"] == "candidate_faster"
-            and report["comparison"]["performance_claim_eligible"] is True
-        )
+        report["optimization_claim_supported"] = report["comparison"]["verdict"] == "candidate_faster" and report["comparison"]["performance_claim_eligible"] is True
     output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Wrote {output_path}")
     comparison = report.get("comparison")

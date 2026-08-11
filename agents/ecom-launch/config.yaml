@@ -49,6 +49,7 @@ run_budget:
   - content-pack.md
   - launch-calendar.csv
   auto_present_complete_pack: true
+  auto_render_after_subagent: asset-studio
   require_evidence_checker: false
   validate_pack_before_evidence: false
   validate_pack_before_present: true

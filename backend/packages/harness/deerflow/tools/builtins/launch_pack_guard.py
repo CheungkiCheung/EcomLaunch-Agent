@@ -359,7 +359,7 @@ def prepare_launch_pack_for_audit(outputs_dir: Path, required_files: list[str], 
         }
         for name, content in templates.items():
             path = outputs_dir / name
-            if name in required and path.is_file() and _read_text(path) != content:
+            if name in required and path.is_file() and _validate_no_sample_consumer_copy(path) and _read_text(path) != content:
                 path.write_text(content, encoding="utf-8")
                 changed.append(name)
 

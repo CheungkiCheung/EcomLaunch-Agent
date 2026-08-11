@@ -2024,8 +2024,12 @@ class TestCooperativeCancellation:
             timed_out_error = result.error
             timed_out_completed_at = result.completed_at
 
+            # Cancelling the concurrent Future must propagate into the isolated
+            # event loop and interrupt a stream that is blocked between chunks.
+            # Otherwise the provider request can keep consuming the loop after
+            # the public task has already timed out.
+            assert execution_done.wait(timeout=1), "timed-out stream coroutine was not cancelled promptly"
             finish_stream.set()
-            assert execution_done.wait(timeout=3), "execution worker did not finish"
 
         result = executor_module._background_tasks.get(task_id)
         assert result is not None

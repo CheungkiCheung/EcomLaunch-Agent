@@ -32,10 +32,7 @@ class AgentRunBudgetConfig(BaseModel):
     max_model_call_seconds: int | None = Field(
         default=None,
         ge=1,
-        description=(
-            "Optional per-lead-model-call wall-time cap. The effective cap is the smaller of this value and the remaining run budget. "
-            "None uses only the remaining run budget."
-        ),
+        description=("Optional per-lead-model-call wall-time cap. The effective cap is the smaller of this value and the remaining run budget. None uses only the remaining run budget."),
     )
     deduplicate_subagents: bool = Field(
         default=True,
@@ -64,9 +61,13 @@ class AgentRunBudgetConfig(BaseModel):
     complete_pack_initial_research_calls: int = Field(
         default=0,
         ge=0,
+        description=("Number of bounded web_search/web_fetch attempts required before a single-agent complete Pack starts drafting. Failed attempts still count so unavailable public search degrades instead of blocking delivery."),
+    )
+    complete_pack_initial_fetch_calls: int = Field(
+        default=0,
+        ge=0,
         description=(
-            "Number of bounded web_search/web_fetch attempts required before a single-agent complete Pack starts drafting. "
-            "Failed attempts still count so unavailable public search degrades instead of blocking delivery."
+            "Number of bounded web_fetch attempts required after discovery search before a single-agent complete Pack starts drafting. Failed attempts still count, but only successfully fetched URLs may remain observed_public evidence."
         ),
     )
     required_completed_subagents: list[str] | None = Field(
@@ -91,6 +92,14 @@ class AgentRunBudgetConfig(BaseModel):
             "Once all required output files are present and required specialists have completed, "
             "limit the lead agent to deterministic presentation; a failed preflight temporarily "
             "allows only targeted file revision before presentation is retried"
+        ),
+    )
+    auto_render_after_subagent: str | None = Field(
+        default=None,
+        description=(
+            "Optional terminal specialist whose successful task result may provide a tagged compact "
+            "launch_pack_spec. When valid and all required specialists are complete, inject the "
+            "deterministic render_launch_pack tool call without another lead-model turn."
         ),
     )
     require_evidence_checker: bool = Field(

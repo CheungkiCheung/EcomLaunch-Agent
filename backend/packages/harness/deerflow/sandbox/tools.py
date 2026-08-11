@@ -5,8 +5,11 @@ import re
 import shlex
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from langchain.tools import tool
+from langchain_core.messages import AIMessage, ToolMessage
+from langgraph.types import Command
 
 from deerflow.agents.thread_state import ThreadDataState
 from deerflow.config import get_app_config
@@ -21,6 +24,7 @@ from deerflow.sandbox.sandbox import Sandbox
 from deerflow.sandbox.sandbox_provider import get_sandbox_provider
 from deerflow.sandbox.search import GrepMatch
 from deerflow.sandbox.security import LOCAL_HOST_BASH_DISABLED_MESSAGE, is_host_bash_allowed
+from deerflow.tools.builtins.launch_pack_renderer import LaunchPackSpec
 from deerflow.tools.types import Runtime
 
 _ABSOLUTE_PATH_PATTERN = re.compile(r"(?<![:\w])(?<!:/)/(?:[^\s\"'`;&|<>()]+)")
@@ -83,6 +87,8 @@ _LOCAL_BASH_ROOT_PATH_COMMANDS = {
     "tail",
     "tar",
 }
+
+_LAUNCH_PACK_COMPLETION_MESSAGE = "Launch Validation Pack 已通过预检，7 个交付文件已生成。"
 _SHELL_COMMAND_SEPARATORS = {";", "&&", "||", "|", "|&", "&", "(", ")"}
 _SHELL_REDIRECTION_OPERATORS = {
     "<",
@@ -97,6 +103,37 @@ _SHELL_REDIRECTION_OPERATORS = {
     "&>>",
     ">|",
 }
+
+
+def _finish_rendered_launch_pack_delivery(
+    delivery: object,
+    *,
+    tool_call_id: str,
+    completion_message: str = _LAUNCH_PACK_COMPLETION_MESSAGE,
+) -> object:
+    """End a successful deterministic Pack delivery without another model turn."""
+    if not isinstance(delivery, Command) or not isinstance(delivery.update, dict):
+        return delivery
+
+    messages = delivery.update.get("messages")
+    if not isinstance(messages, list) or not any(
+        getattr(message, "tool_call_id", None) == tool_call_id and getattr(message, "status", None) == "success" and "Successfully presented files" in str(getattr(message, "content", "")) for message in messages
+    ):
+        return delivery
+
+    update = dict(delivery.update)
+    update["messages"] = [
+        *messages,
+        AIMessage(
+            content=completion_message,
+            name="launch_pack_completion",
+            additional_kwargs={"deerflow_deterministic_completion": True},
+        ),
+    ]
+    # The agent factory's tools node has a static edge back into the model
+    # loop, so a tool-level ``goto=END`` would race that edge. The run-budget
+    # before-model hook consumes this marker and performs the supported jump.
+    return Command(update=update)
 
 
 def _get_skills_container_path() -> str:
@@ -1923,6 +1960,59 @@ def _latest_visible_user_request(runtime: Runtime) -> str:
     return ""
 
 
+def _current_visible_turn_messages(runtime: Runtime) -> list[object]:
+    state = getattr(runtime, "state", None)
+    messages = state.get("messages", []) if isinstance(state, dict) else []
+    if not isinstance(messages, (list, tuple)):
+        return []
+    start = 0
+    for index, message in enumerate(messages):
+        if getattr(message, "type", None) != "human":
+            continue
+        additional_kwargs = getattr(message, "additional_kwargs", {})
+        if isinstance(additional_kwargs, dict) and additional_kwargs.get("hide_from_ui") is True:
+            continue
+        start = index
+    return list(messages[start:])
+
+
+def _successful_web_fetch_urls(runtime: Runtime) -> set[str]:
+    calls: dict[str, str] = {}
+    fetched: set[str] = set()
+    for message in _current_visible_turn_messages(runtime):
+        if isinstance(message, AIMessage):
+            for call in message.tool_calls or []:
+                if call.get("name") != "web_fetch" or not isinstance(call.get("id"), str):
+                    continue
+                args = call.get("args")
+                url = args.get("url") if isinstance(args, dict) else None
+                if isinstance(url, str) and url.strip():
+                    calls[call["id"]] = url.strip()
+            continue
+        if not isinstance(message, ToolMessage) or message.name != "web_fetch":
+            continue
+        content = str(message.content or "").strip()
+        if message.status == "error" or not content or content.lower().startswith(("error:", "failed")):
+            continue
+        url = calls.get(str(message.tool_call_id))
+        if url:
+            fetched.add(url)
+    return fetched
+
+
+def _prepare_launch_pack_spec(runtime: Runtime, spec: LaunchPackSpec) -> dict[str, Any]:
+    prepared: dict[str, Any] = dict(spec)
+    context = getattr(runtime, "context", None)
+    budget_state = context.get(_RUN_BUDGET_CONTEXT_KEY) if isinstance(context, dict) else None
+    budget_config = budget_state.get("config") if isinstance(budget_state, dict) else None
+    required_fetches = budget_config.get("complete_pack_initial_fetch_calls", 0) if isinstance(budget_config, dict) else 0
+    if not isinstance(required_fetches, int) or required_fetches <= 0:
+        return prepared
+    from deerflow.tools.builtins.launch_pack_renderer import enforce_verified_public_sources
+
+    return enforce_verified_public_sources(prepared, _successful_web_fetch_urls(runtime))
+
+
 def _write_complete_launch_pack(runtime: Runtime, expected: dict[str, str]) -> str:
     """Write a canonical seven-file Pack and update deterministic budget state."""
     context = getattr(runtime, "context", None)
@@ -1976,14 +2066,11 @@ def _write_complete_launch_pack(runtime: Runtime, expected: dict[str, str]) -> s
         budget_state["required_output_files_missing"] = []
         budget_state["required_output_files_ready"] = True
     total_bytes = sum(len(expected[name].encode("utf-8")) for name in required_names)
-    return (
-        f"OK: wrote complete Launch Validation Pack ({total_bytes} bytes). "
-        "All seven required files are ready; call present_files now for deterministic validation."
-    )
+    return f"OK: wrote complete Launch Validation Pack ({total_bytes} bytes). All seven required files are ready; call present_files now for deterministic validation."
 
 
 @tool("render_launch_pack", parse_docstring=True)
-def render_launch_pack_tool(runtime: Runtime, spec: dict[str, object]):
+def render_launch_pack_tool(runtime: Runtime, spec: LaunchPackSpec):
     """Render, preflight, and present all seven Launch Pack files from one compact specification.
 
     Use this for a complete Launch Validation Pack after research or configured
@@ -2002,10 +2089,13 @@ def render_launch_pack_tool(runtime: Runtime, spec: dict[str, object]):
     """
     if not isinstance(spec, dict):
         return "Error: spec must be one compact JSON object."
-    from deerflow.tools.builtins.launch_pack_renderer import render_launch_pack
+    from deerflow.tools.builtins.launch_pack_renderer import build_launch_pack_completion_message, render_launch_pack
 
     try:
-        expected = render_launch_pack(spec, user_request=_latest_visible_user_request(runtime))
+        user_request = _latest_visible_user_request(runtime)
+        prepared_spec = _prepare_launch_pack_spec(runtime, spec)
+        expected = render_launch_pack(prepared_spec, user_request=user_request)
+        completion_message = build_launch_pack_completion_message(prepared_spec, user_request=user_request)
     except (TypeError, ValueError) as exc:
         return f"Error: invalid compact Launch Pack specification: {exc}"
     write_result = _write_complete_launch_pack(runtime, expected)
@@ -2016,10 +2106,14 @@ def render_launch_pack_tool(runtime: Runtime, spec: dict[str, object]):
 
     filepaths = [f"{_OUTPUTS_VIRTUAL_DIR}/{name}" for name in _STANDARD_LAUNCH_PACK_FILES]
     tool_call_id = getattr(runtime, "tool_call_id", None) or "render_launch_pack"
-    return present_file_tool.func(runtime, filepaths=filepaths, tool_call_id=tool_call_id)
+    # Rendering already writes, validates, and exposes the complete seven-file
+    # Pack. End the graph with a deterministic visible acknowledgement instead
+    # of paying for one more model call that cannot change the delivered files.
+    delivery = present_file_tool.func(runtime, filepaths=filepaths, tool_call_id=tool_call_id)
+    return _finish_rendered_launch_pack_delivery(delivery, tool_call_id=tool_call_id, completion_message=completion_message)
 
 
-async def _render_launch_pack_tool_async(runtime: Runtime, spec: dict[str, object]):
+async def _render_launch_pack_tool_async(runtime: Runtime, spec: LaunchPackSpec):
     return await _run_sync_tool_after_async_sandbox_init(render_launch_pack_tool.func, runtime, spec)
 
 

@@ -9,6 +9,7 @@ import time
 import uuid
 from collections.abc import Awaitable, Callable
 from typing import Any, override
+from urllib.parse import urlparse
 
 from langchain.agents import AgentState
 from langchain.agents.middleware import AgentMiddleware
@@ -21,6 +22,21 @@ from deerflow.config.agent_run_budget_config import AgentRunBudgetConfig
 
 RUN_BUDGET_CONTEXT_KEY = "__deerflow_agent_run_budget"
 TERMINAL_DELIVERY_TOOLS = frozenset({"present_files", "render_launch_pack"})
+_LAUNCH_PACK_SPEC_PATTERN = re.compile(
+    r"<launch_pack_spec>\s*(.*?)\s*</launch_pack_spec>",
+    re.IGNORECASE | re.DOTALL,
+)
+_LAUNCH_PACK_SPEC_REQUIRED_TEXT_FIELDS = frozenset(
+    {
+        "category",
+        "target_price",
+        "decision",
+        "decision_rationale",
+        "audience",
+        "validation_goal",
+    }
+)
+_LAUNCH_PACK_SPEC_MAX_CHARS = 12_000
 FINALIZATION_MESSAGE = """Execution budget finalization:
 - This is the final model response available before the hard execution limit.
 - Do not call more research or drafting tools.
@@ -61,7 +77,8 @@ COMPLETE_PACK_RESEARCH_MESSAGE = """Configured Flash Pack public-signal research
 - Search only for directly relevant demand, competitor/price, scenario, or objection signals for the user's product and market.
 - Do not read skills, inspect files, draft artifacts, call a subagent, or narrate future research.
 - Search failures and blocked pages are valid unavailable evidence; do not retry equivalent queries beyond this bounded phase.
-- Search snippets are discovery signals, not verified observed_public claims. Preserve exact URLs and downgrade unsupported conclusions to estimated or unavailable."""
+- Search snippets are discovery signals, not verified observed_public claims. Only a successfully fetched direct page may remain observed_public evidence.
+- Reject irrelevant, unsafe, spam, search-result, and aggregator pages instead of using them to fill evidence rows."""
 COMPLETE_PACK_SPECIALIST_MESSAGE = """Configured complete Pack specialist orchestration is active:
 - The launch Skill is already loaded in context. Do not read `/mnt/skills`, inspect files, draft artifacts, search from the lead agent, or narrate future work.
 - Call exactly the next required specialist with `task`, one dependency-safe specialist per model response.
@@ -78,7 +95,8 @@ COMPLETE_PACK_DRAFT_MESSAGE = """Configured complete Pack drafting starts now:
 COMPLETE_PACK_FLASH_DRAFT_MESSAGE = """Configured Flash Pack drafting starts now:
 - The bounded public-signal research stage completed or degraded. Use only those findings; do not start new research.
 - Call render_launch_pack exactly once with one compact `spec` object; do not generate or pass full file contents.
-- Include category, target_price, decision, decision_rationale, audience, and validation_goal. Keep evidence and competitor rows concise; observed_public requires a direct source URL, while search snippets must be estimated or unavailable.
+- Include category, target_price, decision, decision_rationale, audience, and validation_goal. `decision` must be exactly test_now, test_after_fixing_assumptions, hold, or insufficient_evidence.
+- Keep evidence and competitor rows concise. observed_public requires a successfully fetched direct source URL; search snippets and failed fetches must be estimated or unavailable.
 - Keep the whole tool argument compact (normally under 1,200 output tokens). The renderer creates, preflights, and presents all seven canonical files in the same tool call.
 - Use write_launch_pack or write_file only as a compatibility fallback when render_launch_pack is unavailable.
 - Do not read, grep, research, call task, or call present_files separately."""
@@ -244,23 +262,16 @@ def _compact_write_file_history(messages: list[Any]) -> tuple[list[Any], list[di
 def _has_completed_terminal_delivery(messages: list[Any]) -> bool:
     """Return whether ``present_files`` succeeded in the latest user turn."""
     turn_messages = _current_turn_messages(messages)
-    delivery_call_ids = {
-        str(tool_call.get("id"))
-        for message in turn_messages
-        if isinstance(message, AIMessage)
-        for tool_call in (message.tool_calls or [])
-        if tool_call.get("name") in TERMINAL_DELIVERY_TOOLS and tool_call.get("id")
-    }
+    delivery_call_ids = {str(tool_call.get("id")) for message in turn_messages if isinstance(message, AIMessage) for tool_call in (message.tool_calls or []) if tool_call.get("name") in TERMINAL_DELIVERY_TOOLS and tool_call.get("id")}
     if not delivery_call_ids:
         return False
 
-    return any(
-        isinstance(message, ToolMessage)
-        and str(message.tool_call_id) in delivery_call_ids
-        and message.status != "error"
-        and "Successfully presented files" in str(message.content)
-        for message in turn_messages
-    )
+    return any(isinstance(message, ToolMessage) and str(message.tool_call_id) in delivery_call_ids and message.status != "error" and "Successfully presented files" in str(message.content) for message in turn_messages)
+
+
+def _has_deterministic_terminal_completion(messages: list[Any]) -> bool:
+    """Return whether the successful renderer already supplied visible final text."""
+    return any(isinstance(message, AIMessage) and message.additional_kwargs.get("deerflow_deterministic_completion") is True for message in _current_turn_messages(messages))
 
 
 class RunBudgetMiddleware(AgentMiddleware[AgentState]):
@@ -321,6 +332,31 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
     async def abefore_agent(self, state: AgentState, runtime: Runtime) -> dict | None:
         self._initialize(runtime)
         return None
+
+    @override
+    @hook_config(can_jump_to=["end", "tools"])
+    def before_model(self, state: AgentState, runtime: Runtime) -> dict | None:
+        messages = state.get("messages", [])
+        if _has_completed_terminal_delivery(messages) and _has_deterministic_terminal_completion(messages):
+            return {"jump_to": "end"}
+        render_call = self._configured_render_launch_pack_call(messages, runtime)
+        if render_call is not None:
+            return {
+                "messages": [
+                    AIMessage(
+                        content="",
+                        tool_calls=[render_call],
+                        additional_kwargs={"deerflow_deterministic_render": True},
+                    )
+                ],
+                "jump_to": "tools",
+            }
+        return None
+
+    @override
+    @hook_config(can_jump_to=["end", "tools"])
+    async def abefore_model(self, state: AgentState, runtime: Runtime) -> dict | None:
+        return self.before_model(state, runtime)
 
     def _stop_reason(self, messages: list[Any], runtime: Runtime) -> str | None:
         turn_messages = _current_turn_messages(messages)
@@ -509,32 +545,138 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
             "type": "tool_call",
         }
 
+    def _configured_render_launch_pack_call(
+        self,
+        messages: list[Any],
+        runtime: Runtime,
+    ) -> dict[str, Any] | None:
+        subagent_type = self.config.auto_render_after_subagent
+        if not subagent_type or not self.config.auto_present_complete_pack or not self._is_complete_workflow_request(messages) or not self._required_subagents_completed(runtime):
+            return None
+
+        outcomes = self._tool_outcomes(messages)
+        if any(name == "render_launch_pack" for _, name, _args, _result in outcomes):
+            return None
+
+        for _index, name, args, result in reversed(outcomes):
+            if name != "task" or args.get("subagent_type") != subagent_type or not self._tool_succeeded(result):
+                continue
+            content = str(result.content)
+            match = _LAUNCH_PACK_SPEC_PATTERN.search(content)
+            if match is None or len(match.group(1)) > _LAUNCH_PACK_SPEC_MAX_CHARS:
+                return None
+            try:
+                spec = json.loads(match.group(1))
+            except json.JSONDecodeError:
+                return None
+            if not isinstance(spec, dict):
+                return None
+            if any(not isinstance(spec.get(field), str) or not str(spec[field]).strip() for field in _LAUNCH_PACK_SPEC_REQUIRED_TEXT_FIELDS):
+                return None
+            return {
+                "name": "render_launch_pack",
+                "args": {"spec": spec},
+                "id": f"call_auto_render_{uuid.uuid4().hex}",
+                "type": "tool_call",
+            }
+        return None
+
     def _configured_complete_pack_research_calls(self, messages: list[Any]) -> list[dict[str, Any]]:
         remaining = max(
             0,
             self.config.complete_pack_initial_research_calls - self._complete_pack_research_attempts(messages),
         )
-        if remaining == 0:
-            return []
         user_text = re.sub(r"\s+", " ", _latest_user_text(messages)).strip()
-        if not user_text:
+        if remaining > 0 and not user_text:
             return []
-        query_suffixes = [
-            "市场需求 竞品 价格 公开信号",
-            "用户痛点 使用场景 公开评价",
+        if remaining > 0:
+            query_suffixes = [
+                "市场需求 竞品 价格 公开信号",
+                "用户痛点 使用场景 公开评价",
+            ]
+            calls: list[dict[str, Any]] = []
+            for index in range(remaining):
+                suffix = query_suffixes[index % len(query_suffixes)]
+                calls.append(
+                    {
+                        "name": "web_search",
+                        "args": {"query": f"{user_text[:240]} {suffix}", "max_results": 5},
+                        "id": f"call_complete_pack_search_{uuid.uuid4().hex}",
+                        "type": "tool_call",
+                    }
+                )
+            return calls
+
+        remaining_fetches = max(
+            0,
+            self.config.complete_pack_initial_fetch_calls - self._complete_pack_fetch_attempts(messages),
+        )
+        return [
+            {
+                "name": "web_fetch",
+                "args": {"url": url},
+                "id": f"call_complete_pack_fetch_{uuid.uuid4().hex}",
+                "type": "tool_call",
+            }
+            for url in self._ranked_unfetched_search_result_urls(messages)[:remaining_fetches]
         ]
-        calls: list[dict[str, Any]] = []
-        for index in range(remaining):
-            suffix = query_suffixes[index % len(query_suffixes)]
-            calls.append(
-                {
-                    "name": "web_search",
-                    "args": {"query": f"{user_text[:240]} {suffix}", "max_results": 5},
-                    "id": f"call_complete_pack_search_{uuid.uuid4().hex}",
-                    "type": "tool_call",
-                }
-            )
-        return calls
+
+    def _ranked_unfetched_search_result_urls(self, messages: list[Any]) -> list[str]:
+        outcomes = self._tool_outcomes(messages)
+        fetched_urls = {str(args.get("url")).strip().rstrip("/") for _, name, args, _result in outcomes if name == "web_fetch" and isinstance(args.get("url"), str)}
+        query_text = " ".join(str(args.get("query") or "") for _, name, args, _result in outcomes if name == "web_search").lower()
+        keywords = set(re.findall(r"[a-z][a-z0-9-]{2,}|[\u3400-\u9fff]{2,}", query_text))
+        for token in list(keywords):
+            if re.fullmatch(r"[\u3400-\u9fff]{4,}", token):
+                keywords.update(token[index : index + 2] for index in range(len(token) - 1))
+                keywords.update(token[index : index + 3] for index in range(len(token) - 2))
+        keywords.difference_update(
+            {
+                "公开",
+                "信号",
+                "市场",
+                "品牌",
+                "价格",
+                "销量",
+                "竞品",
+                "关键词",
+                "2025",
+                "2026",
+            }
+        )
+        unsafe_pattern = re.compile(r"色情|成人|足交|中出|黑料|偷拍视频|成人视频", re.IGNORECASE)
+        ranked: list[tuple[int, int, str]] = []
+        seen: set[str] = set()
+        position = 0
+        for _, name, _args, result in outcomes:
+            if name != "web_search":
+                continue
+            try:
+                payload = json.loads(str(result.content))
+            except (TypeError, json.JSONDecodeError):
+                continue
+            raw_results = payload.get("results") if isinstance(payload, dict) else payload
+            if not isinstance(raw_results, list):
+                continue
+            for item in raw_results:
+                if not isinstance(item, dict):
+                    continue
+                url = str(item.get("url") or "").strip()
+                normalized = url.rstrip("/")
+                parsed = urlparse(url)
+                if parsed.scheme not in {"http", "https"} or not parsed.netloc or normalized in fetched_urls or normalized in seen:
+                    continue
+                haystack = f"{item.get('title') or ''} {item.get('content') or ''}".lower()
+                if unsafe_pattern.search(haystack):
+                    continue
+                score = sum(1 for keyword in keywords if keyword in haystack)
+                if keywords and score == 0:
+                    continue
+                seen.add(normalized)
+                ranked.append((score, -position, url))
+                position += 1
+        ranked.sort(reverse=True)
+        return [url for _score, _position, url in ranked]
 
     @staticmethod
     def _tool_outcomes(messages: list[Any]) -> list[tuple[int, str, dict[str, Any], ToolMessage]]:
@@ -601,11 +743,17 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
         return required_names.issubset(self._complete_pack_written_names(messages, runtime))
 
     def _complete_pack_research_attempts(self, messages: list[Any]) -> int:
-        return sum(
-            1
-            for _, name, _args, _result in self._tool_outcomes(messages)
-            if name in {"web_search", "web_fetch"}
-        )
+        return sum(1 for _, name, _args, _result in self._tool_outcomes(messages) if name in {"web_search", "web_fetch"})
+
+    def _complete_pack_fetch_attempts(self, messages: list[Any]) -> int:
+        return sum(1 for _, name, _args, _result in self._tool_outcomes(messages) if name == "web_fetch")
+
+    def _allowed_complete_pack_research_tools(self, messages: list[Any]) -> set[str]:
+        remaining_research = self.config.complete_pack_initial_research_calls - self._complete_pack_research_attempts(messages)
+        remaining_fetches = self.config.complete_pack_initial_fetch_calls - self._complete_pack_fetch_attempts(messages)
+        if remaining_research <= 0 and remaining_fetches > 0:
+            return {"web_fetch"}
+        return {"web_search", "web_fetch"}
 
     def _complete_pack_phase(self, messages: list[Any], runtime: Runtime) -> str | None:
         if not self.config.auto_present_complete_pack:
@@ -613,10 +761,11 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
         if not self._terminal_delivery_is_ready(runtime):
             return None
         required_research = self.config.complete_pack_initial_research_calls
+        required_fetches = self.config.complete_pack_initial_fetch_calls
         if (
-            required_research > 0
+            (required_research > 0 or required_fetches > 0)
             and not self._complete_pack_written_names(messages, runtime)
-            and self._complete_pack_research_attempts(messages) < required_research
+            and (self._complete_pack_research_attempts(messages) < required_research or self._complete_pack_fetch_attempts(messages) < required_fetches)
         ):
             return "research"
         if not self._complete_pack_files_ready(messages, runtime):
@@ -742,19 +891,19 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
                 finalization_name = "complete_pack_revision"
                 allowed_tools = {"write_file", "str_replace"}
             elif complete_pack_phase == "draft":
-                finalization_message = (
-                    COMPLETE_PACK_FLASH_DRAFT_MESSAGE
-                    if self.config.complete_pack_initial_research_calls > 0
-                    else COMPLETE_PACK_DRAFT_MESSAGE
-                )
+                finalization_message = COMPLETE_PACK_FLASH_DRAFT_MESSAGE if self.config.complete_pack_initial_research_calls > 0 else COMPLETE_PACK_DRAFT_MESSAGE
                 finalization_name = "complete_pack_draft"
                 allowed_tools = {"render_launch_pack", "write_launch_pack", "write_file"}
             elif complete_pack_phase == "research":
                 completed_research = self._complete_pack_research_attempts(request.messages)
                 remaining_research = max(0, self.config.complete_pack_initial_research_calls - completed_research)
-                finalization_message = f"{COMPLETE_PACK_RESEARCH_MESSAGE}\n- Remaining research attempts in this phase: {remaining_research}."
+                completed_fetches = self._complete_pack_fetch_attempts(request.messages)
+                remaining_fetches = max(0, self.config.complete_pack_initial_fetch_calls - completed_fetches)
+                finalization_message = f"{COMPLETE_PACK_RESEARCH_MESSAGE}\n- Remaining discovery/fetch attempts in this phase: {remaining_research}.\n- Remaining direct-page fetch attempts required: {remaining_fetches}."
+                if remaining_research == 0 and remaining_fetches > 0:
+                    finalization_message += "\n- Discovery is complete. Call web_fetch only on the most relevant direct result URLs already returned; do not search again."
                 finalization_name = "complete_pack_research"
-                allowed_tools = {"web_search", "web_fetch"}
+                allowed_tools = self._allowed_complete_pack_research_tools(request.messages)
             else:
                 finalization_message = COMPLETE_PACK_ASSEMBLY_MESSAGE
                 finalization_name = "complete_pack_assembly"
@@ -816,13 +965,7 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
 
         next_required_subagent = self._next_required_subagent(runtime)
         if self._is_complete_workflow_request(messages[:-1]) and next_required_subagent is not None and tool_calls:
-            task_calls = [
-                call
-                for call in tool_calls
-                if call.get("name") == "task"
-                and isinstance(call.get("args"), dict)
-                and call["args"].get("subagent_type") == next_required_subagent
-            ][:1]
+            task_calls = [call for call in tool_calls if call.get("name") == "task" and isinstance(call.get("args"), dict) and call["args"].get("subagent_type") == next_required_subagent][:1]
             if task_calls != tool_calls:
                 if task_calls:
                     return {"messages": [clone_ai_message_with_tool_calls(last, task_calls, content="")]}
@@ -849,18 +992,14 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
             filtered_calls = present_calls[:1]
             if configured_call is not None:
                 configured_paths = configured_call["args"]["filepaths"]
-                presented_paths = (
-                    filtered_calls[0].get("args", {}).get("filepaths")
-                    if filtered_calls
-                    else None
-                )
+                presented_paths = filtered_calls[0].get("args", {}).get("filepaths") if filtered_calls else None
                 if presented_paths != configured_paths:
                     filtered_calls = [configured_call]
             if filtered_calls != tool_calls:
                 return {"messages": [clone_ai_message_with_tool_calls(last, filtered_calls, content="")]}
         elif complete_pack_phase in {"research", "draft", "assemble", "revise"} and tool_calls:
             if complete_pack_phase == "research":
-                allowed_revision_tools = {"web_search", "web_fetch"}
+                allowed_revision_tools = self._allowed_complete_pack_research_tools(messages[:-1])
             else:
                 allowed_revision_tools = {"render_launch_pack", "write_launch_pack", "write_file"} if complete_pack_phase == "draft" else {"write_file", "str_replace"}
             revision_calls = [call for call in tool_calls if call.get("name") in allowed_revision_tools]
@@ -882,10 +1021,7 @@ class RunBudgetMiddleware(AgentMiddleware[AgentState]):
                     stopped = clone_ai_message_with_tool_calls(
                         last,
                         [],
-                        content=(
-                            f"Launch Pack 未完成修订或交付，仍有必需文件未通过确定性预检。\n\n"
-                            f"停止原因：{reason}。"
-                        ),
+                        content=(f"Launch Pack 未完成修订或交付，仍有必需文件未通过确定性预检。\n\n停止原因：{reason}。"),
                     )
                     return {"messages": [stopped]}
                 existing_content = last.content.strip() if isinstance(last.content, str) else ""

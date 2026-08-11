@@ -387,6 +387,24 @@ def test_no_sample_pack_is_deterministically_normalized_before_audit(tmp_path):
     assert "不接受付款或预订" in (tmp_path / "content-pack.md").read_text(encoding="utf-8")
 
 
+def test_no_sample_pack_preserves_safe_contextual_copy(tmp_path):
+    required = ["listing-pack.md", "content-pack.md"]
+    listing = "# 通勤咖啡杯概念验证页\n\n> 无样品、无规格；本页不接受订单或付款。\n\n- 待验证：目标人群为工作日乘地铁并自带咖啡的上班族。\n- 待验证：99-199 元的接受条件与真实购买时机。\n"
+    content = "# 通勤咖啡杯问题帖\n\n> 无样品、无规格；本帖不售卖、不收款。\n\n请按真实场景回答：当前替代方案是什么，什么问题最影响选择？\n- 待验证：洒漏顾虑是否比外观偏好更重要。\n"
+    (tmp_path / "listing-pack.md").write_text(listing, encoding="utf-8")
+    (tmp_path / "content-pack.md").write_text(content, encoding="utf-8")
+
+    changed = launch_pack_guard_module.prepare_launch_pack_for_audit(
+        tmp_path,
+        required,
+        user_request="没有样品，请验证 99-199 元的通勤咖啡杯。",
+    )
+
+    assert changed == []
+    assert (tmp_path / "listing-pack.md").read_text(encoding="utf-8") == listing
+    assert (tmp_path / "content-pack.md").read_text(encoding="utf-8") == content
+
+
 def test_run_budget_blocks_a_sibling_specialist_until_its_dependency_completes():
     runtime = _make_runtime()
     _install_run_budget(runtime, subagent_dependencies={"offer-architect": ["market-voc-researcher"]})

@@ -207,11 +207,26 @@ Repository-defined agent configs may also set `run_budget` with
 for another type is rejected before the execution slot is reserved or a
 `SubagentExecutor` is started. Complete-pack agents may additionally configure
 `required_output_files`, `require_evidence_checker`, and
-`validate_pack_before_present`. A complete-pack agent may enable
+`validate_pack_before_present`. A single-agent complete Pack can use
+`complete_pack_initial_research_calls` for bounded discovery and
+`complete_pack_initial_fetch_calls` for a separate direct-page verification
+phase. Failed fetch attempts count toward the bound, but Flash rendering
+downgrades every `observed_public` row whose URL was not successfully fetched
+in the current user turn. If that leaves no observed public or uploaded
+evidence, a Flash `test_now` decision is reconciled to
+`test_after_fixing_assumptions` together with a matching rationale. The compact
+renderer maps experiment `name`, `type`, `channel`, `metric`, `goal`, and
+`cost` fields into the calendar and carries the category, audience, price,
+hypotheses, and actions into the safe no-sample listing/content assets. The
+preflight replaces those assets only when the deterministic no-sample validator
+finds unsafe claims; safe contextual copy is preserved. A complete-pack agent may enable
 `auto_present_complete_pack`; once every required specialist is ready, RunBudget
 prefers `render_launch_pack`, which accepts one compact structured spec and
 deterministically renders, validates, and presents the canonical seven files in
-one tool call. `write_launch_pack` and bounded `write_file` calls remain as
+one tool call. Its `decision` field is a canonical enum, and the deterministic
+terminal response reports the normalized decision, evidence counts, critical
+gaps, and next step instead of only acknowledging file creation.
+`write_launch_pack` and bounded `write_file` calls remain as
 compatibility fallbacks. Before specialist completion, a complete workflow exposes
 only the next dependency-safe `task` call, so a lead cannot waste a turn rereading
 an already-loaded Skill. After the first compatibility write and before
@@ -237,6 +252,15 @@ latest user turn, preserves an already-completed final answer, permits
 whole request's remaining wall time. After `present_files` succeeds it injects
 a hidden terminal summary instruction and removes any later tool calls, so a
 completed delivery cannot start another research or drafting phase.
+
+The frontend decision workspace treats the first and latest successful
+`render_launch_pack` call specs as the initial and current decision snapshots.
+It reads `evidence-ledger.json` and `launch-calendar.csv` through the existing
+thread Artifact API. User-entered validation results and returned Growth
+Analyst findings are ordinary structured human messages that ask the Launch
+Team to reassess; they do not mutate backend thread state or the decision spec
+outside a normal agent run. Keep the two top-level agents independent: the
+cross-agent handoff is an explicit frontend action, not backend auto-routing.
 
 Subagent Skill inheritance distinguishes an omitted child list from an explicit
 child list: `skills: null` inherits the lead agent's available Skills, while an

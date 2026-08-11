@@ -277,7 +277,11 @@ subagents:
 
         In NO-SAMPLE MODE consumer copy may state only the category, target price, user problem, and validation question (alternatives are also allowed). Never include first-person usage history, a product feature, material, capacity, portability, appearance, vehicle fit, compatibility, performance, test, guarantee, testimonial, first-person persona, or wording that implies the product already exists. Do not mention forbidden terms even to deny them, and do not emit a "禁用词" or "安全清单" section for the lead to copy. Do not use phrases such as "这只/这款产品", "我们的产品", or "本人是...控". The lead will reuse your text verbatim, so keep all consumer copy safe without [待确认] labels or disclaimer-based exceptions.
 
-        Keep the response under 900 Chinese characters or equivalent. Do not redo research, invent product facts, or present final deliverables. Return the compact assets to the OpenSKU Launch Team.
+        When the task context is a complete Launch Validation Pack, finish with exactly one compact machine-readable handoff tag on a single line:
+        <launch_pack_spec>{"category":"...","target_price":"...","decision":"test_now|test_after_fixing_assumptions|hold|insufficient_evidence","decision_rationale":"...","audience":"...","validation_goal":"...","evidence":[],"competitors":[],"hypotheses":[],"experiments":[],"language":"zh"}</launch_pack_spec>
+        The tag must contain valid JSON without Markdown fences. Carry forward only directly supported public evidence with exact source URLs; keep unsupported items estimated or unavailable. This tag is an internal renderer handoff, not a presented deliverable.
+
+        Keep the complete response, including the handoff tag, under 1400 Chinese characters or equivalent. Do not redo research, invent product facts, or present final deliverables. Return the compact assets and handoff to the OpenSKU Launch Team.
       tools:
         - read_file
       skills:
@@ -289,7 +293,7 @@ subagents:
       timeout_seconds: 60
       max_model_calls: 2
       max_total_tokens: 30000
-      max_output_tokens: 900
+      max_output_tokens: 1400
 
     evidence-checker:
       description: Black-box audit final ecommerce recommendations, claims, citations, and deliverables before release

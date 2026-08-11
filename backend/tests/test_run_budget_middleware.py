@@ -848,14 +848,107 @@ def test_render_launch_pack_success_is_terminal_delivery() -> None:
     user = HumanMessage(content="请输出 Launch Validation Pack")
     render = AIMessage(content="", tool_calls=[_tool_call("render_launch_pack", "render-1", {"spec": {"category": "cup"}})])
     delivered = ToolMessage(content="Successfully presented files", tool_call_id="render-1", status="success")
+    completion = AIMessage(
+        content="Launch Validation Pack 已通过预检，7 个交付文件已生成并展示。",
+        additional_kwargs={"deerflow_deterministic_completion": True},
+    )
 
     assert middleware._complete_pack_phase([user, render, delivered], runtime) is None
+    assert middleware.before_model({"messages": [user, render, delivered]}, runtime) is None
+    assert middleware.before_model({"messages": [user, render, delivered, completion]}, runtime) == {"jump_to": "end"}
     update = middleware.after_model(
         {"messages": [user, render, delivered, AIMessage(content="继续搜索", tool_calls=[_tool_call("web_search", "extra")])]},
         runtime,
     )
     assert update is not None
     assert update["messages"][0].tool_calls == []
+
+
+def test_before_model_injects_renderer_from_terminal_specialist_spec() -> None:
+    middleware = RunBudgetMiddleware(
+        AgentRunBudgetConfig(
+            max_lead_model_calls=12,
+            max_subagent_calls=1,
+            max_total_tokens=250_000,
+            max_execution_seconds=120,
+            complete_workflow_patterns=["Launch Validation Pack"],
+            required_completed_subagents=["asset-studio"],
+            required_output_files=["a.md", "b.csv"],
+            auto_present_complete_pack=True,
+            auto_render_after_subagent="asset-studio",
+        )
+    )
+    runtime = _runtime()
+    middleware.before_agent({}, runtime)
+    runtime.context[RUN_BUDGET_CONTEXT_KEY]["subagent_types_completed"] = {"asset-studio"}
+    user = HumanMessage(content="请输出 Launch Validation Pack")
+    delegated = AIMessage(
+        content="",
+        tool_calls=[
+            _tool_call(
+                "task",
+                "asset-1",
+                {"subagent_type": "asset-studio", "description": "create assets", "prompt": "build"},
+            )
+        ],
+    )
+    result = ToolMessage(
+        content=(
+            "Task Succeeded. Result: concept kit\n"
+            '<launch_pack_spec>{"category":"通勤咖啡杯","target_price":"99-199 元",'
+            '"decision":"test_now","decision_rationale":"先做七天验证",'
+            '"audience":"工作日通勤人群","validation_goal":"验证问题与价格接受度",'
+            '"evidence":[{"claim":"通勤场景存在保温诉求","evidence_label":"observed_public",'
+            '"source_urls":["https://example.com/review"]}],'
+            '"competitors":[{"name":"竞品 A","price_signal":"129 元",'
+            '"evidence":{"label":"observed_public","source_url":"https://example.com/a"}}]}'
+            "</launch_pack_spec>"
+        ),
+        tool_call_id="asset-1",
+        status="success",
+    )
+
+    update = middleware.before_model({"messages": [user, delegated, result]}, runtime)
+
+    assert update is not None
+    assert update["jump_to"] == "tools"
+    injected = update["messages"][0]
+    assert isinstance(injected, AIMessage)
+    assert injected.additional_kwargs["deerflow_deterministic_render"] is True
+    assert injected.tool_calls[0]["name"] == "render_launch_pack"
+    assert injected.tool_calls[0]["args"]["spec"]["category"] == "通勤咖啡杯"
+    assert injected.tool_calls[0]["args"]["spec"]["evidence"][0]["source_urls"] == ["https://example.com/review"]
+    assert injected.tool_calls[0]["args"]["spec"]["competitors"][0]["evidence"]["source_url"] == "https://example.com/a"
+
+
+def test_before_model_falls_back_to_model_for_invalid_terminal_specialist_spec() -> None:
+    middleware = RunBudgetMiddleware(
+        AgentRunBudgetConfig(
+            max_lead_model_calls=12,
+            max_subagent_calls=1,
+            max_total_tokens=250_000,
+            max_execution_seconds=120,
+            complete_workflow_patterns=["Launch Validation Pack"],
+            required_completed_subagents=["asset-studio"],
+            auto_present_complete_pack=True,
+            auto_render_after_subagent="asset-studio",
+        )
+    )
+    runtime = _runtime()
+    middleware.before_agent({}, runtime)
+    runtime.context[RUN_BUDGET_CONTEXT_KEY]["subagent_types_completed"] = {"asset-studio"}
+    user = HumanMessage(content="请输出 Launch Validation Pack")
+    delegated = AIMessage(
+        content="",
+        tool_calls=[_tool_call("task", "asset-1", {"subagent_type": "asset-studio"})],
+    )
+    invalid = ToolMessage(
+        content="Task Succeeded. Result: <launch_pack_spec>{not-json}</launch_pack_spec>",
+        tool_call_id="asset-1",
+        status="success",
+    )
+
+    assert middleware.before_model({"messages": [user, delegated, invalid]}, runtime) is None
 
 
 def test_flash_complete_pack_runs_bounded_public_research_before_drafting() -> None:
@@ -866,6 +959,7 @@ def test_flash_complete_pack_runs_bounded_public_research_before_drafting() -> N
             max_total_tokens=250_000,
             max_execution_seconds=120,
             complete_pack_initial_research_calls=2,
+            complete_pack_initial_fetch_calls=2,
             required_output_files=["a.md", "b.csv"],
             auto_present_complete_pack=True,
         )
@@ -909,17 +1003,74 @@ def test_flash_complete_pack_runs_bounded_public_research_before_drafting() -> N
     assert {call["name"] for call in configured_calls} == {"web_search"}
     assert all(call["args"]["max_results"] == 5 for call in configured_calls)
 
-    # Once two bounded attempts have returned, the next model turn is drafting
-    # and must no longer receive web research tools.
+    # Once discovery has returned, Flash must fetch direct result pages instead
+    # of drafting from search snippets.
     search_1 = AIMessage(content="", tool_calls=[_tool_call("web_search", "s1")])
     search_2 = AIMessage(content="", tool_calls=[_tool_call("web_search", "s2")])
     request.messages = [
         user,
         search_1,
-        ToolMessage(content="[]", tool_call_id="s1"),
+        ToolMessage(
+            content=json.dumps(
+                {
+                    "results": [
+                        {
+                            "title": "通勤咖啡杯公开页面",
+                            "url": "https://example.com/cup-a",
+                            "content": "通勤咖啡杯与保温杯场景",
+                        }
+                    ]
+                },
+                ensure_ascii=False,
+            ),
+            tool_call_id="s1",
+            name="web_search",
+        ),
         search_2,
-        ToolMessage(content="[]", tool_call_id="s2"),
+        ToolMessage(
+            content=json.dumps(
+                {
+                    "results": [
+                        {
+                            "title": "便携咖啡杯竞品页",
+                            "url": "https://example.com/cup-b",
+                            "content": "咖啡杯价格与通勤场景",
+                        }
+                    ]
+                },
+                ensure_ascii=False,
+            ),
+            tool_call_id="s2",
+            name="web_search",
+        ),
     ]
+    captured.clear()
+    middleware.wrap_model_call(request, lambda updated: captured.append(updated) or MagicMock())
+    assert [tool.name for tool in captured[0].tools] == ["web_fetch"]
+    assert captured[0].messages[-1].name == "complete_pack_research"
+    assert "Remaining direct-page fetch attempts required: 2" in captured[0].messages[-1].content
+
+    stalled_fetch = AIMessage(content="I should verify the source pages now.")
+    update = middleware.after_model({"messages": [*request.messages, stalled_fetch]}, runtime)
+    assert update is not None
+    configured_fetches = update["messages"][0].tool_calls
+    assert len(configured_fetches) == 2
+    assert {call["name"] for call in configured_fetches} == {"web_fetch"}
+    assert {call["args"]["url"] for call in configured_fetches} == {
+        "https://example.com/cup-a",
+        "https://example.com/cup-b",
+    }
+
+    fetch_1 = AIMessage(content="", tool_calls=[_tool_call("web_fetch", "f1", {"url": "https://example.com/cup-a"})])
+    fetch_2 = AIMessage(content="", tool_calls=[_tool_call("web_fetch", "f2", {"url": "https://example.com/cup-b"})])
+    request.messages.extend(
+        [
+            fetch_1,
+            ToolMessage(content="# Product A", tool_call_id="f1", name="web_fetch"),
+            fetch_2,
+            ToolMessage(content="# Product B", tool_call_id="f2", name="web_fetch"),
+        ]
+    )
     captured.clear()
     middleware.wrap_model_call(request, lambda updated: captured.append(updated) or MagicMock())
     assert [tool.name for tool in captured[0].tools] == ["render_launch_pack", "write_launch_pack", "write_file"]
