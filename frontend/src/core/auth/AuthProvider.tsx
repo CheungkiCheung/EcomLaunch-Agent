@@ -13,6 +13,7 @@ import React, {
 import { isStaticWebsiteOnly } from "../static-mode";
 
 import { type User, buildLoginUrl } from "./types";
+import { handleUnauthorized } from "./unauthorized";
 
 // Re-export for consumers
 export type { User };
@@ -71,9 +72,8 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
       } else if (res.status === 401) {
         // Session expired or invalid
         setUser(null);
-        // Redirect to login if on a protected route
         if (pathname?.startsWith("/workspace")) {
-          router.push(buildLoginUrl(pathname));
+          await handleUnauthorized(pathname);
         }
       }
     } catch (err) {
@@ -82,7 +82,7 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [staticMode, pathname, router]);
+  }, [staticMode, pathname]);
 
   /**
    * Logout - call FastAPI logout endpoint and clear local state
@@ -101,6 +101,7 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
       await fetch("/api/v1/auth/logout", {
         method: "POST",
         credentials: "include",
+        keepalive: true,
       });
     } catch (err) {
       console.error("Logout request failed:", err);

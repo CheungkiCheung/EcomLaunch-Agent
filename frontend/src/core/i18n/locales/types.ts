@@ -19,6 +19,7 @@ export interface Translations {
     more: string;
     search: string;
     loadMore: string;
+    retry: string;
     download: string;
     thinking: string;
     artifacts: string;
@@ -26,6 +27,7 @@ export interface Translations {
     custom: string;
     notAvailableInDemoMode: string;
     loading: string;
+    artifactLoadFailed: string;
     version: string;
     lastUpdated: string;
     code: string;
@@ -513,6 +515,110 @@ export interface Translations {
       tasks: string[];
       currentStage: string;
     };
+  };
+
+  // OpenSKU launch-validation decision workspace
+  launchDecision: {
+    chatView: string;
+    decisionView: string;
+    workspaceTitle: (category: string) => string;
+    emptyTitle: string;
+    emptyDescription: string;
+    returnToChat: string;
+    currentRecommendation: string;
+    keyRisk: string;
+    nextStep: string;
+    stopCondition: string;
+    noCriticalRisk: string;
+    noNextStep: string;
+    noStopCondition: string;
+    noRationale: string;
+    awaitingReassessment: string;
+    openGrowthAnalyst: string;
+    returnToLaunch: string;
+    recordResult: string;
+    loadingArtifacts: string;
+    tabs: {
+      overview: string;
+      experiments: string;
+      evidence: string;
+      deliverables: string;
+    };
+    decisions: Record<
+      | "test_now"
+      | "test_after_fixing_assumptions"
+      | "hold"
+      | "insufficient_evidence",
+      string
+    >;
+    evidenceStates: Record<
+      "insufficient" | "partial" | "supported" | "conflicting",
+      string
+    >;
+    evidenceLabels: Record<
+      | "observed_public"
+      | "uploaded_real"
+      | "estimated"
+      | "assumption"
+      | "unavailable",
+      string
+    >;
+    outcomes: Record<"met" | "partial" | "not_met" | "inconclusive", string>;
+    decisionContext: string;
+    audience: string;
+    validationGoal: string;
+    notDefined: string;
+    decisionDifference: string;
+    initial: string;
+    current: string;
+    pendingReassessment: string;
+    changedWithoutRationale: string;
+    noDecisionChange: string;
+    recordedResults: string;
+    noRecordedResults: string;
+    dateUnknown: string;
+    sampleDefinition: string;
+    experimentPlan: string;
+    experimentPlanDescription: string;
+    templateFallbackDescription: string;
+    collect: string;
+    successCriterion: string;
+    experimentTemplatesTitle: string;
+    experimentTemplates: Array<{
+      name: string;
+      evidence: string;
+      success: string;
+      stop: string;
+    }>;
+    keyHypotheses: string;
+    hypothesisLinkNotice: string;
+    noHypotheses: string;
+    hypothesis: string;
+    status: string;
+    evidence: string;
+    decisionImpact: string;
+    awaitingLink: string;
+    noDirectEvidence: string;
+    highImpact: string;
+    evidenceLedger: string;
+    noEvidence: string;
+    limitation: string;
+    sourceCount: (count: number) => string;
+    deliverablesTitle: string;
+    deliverablesDescription: string;
+    openArtifact: string;
+    missingArtifact: string;
+    resultDialogTitle: string;
+    resultDialogDescription: string;
+    experiment: string;
+    experimentPlaceholder: string;
+    date: string;
+    outcome: string;
+    samplePlaceholder: string;
+    observation: string;
+    observationPlaceholder: string;
+    cancel: string;
+    submitResult: string;
   };
 
   // Conversation

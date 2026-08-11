@@ -1,6 +1,6 @@
 import { FilesIcon, XIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { GroupImperativeHandle } from "react-resizable-panels";
 
 import { ConversationEmptyState } from "@/components/ai-elements/conversation";
@@ -38,12 +38,13 @@ const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
     open: artifactsOpen,
     setOpen: setArtifactsOpen,
     setArtifacts,
+    autoOpen,
+    autoSelect,
     select: selectArtifact,
     deselect,
     selectedArtifact,
   } = useArtifacts();
 
-  const [autoSelectFirstArtifact, setAutoSelectFirstArtifact] = useState(true);
   const discoveredArtifacts = useMemo(
     () => [
       ...new Set([
@@ -70,23 +71,26 @@ const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
     //   deselect();
     // }
 
-    if (
-      env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" &&
-      autoSelectFirstArtifact
-    ) {
-      if (discoveredArtifacts.length > 0) {
-        setAutoSelectFirstArtifact(false);
-        selectArtifact(discoveredArtifacts[0]!);
+    if (autoSelect && !selectedArtifact && discoveredArtifacts.length > 0) {
+      const artifact =
+        discoveredArtifacts.find((path) =>
+          path.endsWith("/launch-war-room.html"),
+        ) ?? discoveredArtifacts[0]!;
+      selectArtifact(artifact, true);
+      if (autoOpen) {
+        setArtifactsOpen(true);
       }
     }
   }, [
     threadId,
-    autoSelectFirstArtifact,
+    autoOpen,
+    autoSelect,
     deselect,
     discoveredArtifacts,
     selectArtifact,
     selectedArtifact,
     setArtifacts,
+    setArtifactsOpen,
   ]);
 
   const artifactPanelOpen = useMemo(() => {

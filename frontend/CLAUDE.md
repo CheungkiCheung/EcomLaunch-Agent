@@ -83,6 +83,34 @@ Growth Analyst's route provides its own user-facing name, database icon, and dat
 
 Primary-agent chats default to Flash reasoning. OpenSKU Launch Team additionally overrides the run context with `is_plan_mode=false`, `subagent_enabled=true`, and `max_concurrent_subagents=2`: specialists stay available while todo-plan creation/update calls remain disabled. Whole-request call, token, duplicate-specialist, and wall-time budgets are enforced by the backend agent config.
 
+OpenSKU Launch Team threads expose a `Conversation / Decision` switch. The
+decision workspace derives its initial/current snapshots only from real
+`render_launch_pack` tool-call specs, then prefers the canonical
+`evidence-ledger.json` and `launch-calendar.csv` Artifacts for evidence and
+experiment rows. Validation-result forms submit a versioned structured human
+message to the same thread. Until a later agent run emits a new decision spec,
+the workspace shows the result as awaiting reassessment instead of changing the
+recommendation locally.
+
+Completed artifact sets auto-select `launch-war-room.html` when present (or the
+first artifact otherwise) and open the artifact panel while its existing
+`autoSelect`/`autoOpen` flags remain enabled. A manual selection or close still
+disables automatic reopening. Streamed `present_files` and `render_launch_pack`
+arguments do not make files previewable until the matching successful tool
+result arrives; this prevents an in-progress renderer from caching an artifact 404. Artifact fetches reject non-2xx responses, bypass HTTP caching, expose a
+retry state, and revalidate after each completed presentation. Both ordinary
+Gateway requests and LangGraph SDK
+requests share 401 recovery: the frontend posts to `/api/v1/auth/logout` to
+clear an expired HttpOnly cookie, then redirects to `/login` with the current
+workspace path. Static and `/mock/api/` requests do not trigger that redirect.
+
+Launch Team and Growth Analyst have an explicit, user-triggered handoff. The
+handoff prompt and source-thread pointer are passed in session-scoped browser
+storage, not URL content or a new backend protocol. Growth Analyst still asks
+for real CSV/XLSX data. Its latest analysis can be explicitly returned as a
+prefilled Launch Team message for review; no result is silently accepted and no
+top-level agent is automatically invoked.
+
 ### Key Patterns
 
 - **Server Components by default**, `"use client"` only for interactive components

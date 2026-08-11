@@ -1,13 +1,16 @@
 "use client";
 
 import {
+  ArrowLeftRightIcon,
   BotIcon,
+  ClipboardListIcon,
   DatabaseIcon,
+  MessageSquareIcon,
   PlusSquare,
   ShoppingBagIcon,
 } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { Button } from "@/components/ui/button";
@@ -15,7 +18,10 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AgentWelcome } from "@/components/workspace/agent-welcome";
 import { ArtifactTrigger } from "@/components/workspace/artifacts";
 import { ChatBox, useThreadChat } from "@/components/workspace/chats";
-import { LaunchCrewPanel } from "@/components/workspace/ecom-launch";
+import {
+  LaunchCrewPanel,
+  LaunchDecisionWorkspace,
+} from "@/components/workspace/ecom-launch";
 import { ExportTrigger } from "@/components/workspace/export-trigger";
 import {
   InputBox,
@@ -32,6 +38,7 @@ import { TokenUsageIndicator } from "@/components/workspace/token-usage-indicato
 import { Tooltip } from "@/components/workspace/tooltip";
 import { useAgent } from "@/core/agents";
 import { useI18n } from "@/core/i18n/hooks";
+import { buildLaunchUpdateFromGrowth } from "@/core/launch-validation/decision";
 import { useModels } from "@/core/models/hooks";
 import { useNotification } from "@/core/notification/hooks";
 import { useLocalSettings, useThreadSettings } from "@/core/settings";
@@ -42,8 +49,9 @@ import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
 export default function AgentChatPage() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const { agent_name } = useParams<{
     agent_name: string;
@@ -51,6 +59,10 @@ export default function AgentChatPage() {
   const isEcomLaunch = agent_name === "ecom-launch";
   const isDataInspector = agent_name === "data-inspector";
   const isPrimaryAgent = isEcomLaunch || isDataInspector;
+  const growthSourceThreadParam = isDataInspector
+    ? searchParams.get("sourceThread")
+    : null;
+  const growthSourceThreadRef = useRef<string | null>(growthSourceThreadParam);
 
   const { agent } = useAgent(isPrimaryAgent ? null : agent_name);
 
@@ -60,6 +72,12 @@ export default function AgentChatPage() {
   // the thread. `isWelcomeMode` controls only the centered welcome layout, so
   // it can flip immediately on submit without triggering eager history loads.
   const [isWelcomeMode, setIsWelcomeMode] = useState(isNewThread);
+  const [launchView, setLaunchView] = useState<"chat" | "decision">("chat");
+  const [handoffInitialValue, setHandoffInitialValue] = useState<string>();
+  const [handoffStorageKey, setHandoffStorageKey] = useState<string>();
+  const [growthSourceThreadId, setGrowthSourceThreadId] = useState<
+    string | null
+  >(growthSourceThreadParam);
   const [primaryAgentContextEdited, setPrimaryAgentContextEdited] =
     useState(false);
   const [settings, setSettings] = useThreadSettings(threadId);
@@ -82,6 +100,48 @@ export default function AgentChatPage() {
       setPrimaryAgentContextEdited(false);
     }
   }, [agent_name, isNewThread, threadId]);
+
+  useEffect(() => {
+    setLaunchView("chat");
+  }, [threadId]);
+
+  useEffect(() => {
+    const handoffKey = searchParams.get("handoffKey");
+    const growthReturnKey = searchParams.get("growthReturnKey");
+    const storageKey = handoffKey
+      ? `opensku:growth-handoff:${handoffKey}`
+      : growthReturnKey
+        ? `opensku:growth-return:${growthReturnKey}`
+        : undefined;
+    if (!storageKey) {
+      setHandoffInitialValue(undefined);
+      setHandoffStorageKey(undefined);
+      return;
+    }
+    const stored = window.sessionStorage.getItem(storageKey);
+    setHandoffInitialValue(stored ?? undefined);
+    setHandoffStorageKey(storageKey);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!isDataInspector) {
+      growthSourceThreadRef.current = null;
+      setGrowthSourceThreadId(null);
+      return;
+    }
+    if (growthSourceThreadParam) {
+      growthSourceThreadRef.current = growthSourceThreadParam;
+      setGrowthSourceThreadId(growthSourceThreadParam);
+      return;
+    }
+    if (!isNewThread) {
+      const stored = window.sessionStorage.getItem(
+        `opensku:growth-source:${threadId}`,
+      );
+      growthSourceThreadRef.current = stored;
+      setGrowthSourceThreadId(stored);
+    }
+  }, [growthSourceThreadParam, isDataInspector, isNewThread, threadId]);
 
   const effectiveContext = useMemo(() => {
     if (!isPrimaryAgent || primaryAgentContextEdited) {
@@ -149,6 +209,13 @@ export default function AgentChatPage() {
       setIsWelcomeMode(false);
     },
     onStart: (createdThreadId) => {
+      const growthSourceThread = growthSourceThreadRef.current;
+      if (growthSourceThread) {
+        window.sessionStorage.setItem(
+          `opensku:growth-source:${createdThreadId}`,
+          growthSourceThread,
+        );
+      }
       setThreadId(createdThreadId);
       setIsNewThread(false);
       // ! Important: Never use next.js router for navigation in this case, otherwise it will cause the thread to re-mount and lose all states. Use native history API instead.
@@ -179,12 +246,22 @@ export default function AgentChatPage() {
   const handleSubmit = useCallback(
     (message: PromptInputMessage) => {
       const sendPromise = sendMessage(threadId, message, { agent_name });
+      if (handoffStorageKey) {
+        window.sessionStorage.removeItem(handoffStorageKey);
+        setHandoffInitialValue(undefined);
+        setHandoffStorageKey(undefined);
+        history.replaceState(
+          null,
+          "",
+          `/workspace/agents/${agent_name}/chats/${isNewThread ? "new" : threadId}`,
+        );
+      }
       if (message.files.length > 0) {
         return sendPromise;
       }
       void sendPromise;
     },
-    [sendMessage, threadId, agent_name],
+    [sendMessage, threadId, agent_name, handoffStorageKey, isNewThread],
   );
 
   const handleStop = useCallback(async () => {
@@ -210,6 +287,41 @@ export default function AgentChatPage() {
     : isDataInspector
       ? t.agents.dataInspectorSuggestions
       : undefined;
+  const latestGrowthAnalysis = useMemo(() => {
+    if (!isDataInspector) {
+      return "";
+    }
+    for (let index = thread.messages.length - 1; index >= 0; index -= 1) {
+      const message = thread.messages[index];
+      if (message?.type !== "ai") {
+        continue;
+      }
+      const content = textOfMessage(message)?.trim();
+      if (content) {
+        return content;
+      }
+    }
+    return "";
+  }, [isDataInspector, thread.messages]);
+
+  const returnGrowthAnalysisToLaunch = useCallback(() => {
+    if (!growthSourceThreadId || !latestGrowthAnalysis) {
+      return;
+    }
+    const returnKey = crypto.randomUUID();
+    const storageKey = `opensku:growth-return:${returnKey}`;
+    window.sessionStorage.setItem(
+      storageKey,
+      buildLaunchUpdateFromGrowth(
+        latestGrowthAnalysis,
+        locale === "zh-CN" ? "zh" : "en",
+      ),
+    );
+    window.sessionStorage.removeItem(`opensku:growth-source:${threadId}`);
+    router.push(
+      `/workspace/agents/ecom-launch/chats/${encodeURIComponent(growthSourceThreadId)}?growthReturnKey=${encodeURIComponent(returnKey)}`,
+    );
+  }, [growthSourceThreadId, latestGrowthAnalysis, locale, router, threadId]);
 
   return (
     <ThreadContext.Provider value={{ thread }}>
@@ -225,7 +337,7 @@ export default function AgentChatPage() {
           >
             <SidebarTrigger className="-ml-2 md:hidden" />
             {/* Agent badge */}
-            <div className="flex min-w-0 shrink items-center gap-1.5 rounded-md border px-2 py-1">
+            <div className="hidden min-w-0 shrink items-center gap-1.5 rounded-md border px-2 py-1 sm:flex">
               <AgentBadgeIcon className="text-primary h-3.5 w-3.5" />
               <span className="truncate text-xs font-medium">
                 {agentDisplayName}
@@ -235,7 +347,74 @@ export default function AgentChatPage() {
             <div className="flex min-w-0 flex-1 items-center text-sm font-medium">
               <ThreadTitle threadId={threadId} thread={thread} />
             </div>
+            {isEcomLaunch && !isWelcomeMode && (
+              <div className="bg-muted hidden h-8 items-center rounded-md p-0.5 sm:flex">
+                <Button
+                  aria-label={t.launchDecision.chatView}
+                  className="h-7 px-2"
+                  size="sm"
+                  variant={launchView === "chat" ? "secondary" : "ghost"}
+                  onClick={() => setLaunchView("chat")}
+                >
+                  <MessageSquareIcon />
+                  <span className="hidden lg:inline">
+                    {t.launchDecision.chatView}
+                  </span>
+                </Button>
+                <Button
+                  aria-label={t.launchDecision.decisionView}
+                  className="h-7 px-2"
+                  size="sm"
+                  variant={launchView === "decision" ? "secondary" : "ghost"}
+                  onClick={() => setLaunchView("decision")}
+                >
+                  <ClipboardListIcon />
+                  <span className="hidden lg:inline">
+                    {t.launchDecision.decisionView}
+                  </span>
+                </Button>
+              </div>
+            )}
+            {isEcomLaunch && !isWelcomeMode && (
+              <Button
+                aria-label={
+                  launchView === "chat"
+                    ? t.launchDecision.decisionView
+                    : t.launchDecision.chatView
+                }
+                className="sm:hidden"
+                size="icon-sm"
+                variant="ghost"
+                onClick={() =>
+                  setLaunchView((view) =>
+                    view === "chat" ? "decision" : "chat",
+                  )
+                }
+              >
+                {launchView === "chat" ? (
+                  <ClipboardListIcon />
+                ) : (
+                  <MessageSquareIcon />
+                )}
+              </Button>
+            )}
             <div className="flex shrink-0 items-center md:mr-4">
+              {isDataInspector &&
+                growthSourceThreadId &&
+                latestGrowthAnalysis &&
+                !thread.isLoading && (
+                  <Button
+                    className="mr-1"
+                    size="sm"
+                    variant="outline"
+                    onClick={returnGrowthAnalysisToLaunch}
+                  >
+                    <ArrowLeftRightIcon />
+                    <span className="hidden lg:inline">
+                      {t.launchDecision.returnToLaunch}
+                    </span>
+                  </Button>
+                )}
               <Tooltip content={t.agents.newChat}>
                 <Button
                   size="sm"
@@ -265,97 +444,123 @@ export default function AgentChatPage() {
           </header>
 
           <main className="flex min-h-0 max-w-full grow flex-col">
-            <div className="flex min-h-0 flex-1 justify-center">
-              <MessageList
-                className={cn("size-full", !isWelcomeMode && "pt-10")}
+            {isEcomLaunch && launchView === "decision" ? (
+              <LaunchDecisionWorkspace
+                isStreaming={thread.isLoading}
+                messages={thread.messages}
                 threadId={threadId}
-                thread={thread}
-                paddingBottom={MESSAGE_LIST_DEFAULT_PADDING_BOTTOM}
-                hasMoreHistory={hasMoreHistory}
-                loadMoreHistory={loadMoreHistory}
-                isHistoryLoading={isHistoryLoading}
-                tokenUsageInlineMode={tokenUsageInlineMode}
+                onOpenGrowthAnalyst={(handoff) => {
+                  const handoffKey = crypto.randomUUID();
+                  window.sessionStorage.setItem(
+                    `opensku:growth-handoff:${handoffKey}`,
+                    handoff,
+                  );
+                  router.push(
+                    `/workspace/agents/data-inspector/chats/new?sourceThread=${encodeURIComponent(threadId)}&handoffKey=${encodeURIComponent(handoffKey)}`,
+                  );
+                }}
+                onRecordValidationResult={handleSubmit}
+                onReturnToChat={() => setLaunchView("chat")}
               />
-            </div>
+            ) : (
+              <>
+                <div className="flex min-h-0 flex-1 justify-center">
+                  <MessageList
+                    className={cn("size-full", !isWelcomeMode && "pt-10")}
+                    threadId={threadId}
+                    thread={thread}
+                    paddingBottom={MESSAGE_LIST_DEFAULT_PADDING_BOTTOM}
+                    hasMoreHistory={hasMoreHistory}
+                    loadMoreHistory={loadMoreHistory}
+                    isHistoryLoading={isHistoryLoading}
+                    tokenUsageInlineMode={tokenUsageInlineMode}
+                  />
+                </div>
 
-            <div
-              className={cn(
-                "right-0 bottom-0 left-0 z-30 flex justify-center px-4",
-                isWelcomeMode ? "absolute" : "relative shrink-0 pb-4",
-              )}
-            >
-              <div
-                className={cn(
-                  "relative w-full",
-                  isWelcomeMode && "-translate-y-[calc(50vh-96px)]",
-                  isWelcomeMode
-                    ? "max-w-(--container-width-sm)"
-                    : "max-w-(--container-width-md)",
-                )}
-              >
-                {hasTodos && (
+                <div
+                  className={cn(
+                    "right-0 bottom-0 left-0 z-30 flex justify-center px-4",
+                    isWelcomeMode ? "absolute" : "relative shrink-0 pb-4",
+                  )}
+                >
                   <div
                     className={cn(
-                      "right-0 left-0 z-0",
-                      isWelcomeMode ? "absolute -top-4" : "relative",
+                      "relative w-full",
+                      isWelcomeMode && "-translate-y-[calc(50vh-96px)]",
+                      isWelcomeMode
+                        ? "max-w-(--container-width-sm)"
+                        : "max-w-(--container-width-md)",
                     )}
                   >
-                    <div
-                      className={cn(
-                        "right-0 bottom-0 left-0",
-                        isWelcomeMode ? "absolute" : "relative",
-                      )}
-                    >
-                      <TodoList
-                        className="bg-background/5"
-                        todos={thread.values.todos ?? []}
-                        hidden={false}
-                      />
-                    </div>
-                  </div>
-                )}
+                    {hasTodos && (
+                      <div
+                        className={cn(
+                          "right-0 left-0 z-0",
+                          isWelcomeMode ? "absolute -top-4" : "relative",
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "right-0 bottom-0 left-0",
+                            isWelcomeMode ? "absolute" : "relative",
+                          )}
+                        >
+                          <TodoList
+                            className="bg-background/5"
+                            todos={thread.values.todos ?? []}
+                            hidden={false}
+                          />
+                        </div>
+                      </div>
+                    )}
 
-                <InputBox
-                  className={cn(
-                    "bg-background/5 w-full",
-                    isWelcomeMode && "-translate-y-4",
-                  )}
-                  isWelcomeMode={isWelcomeMode}
-                  threadId={threadId}
-                  autoFocus={isWelcomeMode}
-                  status={
-                    thread.error
-                      ? "error"
-                      : thread.isLoading
-                        ? "streaming"
-                        : "ready"
-                  }
-                  context={effectiveContext}
-                  availableModes={isEcomLaunch ? ["flash", "ultra"] : undefined}
-                  expandedWelcomeHeader={isDataInspector}
-                  extraHeader={
-                    isWelcomeMode && (
-                      <AgentWelcome agent={agent} agentName={agent_name} />
-                    )
-                  }
-                  welcomeSuggestions={welcomeSuggestions}
-                  disabled={
-                    env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ||
-                    isUploading
-                  }
-                  onContextChange={handleContextChange}
-                  onSubmit={handleSubmit}
-                  onStop={handleStop}
-                />
-                {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" && (
-                  <div className="text-muted-foreground/67 w-full translate-y-12 text-center text-xs">
-                    {t.common.notAvailableInDemoMode}
+                    <InputBox
+                      key={handoffInitialValue ? "handoff-input" : "chat-input"}
+                      className={cn(
+                        "bg-background/5 w-full",
+                        isWelcomeMode && "-translate-y-4",
+                      )}
+                      isWelcomeMode={isWelcomeMode}
+                      threadId={threadId}
+                      autoFocus={isWelcomeMode}
+                      status={
+                        thread.error
+                          ? "error"
+                          : thread.isLoading
+                            ? "streaming"
+                            : "ready"
+                      }
+                      context={effectiveContext}
+                      initialValue={handoffInitialValue}
+                      availableModes={
+                        isEcomLaunch ? ["flash", "ultra"] : undefined
+                      }
+                      expandedWelcomeHeader={isDataInspector}
+                      extraHeader={
+                        isWelcomeMode && (
+                          <AgentWelcome agent={agent} agentName={agent_name} />
+                        )
+                      }
+                      welcomeSuggestions={welcomeSuggestions}
+                      disabled={
+                        env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ||
+                        isUploading
+                      }
+                      onContextChange={handleContextChange}
+                      onSubmit={handleSubmit}
+                      onStop={handleStop}
+                    />
+                    {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" && (
+                      <div className="text-muted-foreground/67 w-full translate-y-12 text-center text-xs">
+                        {t.common.notAvailableInDemoMode}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
+              </>
+            )}
           </main>
-          {isEcomLaunch && (
+          {isEcomLaunch && launchView === "chat" && (
             <LaunchCrewPanel
               threadValues={thread.values}
               messages={thread.messages}

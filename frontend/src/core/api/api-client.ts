@@ -1,7 +1,9 @@
 "use client";
 
+import { overrideFetchImplementation } from "@langchain/langgraph-sdk";
 import { Client as LangGraphClient } from "@langchain/langgraph-sdk/client";
 
+import { handleUnauthorized, isMockAPIRequest } from "../auth/unauthorized";
 import { getLangGraphBaseURL } from "../config";
 import { isStaticWebsiteOnly } from "../static-mode";
 import {
@@ -13,6 +15,24 @@ import type { AgentThreadState } from "../threads/types";
 
 import { isStateChangingMethod, readCsrfCookie } from "./fetcher";
 import { sanitizeRunStreamOptions } from "./stream-mode";
+
+async function sdkFetch(
+  input: RequestInfo | URL | string,
+  init?: RequestInit,
+): Promise<Response> {
+  const response = await globalThis.fetch(input, {
+    ...init,
+    credentials: "include",
+  });
+  if (response.status === 401 && !isMockAPIRequest(input)) {
+    await handleUnauthorized();
+  }
+  return response;
+}
+
+// ClientConfig exposes only an onRequest hook, so response-level session
+// recovery is installed through the SDK's supported fetch singleton.
+overrideFetchImplementation(sdkFetch);
 
 /**
  * SDK ``onRequest`` hook that mints the ``X-CSRF-Token`` header from the

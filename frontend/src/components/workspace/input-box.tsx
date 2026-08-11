@@ -157,6 +157,7 @@ export function InputBox({
   const { thread, isMock } = useThread();
   const { textInput } = usePromptInputController();
   const promptRootRef = useRef<HTMLDivElement | null>(null);
+  const appliedInitialValueRef = useRef<string | undefined>(undefined);
 
   const [followups, setFollowups] = useState<string[]>([]);
   const [followupsHidden, setFollowupsHidden] = useState(false);
@@ -169,6 +170,21 @@ export function InputBox({
   const [pendingSuggestion, setPendingSuggestion] = useState<string | null>(
     null,
   );
+
+  useEffect(() => {
+    if (!initialValue) {
+      appliedInitialValueRef.current = undefined;
+      return;
+    }
+    if (
+      appliedInitialValueRef.current === initialValue ||
+      (textInput.value && textInput.value !== initialValue)
+    ) {
+      return;
+    }
+    appliedInitialValueRef.current = initialValue;
+    textInput.setInput(initialValue);
+  }, [initialValue, textInput]);
 
   useEffect(() => {
     if (models.length === 0) {
@@ -531,7 +547,6 @@ export function InputBox({
             disabled={disabled}
             placeholder={t.inputBox.placeholder}
             autoFocus={autoFocus}
-            defaultValue={initialValue}
           />
         </PromptInputBody>
         <PromptInputFooter className="flex">

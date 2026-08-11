@@ -76,6 +76,16 @@ content-pack.md
 launch-calendar.csv
 ```
 
+The Launch Team chat also includes a decision workspace for reviewing the
+current recommendation, evidence state, critical assumptions, experiments,
+recorded validation results, and the initial-to-current decision change. A
+recorded result is added to the existing thread for agent review; the UI marks
+it as pending reassessment and never changes the recommendation on its own.
+When uploaded CSV/XLSX data needs deeper analysis, the user can explicitly hand
+the decision context to Growth Analyst and explicitly return its findings to
+the source Launch thread. The two top-level agents remain independent and are
+never silently chained.
+
 ## Meet the launch team
 
 | Runtime role                              | Responsibility                                                                                             |
@@ -108,6 +118,16 @@ OpenSKU keeps claims auditable with three evidence classes:
 - `assumption` — an explicit hypothesis that still needs validation.
 
 That contract prevents an attractive report from quietly turning missing data into invented certainty. Run budgets also bound LLM calls, token use, and execution time.
+
+For Flash Launch Packs, a public claim is counted as `observed_public` only
+when its source page was fetched successfully in the current run. If no public
+or uploaded evidence survives that check, OpenSKU cannot recommend starting
+immediately; it asks the user to verify a concrete price, review, or demand
+source first. Generated listing copy, content prompts, and the seven-day
+calendar reuse the selected audience, price, hypotheses, and experiment fields
+instead of falling back to category-neutral placeholders. When delivery
+finishes, the chat automatically opens `launch-war-room.html` while keeping the
+seven downloadable source files available.
 
 ## Quick start
 

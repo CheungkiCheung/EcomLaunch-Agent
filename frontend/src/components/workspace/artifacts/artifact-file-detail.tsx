@@ -5,6 +5,7 @@ import {
   EyeIcon,
   LoaderIcon,
   PackageIcon,
+  RefreshCwIcon,
   SquareArrowOutUpRightIcon,
   XIcon,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import {
   ArtifactHeader,
   ArtifactTitle,
 } from "@/components/ai-elements/artifact";
+import { Button } from "@/components/ui/button";
 import { Select, SelectItem } from "@/components/ui/select";
 import {
   SelectContent,
@@ -111,7 +113,7 @@ export function ArtifactFileDetail({
     isSupportPreview,
     toolResult,
   });
-  const { content, url } = useArtifactContent({
+  const { content, url, isLoading, error, refetch } = useArtifactContent({
     threadId,
     filepath: filepathFromProps,
     enabled: isCodeFile && !isWriteFile,
@@ -286,31 +288,64 @@ export function ArtifactFileDetail({
         </div>
       </ArtifactHeader>
       <ArtifactContent className="p-0">
-        {artifactViewState.canPreview &&
-          viewMode === "preview" &&
-          (language === "markdown" || language === "html") && (
-            <ArtifactFilePreview
-              content={visibleContent}
-              language={language ?? "text"}
-              scrollKey={filepathFromProps}
-              url={url}
-            />
-          )}
-        {isCodeFile && viewMode === "code" && (
-          <CodeEditor
-            className="size-full resize-none rounded-none border-none"
-            value={visibleContent ?? ""}
-            readonly
-          />
-        )}
-        {!isCodeFile && (
-          <iframe
-            className="size-full"
-            src={urlOfArtifact({ filepath, threadId, isMock })}
-          />
+        {isLoading ? (
+          <ArtifactLoadState icon={LoaderIcon} label={t.common.loading} spin />
+        ) : error ? (
+          <div className="flex size-full flex-col items-center justify-center gap-3 px-6 text-center">
+            <p className="text-muted-foreground text-sm">
+              {t.common.artifactLoadFailed}
+            </p>
+            <Button variant="outline" size="sm" onClick={() => void refetch()}>
+              <RefreshCwIcon />
+              {t.common.retry}
+            </Button>
+          </div>
+        ) : (
+          <>
+            {artifactViewState.canPreview &&
+              viewMode === "preview" &&
+              (language === "markdown" || language === "html") && (
+                <ArtifactFilePreview
+                  content={visibleContent}
+                  language={language ?? "text"}
+                  scrollKey={filepathFromProps}
+                  url={url}
+                />
+              )}
+            {isCodeFile && viewMode === "code" && (
+              <CodeEditor
+                className="size-full resize-none rounded-none border-none"
+                value={visibleContent ?? ""}
+                readonly
+              />
+            )}
+            {!isCodeFile && (
+              <iframe
+                className="size-full"
+                src={urlOfArtifact({ filepath, threadId, isMock })}
+              />
+            )}
+          </>
         )}
       </ArtifactContent>
     </Artifact>
+  );
+}
+
+function ArtifactLoadState({
+  icon: Icon,
+  label,
+  spin = false,
+}: {
+  icon: typeof LoaderIcon;
+  label: string;
+  spin?: boolean;
+}) {
+  return (
+    <div className="text-muted-foreground flex size-full items-center justify-center gap-2 text-sm">
+      <Icon className={cn("size-4", spin && "animate-spin")} />
+      <span>{label}</span>
+    </div>
   );
 }
 

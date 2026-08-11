@@ -24,9 +24,23 @@ export function useArtifactContent({
     }
     return null;
   }, [filepath, isWriteFile, thread]);
+  const artifactRevision = useMemo(() => {
+    for (let index = thread.messages.length - 1; index >= 0; index -= 1) {
+      const message = thread.messages[index];
+      if (
+        message?.type === "tool" &&
+        message.status !== "error" &&
+        (message.name === "present_files" ||
+          message.name === "render_launch_pack")
+      ) {
+        return message.id ?? message.tool_call_id ?? index;
+      }
+    }
+    return "no-completed-presentation";
+  }, [thread.messages]);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["artifact", filepath, threadId, isMock],
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["artifact", filepath, threadId, isMock, artifactRevision],
     queryFn: () => {
       return loadArtifactContent({ filepath, threadId, isMock });
     },
@@ -39,5 +53,6 @@ export function useArtifactContent({
     url: isWriteFile ? undefined : data?.url,
     isLoading,
     error,
+    refetch,
   };
 }

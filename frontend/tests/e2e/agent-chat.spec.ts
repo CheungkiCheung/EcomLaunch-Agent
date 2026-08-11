@@ -80,15 +80,16 @@ test.describe("Agent chat", () => {
       await expect(demoCard.getByRole("tab", { name: label })).toBeVisible();
     }
 
-    await page.locator('input[type="file"]').first().setInputFiles({
-      name: "manual-interview-note.csv",
-      mimeType: "text/csv",
-      buffer: Buffer.from("note,value\nsource,manual\n"),
-    });
+    await page
+      .locator('input[type="file"]')
+      .first()
+      .setInputFiles({
+        name: "manual-interview-note.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from("note,value\nsource,manual\n"),
+      });
 
-    await demoCard
-      .getByRole("button", { name: "Load selected data" })
-      .click();
+    await demoCard.getByRole("button", { name: "Load selected data" }).click();
 
     const attachments = page.getByTestId("prompt-input-attachments");
     await expect(attachments).toBeVisible();
@@ -109,9 +110,7 @@ test.describe("Agent chat", () => {
     await expect(
       demoCard.getByText("3 CSVs · 30 days · 4 channels · 12 campaigns"),
     ).toBeVisible();
-    await demoCard
-      .getByRole("button", { name: "Load selected data" })
-      .click();
+    await demoCard.getByRole("button", { name: "Load selected data" }).click();
 
     for (const name of ["ad_spend.csv", "sessions.csv", "orders.csv"]) {
       await expect(attachments.getByText(name, { exact: true })).toBeVisible();
@@ -141,9 +140,7 @@ test.describe("Agent chat", () => {
     await expect(
       demoCard.getByTestId("growth-demo-files").getByText("products.csv"),
     ).toBeVisible();
-    await demoCard
-      .getByRole("button", { name: "Load selected data" })
-      .click();
+    await demoCard.getByRole("button", { name: "Load selected data" }).click();
     for (const name of ["products.csv", "orders.csv", "order_items.csv"]) {
       await expect(attachments.getByText(name, { exact: true })).toHaveCount(1);
     }
@@ -237,12 +234,21 @@ test.describe("Agent chat", () => {
               type: "ai",
               id: "msg-ai-render-pack-final",
               content:
-                "Launch Validation Pack 已交付，文件可在下方卡片和右上角文件入口查看。",
+                "## 当前判断\n\n**证据不足，先补公开信号。**\n\n现有搜索摘要不足以支持稳定需求结论。\n\n## 证据状态\n\n- 已核验公开证据：0 条\n- 已上传真实证据：0 条\n- 估算、假设或不可用：3 条\n- 关键缺口：尚无可核验的销量与购买意愿证据。\n\n## 下一步\n\n先补齐上述公开信号；未补齐前，不进入样品、投放或采购阶段。\n\nLaunch Validation Pack 已通过预检，7 个交付文件已生成。",
             },
           ],
         },
       ],
     });
+    await page.route(
+      `**/api/threads/${threadId}/artifacts/**/launch-war-room.html`,
+      (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "text/html",
+          body: "<!doctype html><html><body><h1>通勤咖啡杯 Launch Validation War Room</h1></body></html>",
+        }),
+    );
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.context().addCookies([
       {
@@ -276,9 +282,31 @@ test.describe("Agent chat", () => {
       page.getByText("Launch Validation Pack 已生成", { exact: true }),
     ).toBeVisible();
     await expect(
+      page.getByText("证据不足，先补公开信号。", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("已核验公开证据：0 条", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "先补齐上述公开信号；未补齐前，不进入样品、投放或采购阶段。",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
       page.getByRole("heading", { name: "市场研究员", exact: true }),
     ).toHaveCount(0);
     await expect(page.getByTestId("artifact-trigger")).toContainText("文件");
     await expect(page.getByTestId("artifact-trigger")).toContainText("7");
+    const artifactsPanel = page.locator("#artifacts");
+    await expect(
+      artifactsPanel.getByText("launch-war-room.html", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      artifactsPanel.locator('iframe[title="Artifact preview"]'),
+    ).toBeVisible();
+    await expect(
+      artifactsPanel.getByText("No artifact selected", { exact: true }),
+    ).toHaveCount(0);
   });
 });

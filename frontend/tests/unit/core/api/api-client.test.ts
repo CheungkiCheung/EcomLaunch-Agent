@@ -121,3 +121,55 @@ test("rethrows unrelated streaming errors", async () => {
 
   expect(sessionStorage.removeItem).not.toHaveBeenCalled();
 });
+
+test("clears an expired session before redirecting SDK requests to login", async () => {
+  const assign = vi.fn();
+  const sessionStorage = makeSessionStorage();
+  vi.stubGlobal("window", {
+    location: {
+      assign,
+      origin: "http://localhost:2026",
+      pathname: "/workspace/agents/ecom-launch/chats/thread-expired",
+    },
+    sessionStorage,
+  });
+  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url;
+    if (url.endsWith("/api/v1/auth/logout")) {
+      return new Response(
+        JSON.stringify({ message: "Successfully logged out" }),
+        {
+          status: 200,
+        },
+      );
+    }
+    return new Response(
+      JSON.stringify({
+        detail: { code: "token_expired", message: "Token has expired" },
+      }),
+      { status: 401 },
+    );
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  await expect(getAPIClient().threads.get("thread-expired")).rejects.toThrow(
+    "HTTP 401",
+  );
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    "/api/v1/auth/logout",
+    expect.objectContaining({
+      credentials: "include",
+      keepalive: true,
+      method: "POST",
+    }),
+  );
+  expect(assign).toHaveBeenCalledWith(
+    "/login?next=%2Fworkspace%2Fagents%2Fecom-launch%2Fchats%2Fthread-expired",
+  );
+});

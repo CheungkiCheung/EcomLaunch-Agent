@@ -72,6 +72,61 @@ test("reads authoritative artifact paths from a successful tool result", () => {
   );
 });
 
+test("waits for the renderer result before exposing tool-call artifact paths", () => {
+  const rendererMessage = {
+    id: "ai-render-pack",
+    type: "ai",
+    content: "",
+    tool_calls: [
+      {
+        id: "render-pack",
+        name: "render_launch_pack",
+        args: { spec: { category: "通勤咖啡杯" } },
+      },
+    ],
+  } as Message;
+  const successfulResult = {
+    id: "tool-render-pack",
+    type: "tool",
+    name: "render_launch_pack",
+    tool_call_id: "render-pack",
+    status: "success",
+    content: "Successfully presented files",
+  } as Message;
+
+  expect(extractPresentedFilesFromMessages([rendererMessage])).toEqual([]);
+  expect(
+    extractPresentedFilesFromMessages([rendererMessage, successfulResult]),
+  ).toEqual(LAUNCH_PACK_PATHS);
+});
+
+test("does not expose artifact paths from a failed renderer call", () => {
+  const rendererMessage = {
+    id: "ai-render-pack",
+    type: "ai",
+    content: "",
+    tool_calls: [
+      {
+        id: "render-pack",
+        name: "render_launch_pack",
+        args: { spec: {} },
+      },
+    ],
+  } as Message;
+  const failedResult = {
+    id: "tool-render-pack",
+    type: "tool",
+    name: "render_launch_pack",
+    tool_call_id: "render-pack",
+    status: "error",
+    content: "Render failed",
+  } as Message;
+
+  expect(
+    extractPresentedFilesFromMessages([rendererMessage, failedResult]),
+  ).toEqual([]);
+});
+
 test("aggregates token usage messages once per assistant turn", () => {
   const messages = [
     {

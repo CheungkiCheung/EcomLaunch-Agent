@@ -472,13 +472,50 @@ export function extractPresentFilesFromMessage(message: Message) {
 }
 
 export function extractPresentedFilesFromMessages(messages: Message[]) {
-  return [
-    ...new Set(
-      messages.flatMap((message) =>
-        hasPresentFiles(message) ? extractPresentFilesFromMessage(message) : [],
-      ),
-    ),
-  ];
+  const completedToolCallIds = new Set(
+    messages.flatMap((message) => {
+      if (
+        message.type !== "tool" ||
+        !message.tool_call_id ||
+        message.status === "error"
+      ) {
+        return [];
+      }
+      return [message.tool_call_id];
+    }),
+  );
+  const files: string[] = [];
+
+  for (const message of messages) {
+    if (message.type === "tool") {
+      if (message.status !== "error") {
+        files.push(...extractPresentFilesFromMessage(message));
+      }
+      continue;
+    }
+    if (message.type !== "ai") {
+      continue;
+    }
+
+    // Tool-call arguments are streamed before the renderer has committed its
+    // files. Only use them as a compatibility fallback after the matching
+    // ToolMessage confirms completion; otherwise auto-preview can cache a 404.
+    for (const toolCall of message.tool_calls ?? []) {
+      if (!toolCall.id || !completedToolCallIds.has(toolCall.id)) {
+        continue;
+      }
+      if (toolCall.name === "render_launch_pack") {
+        files.push(...LAUNCH_PACK_FILEPATHS);
+      } else if (
+        toolCall.name === "present_files" &&
+        Array.isArray(toolCall.args.filepaths)
+      ) {
+        files.push(...(toolCall.args.filepaths as string[]));
+      }
+    }
+  }
+
+  return [...new Set(files)];
 }
 
 export function hasSubagent(message: AIMessage) {

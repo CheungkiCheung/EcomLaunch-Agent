@@ -1,9 +1,21 @@
 import type { BaseStream } from "@langchain/langgraph-sdk/react";
 
+import { fetch as fetchWithAuth } from "@/core/api/fetcher";
+
 import type { AgentThreadState } from "../threads";
 
 import { buildWriteFileDraftContent } from "./preview";
 import { urlOfArtifact } from "./utils";
+
+export class ArtifactLoadError extends Error {
+  constructor(
+    readonly status: number,
+    readonly filepath: string,
+  ) {
+    super(`Failed to load artifact ${filepath} (HTTP ${status})`);
+    this.name = "ArtifactLoadError";
+  }
+}
 
 export async function loadArtifactContent({
   filepath,
@@ -19,8 +31,11 @@ export async function loadArtifactContent({
     enhancedFilepath = filepath + "/SKILL.md";
   }
   const url = urlOfArtifact({ filepath: enhancedFilepath, threadId, isMock });
-  const response = await fetch(url);
+  const response = await fetchWithAuth(url, { cache: "no-store" });
   const text = await response.text();
+  if (!response.ok) {
+    throw new ArtifactLoadError(response.status, enhancedFilepath);
+  }
   return { content: text, url };
 }
 
